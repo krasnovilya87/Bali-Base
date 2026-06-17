@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "Listing": {
+      "title": "Listing",
+      "description": "A property or item listing (housing, transport, service, ad, afisha, etc.)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique listing identifier" },
+        "ownerId": { "type": "string", "description": "The UID of the owner" },
+        "category": { "type": "string", "enum": ["housing", "transport", "services", "ads", "afisha", "life", "info"] },
+        "subCategory": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "district": { "type": "string" },
+        "address": { "type": "string" },
+        "images": { "type": "array" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "isApproved": { "type": "boolean" },
+        "isNew": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "paused", "draft", "moderation"] },
+        "pricePerDay": { "type": "number" },
+        "pricePerMonth": { "type": "number" },
+        "bookingComPrice": { "type": "number" },
+        "competitorPlatform": { "type": "string", "enum": ["Booking", "Airbnb", "Agoda", "Trip.com", "Traveloka", "Only Facebook"] },
+        "competitorUrl": { "type": "string" },
+        "hasDropPrice": { "type": "boolean" },
+        "dropPricePerDay": { "type": "number" },
+        "dropPricePerMonth": { "type": "number" },
+        "dropPriceEndsAt": { "type": "string", "format": "date-time" },
+        "roomsTotal": { "type": "number" },
+        "bedroomsCount": { "type": "number" },
+        "wallMaterial": { "type": "string", "enum": ["wood", "concrete"] },
+        "territoryType": { "type": "string", "enum": ["private", "shared", "resort"] },
+        "bedType": { "type": "string" },
+        "kitchenType": { "type": "string", "enum": ["basic", "equipped", "none"] },
+        "poolType": { "type": "string", "enum": ["none", "shared", "private", "infinity"] },
+        "internetSpeed": { "type": "number" },
+        "bathroomType": { "type": "string", "enum": ["standard", "modern", "designer"] },
+        "bathroomOptions": { "type": "array" },
+        "amenities": { "type": "array" },
+        "cleaningFrequency": { "type": "string", "enum": ["none", "3_times_week", "once_week", "daily"] },
+        "viewType": { "type": "string", "enum": ["rice_fields", "garden", "pool", "ocean", "jungle"] },
+        "extraOptions": { "type": "array" },
+        "yearBuilt": { "type": "number" },
+        "distanceToSeaMinutes": { "type": "number" },
+        "interiorStyle": { "type": "string", "enum": ["basic", "bali_style", "modern", "luxury"] },
+        "housingType": { "type": "string" },
+        "area": { "type": "number" },
+        "whatsappNumber": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerAvatar": { "type": "string" },
+        "clicksCount": { "type": "number" },
+        "viewsCount": { "type": "number" }
+      },
+      "required": ["id", "ownerId", "category", "subCategory", "title", "description", "district", "address", "images", "status", "pricePerDay", "whatsappNumber", "ownerName"]
+    },
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "A booking request submitted by a guest for a listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "listingId": { "type": "string" },
+        "listingTitle": { "type": "string" },
+        "listingImage": { "type": "string" },
+        "listingCategory": { "type": "string", "enum": ["housing", "transport", "services", "ads", "afisha", "life"] },
+        "guestName": { "type": "string" },
+        "guestPhone": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "totalDays": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "listingId", "listingTitle", "listingCategory", "guestName", "guestPhone", "startDate", "endDate", "totalDays", "totalPrice", "status", "createdAt"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "Configuration document storing custom settings, values or menu overrides",
+      "type": "object",
+      "properties": {
+        "l1": { "type": "object", "description": "Menu overrides for level 1 categories" },
+        "l2": { "type": "object", "description": "Menu overrides for level 2 subcategories" }
+      }
+    }
+  },
+  "firestore": {
+    "listings/{listingId}": {
+      "schema": "Listing",
+      "description": "The listings registered in the platform"
+    },
+    "housing_for_rent_listing/{listingId}": {
+      "schema": "Listing",
+      "description": "Specific housing listings for rent"
+    },
+    "bookings/{bookingId}": {
+      "schema": "BookingRequest",
+      "description": "Booking requests for listings"
+    },
+    "configs/{configId}": {
+      "schema": "Config",
+      "description": "Dynamic configurations and menu overrides for the application"
+    }
+  }
+}

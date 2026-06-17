@@ -1,0 +1,151 @@
+import { AdminUser, SupportTicket } from './types';
+
+export const DEFAULT_ADMIN_USERS: AdminUser[] = [
+  {
+    id: 'user-admin-1',
+    name: 'Илья Краснов',
+    email: 'krasnovilya87@gmail.com',
+    phone: '+62 812-3456-7890',
+    role: 'admin',
+    status: 'active',
+    listingsCount: 2,
+    registeredAt: '2026-01-15T08:30:00Z',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'user-host-2',
+    name: 'Кети Мелкадзе',
+    email: 'keti_bali@outlook.com',
+    phone: '+62 821-4477-9911',
+    role: 'host',
+    status: 'active',
+    listingsCount: 4,
+    registeredAt: '2026-03-04T12:15:00Z',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'user-host-3',
+    name: 'Wayong Suartha',
+    email: 'wayong_bali88@gmail.com',
+    phone: '+62 855-9009-8877',
+    role: 'host',
+    status: 'active',
+    listingsCount: 8,
+    registeredAt: '2026-02-28T09:00:00Z',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'user-mod-4',
+    name: 'Алексей Смирнов',
+    email: 'alex_mod@balibase.com',
+    phone: '+62 811-9988-7766',
+    role: 'moderator',
+    status: 'active',
+    listingsCount: 0,
+    registeredAt: '2026-04-10T14:22:00Z',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'user-guest-5',
+    name: 'Мария Петрова',
+    email: 'mari_petrova@yandex.ru',
+    phone: '+7 903-123-4567',
+    role: 'guest',
+    status: 'active',
+    listingsCount: 0,
+    registeredAt: '2026-05-20T17:45:00Z',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'user-guest-6',
+    name: 'John Miller',
+    email: 'john_mill@gmail.com',
+    phone: '+1 415-889-1234',
+    role: 'guest',
+    status: 'banned',
+    listingsCount: 0,
+    registeredAt: '2026-05-18T10:11:00Z',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80'
+  }
+];
+
+export const DEFAULT_TICKETS: SupportTicket[] = [
+  {
+    id: 'ticket-1',
+    userId: 'user-host-2',
+    userName: 'Кети Мелкадзе',
+    userPhone: '+62 821-4477-9911',
+    userAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
+    subject: 'Проблема с интеграцией календаря iCal',
+    status: 'open',
+    createdAt: '2026-06-05T11:40:00Z',
+    messages: [
+      {
+        id: 'm1',
+        sender: 'user',
+        text: 'Здравствуйте! Я добавила ссылку на iCal из Airbnb, но даты в моем календаре на Bali Base не заблокировались. Проверьте, пожалуйста.',
+        timestamp: '2026-06-05T11:40:00Z'
+      },
+      {
+        id: 'm2',
+        sender: 'admin',
+        text: 'Приветствуем! Проверяем вашу ссылку. Иногда синхронизация занимает до 15 минут. Подскажите ID вашего объявления.',
+        timestamp: '2026-06-05T12:05:00Z'
+      },
+      {
+        id: 'm3',
+        sender: 'user',
+        text: 'Объявление: Вилла Ubud Jungle View Loft (ID: l_ubud_jungle). Вот ссылка на iCal, которую я вставила.',
+        timestamp: '2026-06-05T12:12:00Z'
+      }
+    ]
+  },
+  {
+    id: 'ticket-2',
+    userId: 'user-guest-5',
+    userName: 'Мария Петрова',
+    userPhone: '+7 903-123-4567',
+    userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
+    subject: 'Подтверждение премиум верификации',
+    status: 'open',
+    createdAt: '2026-06-06T09:15:00Z',
+    messages: [
+      {
+        id: 'm4',
+        sender: 'user',
+        text: 'Привет! Я отправила документы на верификацию Bali Base Approved. Как долго обычно проходит проверка анкеты?',
+        timestamp: '2026-06-06T09:15:00Z'
+      }
+    ]
+  },
+  {
+    id: 'ticket-3',
+    userId: 'user-host-3',
+    userName: 'Wayong Suartha',
+    userPhone: '+62 855-9009-8877',
+    userAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80',
+    subject: 'Вопрос по рекламому тарифу Turbo',
+    status: 'resolved',
+    createdAt: '2026-06-04T15:20:00Z',
+    messages: [
+      {
+        id: 'm5',
+        sender: 'user',
+        text: 'Hello. I want to buy Turbo promo category for my villa. Can I pay with wise or local Indonesian bank transfer?',
+        timestamp: '2026-06-04T15:20:00Z'
+      },
+      {
+        id: 'm6',
+        sender: 'admin',
+        text: 'Sure, Wayong! Yes, we accept both local Indonesian bank transfer (BCA, Mandiri) and Wise direct transfer. Our managers will contact you shortly with the billing details.',
+        timestamp: '2026-06-04T15:55:00Z'
+      },
+      {
+        id: 'm7',
+        sender: 'user',
+        text: 'Thank you very much, I successfully registered it.',
+        timestamp: '2026-06-04T16:40:00Z'
+      }
+    ]
+  }
+];

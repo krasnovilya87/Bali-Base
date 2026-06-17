@@ -1,0 +1,10 @@
+{
+  "name": "Bali Base",
+  "description": "Bali direct rental classifieds marketplace for housing, transport, services, and events directly via WhatsApp",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

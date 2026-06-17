@@ -1,0 +1,612 @@
+import React, { useState, useEffect } from 'react';
+import { Listing } from '../types';
+import { Heart, Star, ChevronLeft, ChevronRight, BookmarkCheck, Flame, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { THEME } from '../theme';
+import { isListingFresh } from '../utils/listingFreshness';
+import { motion } from 'motion/react';
+import CompetitorLogo from './CompetitorLogo';
+
+interface ListingCardProps {
+  key?: string;
+  listing: Listing;
+  onSelect: (listing: Listing) => void;
+  currencySymbol: string;
+  currencyRate: number;
+  checkInDate?: string;
+  checkOutDate?: string;
+  onOpenCalendar?: () => void;
+  onFavoriteChange?: (listingId: string, isFavorite: boolean) => void;
+}
+
+export default function ListingCard({ 
+  listing, 
+  onSelect, 
+  currencySymbol, 
+  currencyRate,
+  checkInDate,
+  checkOutDate,
+  onOpenCalendar,
+  onFavoriteChange
+}: ListingCardProps) {
+  const [currentPhoto, setCurrentPhoto] = useState<number>(0);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [countdownText, setCountdownText] = useState<string>('');
+  const [isExpired, setIsExpired] = useState<boolean>(false);
+
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [mouseStartX, setMouseStartX] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState<number>(0);
+  const [hasDragged, setHasDragged] = useState<boolean>(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setHasDragged(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const currentX = e.targetTouches[0].clientX;
+    const diff = currentX - touchStartX;
+    setDragOffset(diff);
+    if (Math.abs(diff) > 10) {
+      setHasDragged(true);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    const swipeThreshold = 50;
+    if (Math.abs(diff) > swipeThreshold) {
+      e.stopPropagation();
+      if (diff > 0) {
+        setCurrentPhoto(prev => Math.min(listing.images.length - 1, prev + 1));
+      } else {
+        setCurrentPhoto(prev => Math.max(0, prev - 1));
+      }
+    }
+    setTouchStartX(null);
+    setDragOffset(0);
+    if (hasDragged) {
+      setTimeout(() => {
+        setHasDragged(false);
+      }, 50);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMouseStartX(e.clientX);
+    setHasDragged(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mouseStartX === null) return;
+    const currentX = e.clientX;
+    const diff = currentX - mouseStartX;
+    setDragOffset(diff);
+    if (Math.abs(diff) > 10) {
+      setHasDragged(true);
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (mouseStartX === null) return;
+    const mouseEndX = e.clientX;
+    const diff = mouseStartX - mouseEndX;
+    const swipeThreshold = 50;
+    if (Math.abs(diff) > swipeThreshold) {
+      e.stopPropagation();
+      if (diff > 0) {
+        setCurrentPhoto(prev => Math.min(listing.images.length - 1, prev + 1));
+      } else {
+        setCurrentPhoto(prev => Math.max(0, prev - 1));
+      }
+    }
+    setMouseStartX(null);
+    setDragOffset(0);
+    if (hasDragged) {
+      setTimeout(() => {
+        setHasDragged(false);
+      }, 50);
+    }
+  };
+
+  const handleWhatsAppClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // If dates are not selected, open calendar and do not redirect
+    if (!checkInDate || !checkOutDate) {
+      if (onOpenCalendar) {
+        onOpenCalendar();
+        return;
+      }
+    }
+
+    const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
+    const templateMessage = `Bali Base. Здравствуйте! Меня интересует объявление: [${listing.title}] (${convertPrice(activeDailyPrice)} ${currencySymbol})`;
+    const encodedMessage = encodeURIComponent(templateMessage);
+    const waUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+    
+    // Increment clicksCount in localStorage (bali_base_listings)
+    try {
+      const stored = localStorage.getItem('bali_base_listings');
+      if (stored) {
+        const lis = JSON.parse(stored) as Listing[];
+        const updated = lis.map(item => {
+          if (item.id === listing.id) {
+            return {
+              ...item,
+              clicksCount: (item.clicksCount || 0) + 1
+            };
+          }
+          return item;
+        });
+        localStorage.setItem('bali_base_listings', JSON.stringify(updated));
+      }
+    } catch {}
+
+    // Add to bali_base_whatsapp_history
+    try {
+      const existingHistory = localStorage.getItem('bali_base_whatsapp_history');
+      let historyList: any[] = [];
+      if (existingHistory) {
+        historyList = JSON.parse(existingHistory);
+      }
+      const alreadyClickedIndex = historyList.findIndex((h: any) => h.id === listing.id);
+      if (alreadyClickedIndex !== -1) {
+        const found = historyList.splice(alreadyClickedIndex, 1)[0];
+        found.clickedAt = new Date().toISOString();
+        historyList.unshift(found);
+      } else {
+        historyList.unshift({
+          id: listing.id,
+          title: listing.title,
+          district: listing.district,
+          pricePerDay: activeDailyPrice,
+          image: listing.images[0] || '',
+          whatsappNumber: listing.whatsappNumber,
+          clickedAt: new Date().toISOString()
+        });
+      }
+      localStorage.setItem('bali_base_whatsapp_history', JSON.stringify(historyList));
+    } catch (e) {
+      console.error('Error saving WhatsApp click history:', e);
+    }
+
+    // Direct redirection
+    window.open(waUrl, '_blank');
+  };
+
+  useEffect(() => {
+    // Check if item is in favorites
+    const favs = localStorage.getItem('bali_base_favorites');
+    if (favs) {
+      try {
+        const parsed = JSON.parse(favs) as string[];
+        setIsFavorite(parsed.includes(listing.id));
+      } catch {}
+    }
+  }, [listing.id]);
+
+  useEffect(() => {
+    if (!listing.hasDropPrice || !listing.dropPriceEndsAt) return;
+
+    const checkExpiration = () => {
+      const difference = new Date(listing.dropPriceEndsAt!).getTime() - Date.now();
+      if (difference <= 0) {
+        setCountdownText('Истекло');
+        setIsExpired(true);
+      } else {
+        const daysVal = difference / (1000 * 60 * 60 * 24);
+        const daysText = Math.ceil(daysVal);
+        setCountdownText(`${daysText} дн.`);
+        setIsExpired(false);
+      }
+    };
+
+    checkExpiration();
+    const timer = setInterval(checkExpiration, 1000);
+
+    return () => clearInterval(timer);
+  }, [listing.hasDropPrice, listing.dropPriceEndsAt]);
+
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const favs = localStorage.getItem('bali_base_favorites');
+    let list: string[] = [];
+    if (favs) {
+      try {
+        list = JSON.parse(favs);
+      } catch {}
+    }
+
+    if (list.includes(listing.id)) {
+      list = list.filter(id => id !== listing.id);
+      setIsFavorite(false);
+      onFavoriteChange?.(listing.id, false);
+    } else {
+      list.push(listing.id);
+      setIsFavorite(true);
+      onFavoriteChange?.(listing.id, true);
+    }
+    localStorage.setItem('bali_base_favorites', JSON.stringify(list));
+  };
+
+  const handleNextPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentPhoto(prev => Math.min(listing.images.length - 1, prev + 1));
+  };
+
+  const handlePrevPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentPhoto(prev => Math.max(0, prev - 1));
+  };
+
+  const convertPrice = (idrAmount: number) => {
+    const converted = Math.round(idrAmount * currencyRate);
+    return converted.toLocaleString();
+  };
+
+  // Helper type emoji labeling
+  const getSubcategoryEmoji = () => {
+    switch (listing.subCategory) {
+      case 'entire_place': return '🏡 Villa целиком';
+      case 'private_suite': return '🏢 Апартаменты';
+      case 'private_room': return '🌴 Комната';
+      case 'scooters': return '🛵 Скутер';
+      case 'motorcycles': return '🏍 Мотоцикл';
+      case 'cars': return '🚗 Автомобиль';
+      case 'for_leisure': return '🌴 Досуг и спорт';
+      case 'for_living': return '💼 Для жизни';
+      case 'electronics': return '🔌 Гаджеты';
+      case 'festivals': return '📅 Афиша: Фестиваль';
+      default: return '🏷 Объявление';
+    }
+  };
+
+  // Automated privacy label based on total neighbors and categories
+  const getPrivacyFormula = () => {
+    if (listing.category === 'housing') {
+      const sub = listing.subCategory === 'entire_place' ? 'Вилла целиком' : 'Комната на вилле';
+      const rooms = listing.roomsTotal ? ` • Всего ${listing.roomsTotal} спален` : '';
+      return `${sub}${rooms}`;
+    }
+    return `${listing.district}, Бали`;
+  };
+
+  const getCardSubtitle = (): string => {
+    if (listing.category !== 'housing') {
+      return listing.description;
+    }
+
+    const pluralize = (count: number, one: string, few: string, many: string) => {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod100 >= 11 && mod100 <= 19) {
+        return `${count} ${many}`;
+      }
+      if (mod10 === 1) {
+        return `${count} ${one}`;
+      }
+      if (mod10 >= 2 && mod10 <= 4) {
+        return `${count} ${few}`;
+      }
+      return `${count} ${many}`;
+    };
+
+    const subCat = listing.subCategory;
+    const hType = (listing.housingType || '').toLowerCase();
+
+    const distStr = listing.distanceToSeaMinutes !== undefined
+      ? `${listing.distanceToSeaMinutes} мин до моря`
+      : 'рядом с морем';
+
+    if (subCat === 'private_suite' || hType.includes('apartment') || hType.includes('апарт')) {
+      // Для апартов: тип объекта (апартаменты), площадь, удаление от моря
+      const areaVal = listing.area || 45;
+      return `Апартаменты • ${areaVal} м² • ${distStr}`;
+    } else if (subCat === 'private_room' || hType.includes('room') || hType.includes('комнат')) {
+      // Для комнаты: тип объекта (Guesthouse), количество комнат, удаление от моря
+      const roomsVal = listing.roomsTotal || 1;
+      const roomsStr = pluralize(roomsVal, 'комната', 'комнаты', 'комнат');
+      return `Guesthouse • ${roomsStr} • ${distStr}`;
+    } else {
+      // Для Дома/Виллы: тип обьекта, количество комнат, расстояние до моря
+      let typeStr = 'Вилла';
+      if (hType.includes('house') || hType.includes('дом')) {
+        typeStr = 'Дом';
+      } else if (hType.includes('bungalow') || hType.includes('бунгало')) {
+        typeStr = 'Бунгало';
+      } else if (listing.housingType) {
+        const mapping: Record<string, string> = {
+          'Villa': 'Вилла',
+          'House': 'Дом',
+          'Bungalow': 'Бунгало',
+          'Apartment': 'Апартаменты',
+          'Guesthouse': 'Гестхаус',
+          'Hotel': 'Отель'
+        };
+        typeStr = mapping[listing.housingType] || listing.housingType;
+      }
+      
+      const roomsVal = listing.roomsTotal || 1;
+      const roomsStr = pluralize(roomsVal, 'комната', 'комнаты', 'комнат');
+      return `${typeStr} • ${roomsStr} • ${distStr}`;
+    }
+  };
+
+  const activeDailyPrice = listing.hasDropPrice && listing.dropPricePerDay && !isExpired
+    ? listing.dropPricePerDay
+    : listing.pricePerDay;
+
+  // Calculate reservation stay duration in days
+  const getStayDays = () => {
+    if (listing.category === 'housing' && checkInDate && checkOutDate) {
+      const start = new Date(checkInDate);
+      const end = new Date(checkOutDate);
+      const timeDiff = end.getTime() - start.getTime();
+      if (timeDiff > 0) {
+        return Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
+    }
+    return null;
+  };
+
+  const stayDays = getStayDays();
+
+  const pluralizeNights = (count: number) => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 19) {
+      return 'ночей';
+    }
+    if (mod10 === 1) {
+      return 'ночь';
+    }
+    if (mod10 >= 2 && mod10 <= 4) {
+      return 'ночи';
+    }
+    return 'ночей';
+  };
+
+  const pluralizeDays = (count: number) => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 19) {
+      return 'дней';
+    }
+    if (mod10 === 1) {
+      return 'день';
+    }
+    if (mod10 >= 2 && mod10 <= 4) {
+      return 'дня';
+    }
+    return 'дней';
+  };
+
+  // Compute savings vs Competitor (Booking/Agoda/Airbnb)
+  // Saved amount = Competitor Daily Price - Owner Daily Price
+  const hasSavings = listing.bookingComPrice && listing.bookingComPrice > activeDailyPrice;
+  const savings = hasSavings ? (listing.bookingComPrice! - activeDailyPrice) : 0;
+
+  const displayDailyPrice = activeDailyPrice;
+  const activeBasePrice = stayDays ? activeDailyPrice * stayDays : activeDailyPrice;
+  const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice;
+  const activeSavings = stayDays && savings ? savings * stayDays : savings;
+
+  const getClampedDragOffset = () => {
+    if (currentPhoto === 0 && dragOffset > 0) {
+      return dragOffset * 0.35;
+    }
+    if (currentPhoto === listing.images.length - 1 && dragOffset < 0) {
+      return dragOffset * 0.35;
+    }
+    return dragOffset;
+  };
+
+  const activeElasticOffset = getClampedDragOffset();
+
+  return (
+    <div
+      onClick={(e) => {
+        if (hasDragged) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onSelect(listing);
+      }}
+      className={`group pl-card relative z-0 hover:z-20 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer select-none border-2 ${
+        listing.isPromoTop 
+          ? 'bg-amber-50/[0.8] border-amber-400 shadow-md shadow-amber-200/40 ring-1 ring-amber-300/40' 
+          : 'bg-white border-[#E5E7EB]'
+      }`}
+      id={`card-${listing.id}`}
+    >
+      {/* Photo Carousel Container with Touch & Drag support */}
+      <div 
+        className="relative aspect-video w-full overflow-hidden bg-gray-50 touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <div 
+          className="flex w-full h-full"
+          style={{
+            transform: `translateX(calc(-${currentPhoto * 100}% + ${activeElasticOffset}px))`,
+            transition: dragOffset !== 0 ? 'none' : 'transform 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {listing.images.map((imgSrc, idx) => (
+            <img
+              key={idx}
+              src={imgSrc}
+              alt={listing.title}
+              referrerPolicy="no-referrer"
+              onDragStart={(e) => e.preventDefault()}
+              className={`w-full h-full object-cover shrink-0 select-none pointer-events-none ${idx === currentPhoto ? 'pl-card-active-image' : ''}`}
+            />
+          ))}
+        </div>
+
+        {/* Carousel controls - visible on hover */}
+        {listing.images.length > 1 && (
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-3 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={handlePrevPhoto}
+              className="p-1.5 rounded-full bg-white/90 text-gray-800 hover:bg-white shadow-md active:scale-90 transition min-w-[28px] min-h-[28px] flex items-center justify-center"
+              title="Prev image"
+            >
+              <ChevronLeft className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+            </button>
+            <button
+              onClick={handleNextPhoto}
+              className="p-1.5 rounded-full bg-white/90 text-gray-800 hover:bg-white shadow-md active:scale-90 transition min-w-[28px] min-h-[28px] flex items-center justify-center"
+              title="Next image"
+            >
+              <ChevronRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Badge Layers upper Left - scaled up for better mobile visibility */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start z-10">
+          {listing.isPromoPremium && (
+            <div className={`bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-white ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wider`}>
+              <Flame className="w-3.5 h-3.5 fill-white text-white animate-bounce" />
+              <span>👑 Vip Premium</span>
+            </div>
+          )}
+          {listing.isApproved && (
+            <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
+              <span>★ Bali Base Approved</span>
+            </div>
+          )}
+          {isListingFresh(listing) && (
+            <div className={`bg-brand-orange text-white ${THEME.fonts.heading} text-[11px] sm:text-[9px] font-extrabold px-2 py-0.5 rounded shadow-md`}>
+              New
+            </div>
+          )}
+        </div>
+
+        {/* Heart Favorite Upper Right */}
+        <button
+          onClick={toggleFavorite}
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-10 min-w-[28px] min-h-[28px] flex items-center justify-center"
+          title="Toggle favorite"
+        >
+          <Heart className="w-4 h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
+        </button>
+      </div>
+
+      {/* Content details description */}
+      <div className={`p-4 sm:p-5 lg:p-4 flex-1 flex flex-col justify-between ${THEME.fonts.main}`}>
+        
+        <div>
+          {/* Title and Rating Line */}
+          <div className="flex justify-between items-start gap-2 mb-2 lg:mb-1.5">
+            <h3 className={`${THEME.fonts.heading} font-bold text-[21px] sm:text-base lg:text-lg text-text-dark line-clamp-1 group-hover:text-brand-orange-hover transition-colors leading-tight`}>
+              {listing.title}
+            </h3>
+            <div className={`flex items-center gap-1.5 text-[14.5px] sm:text-xs lg:text-sm font-bold text-text-dark shrink-0 ${THEME.fonts.mono}`}>
+              <Star className="w-[15px] h-[15px] sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
+              <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
+              <span className="text-gray-400 font-light">({listing.reviewsCount})</span>
+            </div>
+          </div>
+
+          <p className="line-clamp-2 leading-relaxed mb-2 sm:mb-3.5 text-gray-500 font-light text-[14px] sm:text-xs lg:text-[13px]">
+            {getCardSubtitle()}
+          </p>
+        </div>
+
+        {/* Pricing stack matching user specifications */}
+        <div className="pt-2 sm:pt-2.5 pb-1">
+          {stayDays && (
+            <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-xs font-bold text-text-dark ${THEME.fonts.heading}`}>
+              Итого за {stayDays} {pluralizeDays(stayDays)}:
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 sm:gap-1.5">
+            {/* Line 1: Competitor Price, grey/strikethrough and dynamic competitor logo */}
+            {listing.bookingComPrice && (
+              listing.competitorUrl ? (
+                <a
+                  href={listing.competitorUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-4 sm:gap-3 self-start cursor-pointer hover:opacity-75 transition"
+                >
+                  <span className={`text-[14px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
+                    {convertPrice(activeCompetitorPrice)} {currencySymbol}
+                  </span>
+                  <CompetitorLogo platform={listing.competitorPlatform} />
+                </a>
+              ) : (
+                <div className="flex items-center gap-4 sm:gap-3">
+                  <span className={`text-[14px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
+                    {convertPrice(activeCompetitorPrice)} {currencySymbol}
+                  </span>
+                  <CompetitorLogo platform={listing.competitorPlatform} />
+                </div>
+              )
+            )}
+
+            {/* Line 2: Direct Price and Direct price label */}
+            <div className="flex items-center gap-4 sm:gap-3">
+              <span className={`text-[21px] sm:text-base lg:text-lg font-bold text-text-dark ${THEME.fonts.mono}`}>
+                {convertPrice(activeBasePrice)} {currencySymbol}
+              </span>
+              {listing.hasDropPrice && !isExpired ? (
+                <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
+                  Drop price • {countdownText}
+                </span>
+              ) : (
+                <span className={`text-[14px] sm:text-xs lg:text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
+                  Direct price
+                </span>
+              )}
+            </div>
+
+            {/* Line 3: Savings in small red font */}
+            {hasSavings && (
+              <div className="flex items-center self-start">
+                <div className="bg-[#FF3B30]/10 rounded-full px-2.5 py-1 sm:py-0.5 flex items-center gap-2 shadow-xs backdrop-blur-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
+                  <span className={`text-[14px] sm:text-xs lg:text-xs text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
+                    {convertPrice(activeSavings)} {currencySymbol}
+                  </span>
+                  <span className={`text-[12.5px] sm:text-[10px] lg:text-[9px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
+                    Saved
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* WhatsApp direct contact button at bottom */}
+        <div className="mt-3.5">
+          <button
+            onClick={handleWhatsAppClick}
+            className="w-full py-2 px-3 whatsapp-green text-white font-normal rounded-xl flex items-center justify-center gap-2 hover:opacity-95 active:scale-97 transition-all text-[15px] sm:text-[13px] shadow-xs"
+          >
+            <svg className="w-[18px] h-[18px] sm:w-[15px] sm:h-[15px] fill-current shrink-0" viewBox="0 0 24 24">
+              <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
+            </svg>
+            <span>Написать в WhatsApp</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}

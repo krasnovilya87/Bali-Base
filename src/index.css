@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Основной шрифт - для всего сайта/текстов */
+  --font-sans: "Manrope", sans-serif;
+  
+  /* Шрифт заголовков и логотипов */
+  --font-display: "Manrope", sans-serif;
+  --font-heading: "Manrope", sans-serif;
+  
+  /* Моноширинный шрифт переопределен на Manrope по запросу для числовых значений */
+  --font-mono: "Manrope", sans-serif;
+
+  /* Настройки цветов (для всего сайта) */
+  --color-brand-orange: #FF7A50;
+  --color-brand-orange-hover: #E05A30;
+  --color-direct-green: #2F7D69;
+  --color-brand-blue: #94A3B8;
+  --color-bg-light: #F4F7F6;
+  --color-text-dark: #1E293B;
+
+  /* Custom Balinese warm animation configurations */
+  --animate-spin-slow: spin 16s linear infinite;
+  --animate-bounce-slow: bounce 3s ease-in-out infinite;
+  --animate-ping-slow: ping 3.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-scale-slow-pan: scalePan 20s ease-in-out infinite alternate;
+  --animate-fade-in: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-left: slideLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-up: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-scale-up: scaleUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes scalePan {
+  0% { transform: scale(1.05) translate(0px, 0px); }
+  50% { transform: scale(1.12) translate(-10px, -5px); }
+  100% { transform: scale(1.05) translate(0px, 0px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Custom styles */
+.animate-spin-slow {
+  animation: var(--animate-spin-slow);
+}
+.animate-bounce-slow {
+  animation: var(--animate-bounce-slow);
+}
+.animate-ping-slow {
+  animation: var(--animate-ping-slow);
+}
+.animate-scale-slow-pan {
+  animation: var(--animate-scale-slow-pan);
+}
+.animate-fade-in {
+  animation: var(--animate-fade-in);
+}
+.animate-slide-left {
+  animation: var(--animate-slide-left);
+}
+.animate-slide-up {
+  animation: var(--animate-slide-up);
+}
+.animate-scale-up {
+  animation: var(--animate-scale-up);
+}
+
+/* Optimize custom range inputs theme styling */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #FF7A50;
+  cursor: pointer;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(255,122,80,0.4);
+  transition: transform 0.15s ease-in-out;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #FF7A50;
+  cursor: pointer;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(255,122,80,0.4);
+  transition: transform 0.15s ease-in-out;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* Base body reset styled with clean light background to match the screenshot */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-light);
+  color: var(--color-text-dark);
+  font-family: var(--font-sans);
+}
+
+/* Make all grey fonts thin throughout the application (popups, standalone blocks, main menu, etc.) */
+[class*="text-gray-300"],
+[class*="text-gray-400"],
+[class*="text-gray-450"],
+[class*="text-gray-500"],
+[class*="text-gray-550"],
+[class*="text-gray-600"],
+[class*="text-gray-650"] {
+  font-weight: 300 !important;
+}
+
+/* Hide scrollbar everywhere */
+*::-webkit-scrollbar {
+  display: none !important;
+}
+* {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Polished styling constants for Balinese elements */
+.drop-price-badge {
+  background: linear-gradient(135deg, #FF7A50, #FFAE94) !important;
+  color: #ffffff !important;
+}
+
+.booking-red {
+  color: #FF4B4B !important;
+}
+
+.whatsapp-green {
+  background: #4E9F7D !important;
+  color: #ffffff !important;
+}
+
+.whatsapp-green:hover {
+  background: #3F916E !important;
+}
+
+/* Ensure smooth styling for inputs and selects in the light theme */
+select {
+  border-color: #E5E7EB !important;
+  color: var(--color-text-dark) !important;
+  background-color: #ffffff !important;
+}
+
+input[type="text"], input[type="date"] {
+  border-color: #E5E7EB !important;
+  color: var(--color-text-dark) !important;
+  background-color: #ffffff !important;
+}
+
+/* PL Cards (Product/Listing Cards) Hover Effects */
+.pl-card {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.3s ease !important;
+}
+.pl-card:hover {
+  transform: translateY(-6px) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+.pl-card .pl-card-active-image {
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+.pl-card:hover .pl-card-active-image {
+  transform: scale(1.05) !important;
+}
+
+/* Style for pl pills/cards */
+.pl {
+  border: none !important;
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(4px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Selected state for pl cards */
+.pl.selected {
+  background-color: rgba(255, 122, 80, 0.15) !important;
+  color: #FF7A50 !important;
+  box-shadow: 0 4px 12px rgba(255, 122, 80, 0.08) !important;
+}
+.pl.selected svg {
+  color: #FF7A50 !important;
+}
+
+/* Interactive state hover effects for .pl */
+.pl.interactive {
+  cursor: pointer;
+}
+.pl.interactive:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08), 0 8px 8px -5px rgba(0, 0, 0, 0.04) !important;
+}
+.pl.interactive img,
+.pl.interactive svg {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.pl.interactive:hover img,
+.pl.interactive:hover svg {
+  transform: scale(1.08) !important;
+}
+

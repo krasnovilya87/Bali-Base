@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidListing(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.category is string && data.category.size() <= 64
+        && data.title is string && data.title.size() <= 200
+        && data.district is string && data.district.size() <= 64
+        && data.status is string && (data.status == 'active' || data.status == 'paused' || data.status == 'draft' || data.status == 'moderation')
+        && (data.pricePerDay is int || data.pricePerDay is float) && data.pricePerDay >= 0;
+    }
+
+    function isValidBookingRequest(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.listingId is string && data.listingId.size() <= 128
+        && data.guestName is string && data.guestName.size() <= 128
+        && data.guestPhone is string && data.guestPhone.size() <= 64
+        && data.status is string && (data.status == 'pending' || data.status == 'accepted' || data.status == 'declined')
+        && (data.totalPrice is int || data.totalPrice is float) && data.totalPrice >= 0;
+    }
+
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if isValidId(listingId) && isValidListing(incoming());
+      allow update: if isValidId(listingId) && isValidListing(incoming());
+      allow delete: if isValidId(listingId);
+    }
+
+    match /housing_for_rent_listing/{listingId} {
+      allow read: if true;
+      allow create: if isValidId(listingId) && isValidListing(incoming());
+      allow update: if isValidId(listingId) && isValidListing(incoming());
+      allow delete: if isValidId(listingId);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if true;
+      allow create: if isValidId(bookingId) && isValidBookingRequest(incoming());
+      allow update: if isValidId(bookingId) && isValidBookingRequest(incoming());
+      allow delete: if isValidId(bookingId);
+    }
+
+    match /configs/{configId} {
+      allow read, write: if true;
+    }
+  }
+}

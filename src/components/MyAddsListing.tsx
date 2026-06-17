@@ -1,0 +1,735 @@
+import React, { useState } from 'react';
+import { Listing, BookingRequest } from '../types';
+import {
+  LayoutGrid, LineChart, Calendar as CalendarIcon, ClipboardList, Check, X,
+  ExternalLink, Sparkles, Flame, Eye, Send, Play, Pause, Trash2, Clock, Globe,
+  ShieldAlert, KeyRound, HelpCircle, Edit, Plus, Crown, Zap, Tag, Settings, BarChart3,
+  Rocket, ArrowUp, Sliders, SlidersHorizontal, Settings2
+} from 'lucide-react';
+import { setDocument } from '../firebase';
+import PromoteListingModal from './my-adds/PromoteListingModal';
+import CalendarListingModal from './my-adds/CalendarListingModal';
+import DropPriceModal from './my-adds/DropPriceModal';
+import BookingsModal from './my-adds/BookingsModal';
+import AnalyticsModal from './my-adds/AnalyticsModal';
+
+interface MyAddsListingProps {
+  listings: Listing[];
+  bookings: BookingRequest[];
+  onToggleStatus: (id: string) => void;
+  onUpdateBookingStatus: (id: string, status: 'accepted' | 'declined') => void;
+  onUpdateBooking: (booking: BookingRequest) => void;
+  onUpdateListing: (listing: Listing) => void;
+  onClose: () => void;
+  currencySymbol: string;
+  currencyRate: number;
+  onCreateClick?: () => void;
+  onEditClick?: (listing: Listing) => void;
+  onDeleteListing?: (id: string) => void;
+}
+
+import { THEME } from '../theme';
+
+export default function MyAddsListing({
+  listings,
+  bookings,
+  onToggleStatus,
+  onUpdateBookingStatus,
+  onUpdateBooking,
+  onUpdateListing,
+  onClose,
+  currencySymbol,
+  currencyRate,
+  onCreateClick,
+  onEditClick,
+  onDeleteListing
+}: MyAddsListingProps) {
+
+  // Filtration for listings belonging to current user session
+  const ownerListings = listings.filter(item => item.ownerId === 'owner-1' || item.ownerId === 'owner-personal');
+
+  // Sub-modal overlay states
+  const [promoteListing, setPromoteListing] = useState<Listing | null>(null);
+  const [calendarListing, setCalendarListing] = useState<Listing | null>(null);
+  const [dropPriceListing, setDropPriceListing] = useState<Listing | null>(null);
+
+  // Overall statistics and Booking overlay state for specific listings
+  const [analyticsListing, setAnalyticsListing] = useState<Listing | null>(null);
+  const [bookingsListing, setBookingsListing] = useState<Listing | null>(null);
+  const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
+  const [adjustListing, setAdjustListing] = useState<Listing | null>(null);
+
+  // Helper type emoji labeling
+  const getExpirationTimer = (item: Listing) => {
+    switch (item.category) {
+      case 'housing': return 'Постоянно (Без лимита)';
+      case 'transport': return '6 месяцев осталось';
+      case 'services': return '3 месяца осталось';
+      case 'ads': return '28 дней осталось';
+      case 'afisha': return 'До завершения ивента';
+      default: return 'Постоянно';
+    }
+  };
+
+  const convertPrice = (idrAmount: number) => {
+    return Math.round(idrAmount * currencyRate).toLocaleString();
+  };
+
+  const getDropPriceDaysLeft = (endsAt?: string) => {
+    if (!endsAt) return 0;
+    return Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  };
+
+
+  const handlePushListing = (item: Listing) => {
+    const updated = {
+      ...item,
+      pushedAt: new Date().toISOString()
+    };
+    onUpdateListing(updated);
+    if (analyticsListing && analyticsListing.id === item.id) {
+      setAnalyticsListing(updated);
+    }
+  };
+
+  const getListingRatingFraction = (listingItem: Listing) => {
+    const activeSimilar = listings.filter(
+      x => x.category === listingItem.category && x.status === 'active'
+    );
+
+    const listToRank = [...activeSimilar];
+    if (!listToRank.some(x => x.id === listingItem.id)) {
+      listToRank.push(listingItem);
+    }
+
+    const sortedSimilar = listToRank.sort((a, b) => {
+      if (a.isPromoTurbo && !b.isPromoTurbo) return -1;
+      if (!a.isPromoTurbo && b.isPromoTurbo) return 1;
+
+      const pushA = a.pushedAt ? new Date(a.pushedAt).getTime() : 0;
+      const pushB = b.pushedAt ? new Date(b.pushedAt).getTime() : 0;
+      if (pushA !== pushB) {
+        return pushB - pushA;
+      }
+
+      return b.viewsCount - a.viewsCount;
+    });
+
+    const positionInSimilar = sortedSimilar.findIndex(x => x.id === listingItem.id) + 1;
+    const totalSimilar = sortedSimilar.length;
+
+    return { position: positionInSimilar, total: totalSimilar };
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[500] p-2 sm:p-5" id="cabinet-modal">
+      <div className="bg-[#F4F7F6] w-full max-w-4xl h-full max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-scale-up border border-[#E2E8F0]">
+
+        {/* Main Cabinet Top Nav Header */}
+        <div
+          className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between z-20"
+          style={{ backgroundColor: '#EAEAEC' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#2F7D69]/10 border border-[#2F7D69]/20 flex items-center justify-center text-[#FF7A50]">
+              <LayoutGrid className="w-5 h-5 text-[#2F7D69]" />
+            </div>
+            <div>
+              <h2 className="font-display text-[#1E293B] text-base sm:text-lg font-black tracking-tight select-none">
+                Мои объявления: {ownerListings.length}
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onCreateClick}
+              className="px-4 py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Создать объявление</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition active:scale-95 shrink-0"
+              title="Закрыть кабинет"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrolling content list */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-[#F4F7F6]">
+
+          {/* Main Listings Loop list */}
+          {ownerListings.length === 0 ? (
+            <div className="pl rounded-2xl p-12 text-center text-gray-400 max-w-md mx-auto mt-6">
+              <LayoutGrid className="w-8 h-8 mx-auto text-gray-300 stroke-1 mb-3" />
+              <p className="text-xs font-medium text-gray-500">У вас пока нет активных объявлений</p>
+              <button
+                onClick={onCreateClick}
+                className="mt-4 px-3.5 py-2 bg-[#2F7D69]/10 text-[#2F7D69] text-[11px] font-extrabold rounded-xl hover:bg-[#2F7D69]/20 transition"
+              >
+                Создать первое объявление
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {ownerListings.map(item => (
+                <div
+                  key={item.id}
+                  className="relative overflow-hidden bg-white rounded-2xl p-4 shadow-[0_8px_24px_rgba(30,41,59,0.07)] hover:shadow-[0_14px_32px_rgba(30,41,59,0.12)] ring-1 ring-slate-200/70 transition-all duration-300"
+                >
+                  <div
+                    className={`absolute inset-y-0 left-0 w-1 ${item.isPromoTop
+                      ? 'bg-gradient-to-b from-amber-400 to-[#FF7A50]'
+                      : item.status === 'active'
+                        ? 'bg-gradient-to-b from-[#2F7D69] to-emerald-300'
+                        : 'bg-gradient-to-b from-amber-400 to-orange-300'
+                      }`}
+                  />
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+
+                    {/* Item Image and metadata block */}
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative shrink-0">
+                        <div className={`p-0.5 rounded-[14px] ${item.isPromoTop
+                          ? 'bg-gradient-to-br from-amber-400 to-[#FF7A50]'
+                          : item.status === 'active'
+                            ? 'bg-gradient-to-br from-[#2F7D69] to-emerald-200'
+                            : 'bg-gradient-to-br from-amber-400 to-orange-200'
+                          }`}>
+                          <img
+                            src={item.images[0]}
+                            alt={item.title}
+                            className="w-16 h-12 rounded-xl object-cover border-2 border-white"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        {item.status === 'active' ? (
+                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" title="Активно" />
+                        ) : (
+                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="На паузе" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                            {item.category === 'housing' ? '🏡 Жилье' : item.category === 'transport' ? '🛵 Транспорт' : '🏷 Услуга'}
+                          </span>
+                          <span className="text-gray-300 text-[10px]">•</span>
+                          <span className="text-[10px] font-mono text-gray-500">{item.district}</span>
+
+                          {/* Active promotion attributes tags indicators */}
+                          {item.isPromoTop && (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.2 rounded border border-amber-200">ТОП ✨</span>
+                          )}
+                          {item.isPromoPremium && (
+                            <span className="text-[9px] bg-orange-100 text-orange-800 font-extrabold px-1.5 py-0.2 rounded border border-orange-200">👑 VIP</span>
+                          )}
+                          {item.isPromoTurbo && (
+                            <span className="text-[9px] bg-rose-100 text-rose-800 font-extrabold px-1.5 py-0.2 rounded border border-rose-200">⚡ ТУРБО</span>
+                          )}
+                        </div>
+
+                        <h4 className="font-display font-black text-sm text-[#1E293B] mt-1 leading-snug">
+                          {item.title}
+                        </h4>
+
+                        <p className={`text-[10px] font-mono font-semibold tracking-wide mt-0.5 ${item.status === 'active' ? 'text-[#2F7D69]' : 'text-amber-600'
+                          }`}>
+                          Таймер: {getExpirationTimer(item)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Compact stats strip right on the card */}
+                    <div className="pl flex gap-4 sm:gap-6 font-mono text-center text-xs self-stretch sm:self-auto p-2.5 rounded-xl">
+                      <div>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Вьюзы</span>
+                        <span className="font-extrabold text-gray-800 flex items-center gap-0.5 justify-center mt-0.5">
+                          <Eye className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          {item.viewsCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Клики WA</span>
+                        <span className="font-extrabold text-amber-600 flex items-center gap-0.5 justify-center mt-0.5">
+                          <Send className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          {item.clicksCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Конверсия CTR</span>
+                        <span className="font-extrabold text-blue-600 block mt-0.5">
+                          {item.viewsCount > 0 ? ((item.clicksCount / item.viewsCount) * 100).toFixed(1) : '0'}%
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-emerald-700 text-[9px] uppercase font-sans font-extrabold block">Рейтинг</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="font-black text-emerald-800">
+                            {(() => {
+                              const { position, total } = getListingRatingFraction(item);
+                              return item.status === 'active' ? `${position}/${total}` : '—';
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Toggle listing activation status & Delete listing */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => onToggleStatus(item.id)}
+                        className={`p-2 rounded-xl border transition active:scale-95 flex items-center justify-center cursor-pointer ${item.status === 'active'
+                          ? 'bg-rose-50 border-rose-100 text-[#E05A30] hover:bg-rose-100'
+                          : 'bg-emerald-50 border-emerald-100 text-emerald-650 hover:bg-emerald-100'
+                          }`}
+                        title={item.status === 'active' ? 'Поставить на паузу' : 'Запустить объявление'}
+                      >
+                        {item.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      </button>
+
+                      <button
+                        onClick={() => setListingToDelete(item)}
+                        className="p-2 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition active:scale-95 flex items-center justify-center cursor-pointer"
+                        title="Удалить объявление"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <div className="px-3 py-2 rounded-xl bg-[#F4F7F6]/75 border border-slate-200/70">
+                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">За сутки</span>
+                      <span className="text-xs font-mono font-black text-[#1E293B]">
+                        {convertPrice(item.pricePerDay)} {currencySymbol}
+                      </span>
+                    </div>
+
+                    <div className="px-3 py-2 rounded-xl bg-[#F4F7F6]/75 border border-slate-200/70">
+                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">За месяц</span>
+                      <span className="text-xs font-mono font-black text-[#1E293B]">
+                        {convertPrice(item.pricePerMonth || item.pricePerDay * 30)} {currencySymbol}
+                      </span>
+                    </div>
+
+                    {item.hasDropPrice && item.dropPricePerDay && (
+                      <div className="px-3 py-2 rounded-xl bg-[#FF7A50]/10 border border-[#FF7A50]/25">
+                        <span className="text-[9px] uppercase tracking-wide text-[#E05A30] font-bold block">
+                          Drop Price · осталось {getDropPriceDaysLeft(item.dropPriceEndsAt)} дн.
+                        </span>
+                        <span className="text-xs font-mono font-black text-[#FF7A50]">
+                          {convertPrice(item.dropPricePerDay)} {currencySymbol}/сутки
+                          {item.dropPricePerMonth && ` · ${convertPrice(item.dropPricePerMonth)} ${currencySymbol}/месяц`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Balancing control row with exactly 6 main action buttons inside listing card */}
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 mt-4 pt-3.5">
+
+                    {/* BUTTON 1: Calendar (housing, transport, services) */}
+                    {(item.category === 'housing' || item.category === 'transport' || item.category === 'services') ? (
+                      <button
+                        onClick={() => setCalendarListing(item)}
+                        className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        <span>Календарь</span>
+                      </button>
+                    ) : (
+                      <div className="pl px-3 py-2 text-gray-400 rounded-xl text-[11px] font-sans font-bold flex items-center justify-center gap-1.5 select-none opacity-50 cursor-not-allowed">
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        <span>Календарь Н/Д</span>
+                      </div>
+                    )}
+
+                    {/* BUTTON 2: Drop Price button */}
+                    <button
+                      onClick={() => setDropPriceListing(item)}
+                      style={item.hasDropPrice ? { color: '#FF7A50', borderColor: 'rgba(255, 122, 80, 0.4)' } : undefined}
+                      className={`pl pl-interactive border px-3 py-3 rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer ${
+                        item.hasDropPrice
+                          ? '!bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 ring-[0.5px] ring-[#FF7A50] ring-inset'
+                          : '!bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border-slate-200/70 text-gray-600 hover:text-[#E05A30]'
+                      }`}
+                    >
+                      <Flame
+                        className="w-3.5 h-3.5"
+                        style={item.hasDropPrice ? { color: '#FF7A50', fill: 'rgba(255, 122, 80, 0.2)' } : undefined}
+                      />
+                      <span style={item.hasDropPrice ? { color: '#FF7A50' } : undefined}>
+                        Drop Price {item.hasDropPrice ? '✓' : ''}
+                      </span>
+                    </button>
+
+                    {/* BUTTON 3: Bookings (Specific for this listing) */}
+                    {(() => {
+                      const itemBookings = bookings.filter(b => b.listingId === item.id);
+                      const pendingCount = itemBookings.filter(b => b.status === 'pending').length;
+                      return (
+                        <button
+                          onClick={() => setBookingsListing(item)}
+                          style={pendingCount > 0 ? { color: '#FF7A50', borderColor: 'rgba(255, 122, 80, 0.4)' } : undefined}
+                          className={`pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border px-3 py-3 rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer ${
+                            pendingCount > 0
+                              ? 'ring-[0.5px] ring-[#FF7A50] ring-inset'
+                              : 'border-slate-200/70 text-gray-600 hover:text-[#E05A30]'
+                          }`}
+                        >
+                          <ClipboardList
+                            className="w-3.5 h-3.5"
+                            style={pendingCount > 0 ? { color: '#FF7A50' } : undefined}
+                          />
+                          <span style={pendingCount > 0 ? { color: '#FF7A50' } : undefined}>
+                            Заявки {itemBookings.length > 0 ? `(${itemBookings.length})` : ''}
+                          </span>
+                        </button>
+                      );
+                    })()}
+
+                    {/* BUTTON 4: Statistics (Specific for this listing) */}
+                    <button
+                      onClick={() => setAnalyticsListing(item)}
+                      className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>Статистика</span>
+                    </button>
+
+                    {/* BUTTON 5: Edit details button */}
+                    <button
+                      onClick={() => onEditClick?.(item)}
+                      className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Редактировать</span>
+                    </button>
+
+                    {/* BUTTON 6: Promote button (🚀 Highlighted, distinctive design) */}
+                    <button
+                      onClick={() => setPromoteListing(item)}
+                      className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-display font-black active:scale-95 lg:tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Crown className="w-3.5 h-3.5 text-[#FF7A50] fill-[#FF7A50]/20" />
+                      <span>🚀 Продвигать</span>
+                    </button>
+
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+        {promoteListing && (
+          <PromoteListingModal
+            listing={promoteListing}
+            onChange={(updated) => {
+              onUpdateListing(updated);
+              setPromoteListing(updated);
+            }}
+            onClose={() => setPromoteListing(null)}
+          />
+        )}
+
+        {calendarListing && (
+          <CalendarListingModal
+            listing={calendarListing}
+            bookings={bookings}
+            currencySymbol={currencySymbol}
+            currencyRate={currencyRate}
+            onChange={(updated) => {
+              onUpdateListing(updated);
+              setCalendarListing(updated);
+            }}
+            onUpdateStatus={onUpdateBookingStatus}
+            onUpdateBooking={onUpdateBooking}
+            onClose={() => setCalendarListing(null)}
+          />
+        )}
+
+        {dropPriceListing && (
+          <DropPriceModal
+            listing={dropPriceListing}
+            onChange={(updated) => {
+              onUpdateListing(updated);
+              setDropPriceListing(updated);
+            }}
+            onClose={() => setDropPriceListing(null)}
+          />
+        )}
+
+        {bookingsListing && (
+          <BookingsModal
+            listing={bookingsListing}
+            bookings={bookings}
+            currencySymbol={currencySymbol}
+            currencyRate={currencyRate}
+            onUpdateStatus={onUpdateBookingStatus}
+            onUpdateBooking={onUpdateBooking}
+            onClose={() => setBookingsListing(null)}
+          />
+        )}
+
+        {analyticsListing && (
+          <AnalyticsModal
+            listing={analyticsListing}
+            listings={listings}
+            onClose={() => setAnalyticsListing(null)}
+          />
+        )}
+
+
+        {/* ==================== SUB-MODAL: ⚠️ DELETE CONFIRMATION MODAL ==================== */}
+        {listingToDelete && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[510] p-4 animate-fade-in" id="delete-confirmation-modal">
+            <div className="bg-white max-w-sm w-full rounded-2xl p-5 border border-red-50 shadow-2xl space-y-4 animate-scale-up text-[#1E293B]">
+              <div className="flex gap-3 items-start">
+                <div className="p-3 bg-red-50 rounded-full text-red-600 shrink-0">
+                  <Trash2 className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-display font-black text-sm uppercase text-red-700">Удаление объявления</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    Вы уверены, что хотите удалить объявление <strong className="text-gray-800">«{listingToDelete.title}»</strong>? Это действие полностью удалит его из поиска Базы и никак не может быть отменено.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-2">
+                <button
+                  onClick={() => setListingToDelete(null)}
+                  className="py-2.5 bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    onDeleteListing?.(listingToDelete.id);
+                    setListingToDelete(null);
+                  }}
+                  className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center shadow-xs"
+                >
+                  Да, удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== SUB-MODAL: 🎛️ DISPLAY DETAILS & POSITION ADJUSTMENT MODAL ==================== */}
+        {adjustListing && (() => {
+          const activeSimilar = listings.filter(
+            item => item.category === adjustListing.category && item.status === 'active'
+          );
+          const listToRank = [...activeSimilar];
+          if (!listToRank.some(x => x.id === adjustListing.id)) {
+            listToRank.push(adjustListing);
+          }
+
+          const sortedSimilar = listToRank.sort((a, b) => {
+            if (a.isPromoTurbo && !b.isPromoTurbo) return -1;
+            if (!a.isPromoTurbo && b.isPromoTurbo) return 1;
+
+            const pushA = a.pushedAt ? new Date(a.pushedAt).getTime() : 0;
+            const pushB = b.pushedAt ? new Date(b.pushedAt).getTime() : 0;
+            if (pushA !== pushB) {
+              return pushB - pushA;
+            }
+
+            return b.viewsCount - a.viewsCount;
+          });
+
+          const positionInSimilar = sortedSimilar.findIndex(x => x.id === adjustListing.id) + 1;
+          const totalSimilar = sortedSimilar.length;
+
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[510] p-4 animate-fade-in" id="adjust-visibility-modal">
+              <div className="bg-white max-w-md w-full rounded-2xl p-5 border border-sky-50 shadow-2xl space-y-4 animate-scale-up text-[#1E293B]">
+                <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="w-5 h-5 text-[#2F7D69]" />
+                    <h3 className="font-display font-black text-sm uppercase">Настройка отображения</h3>
+                  </div>
+                  <button
+                    onClick={() => setAdjustListing(null)}
+                    className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3.5">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">Объявление</span>
+                    <p className="text-xs font-bold font-sans text-gray-800 line-clamp-1 mt-0.5">{adjustListing.title}</p>
+                  </div>
+
+                  {/* 1. Push Button Adjustment */}
+                  <div className="bg-emerald-50/40 p-4 border border-emerald-100/65 rounded-xl space-y-3">
+                    <div className="flex justify-between items-center gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase font-mono block">Положение в поиске</span>
+                        <div className="text-[13px] font-black text-gray-800 mt-1 flex items-center gap-1.5">
+                          <span>Рейтинг:</span>
+                          <span className="text-[#2F7D69] text-sm font-extrabold">{positionInSimilar} из {totalSimilar}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const nowStr = new Date().toISOString();
+                          const updated = {
+                            ...adjustListing,
+                            pushedAt: nowStr
+                          };
+                          onUpdateListing(updated);
+                          setAdjustListing(updated);
+                        }}
+                        className="px-3 py-2 bg-[#2F7D69] hover:bg-[#256353] text-white rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
+                      >
+                        <Rocket className="w-3.5 h-3.5" />
+                        <span>Поднять (Push)</span>
+                      </button>
+                    </div>
+                    <p className="text-[10.5px] text-emerald-700/80 leading-snug">
+                      Функция мгновенного поднятия (Push) обновляет дату публикации объявления на текущую секунду, возвращая его на лидирующие позиции без изменения основного тарифа.
+                    </p>
+                  </div>
+
+                  {/* 2. Custom Reach Multiplier Slider */}
+                  <div className="bg-gray-50/50 p-4 border border-gray-100 rounded-xl space-y-2.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block font-mono">Множитель охвата аудитории</span>
+                      <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-mono">
+                        {(adjustListing.reachMultiplier || 1.0).toFixed(1)}x
+                      </span>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="3.0"
+                      step="0.5"
+                      value={adjustListing.reachMultiplier || 1.0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        const updated = { ...adjustListing, reachMultiplier: val };
+                        onUpdateListing(updated);
+                        setAdjustListing(updated);
+                      }}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#2F7D69]"
+                    />
+
+                    <div className="flex justify-between text-[9px] font-bold text-gray-400 font-mono">
+                      <span>1.0x (Баз)</span>
+                      <span>1.5x</span>
+                      <span>2.0x (Топ)</span>
+                      <span>2.5x</span>
+                      <span>3.0x (Макс)</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Toggle visual badging formats */}
+                  <div className="bg-gray-50/30 p-4 border border-gray-150/40 rounded-xl space-y-3">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase block font-mono tracking-wider mb-1">Визуальные маркеры плашки</span>
+
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!adjustListing.isPromoTurbo}
+                          onChange={(e) => {
+                            const updated = { ...adjustListing, isPromoTurbo: e.target.checked };
+                            onUpdateListing(updated);
+                            setAdjustListing(updated);
+                          }}
+                          className="rounded text-amber-500 focus:ring-amber-400 w-4 h-4 cursor-pointer"
+                        />
+                        <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-pulse" />
+                          <span>Турбо тариф</span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!adjustListing.isPromoPremium}
+                          onChange={(e) => {
+                            const updated = { ...adjustListing, isPromoPremium: e.target.checked };
+                            onUpdateListing(updated);
+                            setAdjustListing(updated);
+                          }}
+                          className="rounded text-yellow-500 focus:ring-yellow-400 w-4 h-4 cursor-pointer"
+                        />
+                        <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                          <span>Премиум рамка</span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!adjustListing.hasDropPrice}
+                          onChange={(e) => {
+                            const updated = { ...adjustListing, hasDropPrice: e.target.checked };
+                            onUpdateListing(updated);
+                            setAdjustListing(updated);
+                          }}
+                          className="rounded text-green-650 focus:ring-green-500 w-4 h-4 cursor-pointer"
+                        />
+                        <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
+                          <Tag className="w-3.5 h-3.5 text-green-650" />
+                          <span>Снижение цены</span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!adjustListing.isNew}
+                          onChange={(e) => {
+                            const updated = { ...adjustListing, isNew: e.target.checked };
+                            onUpdateListing(updated);
+                            setAdjustListing(updated);
+                          }}
+                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        />
+                        <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Новинка</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => setAdjustListing(null)}
+                    className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition cursor-pointer active:scale-95 text-center shadow-xs text-center"
+                  >
+                    Готово
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      </div>
+    </div>
+  );
+}
