@@ -5,9 +5,11 @@ import {
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type AdminTabProps = Record<string, any>;
 export function MessagesTab(props: AdminTabProps) {
+  const { tr } = useI18n();
   const {
     totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
@@ -25,7 +27,7 @@ export function MessagesTab(props: AdminTabProps) {
                 {/* Left side list of tickets */}
                 <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm flex flex-col h-full">
                   <div className="p-4 bg-slate-50/70 border-b border-gray-100">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Диалоги поддержки</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">{tr('admin.messages.dialogs')}</span>
                   </div>
                   
                   <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
@@ -49,7 +51,7 @@ export function MessagesTab(props: AdminTabProps) {
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-center">
                                 <h4 className="font-bold text-sm text-[#1E293B] truncate">{ticket.userName}</h4>
-                                <span className="text-[9px] text-gray-400 font-mono font-medium">15 мин назад</span>
+                                <span className="text-[9px] text-gray-400 font-mono font-medium">{tr('admin.messages.minutesAgo')}</span>
                               </div>
                               <span className="text-xs text-gray-700 block truncate font-bold mt-0.5">{ticket.subject}</span>
                               <p className="text-[11px] text-gray-400 truncate mt-1">{lastMsg?.text}</p>
@@ -75,14 +77,14 @@ export function MessagesTab(props: AdminTabProps) {
                           />
                           <div>
                             <h3 className="font-extrabold text-sm text-[#1E293B]">{selectedTicket.userName}</h3>
-                            <span className="text-[10px] text-[#FF7A50] font-mono block">Тема: {selectedTicket.subject}</span>
+                            <span className="text-[10px] text-[#FF7A50] font-mono block">{tr('admin.messages.subject', { subject: selectedTicket.subject })}</span>
                           </div>
                         </div>
 
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
                           selectedTicket.status === 'open' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
                         }`}>
-                          {selectedTicket.status}
+                          {tr(`admin.messages.status.${selectedTicket.status}`)}
                         </span>
                       </div>
 
@@ -114,7 +116,7 @@ export function MessagesTab(props: AdminTabProps) {
                       <div className="p-4 border-t border-gray-100 bg-white flex gap-3 items-center shrink-0">
                         <input 
                           type="text" 
-                          placeholder="Введите ответ пользователю в поддержку..."
+                          placeholder={tr('admin.messages.placeholder')}
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
                           onKeyDown={(e) => {
@@ -125,7 +127,7 @@ export function MessagesTab(props: AdminTabProps) {
                         <button
                           onClick={handleSendReply}
                           className="bg-[#FF7A50] hover:bg-[#E05A30] text-white p-2.5 rounded-xl cursor-pointer shadow-sm active:scale-95 transition"
-                          title="Отправить ответ"
+                          title={tr('admin.messages.send')}
                         >
                           <Send className="w-4 h-4" />
                         </button>
@@ -137,8 +139,8 @@ export function MessagesTab(props: AdminTabProps) {
                         <MessageSquare className="w-8 h-8" />
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-[#1E293B] text-base">Сообщение не выбрано</h4>
-                        <p className="text-xs text-gray-400 max-w-sm mt-1">Выберите диалог на боковой панели, чтобы просмотреть переписку и ответить на обращение.</p>
+                        <h4 className="font-extrabold text-[#1E293B] text-base">{tr('admin.messages.emptyTitle')}</h4>
+                        <p className="text-xs text-gray-400 max-w-sm mt-1">{tr('admin.messages.emptyBody')}</p>
                       </div>
                     </div>
                   )}

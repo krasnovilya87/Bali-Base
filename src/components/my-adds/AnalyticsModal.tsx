@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart3, X } from 'lucide-react';
 import { Listing } from '../../types';
+import { useI18n } from '../../i18nContext';
 
 interface AnalyticsModalProps {
   listing: Listing;
@@ -9,6 +10,7 @@ interface AnalyticsModalProps {
 }
 
 export default function AnalyticsModal({ listing, listings, onClose }: AnalyticsModalProps) {
+  const { tr } = useI18n();
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const activeSimilar = listings.filter(item => item.category === listing.category && item.status === 'active');
   const sortedSimilar = [...activeSimilar].sort((a, b) => {
@@ -25,7 +27,7 @@ export default function AnalyticsModal({ listing, listings, onClose }: Analytics
         <div className="pu-header -mx-5 -mt-5 px-5 py-4 flex justify-between items-center border-b border-[#D1D5DB]/30">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-[#2F7D69]" />
-            <h3 className="font-display font-black text-sm uppercase">Статистика: {listing.title}</h3>
+            <h3 className="font-display font-black text-sm uppercase">{tr('analytics.title', { title: listing.title })}</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer">
             <X className="w-4 h-4" />
@@ -33,7 +35,7 @@ export default function AnalyticsModal({ listing, listings, onClose }: Analytics
         </div>
 
         <div className="pu-body flex justify-between items-center">
-          <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider block font-light">Динамика спроса за период</span>
+          <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider block font-light">{tr('analytics.demandPeriod')}</span>
           <div className="flex bg-gray-50 p-1 rounded-lg text-[10px] font-bold">
             {([7, 30, 90] as const).map(period => (
               <button
@@ -43,22 +45,22 @@ export default function AnalyticsModal({ listing, listings, onClose }: Analytics
                   days === period ? 'text-[#FF7A50] font-extrabold bg-[#FF7A50]/10' : 'text-gray-500 font-light hover:text-[#FF7A50]'
                 }`}
               >
-                {period}дн
+                {tr('analytics.daysShort', { count: period })}
               </button>
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2 sm:gap-3.5 text-[#1E293B]">
-          <Metric label="Просмотры" value={listing.viewsCount.toLocaleString()} className="text-[#FF7A50]" />
-          <Metric label="Клики WA" value={listing.clicksCount.toLocaleString()} className="text-amber-500" />
+          <Metric label={tr('analytics.views')} value={listing.viewsCount.toLocaleString()} className="text-[#FF7A50]" />
+          <Metric label={tr('analytics.waClicks')} value={listing.clicksCount.toLocaleString()} className="text-amber-500" />
           <Metric
-            label="Клик CTR"
+            label={tr('analytics.clickCtr')}
             value={`${listing.viewsCount > 0 ? ((listing.clicksCount / listing.viewsCount) * 100).toFixed(1) : '0'}%`}
             className="text-blue-600"
           />
           <Metric
-            label="Рейтинг"
+            label={tr('analytics.rating')}
             value={listing.status === 'active' && position > 0 ? `${position}/${sortedSimilar.length}` : '—'}
             className="text-emerald-700"
           />
@@ -68,7 +70,7 @@ export default function AnalyticsModal({ listing, listings, onClose }: Analytics
 
         <div className="pu-footer -mx-5 -mb-5 px-5 py-4 border-t border-[#D1D5DB]/30">
           <button onClick={onClose} className="w-full py-2.5 bg-[#2F7D69] text-white text-xs font-bold rounded-xl transition cursor-pointer active:scale-95">
-            Закрыть статистику
+            {tr('analytics.close')}
           </button>
         </div>
       </div>
@@ -86,6 +88,7 @@ function Metric({ label, value, className }: { label: string; value: string; cla
 }
 
 function AnalyticsChart({ listing, days }: { listing: Listing; days: 7 | 30 | 90 }) {
+  const { tr } = useI18n();
   const pointsCount = days === 7 ? 7 : days === 30 ? 15 : 20;
   const viewsBase = listing.viewsCount > 0 ? listing.viewsCount : 85;
   const clicksBase = listing.clicksCount > 0 ? listing.clicksCount : 4;
@@ -111,10 +114,10 @@ function AnalyticsChart({ listing, days }: { listing: Listing; days: 7 | 30 | 90
   return (
     <div className="pl p-4 rounded-2xl space-y-4 shadow-xs">
       <div className="flex justify-between items-center text-[11px] font-sans">
-        <span className="font-bold text-gray-400 uppercase tracking-wider block">График динамики спроса</span>
+        <span className="font-bold text-gray-400 uppercase tracking-wider block">{tr('analytics.chartTitle')}</span>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF7A50]" />Просмотры</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Клики WA</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF7A50]" />{tr('analytics.views')}</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{tr('analytics.waClicks')}</span>
         </div>
       </div>
       <div className="relative w-full h-[140px] overflow-hidden">

@@ -5,11 +5,13 @@ import {
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type AdminTabProps = Record<string, any>;
 export function DashboardTab(props: AdminTabProps) {
+  const { tr } = useI18n();
   const {
-    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews,
+    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews, googlePlacesQuota,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
     filteredListingsList, listingSearch, setListingSearch, listingCategoryFilter, setListingCategoryFilter, listingStatusFilter, setListingStatusFilter, onUpdateListing, showToast, onToggleStatus, onDeleteListing,
     moderationItems, handleApprove, handleOpenReject,
@@ -23,13 +25,13 @@ export function DashboardTab(props: AdminTabProps) {
               <div className="space-y-6 animate-fade-in">
                 
                 {/* Visual Widgets Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-center bg-[#FF7A50]/10 p-2.5 rounded-2xl self-start">
                       <List className="w-5 h-5 text-[#FF7A50]" />
                     </div>
                     <div className="mt-4">
-                      <span className="text-xs text-gray-500 font-semibold block">Всего объявлений</span>
+                      <span className="text-xs text-gray-500 font-semibold block">{tr('admin.dashboard.totalListings')}</span>
                       <strong className="text-xl sm:text-2xl font-black text-[#1E293B] block leading-tight">{totalListings}</strong>
                     </div>
                   </div>
@@ -39,7 +41,7 @@ export function DashboardTab(props: AdminTabProps) {
                       <Check className="w-5 h-5 text-emerald-500" />
                     </div>
                     <div className="mt-4">
-                      <span className="text-xs text-gray-500 font-semibold block">Активных на сайте</span>
+                      <span className="text-xs text-gray-500 font-semibold block">{tr('admin.dashboard.activeListings')}</span>
                       <strong className="text-xl sm:text-2xl font-black text-[#1E293B] block leading-tight">{activeListings}</strong>
                     </div>
                   </div>
@@ -49,7 +51,7 @@ export function DashboardTab(props: AdminTabProps) {
                       <AlertCircle className="w-5 h-5 text-amber-500" />
                     </div>
                     <div className="mt-4">
-                      <span className="text-xs text-gray-500 font-semibold block">В модерации</span>
+                      <span className="text-xs text-gray-500 font-semibold block">{tr('admin.dashboard.moderation')}</span>
                       <strong className="text-xl sm:text-2xl font-black text-[#1E293B] block leading-tight">{moderationListings}</strong>
                     </div>
                   </div>
@@ -59,8 +61,30 @@ export function DashboardTab(props: AdminTabProps) {
                       <TrendingUp className="w-5 h-5 text-[#003B95]" />
                     </div>
                     <div className="mt-4">
-                      <span className="text-xs text-gray-500 font-semibold block">Переходов в WhatsApp</span>
+                      <span className="text-xs text-gray-500 font-semibold block">{tr('admin.dashboard.whatsappClicks')}</span>
                       <strong className="text-xl sm:text-2xl font-black text-[#1E293B] block leading-tight">{totalClicksCol}</strong>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div className="flex justify-between items-center bg-sky-500/10 p-2.5 rounded-2xl self-start">
+                      <Database className="w-5 h-5 text-sky-600" />
+                    </div>
+                    <div className="mt-4 space-y-1">
+                      <span className="text-xs text-gray-500 font-semibold block">{tr('admin.dashboard.googlePlacesQuota')}</span>
+                      <strong className="text-xl sm:text-2xl font-black text-[#1E293B] block leading-tight">
+                        {googlePlacesQuota?.successfulRequests ?? 0}
+                      </strong>
+                      <span className="text-[10px] text-gray-400 font-semibold block leading-snug">
+                        {tr('admin.dashboard.googlePlacesRemaining', {
+                          count: googlePlacesQuota?.remainingEstimatedFreeRequests ?? 10000
+                        })}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 font-bold block leading-snug">
+                        {tr('admin.dashboard.googlePlacesReserve', {
+                          count: googlePlacesQuota?.creationReserve ?? 500
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -72,11 +96,11 @@ export function DashboardTab(props: AdminTabProps) {
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm lg:col-span-2 space-y-4">
                     <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                       <div>
-                        <h3 className="text-sm font-bold text-[#1E293B]">География спроса и просмотров</h3>
-                        <p className="text-[10px] text-gray-400">Суммарная динамика просмотров по районам Бали</p>
+                        <h3 className="text-sm font-bold text-[#1E293B]">{tr('admin.dashboard.geoTitle')}</h3>
+                        <p className="text-[10px] text-gray-400">{tr('admin.dashboard.geoBody')}</p>
                       </div>
                       <span className="text-xs bg-[#FF7A50]/10 text-[#FF7A50] px-2.5 py-1 rounded-full font-bold">
-                        {totalViews} просмотров
+                        {tr('admin.dashboard.views', { count: totalViews })}
                       </span>
                     </div>
 
@@ -93,7 +117,7 @@ export function DashboardTab(props: AdminTabProps) {
                                 {item.name}
                               </span>
                               <span className="text-gray-500 font-bold font-mono">
-                                {item.views} views ({pct}%)
+                                {tr('admin.dashboard.viewsPercent', { count: item.views, percent: pct })}
                               </span>
                             </div>
                             <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
@@ -111,8 +135,8 @@ export function DashboardTab(props: AdminTabProps) {
                   {/* Right Column: Mini Widgets for stats & Promo distributions */}
                   <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
                     <div>
-                      <h3 className="text-sm font-bold text-[#1E293B]">Промо-активность объявлений</h3>
-                      <p className="text-[10px] text-gray-400">Продвинутые рекламные статусы хостов</p>
+                      <h3 className="text-sm font-bold text-[#1E293B]">{tr('admin.dashboard.promoTitle')}</h3>
+                      <p className="text-[10px] text-gray-400">{tr('admin.dashboard.promoBody')}</p>
                     </div>
 
                     <div className="space-y-3 pt-2">
@@ -122,12 +146,12 @@ export function DashboardTab(props: AdminTabProps) {
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center text-xs font-bold text-gray-800">
-                            <span>Премиум TOP</span>
+                            <span>{tr('admin.dashboard.premiumTop')}</span>
                             <span className="font-mono text-amber-700">
-                              {listings.filter(l => l.isPromoTop).length} шт
+                              {tr('admin.dashboard.countShort', { count: listings.filter(l => l.isPromoTop).length })}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 font-semibold block">Приоритетная выдача в поиске L2</span>
+                          <span className="text-[10px] text-gray-400 font-semibold block">{tr('admin.dashboard.premiumTopBody')}</span>
                         </div>
                       </div>
 
@@ -137,12 +161,12 @@ export function DashboardTab(props: AdminTabProps) {
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center text-xs font-bold text-gray-800">
-                            <span>ТурбоReach</span>
+                            <span>{tr('admin.dashboard.turboReach')}</span>
                             <span className="font-mono text-[#2F7D69]">
-                              {listings.filter(l => l.isPromoTurbo).length} шт
+                              {tr('admin.dashboard.countShort', { count: listings.filter(l => l.isPromoTurbo).length })}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 font-semibold block">Усиленный охват WhatsApp лидов</span>
+                          <span className="text-[10px] text-gray-400 font-semibold block">{tr('admin.dashboard.turboReachBody')}</span>
                         </div>
                       </div>
 
@@ -152,12 +176,12 @@ export function DashboardTab(props: AdminTabProps) {
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center text-xs font-bold text-gray-800">
-                            <span>Одобрено Bali Base</span>
+                            <span>{tr('admin.dashboard.approved')}</span>
                             <span className="font-mono text-rose-700">
-                              {listings.filter(l => l.isApproved).length} шт
+                              {tr('admin.dashboard.countShort', { count: listings.filter(l => l.isApproved).length })}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 font-semibold block">Ручная маркировка инспекцией</span>
+                          <span className="text-[10px] text-gray-400 font-semibold block">{tr('admin.dashboard.approvedBody')}</span>
                         </div>
                       </div>
                     </div>
@@ -168,14 +192,14 @@ export function DashboardTab(props: AdminTabProps) {
                 <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
                   <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                     <div>
-                      <h3 className="text-sm font-bold text-[#1E293B]">Последние регистрации в панели</h3>
-                      <p className="text-[10px] text-gray-400">Статус новых личных кабинетов</p>
+                      <h3 className="text-sm font-bold text-[#1E293B]">{tr('admin.dashboard.recentUsers')}</h3>
+                      <p className="text-[10px] text-gray-400">{tr('admin.dashboard.recentUsersBody')}</p>
                     </div>
                     <button 
                       onClick={() => setActiveTab('users')}
                       className="text-xs font-bold text-[#FF7A50] hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      Показать всех
+                      {tr('admin.dashboard.showAll')}
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -193,10 +217,10 @@ export function DashboardTab(props: AdminTabProps) {
                           <span className="text-[10px] text-gray-400 block font-mono font-medium">{u.email}</span>
                           <div className="flex gap-1.5 mt-1">
                             <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-[#FF7A50]/15 text-[#FF7A50]">
-                              {u.role}
+                              {tr(`admin.users.role.${u.role}`)}
                             </span>
                             <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-500/15 text-emerald-600">
-                              {u.status}
+                              {tr(`admin.users.status.${u.status}`)}
                             </span>
                           </div>
                         </div>

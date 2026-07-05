@@ -1,10 +1,11 @@
 import React from 'react';
+import PhoneInput from '../../PhoneInput';
 
 type StepContactProps = {
   ownerName: string;
   setOwnerName: React.Dispatch<React.SetStateAction<string>>;
   whatsappInput: string;
-  handlePhoneChange: (value: string) => void;
+  handlePhoneChange: (value: string, whatsappFormatted?: string) => void;
 };
 
 const StepContact: React.FC<StepContactProps> = ({
@@ -30,13 +31,12 @@ const StepContact: React.FC<StepContactProps> = ({
         className="w-full !bg-white !border-0 p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
       />
 
-      <input
-        type="tel"
-        placeholder="WhatsApp номер"
-        aria-label="WhatsApp номер"
+      <PhoneInput
         value={whatsappInput}
-        onChange={event => handlePhoneChange(event.target.value)}
-        className="w-full !bg-white !border-0 p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
+        onChange={(displayValue, whatsappNumber) => handlePhoneChange(displayValue, whatsappNumber)}
+        placeholder="WhatsApp номер"
+        ariaLabel="WhatsApp номер"
+        className="w-full !bg-white !border-0 p-2.5 pr-14 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
       />
     </div>
   </div>

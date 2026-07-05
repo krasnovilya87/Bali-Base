@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Listing } from '../types';
-import { Heart, Star, ChevronLeft, ChevronRight, BookmarkCheck, Flame, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { Heart, Star, BookmarkCheck, Flame, ShieldAlert, BadgeInfo } from 'lucide-react';
 import { THEME } from '../theme';
 import { isListingFresh } from '../utils/listingFreshness';
 import { motion } from 'motion/react';
 import CompetitorLogo from './CompetitorLogo';
+import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
+import { ROOM_TYPE_LABELS } from './create-wizard/constants';
+import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
+import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
+import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
+import { useI18n } from '../i18nContext';
 
 interface ListingCardProps {
   key?: string;
@@ -16,101 +22,184 @@ interface ListingCardProps {
   checkOutDate?: string;
   onOpenCalendar?: () => void;
   onFavoriteChange?: (listingId: string, isFavorite: boolean) => void;
+  activeLanguage?: LanguageCode;
 }
 
-export default function ListingCard({ 
-  listing, 
-  onSelect, 
-  currencySymbol, 
+export default function ListingCard({
+  listing,
+  onSelect,
+  currencySymbol,
   currencyRate,
   checkInDate,
   checkOutDate,
   onOpenCalendar,
-  onFavoriteChange
+  onFavoriteChange,
+  activeLanguage = DEFAULT_LANGUAGE
 }: ListingCardProps) {
+  const { tr } = useI18n();
   const [currentPhoto, setCurrentPhoto] = useState<number>(0);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [countdownText, setCountdownText] = useState<string>('');
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [mouseStartX, setMouseStartX] = useState<number | null>(null);
-  const [dragOffset, setDragOffset] = useState<number>(0);
   const [hasDragged, setHasDragged] = useState<boolean>(false);
+  const carouselTrackRef = useRef<HTMLDivElement>(null);
+  const dragStartXRef = useRef<number | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const isHorizontalTouchDragRef = useRef<boolean>(false);
+  const hasDraggedRef = useRef<boolean>(false);
+  const settleTimerRef = useRef<number | null>(null);
+
+  const visiblePhotoIndexes = listing.images
+    .map((_, idx) => idx)
+    .filter(idx => Math.abs(idx - currentPhoto) <= 1);
+
+  const currentVisiblePosition = Math.max(0, visiblePhotoIndexes.indexOf(currentPhoto));
+
+  const getClampedDragOffset = (offset: number) => {
+    if (currentPhoto === 0 && offset > 0) {
+      return offset * 0.35;
+    }
+    if (currentPhoto === listing.images.length - 1 && offset < 0) {
+      return offset * 0.35;
+    }
+    return offset;
+  };
+
+  const setCarouselTransform = (offset: number, animate: boolean, position = currentVisiblePosition) => {
+    const track = carouselTrackRef.current;
+    if (!track) return;
+    track.style.transition = animate ? 'transform 240ms cubic-bezier(0.2, 0, 0.2, 1)' : 'none';
+    track.style.transform = `translate3d(calc(-${position * 100}% + ${offset}px), 0, 0)`;
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.targetTouches[0].clientX);
+    dragStartXRef.current = e.targetTouches[0].clientX;
+    dragStartYRef.current = e.targetTouches[0].clientY;
+    isHorizontalTouchDragRef.current = false;
+    hasDraggedRef.current = false;
     setHasDragged(false);
+    if (settleTimerRef.current !== null) {
+      window.clearTimeout(settleTimerRef.current);
+    }
+    setCarouselTransform(0, false);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
+    if (dragStartXRef.current === null || dragStartYRef.current === null) return;
     const currentX = e.targetTouches[0].clientX;
-    const diff = currentX - touchStartX;
-    setDragOffset(diff);
+    const currentY = e.targetTouches[0].clientY;
+    const diff = currentX - dragStartXRef.current;
+    const verticalDiff = currentY - dragStartYRef.current;
+
+    if (!isHorizontalTouchDragRef.current) {
+      if (Math.abs(verticalDiff) > 8 && Math.abs(verticalDiff) > Math.abs(diff) * 1.2) {
+        dragStartXRef.current = null;
+        dragStartYRef.current = null;
+        setCarouselTransform(0, true);
+        return;
+      }
+
+      if (Math.abs(diff) < 12 || Math.abs(diff) < Math.abs(verticalDiff) * 1.35) {
+        return;
+      }
+
+      isHorizontalTouchDragRef.current = true;
+    }
+
+    setCarouselTransform(getClampedDragOffset(diff), false);
     if (Math.abs(diff) > 10) {
-      setHasDragged(true);
+      hasDraggedRef.current = true;
+      if (!hasDragged) {
+        setHasDragged(true);
+      }
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
+    if (dragStartXRef.current === null) return;
     const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
+    const diff = dragStartXRef.current - touchEndX;
     const swipeThreshold = 50;
+    let targetPhoto = currentPhoto;
+
     if (Math.abs(diff) > swipeThreshold) {
       e.stopPropagation();
       if (diff > 0) {
-        setCurrentPhoto(prev => Math.min(listing.images.length - 1, prev + 1));
+        targetPhoto = Math.min(listing.images.length - 1, currentPhoto + 1);
       } else {
-        setCurrentPhoto(prev => Math.max(0, prev - 1));
+        targetPhoto = Math.max(0, currentPhoto - 1);
       }
     }
-    setTouchStartX(null);
-    setDragOffset(0);
-    if (hasDragged) {
-      setTimeout(() => {
+
+    const targetPosition = Math.max(0, visiblePhotoIndexes.indexOf(targetPhoto));
+    setCarouselTransform(0, true, targetPosition);
+    dragStartXRef.current = null;
+    dragStartYRef.current = null;
+    isHorizontalTouchDragRef.current = false;
+
+    settleTimerRef.current = window.setTimeout(() => {
+      setCurrentPhoto(targetPhoto);
+      setCarouselTransform(0, false);
+      if (hasDraggedRef.current) {
         setHasDragged(false);
-      }, 50);
-    }
+        hasDraggedRef.current = false;
+      }
+    }, 240);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    setMouseStartX(e.clientX);
+    dragStartXRef.current = e.clientX;
+    hasDraggedRef.current = false;
     setHasDragged(false);
+    if (settleTimerRef.current !== null) {
+      window.clearTimeout(settleTimerRef.current);
+    }
+    setCarouselTransform(0, false);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (mouseStartX === null) return;
+    if (dragStartXRef.current === null) return;
     const currentX = e.clientX;
-    const diff = currentX - mouseStartX;
-    setDragOffset(diff);
+    const diff = currentX - dragStartXRef.current;
+    setCarouselTransform(getClampedDragOffset(diff), false);
     if (Math.abs(diff) > 10) {
-      setHasDragged(true);
+      hasDraggedRef.current = true;
+      if (!hasDragged) {
+        setHasDragged(true);
+      }
     }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (mouseStartX === null) return;
+    if (dragStartXRef.current === null) return;
     const mouseEndX = e.clientX;
-    const diff = mouseStartX - mouseEndX;
+    const diff = dragStartXRef.current - mouseEndX;
     const swipeThreshold = 50;
+    let targetPhoto = currentPhoto;
+
     if (Math.abs(diff) > swipeThreshold) {
       e.stopPropagation();
       if (diff > 0) {
-        setCurrentPhoto(prev => Math.min(listing.images.length - 1, prev + 1));
+        targetPhoto = Math.min(listing.images.length - 1, currentPhoto + 1);
       } else {
-        setCurrentPhoto(prev => Math.max(0, prev - 1));
+        targetPhoto = Math.max(0, currentPhoto - 1);
       }
     }
-    setMouseStartX(null);
-    setDragOffset(0);
-    if (hasDragged) {
-      setTimeout(() => {
+
+    const targetPosition = Math.max(0, visiblePhotoIndexes.indexOf(targetPhoto));
+    setCarouselTransform(0, true, targetPosition);
+    dragStartXRef.current = null;
+
+    settleTimerRef.current = window.setTimeout(() => {
+      setCurrentPhoto(targetPhoto);
+      setCarouselTransform(0, false);
+      if (hasDraggedRef.current) {
         setHasDragged(false);
-      }, 50);
-    }
+        hasDraggedRef.current = false;
+      }
+    }, 240);
   };
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {
@@ -125,27 +214,13 @@ export default function ListingCard({
     }
 
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
-    const templateMessage = `Bali Base. Здравствуйте! Меня интересует объявление: [${listing.title}] (${convertPrice(activeDailyPrice)} ${currencySymbol})`;
+    const templateMessage = tr('listing.whatsappMessage', {
+      title: listing.title,
+      price: convertPrice(activeDailyPrice),
+      currency: currencySymbol
+    });
     const encodedMessage = encodeURIComponent(templateMessage);
     const waUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
-    
-    // Increment clicksCount in localStorage (bali_base_listings)
-    try {
-      const stored = localStorage.getItem('bali_base_listings');
-      if (stored) {
-        const lis = JSON.parse(stored) as Listing[];
-        const updated = lis.map(item => {
-          if (item.id === listing.id) {
-            return {
-              ...item,
-              clicksCount: (item.clicksCount || 0) + 1
-            };
-          }
-          return item;
-        });
-        localStorage.setItem('bali_base_listings', JSON.stringify(updated));
-      }
-    } catch {}
 
     // Add to bali_base_whatsapp_history
     try {
@@ -186,9 +261,21 @@ export default function ListingCard({
       try {
         const parsed = JSON.parse(favs) as string[];
         setIsFavorite(parsed.includes(listing.id));
-      } catch {}
+      } catch { }
     }
   }, [listing.id]);
+
+  useEffect(() => {
+    setCarouselTransform(0, false);
+  }, [currentPhoto, listing.images.length]);
+
+  useEffect(() => {
+    return () => {
+      if (settleTimerRef.current !== null) {
+        window.clearTimeout(settleTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!listing.hasDropPrice || !listing.dropPriceEndsAt) return;
@@ -196,12 +283,12 @@ export default function ListingCard({
     const checkExpiration = () => {
       const difference = new Date(listing.dropPriceEndsAt!).getTime() - Date.now();
       if (difference <= 0) {
-        setCountdownText('Истекло');
+        setCountdownText(tr('listing.expired'));
         setIsExpired(true);
       } else {
         const daysVal = difference / (1000 * 60 * 60 * 24);
         const daysText = Math.ceil(daysVal);
-        setCountdownText(`${daysText} дн.`);
+        setCountdownText(`${daysText} ${tr('listing.daysShort')}`);
         setIsExpired(false);
       }
     };
@@ -210,7 +297,7 @@ export default function ListingCard({
     const timer = setInterval(checkExpiration, 1000);
 
     return () => clearInterval(timer);
-  }, [listing.hasDropPrice, listing.dropPriceEndsAt]);
+  }, [listing.hasDropPrice, listing.dropPriceEndsAt, tr]);
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -219,7 +306,7 @@ export default function ListingCard({
     if (favs) {
       try {
         list = JSON.parse(favs);
-      } catch {}
+      } catch { }
     }
 
     if (list.includes(listing.id)) {
@@ -232,6 +319,7 @@ export default function ListingCard({
       onFavoriteChange?.(listing.id, true);
     }
     localStorage.setItem('bali_base_favorites', JSON.stringify(list));
+    window.dispatchEvent(new Event('bali_base_favorites_changed'));
   };
 
   const handleNextPhoto = (e: React.MouseEvent) => {
@@ -248,6 +336,23 @@ export default function ListingCard({
     const converted = Math.round(idrAmount * currencyRate);
     return converted.toLocaleString();
   };
+
+  const splitTitleRoomLabel = (title: string) => {
+    const roomTypeLabels = Object.values(ROOM_TYPE_LABELS);
+    const escapedLabels = roomTypeLabels.map(label => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (escapedLabels.length === 0) return { title, roomLabel: '' };
+    const roomPairRegex = new RegExp(`(${escapedLabels.join('|')})`, 'gi');
+    const match = title.match(roomPairRegex);
+    const roomLabel = match?.[match.length - 1] || '';
+
+    return {
+      title: roomLabel ? title.replace(roomPairRegex, '').replace(/\s*·\s*$/, '').trim() : title,
+      roomLabel
+    };
+  };
+  const titleParts = splitTitleRoomLabel(listing.title);
+  const displayTitle = stripListingRoomTypeFromTitle(titleParts.title);
+  const { translatedDescription } = useTranslatedDescription(listing.description, activeLanguage);
 
   // Helper type emoji labeling
   const getSubcategoryEmoji = () => {
@@ -311,7 +416,8 @@ export default function ListingCard({
       // Для комнаты: тип объекта (Guesthouse), количество комнат, удаление от моря
       const roomsVal = listing.roomsTotal || 1;
       const roomsStr = pluralize(roomsVal, 'комната', 'комнаты', 'комнат');
-      return `Guesthouse • ${roomsStr} • ${distStr}`;
+      const roomLabel = titleParts.roomLabel ? ` \u2022 ${titleParts.roomLabel}` : '';
+      return `Guesthouse${roomLabel} \u2022 ${roomsStr} \u2022 ${distStr}`;
     } else {
       // Для Дома/Виллы: тип обьекта, количество комнат, расстояние до моря
       let typeStr = 'Вилла';
@@ -330,16 +436,20 @@ export default function ListingCard({
         };
         typeStr = mapping[listing.housingType] || listing.housingType;
       }
-      
+
       const roomsVal = listing.roomsTotal || 1;
       const roomsStr = pluralize(roomsVal, 'комната', 'комнаты', 'комнат');
       return `${typeStr} • ${roomsStr} • ${distStr}`;
     }
   };
 
-  const activeDailyPrice = listing.hasDropPrice && listing.dropPricePerDay && !isExpired
+  const baseDailyPrice = listing.hasDropPrice && listing.dropPricePerDay && !isExpired
     ? listing.dropPricePerDay
     : listing.pricePerDay;
+
+  const baseMonthlyPrice = listing.hasDropPrice && listing.dropPricePerMonth && !isExpired
+    ? listing.dropPricePerMonth
+    : listing.pricePerMonth;
 
   // Calculate reservation stay duration in days
   const getStayDays = () => {
@@ -355,6 +465,34 @@ export default function ListingCard({
   };
 
   const stayDays = getStayDays();
+  const addOneCalendarMonth = (date: Date) => {
+    const targetYear = date.getMonth() === 11 ? date.getFullYear() + 1 : date.getFullYear();
+    const targetMonth = (date.getMonth() + 1) % 12;
+    const targetMonthDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+    return new Date(targetYear, targetMonth, Math.min(date.getDate(), targetMonthDays));
+  };
+  const toDateStr = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const isCalendarMonthStay = Boolean(
+    checkInDate &&
+    checkOutDate &&
+    toDateStr(addOneCalendarMonth(new Date(`${checkInDate}T00:00:00`))) === checkOutDate
+  );
+  const pricingDays = stayDays || 1;
+  const activeDailyPrice = calculateGraphDailyPrice({
+    days: pricingDays,
+    pricePerDay: baseDailyPrice,
+    pricePerMonth: baseMonthlyPrice
+  });
+  const activeBasePrice = isCalendarMonthStay && baseMonthlyPrice
+    ? baseMonthlyPrice
+    : stayDays
+      ? calculateGraphTotalPrice({
+        days: stayDays,
+        pricePerDay: baseDailyPrice,
+        pricePerMonth: baseMonthlyPrice
+      })
+      : activeDailyPrice;
 
   const pluralizeNights = (count: number) => {
     const mod10 = count % 10;
@@ -386,27 +524,17 @@ export default function ListingCard({
     return 'дней';
   };
 
-  // Compute savings vs Competitor (Booking/Agoda/Airbnb)
-  // Saved amount = Competitor Daily Price - Owner Daily Price
-  const hasSavings = listing.bookingComPrice && listing.bookingComPrice > activeDailyPrice;
-  const savings = hasSavings ? (listing.bookingComPrice! - activeDailyPrice) : 0;
-
-  const displayDailyPrice = activeDailyPrice;
-  const activeBasePrice = stayDays ? activeDailyPrice * stayDays : activeDailyPrice;
   const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice;
-  const activeSavings = stayDays && savings ? savings * stayDays : savings;
-
-  const getClampedDragOffset = () => {
-    if (currentPhoto === 0 && dragOffset > 0) {
-      return dragOffset * 0.35;
-    }
-    if (currentPhoto === listing.images.length - 1 && dragOffset < 0) {
-      return dragOffset * 0.35;
-    }
-    return dragOffset;
-  };
-
-  const activeElasticOffset = getClampedDragOffset();
+  const {
+    hasSavings,
+    savingsAmount,
+    savingsPercent,
+    showSavingsPercent
+  } = calculateSavingsDisplay({
+    stayDays,
+    competitorPrice: activeCompetitorPrice,
+    directPrice: activeBasePrice
+  });
 
   return (
     <div
@@ -418,15 +546,14 @@ export default function ListingCard({
         }
         onSelect(listing);
       }}
-      className={`group pl-card relative z-0 hover:z-20 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer select-none border-2 ${
-        listing.isPromoTop 
-          ? 'bg-amber-50/[0.8] border-amber-400 shadow-md shadow-amber-200/40 ring-1 ring-amber-300/40' 
-          : 'bg-white border-[#E5E7EB]'
-      }`}
+      className={`group pl-card relative z-0 hover:z-20 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer select-none ${listing.isPromoTop
+        ? 'bg-amber-50/[0.8] border-amber-400 shadow-md shadow-amber-200/40 ring-1 ring-amber-300/40'
+        : 'bg-white'
+        }`}
       id={`card-${listing.id}`}
     >
       {/* Photo Carousel Container with Touch & Drag support */}
-      <div 
+      <div
         className="relative aspect-video w-full overflow-hidden bg-gray-50 touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -436,43 +563,58 @@ export default function ListingCard({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div 
+        <div
+          ref={carouselTrackRef}
           className="flex w-full h-full"
           style={{
-            transform: `translateX(calc(-${currentPhoto * 100}% + ${activeElasticOffset}px))`,
-            transition: dragOffset !== 0 ? 'none' : 'transform 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: `translate3d(-${currentVisiblePosition * 100}%, 0, 0)`,
+            transition: 'none',
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
           }}
         >
-          {listing.images.map((imgSrc, idx) => (
+          {visiblePhotoIndexes.map((idx) => (
             <img
               key={idx}
-              src={imgSrc}
+              src={listing.images[idx]}
               alt={listing.title}
               referrerPolicy="no-referrer"
+              decoding="async"
+              loading="lazy"
               onDragStart={(e) => e.preventDefault()}
-              className={`w-full h-full object-cover shrink-0 select-none pointer-events-none ${idx === currentPhoto ? 'pl-card-active-image' : ''}`}
+              className="w-full h-full object-cover shrink-0 select-none pointer-events-none"
             />
           ))}
         </div>
 
-        {/* Carousel controls - visible on hover */}
+        {/* Carousel side zones */}
         {listing.images.length > 1 && (
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-3 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <>
             <button
+              type="button"
               onClick={handlePrevPhoto}
-              className="p-1.5 rounded-full bg-white/90 text-gray-800 hover:bg-white shadow-md active:scale-90 transition min-w-[28px] min-h-[28px] flex items-center justify-center"
-              title="Prev image"
-            >
-              <ChevronLeft className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-            </button>
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="absolute inset-y-0 left-0 z-10 w-[1cm] bg-black/20 opacity-0 transition-opacity duration-200 hover:bg-black/35 group-hover:opacity-100 active:bg-black/45"
+              title={tr('listing.prevImage')}
+              aria-label={tr('listing.prevImage')}
+            />
             <button
+              type="button"
               onClick={handleNextPhoto}
-              className="p-1.5 rounded-full bg-white/90 text-gray-800 hover:bg-white shadow-md active:scale-90 transition min-w-[28px] min-h-[28px] flex items-center justify-center"
-              title="Next image"
-            >
-              <ChevronRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-            </button>
-          </div>
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="absolute inset-y-0 right-0 z-10 w-[1cm] bg-black/20 opacity-0 transition-opacity duration-200 hover:bg-black/35 group-hover:opacity-100 active:bg-black/45"
+              title={tr('listing.nextImage')}
+              aria-label={tr('listing.nextImage')}
+            />
+          </>
         )}
 
         {/* Badge Layers upper Left - scaled up for better mobile visibility */}
@@ -480,17 +622,17 @@ export default function ListingCard({
           {listing.isPromoPremium && (
             <div className={`bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-white ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wider`}>
               <Flame className="w-3.5 h-3.5 fill-white text-white animate-bounce" />
-              <span>👑 Vip Premium</span>
+              <span>👑 {tr('listing.vipPremium')}</span>
             </div>
           )}
           {listing.isApproved && (
             <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
-              <span>★ Bali Base Approved</span>
+              <span>★ {tr('listing.approvedBadge')}</span>
             </div>
           )}
           {isListingFresh(listing) && (
             <div className={`bg-brand-orange text-white ${THEME.fonts.heading} text-[11px] sm:text-[9px] font-extrabold px-2 py-0.5 rounded shadow-md`}>
-              New
+              {tr('listing.newBadge')}
             </div>
           )}
         </div>
@@ -499,38 +641,39 @@ export default function ListingCard({
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-10 min-w-[28px] min-h-[28px] flex items-center justify-center"
-          title="Toggle favorite"
+          title={tr('listing.toggleFavorite')}
         >
           <Heart className="w-4 h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
         </button>
+
+        <div className={`absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-full bg-transparent px-2.5 py-1 text-[14px] sm:text-xs lg:text-sm font-bold text-white drop-shadow-md ${THEME.fonts.mono}`}>
+          <Star className="w-[15px] h-[15px] sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
+          <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
+          <span className="text-white/85 font-light">({listing.reviewsCount})</span>
+        </div>
       </div>
 
       {/* Content details description */}
       <div className={`p-4 sm:p-5 lg:p-4 flex-1 flex flex-col justify-between ${THEME.fonts.main}`}>
-        
+
         <div>
           {/* Title and Rating Line */}
-          <div className="flex justify-between items-start gap-2 mb-2 lg:mb-1.5">
-            <h3 className={`${THEME.fonts.heading} font-bold text-[21px] sm:text-base lg:text-lg text-text-dark line-clamp-1 group-hover:text-brand-orange-hover transition-colors leading-tight`}>
-              {listing.title}
+          <div className="flex justify-between items-start gap-2 mb-1.5 lg:mb-1">
+            <h3 className={`${THEME.fonts.heading} font-bold text-[21px] sm:text-base lg:text-lg text-text-dark line-clamp-2 group-hover:text-brand-orange-hover transition-colors leading-tight`}>
+              {displayTitle}
             </h3>
-            <div className={`flex items-center gap-1.5 text-[14.5px] sm:text-xs lg:text-sm font-bold text-text-dark shrink-0 ${THEME.fonts.mono}`}>
-              <Star className="w-[15px] h-[15px] sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
-              <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
-              <span className="text-gray-400 font-light">({listing.reviewsCount})</span>
-            </div>
           </div>
 
-          <p className="line-clamp-2 leading-relaxed mb-2 sm:mb-3.5 text-gray-500 font-light text-[14px] sm:text-xs lg:text-[13px]">
-            {getCardSubtitle()}
+          <p className="line-clamp-2 leading-relaxed mb-1.5 sm:mb-2 text-gray-500 font-light text-[14px] sm:text-xs lg:text-[13px]">
+            {listing.category === 'housing' ? buildListingSubtitle(listing, 4, tr) : translatedDescription}
           </p>
         </div>
 
         {/* Pricing stack matching user specifications */}
-        <div className="pt-2 sm:pt-2.5 pb-1">
+        <div className="pt-0.5 sm:pt-1 pb-1">
           {stayDays && (
             <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-xs font-bold text-text-dark ${THEME.fonts.heading}`}>
-              Итого за {stayDays} {pluralizeDays(stayDays)}:
+              {tr('listing.totalFor')} {stayDays} {pluralizeDays(stayDays)}:
             </div>
           )}
 
@@ -567,11 +710,11 @@ export default function ListingCard({
               </span>
               {listing.hasDropPrice && !isExpired ? (
                 <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
-                  Drop price • {countdownText}
+                  {tr('listing.dropPrice')} • {countdownText}
                 </span>
               ) : (
                 <span className={`text-[14px] sm:text-xs lg:text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                  Direct price
+                  {tr('listing.directPrice')}
                 </span>
               )}
             </div>
@@ -582,10 +725,10 @@ export default function ListingCard({
                 <div className="bg-[#FF3B30]/10 rounded-full px-2.5 py-1 sm:py-0.5 flex items-center gap-2 shadow-xs backdrop-blur-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
                   <span className={`text-[14px] sm:text-xs lg:text-xs text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
-                    {convertPrice(activeSavings)} {currencySymbol}
+                    {showSavingsPercent ? `${savingsPercent}%` : `${convertPrice(savingsAmount)} ${currencySymbol}`}
                   </span>
                   <span className={`text-[12.5px] sm:text-[10px] lg:text-[9px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                    Saved
+                    {tr('listing.saved')}
                   </span>
                 </div>
               </div>
@@ -602,7 +745,7 @@ export default function ListingCard({
             <svg className="w-[18px] h-[18px] sm:w-[15px] sm:h-[15px] fill-current shrink-0" viewBox="0 0 24 24">
               <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
             </svg>
-            <span>Написать в WhatsApp</span>
+            <span>{tr('listing.writeWhatsapp')}</span>
           </button>
         </div>
 

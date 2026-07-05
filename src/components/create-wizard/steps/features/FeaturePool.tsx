@@ -67,10 +67,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                             setTerritoryType('shared');
                           }
                         }}
-                        className={`pl pl-interactive p-3 rounded-2xl w-full flex items-center justify-between cursor-pointer select-none ${poolType === 'infinity'
-                          ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold'
-                          : 'bg-gray-50/50 border-[#E5E7EB] text-gray-655 hover:bg-white hover:border-[#FF7A50]'
-                          }`}
+                        className="pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between cursor-pointer select-none"
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="text-xl">🌅</span>

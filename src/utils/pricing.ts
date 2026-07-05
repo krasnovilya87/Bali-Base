@@ -4,6 +4,12 @@ type GraphPriceInput = {
   pricePerMonth?: number;
 };
 
+type SavingsDisplayInput = {
+  stayDays?: number | null;
+  competitorPrice?: number | null;
+  directPrice: number;
+};
+
 const roundToTenThousand = (value: number) => Math.round(value / 10000) * 10000;
 
 export const calculateGraphDailyPrice = ({ days, pricePerDay, pricePerMonth }: GraphPriceInput) => {
@@ -29,5 +35,28 @@ export const calculateGraphDailyPrice = ({ days, pricePerDay, pricePerMonth }: G
   return roundToTenThousand(pricePerDay - diff * stepPct);
 };
 
-export const calculateGraphTotalPrice = (input: GraphPriceInput) =>
-  calculateGraphDailyPrice(input) * input.days;
+export const calculateGraphTotalPrice = (input: GraphPriceInput) => {
+  if (input.days === 30 && input.pricePerMonth) {
+    return input.pricePerMonth;
+  }
+
+  return calculateGraphDailyPrice(input) * input.days;
+};
+
+export const calculateSavingsDisplay = ({
+  stayDays,
+  competitorPrice,
+  directPrice
+}: SavingsDisplayInput) => {
+  const savingsAmount = competitorPrice ? competitorPrice - directPrice : 0;
+  const savingsPercent = competitorPrice && savingsAmount > 0
+    ? Math.round((savingsAmount / competitorPrice) * 100)
+    : 0;
+
+  return {
+    hasSavings: savingsAmount > 0,
+    savingsAmount,
+    savingsPercent,
+    showSavingsPercent: Boolean((!stayDays || stayDays <= 30) && savingsPercent > 0)
+  };
+};

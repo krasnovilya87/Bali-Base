@@ -5,9 +5,11 @@ import {
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type AdminTabProps = Record<string, any>;
 export function ModerationTab(props: AdminTabProps) {
+  const { tr } = useI18n();
   const {
     totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
@@ -27,23 +29,23 @@ export function ModerationTab(props: AdminTabProps) {
                       <ShieldCheck className="w-8 h-8" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-gray-800 text-base">Очередь модерации пуста</h3>
-                      <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">Все новые заявки на объявление были успешно одобрены инспектором сайта.</p>
+                      <h3 className="font-extrabold text-gray-800 text-base">{tr('admin.moderation.emptyTitle')}</h3>
+                      <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">{tr('admin.moderation.emptyBody')}</p>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-white p-4 rounded-3xl border border-gray-150 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <h3 className="font-extrabold text-gray-800 text-sm">Объявления на модерации</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Найдено: {moderationItems.length}</p>
+                        <h3 className="font-extrabold text-gray-800 text-sm">{tr('admin.moderation.title')}</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">{tr('admin.moderation.found', { count: moderationItems.length })}</p>
                       </div>
                       <button
                         onClick={handleDeleteAllModeration}
                         className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
-                        <span>Удалить все на модерации</span>
+                        <span>{tr('admin.moderation.deleteAll')}</span>
                       </button>
                     </div>
 
@@ -63,7 +65,7 @@ export function ModerationTab(props: AdminTabProps) {
                             </div>
                             <div className="absolute bottom-3 left-3 flex gap-2">
                               <span className="bg-amber-500 text-white px-2.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide">
-                                Статус: {item.status}
+                                {tr('admin.moderation.status', { status: tr(`admin.listings.status.${item.status}`) })}
                               </span>
                             </div>
                           </div>
@@ -81,17 +83,17 @@ export function ModerationTab(props: AdminTabProps) {
                             {/* Key parameters cards */}
                             <div className="flex gap-4 p-3 bg-slate-50 rounded-2xl text-[10.5px] font-sans font-semibold text-gray-500">
                               <div>
-                                <span>Стоимость за сутки:</span>
+                                <span>{tr('admin.moderation.dailyPrice')}</span>
                                 <strong className="text-[#1E293B] block font-mono font-bold mt-0.5">
                                   {item.pricePerDay ? `${item.pricePerDay.toLocaleString()} Rp` : '—'}
                                 </strong>
                               </div>
                               <div className="border-l border-gray-200 pl-4">
-                                <span>Год постройки:</span>
-                                <strong className="text-[#1E293B] block font-mono font-bold mt-0.5">{item.yearBuilt || '—'} год</strong>
+                                <span>{tr('admin.moderation.yearBuilt')}</span>
+                                <strong className="text-[#1E293B] block font-mono font-bold mt-0.5">{item.yearBuilt || '—'}</strong>
                               </div>
                               <div className="border-l border-gray-200 pl-4">
-                                <span>Хозяин:</span>
+                                <span>{tr('admin.moderation.owner')}</span>
                                 <strong className="text-[#FF7A50] block mt-0.5 truncate max-w-[100px]">{item.ownerName}</strong>
                               </div>
                             </div>
@@ -105,7 +107,7 @@ export function ModerationTab(props: AdminTabProps) {
                             className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>Одобрить и разместить</span>
+                            <span>{tr('admin.moderation.approve')}</span>
                           </button>
                           
                           <button
@@ -113,7 +115,7 @@ export function ModerationTab(props: AdminTabProps) {
                             className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <XCircle className="w-4 h-4" />
-                            <span>Отклонить</span>
+                            <span>{tr('admin.moderation.reject')}</span>
                           </button>
                         </div>
                       </div>

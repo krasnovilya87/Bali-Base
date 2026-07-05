@@ -2,6 +2,7 @@ import React from 'react';
 import { ClipboardList, X } from 'lucide-react';
 import { BookingRequest, Listing } from '../../types';
 import BookingRequestControls from './BookingRequestControls';
+import { useI18n } from '../../i18nContext';
 
 interface BookingsModalProps {
   listing: Listing;
@@ -22,6 +23,7 @@ export default function BookingsModal({
   onUpdateBooking,
   onClose
 }: BookingsModalProps) {
+  const { tr } = useI18n();
   const filtered = bookings.filter(booking => booking.listingId === listing.id);
 
   return (
@@ -30,7 +32,7 @@ export default function BookingsModal({
         <div className="pu-header -mx-5 -mt-5 px-5 py-4 flex justify-between items-center border-b border-[#D1D5DB]/30 shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="w-5 h-5 text-amber-500" />
-            <h3 className="font-display font-black text-sm uppercase">Заявки на бронирование: {listing.title}</h3>
+            <h3 className="font-display font-black text-sm uppercase">{tr('booking.title', { title: listing.title })}</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer">
             <X className="w-4 h-4" />
@@ -40,7 +42,7 @@ export default function BookingsModal({
         <div className="pu-body flex-1 overflow-y-auto py-3.5 space-y-3 pr-1">
           {filtered.length === 0 ? (
             <p className="text-center text-xs text-gray-450 py-10 leading-relaxed font-medium">
-              Для этого объявления пока нет входящих заявок на бронирование
+              {tr('booking.empty')}
             </p>
           ) : filtered.map(request => (
             <div key={request.id}>
@@ -57,7 +59,7 @@ export default function BookingsModal({
 
         <div className="pu-footer -mx-5 -mb-5 px-5 py-4 border-t border-[#D1D5DB]/30 shrink-0">
           <button onClick={onClose} className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition cursor-pointer">
-            Закрыть заявки
+            {tr('booking.close')}
           </button>
         </div>
       </div>

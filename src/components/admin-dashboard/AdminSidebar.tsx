@@ -1,6 +1,7 @@
 import React from 'react';
-import { BarChart2, Database, List, MessageSquare, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
+import { BarChart2, Database, List, MapPinned, MessageSquare, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
 import { AdminTab } from './types';
+import { useI18n } from '../../i18nContext';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -19,6 +20,7 @@ export default function AdminSidebar({
   onClose,
   onTabChange
 }: AdminSidebarProps) {
+  const { tr } = useI18n();
   const itemClass = (tab: AdminTab) =>
     `w-full text-left py-2.5 px-4 rounded-xl flex items-center gap-3 text-xs sm:text-sm font-semibold transition cursor-pointer ${
       activeTab === tab ? 'bg-[#FF7A50] text-white' : 'text-slate-300 hover:bg-slate-850'
@@ -33,8 +35,8 @@ export default function AdminSidebar({
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm sm:text-base leading-tight tracking-tight">Администратор</h1>
-              <span className="text-[10px] text-slate-400 font-mono font-medium block">Панель управления</span>
+              <h1 className="font-extrabold text-sm sm:text-base leading-tight tracking-tight">{tr('admin.admin')}</h1>
+              <span className="text-[10px] text-slate-400 font-mono font-medium block">{tr('admin.controlPanel')}</span>
             </div>
           </div>
           <button
@@ -48,12 +50,12 @@ export default function AdminSidebar({
         <nav className="p-4 space-y-1">
           <button onClick={() => onTabChange('dashboard')} className={itemClass('dashboard')}>
             <BarChart2 className="w-4 h-4" />
-            <span>Dashboard</span>
+            <span>{tr('admin.nav.dashboard')}</span>
           </button>
 
           <button onClick={() => onTabChange('users')} className={itemClass('users')}>
             <User className="w-4 h-4" />
-            <span>Users</span>
+            <span>{tr('admin.nav.users')}</span>
             <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">
               {adminUsersCount}
             </span>
@@ -61,7 +63,7 @@ export default function AdminSidebar({
 
           <button onClick={() => onTabChange('listings')} className={itemClass('listings')}>
             <List className="w-4 h-4" />
-            <span>Listings</span>
+            <span>{tr('admin.nav.listings')}</span>
             <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">
               {listingsCount}
             </span>
@@ -69,7 +71,7 @@ export default function AdminSidebar({
 
           <button onClick={() => onTabChange('moderation')} className={itemClass('moderation')}>
             <ShieldAlert className="w-4 h-4 animate-pulse text-amber-400" />
-            <span>Moderation</span>
+            <span>{tr('admin.nav.moderation')}</span>
             {moderationListings > 0 && (
               <span className="ml-auto text-[10px] bg-amber-550 text-slate-900 font-bold px-2 py-0.5 rounded-full">
                 {moderationListings}
@@ -79,15 +81,20 @@ export default function AdminSidebar({
 
           <button onClick={() => onTabChange('messages')} className={itemClass('messages')}>
             <MessageSquare className="w-4 h-4" />
-            <span>Messages</span>
+            <span>{tr('admin.nav.messages')}</span>
             <span className="ml-auto text-[10.5px] bg-emerald-500 hover:bg-emerald-605 text-white font-black px-1.5 rounded-md leading-none py-1">
-              New
+              {tr('listing.newBadge')}
             </span>
+          </button>
+
+          <button onClick={() => onTabChange('places')} className={itemClass('places')}>
+            <MapPinned className="w-4 h-4" />
+            <span>{tr('admin.nav.places')}</span>
           </button>
 
           <button onClick={() => onTabChange('settings')} className={itemClass('settings')}>
             <Settings className="w-4 h-4" />
-            <span>Settings</span>
+            <span>{tr('admin.nav.settings')}</span>
           </button>
         </nav>
       </div>
@@ -95,17 +102,17 @@ export default function AdminSidebar({
       <div className="p-4 border-t border-slate-800 hidden sm:block bg-slate-950/40">
         <div className="space-y-2">
           <div className="flex justify-between text-[11px] text-slate-400">
-            <span>Статус сервера:</span>
+            <span>{tr('admin.serverStatus')}</span>
             <span className="text-emerald-500 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-              ONLINE
+              {tr('admin.system.online')}
             </span>
           </div>
           <div className="flex justify-between text-[11px] text-slate-400">
-            <span>База данных:</span>
+            <span>{tr('admin.database')}</span>
             <span className="text-sky-400 font-mono font-medium flex items-center gap-1">
               <Database className="w-3 h-3" />
-              Firestore
+              {tr('admin.system.firestore')}
             </span>
           </div>
         </div>

@@ -13,6 +13,7 @@ import {
   query, 
   where,
   getDocFromServer,
+  getDocsFromServer,
   persistentLocalCache
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -106,7 +107,13 @@ export async function getDocument<T = any>(path: string, docId: string): Promise
 export async function getCollection<T = any>(path: string): Promise<T[]> {
   try {
     const colRef = collection(db, path);
-    const snapshot = await getDocs(colRef);
+    let snapshot;
+    try {
+      snapshot = await getDocsFromServer(colRef);
+    } catch (serverErr) {
+      console.warn(`Failed to fetch ${path} from server, falling back to local cache`, serverErr);
+      snapshot = await getDocs(colRef);
+    }
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as unknown as T[];
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, path);
@@ -135,10 +142,78 @@ export function cleanUndefined(obj: any): any {
   return obj;
 }
 
+const LISTING_COORDINATE_FIELDS = [
+  'coords',
+  'coordinates',
+  'location',
+  'lat',
+  'lng',
+  'lon',
+  'latitude',
+  'longitude',
+  'nearbySpotsOrigin'
+];
+
+const readFiniteNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const readLatLng = (value: any): { lat: number; lng: number } | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+
+  const lat = readFiniteNumber(value.lat ?? value.latitude ?? value._lat);
+  const lng = readFiniteNumber(value.lng ?? value.lon ?? value.longitude ?? value._long);
+  if (lat === undefined || lng === undefined) return undefined;
+
+  return { lat, lng };
+};
+
+const hasOwn = (value: Record<string, any>, key: string) =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+export function hasLegacyListingCoordinates(data: any): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  return LISTING_COORDINATE_FIELDS.some(field => hasOwn(data, field));
+}
+
+export function sanitizeListingForFirestore<T = any>(data: T): T {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+
+  const listing = { ...(data as Record<string, any>) };
+  const locationCoords =
+    readLatLng(listing.locationCoords) ||
+    readLatLng(listing.coords) ||
+    readLatLng(listing.coordinates) ||
+    readLatLng(listing.location) ||
+    (() => {
+      const lat = readFiniteNumber(listing.lat ?? listing.latitude);
+      const lng = readFiniteNumber(listing.lng ?? listing.lon ?? listing.longitude);
+      return lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
+    })();
+
+  LISTING_COORDINATE_FIELDS.forEach(field => {
+    delete listing[field];
+  });
+
+  if (locationCoords) {
+    listing.locationCoords = locationCoords;
+  } else {
+    delete listing.locationCoords;
+  }
+
+  return listing as T;
+}
+
 export async function setDocument<T = any>(path: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, path, docId);
-    const sanitizedData = cleanUndefined(data);
+    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const sanitizedData = cleanUndefined(dataForWrite);
     await setDoc(docRef, sanitizedData);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `${path}/${docId}`);
@@ -148,7 +223,8 @@ export async function setDocument<T = any>(path: string, docId: string, data: an
 export async function addDocument<T = any>(path: string, data: any): Promise<string> {
   try {
     const docRef = collection(db, path);
-    const sanitizedData = cleanUndefined(data);
+    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const sanitizedData = cleanUndefined(dataForWrite);
     const addedDoc = await addDoc(docRef, sanitizedData);
     return addedDoc.id;
   } catch (err) {
@@ -160,7 +236,8 @@ export async function addDocument<T = any>(path: string, data: any): Promise<str
 export async function updateDocument(path: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, path, docId);
-    const sanitizedData = cleanUndefined(data);
+    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const sanitizedData = cleanUndefined(dataForWrite);
     await updateDoc(docRef, sanitizedData);
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, `${path}/${docId}`);
@@ -176,24 +253,19 @@ export async function deleteDocument(path: string, docId: string): Promise<void>
   }
 }
 
-export async function syncWithFirebase(defaultListings: any[], defaultBookings: any[]): Promise<{ listings: any[], bookings: any[] }> {
+export async function syncWithFirebase(): Promise<{ listings: any[], bookings: any[] }> {
   let firebaseListings = await getCollection(LISTINGS_COLLECTION);
-  let firebaseBookings = await getCollection('bookings');
+  const firebaseBookings = await getCollection('bookings');
 
-  if (firebaseListings.length === 0) {
-    console.log('Seeding listings to Firestore...');
-    for (const listing of defaultListings) {
+  const listingsWithLegacyCoordinates = firebaseListings.filter(listing =>
+    listing?.id && hasLegacyListingCoordinates(listing)
+  );
+  if (listingsWithLegacyCoordinates.length > 0) {
+    console.log(`Sanitizing listing coordinates in Firestore: ${listingsWithLegacyCoordinates.length}`);
+    for (const listing of listingsWithLegacyCoordinates) {
       await setDocument(LISTINGS_COLLECTION, listing.id, listing);
     }
-    firebaseListings = await getCollection(LISTINGS_COLLECTION);
-  }
-
-  if (firebaseBookings.length === 0) {
-    console.log('Seeding bookings to Firestore...');
-    for (const booking of defaultBookings) {
-      await setDocument('bookings', booking.id, booking);
-    }
-    firebaseBookings = await getCollection('bookings');
+    firebaseListings = firebaseListings.map(listing => sanitizeListingForFirestore(listing));
   }
 
   return {

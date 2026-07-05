@@ -16,8 +16,8 @@ const FeaturePreferences: React.FC<FeatureSectionProps> = (props) => {
                         { value: 'pets_allowed', label: 'С питомцами', icon: '🐾' },
                         { value: 'quiet_location', label: 'Тишина', icon: '🔕' },
                         { value: 'all_bills_included', label: 'Bills включены', icon: '⚡' },
-                        { value: 'transfer_included', label: 'Трансфер включен', icon: '✈️' },
-                        { value: 'airport_transfer', label: 'Трансфер за доп плату', icon: '🚕' },
+                        { value: 'airport_transfer_included', label: 'Трансфер включен', icon: '✈️' },
+                        { value: 'airport_transfer_paid', label: 'Трансфер за доп плату', icon: '🚕' },
                         { value: 'breakfast_included', label: 'Завтрак включен', icon: '☕' },
                         { value: 'breakfast_paid', label: 'Завтрак за доп плату', icon: '🥐' },
                       ].map(opt => {

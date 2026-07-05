@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { BookingRequest, Listing } from '../../types';
 import BookingRequestControls from './BookingRequestControls';
+import { useI18n } from '../../i18nContext';
 
 interface CalendarListingModalProps {
   listing: Listing;
@@ -14,11 +15,6 @@ interface CalendarListingModalProps {
   onClose: () => void;
 }
 
-const monthNames = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-];
-
 export default function CalendarListingModal({
   listing,
   bookings,
@@ -29,6 +25,7 @@ export default function CalendarListingModal({
   onUpdateBooking,
   onClose
 }: CalendarListingModalProps) {
+  const { language, tr } = useI18n();
   const [blockedDates, setBlockedDates] = useState<string[]>(listing.blockedDates || []);
   const [rangeStart, setRangeStart] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<string | null>(null);
@@ -144,7 +141,7 @@ export default function CalendarListingModal({
       <div className="pu max-w-[1080px] w-full max-h-[90vh] rounded-[24px] sm:rounded-3xl shadow-2xl animate-scale-up text-gray-950 flex flex-col font-sans">
         <div className="pu-header px-5 py-4 border-b border-[#D1D5DB]/30 relative shrink-0">
           <div className="text-center">
-            <h3 className="font-bold text-sm">Занятость на 4 месяца</h3>
+            <h3 className="font-bold text-sm">{tr('calendarListing.title')}</h3>
           </div>
           <button onClick={close} className="absolute top-3.5 right-4 p-1 hover:bg-red-50 hover:text-red-500 rounded-full transition active:scale-95 cursor-pointer">
             <X className="w-5 h-5 text-gray-400" />
@@ -161,9 +158,19 @@ export default function CalendarListingModal({
 
             return (
               <div key={`${year}-${month}`} className="min-w-[240px]">
-                <h4 className="text-center font-bold text-gray-950 text-sm mb-3">{monthNames[month]} {year}</h4>
+                <h4 className="text-center font-bold text-gray-950 text-sm mb-3">
+                  {monthDate.toLocaleDateString(language.toLowerCase(), { month: 'long', year: 'numeric' })}
+                </h4>
                 <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] sm:text-xs font-semibold text-gray-400 mb-2">
-                  {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => (
+                  {[
+                    tr('calendar.monday'),
+                    tr('calendar.tuesday'),
+                    tr('calendar.wednesday'),
+                    tr('calendar.thursday'),
+                    tr('calendar.friday'),
+                    tr('calendar.saturday'),
+                    tr('calendar.sunday')
+                  ].map((day, index) => (
                     <div key={day} className={index >= 5 ? 'text-rose-400' : ''}>{day}</div>
                   ))}
                 </div>
@@ -277,7 +284,7 @@ export default function CalendarListingModal({
                             className={`absolute z-20 left-1 top-full mt-0.5 px-2 py-1 rounded-lg text-[9px] font-bold text-white shadow-md whitespace-nowrap hover:scale-105 transition ${
                               booking.status === 'accepted' ? 'bg-emerald-600' : 'bg-[#FF7A50]'
                             }`}
-                            title={`Открыть заявку: ${booking.guestName}`}
+                            title={tr('calendarListing.openRequest', { name: booking.guestName })}
                           >
                             {booking.guestName}
                           </button>
@@ -293,12 +300,12 @@ export default function CalendarListingModal({
 
           <aside className="lg:border-l lg:border-gray-200/70 lg:pl-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h4 className="text-xs font-black uppercase text-gray-700">Заявки гостей</h4>
+              <h4 className="text-xs font-black uppercase text-gray-700">{tr('calendarListing.guestRequests')}</h4>
               <span className="text-[10px] font-bold text-[#FF7A50]">{listingBookings.length}</span>
             </div>
 
             {listingBookings.length === 0 ? (
-              <p className="text-[10.5px] text-gray-400 py-4">Нет заявок на выбранные даты</p>
+              <p className="text-[10.5px] text-gray-400 py-4">{tr('calendarListing.noRequests')}</p>
             ) : listingBookings.map(request => (
               <div
                 key={request.id}
@@ -323,9 +330,9 @@ export default function CalendarListingModal({
         </div>
 
         <div className="pu-footer p-5 border-t border-[#D1D5DB]/30 mt-auto shrink-0 flex items-center justify-between gap-4">
-          <p className="text-[9.5px] text-gray-400 leading-normal">Изменение дат синхронизируется с iCal для Bali Base</p>
+          <p className="text-[9.5px] text-gray-400 leading-normal">{tr('calendarListing.icalSync')}</p>
           <button onClick={close} className="px-4 py-1.5 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-xs font-bold rounded-lg transition cursor-pointer active:scale-95 shadow-sm shrink-0">
-            Применить
+            {tr('calendar.apply')}
           </button>
         </div>
       </div>

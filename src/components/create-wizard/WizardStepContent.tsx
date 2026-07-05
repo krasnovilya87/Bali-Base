@@ -32,7 +32,29 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
     case 'subcategory':
       return <StepSubcategory subcategories={categoryState.subcategories} subCategory={categoryState.subCategory} setSubCategory={categoryState.setSubCategory} setStep={categoryState.setStep} />;
     case 'title':
-      return <StepTitle category={categoryState.category} subCategory={categoryState.subCategory} title={categoryState.title} setTitle={categoryState.setTitle} description={categoryState.description} setDescription={categoryState.setDescription} getSeoLengthVerdict={categoryState.getSeoLengthVerdict} roomType={categoryState.roomType} setRoomType={categoryState.setRoomType} />;
+      return (
+        <StepTitle
+          category={categoryState.category}
+          subCategory={categoryState.subCategory}
+          title={categoryState.title}
+          setTitle={categoryState.setTitle}
+          description={categoryState.description}
+          setDescription={categoryState.setDescription}
+          getSeoLengthVerdict={categoryState.getSeoLengthVerdict}
+          roomType={categoryState.roomType}
+          setRoomType={categoryState.setRoomType}
+          // location helpers for link parsing and suggestions
+          mapSuggestions={locationState.mapSuggestions}
+          showSuggestionsDropdown={locationState.showSuggestionsDropdown}
+          setShowSuggestionsDropdown={locationState.setShowSuggestionsDropdown}
+          handleAddressChange={locationState.handleAddressChange}
+          triggerDirectSearch={locationState.triggerDirectSearch}
+          handleSelectSuggestion={locationState.handleSelectSuggestion}
+          setAddress={locationState.setAddress}
+          setPickedCoords={locationState.setPickedCoords}
+          isSearchingMap={locationState.isSearchingMap}
+        />
+      );
     case 'location':
       return <StepLocation {...locationState} />;
     case 'photos':

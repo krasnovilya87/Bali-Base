@@ -6,6 +6,7 @@ import { DEFAULT_ADMIN_USERS, DEFAULT_TICKETS } from './mockData';
 import { normalizeHousingListingForImport } from './importListingNormalizer';
 import { AdminDashboardProps, AdminTab, AdminUser, SupportTicket } from './types';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
+import { GooglePlacesQuotaAdminStats, loadGooglePlacesQuotaAdminStats } from '../../utils/googlePlacesQuota';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -56,6 +57,15 @@ export function useAdminDashboardController({
   const [jsonImportFileName, setJsonImportFileName] = useState<string>('');
   const [jsonImportSummary, setJsonImportSummary] = useState<string>('');
   const [isJsonImporting, setIsJsonImporting] = useState<boolean>(false);
+  const [googlePlacesQuota, setGooglePlacesQuota] = useState<GooglePlacesQuotaAdminStats | null>(null);
+
+  useEffect(() => {
+    loadGooglePlacesQuotaAdminStats()
+      .then(setGooglePlacesQuota)
+      .catch(error => {
+        console.warn('Could not load Google Places quota stats', error);
+      });
+  }, []);
 
   const extractHousingListingsFromJson = (payload: any): Listing[] => {
     const source = payload?.[LISTINGS_COLLECTION] ?? payload?.listings ?? payload;
@@ -71,15 +81,15 @@ export function useAdminDashboardController({
     }
 
     if (!rows.length) {
-      throw new Error(`В JSON не найдены объявления для ${LISTINGS_COLLECTION}`);
+      throw new Error(`No listings found in JSON for ${LISTINGS_COLLECTION}`);
     }
 
     return rows.map((item, index) => {
       if (!item || typeof item !== 'object') {
-        throw new Error(`Строка ${index + 1}: объект объявления поврежден`);
+        throw new Error(`Row ${index + 1}: listing object is invalid`);
       }
       if (item.category && item.category !== 'housing') {
-        throw new Error(`Строка ${index + 1}: category должен быть housing`);
+        throw new Error(`Row ${index + 1}: category must be housing`);
       }
       return normalizeHousingListingForImport(item, index);
     });
@@ -155,7 +165,7 @@ export function useAdminDashboardController({
   const extractHousingListingsFromCsv = (text: string): Listing[] => {
     const rows = parseCsvRows(text);
     if (rows.length < 2) {
-      throw new Error('CSV должен содержать строку заголовков и хотя бы одну строку данных');
+      throw new Error('CSV must contain a header row and at least one data row');
     }
 
     const headers = rows[0].map(header => header.trim());
@@ -171,7 +181,7 @@ export function useAdminDashboardController({
 
     return items.map((item, index) => {
       if (item.category && item.category !== 'housing') {
-        throw new Error(`Строка ${index + 2}: category должен быть housing`);
+        throw new Error(`Row ${index + 2}: category must be housing`);
       }
       return normalizeHousingListingForImport(item, index);
     });
@@ -179,7 +189,7 @@ export function useAdminDashboardController({
 
   const handleImportJsonFile = async (file: File) => {
     if (jsonImportCollection !== LISTINGS_COLLECTION) {
-      showToast('Сейчас доступен импорт только в housing_for_rent_listing');
+      showToast('Import is currently available only for housing_for_rent_listing');
       return;
     }
 
@@ -204,14 +214,14 @@ export function useAdminDashboardController({
         await setDocument(LISTINGS_COLLECTION, listing.id, listing);
       }
 
-      const message = `Импортировано ${importedListings.length} объявлений в ${LISTINGS_COLLECTION}`;
+      const message = `Imported ${importedListings.length} listings into ${LISTINGS_COLLECTION}`;
       setJsonImportSummary(message);
       showToast(message);
       setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setJsonImportSummary(`Ошибка импорта: ${message}`);
-      showToast(`Ошибка импорта файла: ${message}`);
+      setJsonImportSummary(`Import error: ${message}`);
+      showToast(`File import error: ${message}`);
     } finally {
       setIsJsonImporting(false);
     }
@@ -220,14 +230,14 @@ export function useAdminDashboardController({
   // Sync state for L1 with overrides/defaults
   useEffect(() => {
     const l1Defaults: Record<string, { label: string; desc: string; image: string }> = {
-      housing: { label: 'Жилье', desc: 'Виллы, таунхаусы, гестхаусы напрямую от владельцев', image: '' },
-      transport: { label: 'Транспорт', desc: 'Аренда байков, скутеров и автомобилей без переплат', image: '' },
-      investments: { label: 'Инвестиции', desc: 'Виллы, земля, готовые бизнесы на Бали с высокой окупаемостью', image: '' },
-      services: { label: 'Услуги', desc: 'Проводники, няни, повара, клининг и массаж напрямую', image: '' },
-      ads: { label: 'Объявления', desc: 'Аренда вещей, бытовая техника, совместное проживание', image: '' },
-      afisha: { label: 'Афиша', desc: 'Ближайшие концерты, вечеринки и фестивали на Бали', image: '' },
-      life: { label: 'Жизнь', desc: 'Чаты сообщества, советы по визам, контакты и взаимопомощь', image: '' },
-      useful: { label: 'Полезная Информация', desc: 'Полезные гиды, информация о визах, имена балийцев, лайфхаки', image: '' }
+      housing: { label: 'Housing', desc: 'Villas, townhouses and guesthouses directly from owners', image: '' },
+      transport: { label: 'Transport', desc: 'Bike, scooter and car rentals without overpaying', image: '' },
+      investments: { label: 'Investments', desc: 'Villas, land and ready businesses in Bali with strong ROI', image: '' },
+      services: { label: 'Services', desc: 'Guides, nannies, chefs, cleaning and massage directly', image: '' },
+      ads: { label: 'Ads', desc: 'Item rentals, appliances and shared living', image: '' },
+      afisha: { label: 'Events', desc: 'Upcoming concerts, parties and festivals in Bali', image: '' },
+      life: { label: 'Life', desc: 'Community chats, visa tips, contacts and mutual help', image: '' },
+      useful: { label: 'Useful Information', desc: 'Helpful guides, visa information, Balinese names and life hacks', image: '' }
     };
     const currentOver = menuOverrides?.l1?.[l1SelectedId] || {};
     setL1Label(currentOver.label || l1Defaults[l1SelectedId]?.label || '');
@@ -238,26 +248,26 @@ export function useAdminDashboardController({
   // Sync state for L2 with overrides/defaults
   useEffect(() => {
     const l2Defaults: Record<string, { label: string; icon: string }> = {
-      entire_place: { label: 'Частная Вилла / Дом', icon: '🏡' },
-      private_suite: { label: 'Апартаменты', icon: '🏢' },
-      private_room: { label: 'Частная комната', icon: '🛌' },
-      scooters: { label: 'Скутеры', icon: '🛵' },
-      motorcycles: { label: 'Мотоциклы', icon: '🏍' },
-      cars: { label: 'Автомобили', icon: '🚗' },
-      villas: { label: 'Виллы & Апартаменты', icon: '🏢' },
-      land: { label: 'Участки Земли', icon: '🏝' },
-      business: { label: 'Готовый Бизнес', icon: '💼' },
-      for_leisure: { label: 'Для отдыха & Серфинг', icon: '🏄‍♂️' },
-      for_living: { label: 'Для жизни & Консультации', icon: '💼' },
-      electronics: { label: 'Электроника & Фото', icon: '🔌' },
-      trans_sale: { label: 'Транспорт продажа', icon: '🏍' },
-      clothes: { label: 'Одежда и личные вещи', icon: '👕' },
-      house_furn: { label: 'Дом и интерьер', icon: '🏡' },
-      festivals: { label: 'Фестивали & Вечеринки', icon: '🎉' },
-      seminars: { label: 'Бизнес-семинары', icon: '💼' },
-      exhibitions: { label: 'Выставки & Детские', icon: '🎨' },
-      meetings: { label: 'Встречи & Спорт', icon: '💬' },
-      buddies: { label: 'Попутчики & Трипы', icon: '🛵' }
+      entire_place: { label: 'Private villa / house', icon: '🏡' },
+      private_suite: { label: 'Apartments', icon: '🏢' },
+      private_room: { label: 'Private room', icon: '🛌' },
+      scooters: { label: 'Scooters', icon: '🛵' },
+      motorcycles: { label: 'Motorcycles', icon: '🏍' },
+      cars: { label: 'Cars', icon: '🚗' },
+      villas: { label: 'Villas & apartments', icon: '🏢' },
+      land: { label: 'Land plots', icon: '🏝' },
+      business: { label: 'Ready business', icon: '💼' },
+      for_leisure: { label: 'Leisure & surfing', icon: '🏄‍♂️' },
+      for_living: { label: 'Living & consulting', icon: '💼' },
+      electronics: { label: 'Electronics & photo', icon: '🔌' },
+      trans_sale: { label: 'Transport sale', icon: '🏍' },
+      clothes: { label: 'Clothes and personal items', icon: '👕' },
+      house_furn: { label: 'Home and interior', icon: '🏡' },
+      festivals: { label: 'Festivals & parties', icon: '🎉' },
+      seminars: { label: 'Business seminars', icon: '💼' },
+      exhibitions: { label: 'Exhibitions & kids', icon: '🎨' },
+      meetings: { label: 'Meetups & sport', icon: '💬' },
+      buddies: { label: 'Travel buddies & trips', icon: '🛵' }
     };
     const currentOver = menuOverrides?.l2?.[l2SelectedId] || {};
     setL2Label(currentOver.label || l2Defaults[l2SelectedId]?.label || '');
@@ -358,7 +368,7 @@ export function useAdminDashboardController({
 
   const handleUploadFile = async (file: File, type: 'l1' | 'l2'): Promise<string> => {
     try {
-      showToast('⏳ Оптимизация изображения...');
+      showToast('Optimizing image...');
       const { blob, dataUrl } = await resizeAndCompressImage(file, type);
       
       if (uploadMethod === 'storage') {
@@ -380,14 +390,14 @@ export function useAdminDashboardController({
           return downloadUrl;
         } catch (e: any) {
           console.error('Firebase Storage upload failed, falling back to Base64', e);
-          showToast('⚠️ Ошибка Storage. Сохранено в формате Base64 в Firestore.');
+          showToast('Storage error. Saved as Base64 in Firestore.');
         }
       }
       
       return dataUrl;
     } catch (e: any) {
       console.error('Failed to resize and load image', e);
-      showToast('❌ Ошибка при обработке изображения. Загружаем оригинал.');
+      showToast('Image processing failed. Uploading the original.');
       
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -416,11 +426,11 @@ export function useAdminDashboardController({
       };
       if (onUpdateMenuOverrides) {
         await onUpdateMenuOverrides(updatedOverrides);
-        showToast('✨ Категория L1 успешно синхронизирована!');
+        showToast('L1 category synced successfully.');
       }
     } catch (e) {
       console.error(e);
-      showToast('❌ Не удалось обновить категорию');
+      showToast('Could not update category.');
     } finally {
       setIsMenuSaving(false);
     }
@@ -444,11 +454,11 @@ export function useAdminDashboardController({
       };
       if (onUpdateMenuOverrides) {
         await onUpdateMenuOverrides(updatedOverrides);
-        showToast('✨ Подкатегория L2 успешно синхронизирована!');
+        showToast('L2 subcategory synced successfully.');
       }
     } catch (e) {
       console.error(e);
-      showToast('❌ Не удалось обновить подгруппу');
+      showToast('Could not update subgroup.');
     } finally {
       setIsMenuSaving(false);
     }
@@ -534,7 +544,7 @@ export function useAdminDashboardController({
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPhone) {
-      showToast('⚠️ Пожалуйста, заполните все поля!');
+      showToast('Please fill in all fields.');
       return;
     }
     const newUser: AdminUser = {
@@ -553,7 +563,7 @@ export function useAdminDashboardController({
     setNewUserName('');
     setNewUserEmail('');
     setNewUserPhone('');
-    showToast(`✅ Пользователь ${newUserName} успешно создан!`);
+    showToast(`User ${newUserName} created successfully.`);
   };
 
   // Change Role Handler
@@ -565,7 +575,7 @@ export function useAdminDashboardController({
       return u;
     });
     saveUsers(updated);
-    showToast(`💼 Роль пользователя изменена на ${newRole}`);
+    showToast(`User role changed to ${newRole}.`);
   };
 
   // Toggle User Ban Status
@@ -579,15 +589,15 @@ export function useAdminDashboardController({
     });
     saveUsers(updated);
     const matched = adminUsers.find(u => u.id === userId);
-    const verb = matched?.status === 'active' ? 'заблокирован' : 'разблокирован';
-    showToast(`🚫 Пользователь ${matched?.name} ${verb}!`);
+    const verb = matched?.status === 'active' ? 'banned' : 'unbanned';
+    showToast(`User ${matched?.name} ${verb}.`);
   };
 
   // Delete User Handler
   const handleDeleteUser = (userId: string) => {
     const updated = adminUsers.filter(u => u.id !== userId);
     saveUsers(updated);
-    showToast('🗑️ Пользователь удален');
+    showToast('User deleted.');
   };
 
   // Add Message Reply Simulator
@@ -610,15 +620,15 @@ export function useAdminDashboardController({
     });
     saveTicketsList(updated);
     setReplyText('');
-    showToast('✉️ Ответ успешно отправлен!');
+    showToast('Reply sent successfully.');
 
     // Simulate standard host reply after 2 seconds for interactivity
     setTimeout(() => {
       const answersSim = [
-        "Отлично! Спасибо за быстрый ответ, всё заработало",
-        "Хорошо, я проверила, действительно синхронизация обновилась",
-        "Договорились, буду ждать звонка менеджера",
-        "Понятно, спасибо за разъяснения и классный сервис Бали Бейс!"
+        "Great, thanks for the quick reply, everything works now.",
+        "Okay, I checked and the sync has really updated.",
+        "Agreed, I will wait for the manager's call.",
+        "Understood, thanks for the explanation and the great Bali Base service."
       ];
       const randomAnswer = answersSim[Math.floor(Math.random() * answersSim.length)];
       const answerMsg = {
@@ -691,7 +701,7 @@ export function useAdminDashboardController({
   const handleActivateAllListings = async () => {
     const inactiveListings = listings.filter(l => l.status !== 'active');
     if (!inactiveListings.length) {
-      showToast('Все объявления уже активны');
+      showToast('All listings are already active.');
       return;
     }
 
@@ -708,13 +718,13 @@ export function useAdminDashboardController({
       await setDocument(LISTINGS_COLLECTION, id, { ...nextListing, id });
     }
 
-    showToast(`Активировано объявлений: ${inactiveListings.length}`);
+    showToast(`Activated listings: ${inactiveListings.length}`);
     setTimeout(() => window.location.reload(), 1200);
   };
 
   const handleDeleteAllModeration = async () => {
     if (!moderationItems.length) {
-      showToast('Очередь модерации уже пуста');
+      showToast('Moderation queue is already empty.');
       return;
     }
 
@@ -722,7 +732,7 @@ export function useAdminDashboardController({
       await deleteDocument(LISTINGS_COLLECTION, item.id);
     }
 
-    showToast(`Удалено объявлений на модерации: ${moderationItems.length}`);
+    showToast(`Deleted moderation listings: ${moderationItems.length}`);
     setTimeout(() => window.location.reload(), 1200);
   };
 
@@ -736,13 +746,13 @@ export function useAdminDashboardController({
         isApproved: true
       };
       onUpdateListing(updated);
-      showToast(`🎉 Объявление "${matched.title}" одобрено и размещено!`);
+      showToast(`Listing "${matched.title}" approved and published.`);
     }
   };
 
   const handleOpenReject = (listingId: string) => {
     setRejectListingId(listingId);
-    setRejectionReason('Фотографии не соответствуют стандартам качества');
+    setRejectionReason('Photos do not meet quality standards');
   };
 
   const handleRejectConfirm = () => {
@@ -753,10 +763,10 @@ export function useAdminDashboardController({
         ...matched,
         status: 'draft',
         isApproved: false,
-        description: `${matched.description}\n\n⚠️ Комментарий модератора: ${rejectionReason}`
+        description: `${matched.description}\n\nModerator comment: ${rejectionReason}`
       };
       onUpdateListing(updated);
-      showToast(`❌ Объявление отклонено с указанием причины`);
+      showToast('Listing rejected with a reason.');
     }
     setRejectListingId(null);
   };
@@ -771,6 +781,7 @@ export function useAdminDashboardController({
     totalViews,
     districtViewsStats,
     totalDistrictViews,
+    googlePlacesQuota,
     filteredUsersList,
     userSearch,
     setUserSearch,

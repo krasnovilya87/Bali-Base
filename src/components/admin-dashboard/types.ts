@@ -1,6 +1,6 @@
 import { BookingRequest, Listing } from '../../types';
 
-export type AdminTab = 'dashboard' | 'users' | 'listings' | 'moderation' | 'messages' | 'settings';
+export type AdminTab = 'dashboard' | 'users' | 'listings' | 'moderation' | 'messages' | 'places' | 'settings';
 
 export interface AdminUser {
   id: string;

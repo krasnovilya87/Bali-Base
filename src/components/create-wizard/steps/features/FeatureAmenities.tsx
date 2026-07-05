@@ -5,6 +5,12 @@ type FeatureSectionProps = Record<string, any>;
 
 const FeatureAmenities: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const roomOnlyAmenities = subCategory === 'private_room'
+    ? [
+      { value: 'room_fridge', label: 'Холодильник в номере', icon: '🧊', type: 'amenity' },
+      { value: 'water_cooler', label: 'Кулер', icon: '💧', type: 'amenity' }
+    ]
+    : [];
 
   return (
     <>
@@ -19,6 +25,7 @@ const FeatureAmenities: React.FC<FeatureSectionProps> = (props) => {
                         { value: 'smart_tv', label: 'Smart TV', icon: '📺', type: 'amenity' },
                         { value: 'workspace', label: 'Рабочее пространство', icon: '💻', type: 'amenity' },
                         { value: 'yoga', label: 'Зона йоги', icon: '🧘', type: 'amenity' },
+                        ...roomOnlyAmenities,
                         { value: 'Без плесени и запаха', label: 'Без плесени и запаха', icon: '🧼', type: 'cleanliness' },
                         { value: 'Идеальная сантехника', label: 'Исправная сантехника', icon: '🚿', type: 'cleanliness' },
                         { value: 'parking', label: 'Парковка для машин', icon: '🚗', type: 'amenity' }

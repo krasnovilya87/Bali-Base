@@ -5,9 +5,11 @@ import {
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X, Upload, FileText
 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type AdminTabProps = Record<string, any>;
 export function SettingsTab(props: AdminTabProps) {
+  const { tr } = useI18n();
   const {
     totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
@@ -25,8 +27,8 @@ export function SettingsTab(props: AdminTabProps) {
                 {/* Left Card: Core Platform parameters */}
                 <div className="bg-white p-6 rounded-3xl border border-gray-150 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">Настройки публикации & Модерация</h3>
-                    <p className="text-[10px] text-gray-400">Управляйте процессами добавления и модерации объявлений.</p>
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">{tr('admin.settings.publicationTitle')}</h3>
+                    <p className="text-[10px] text-gray-400">{tr('admin.settings.publicationBody')}</p>
                   </div>
 
                   <div className="space-y-4">
@@ -38,13 +40,13 @@ export function SettingsTab(props: AdminTabProps) {
                         onChange={(e) => {
                           setAutoApprove(e.target.checked);
                           localStorage.setItem('bali_base_config_autoapprove', String(e.target.checked));
-                          showToast(e.target.checked ? '⚡ Авто-одобрение включено' : '🛡️ Обязательная пре-модерация включена');
+                          showToast(e.target.checked ? tr('admin.settings.autoApproveOn') : tr('admin.settings.autoApproveOff'));
                         }}
                         className="w-4.5 h-4.5 text-[#FF7A50] focus:ring-opacity-40 rounded" 
                       />
                       <div>
-                        <span className="text-xs font-bold text-gray-800 block">Автоматический допуск новых предложений</span>
-                        <span className="text-[10px] text-gray-400 font-semibold block">Новые карточки хостов публикуются на сайте без ручной проверки модератором.</span>
+                        <span className="text-xs font-bold text-gray-800 block">{tr('admin.settings.autoApprove')}</span>
+                        <span className="text-[10px] text-gray-400 font-semibold block">{tr('admin.settings.autoApproveBody')}</span>
                       </div>
                     </label>
 
@@ -56,19 +58,19 @@ export function SettingsTab(props: AdminTabProps) {
                         onChange={(e) => {
                           setMaintenanceMode(e.target.checked);
                           localStorage.setItem('bali_base_config_maintenance', String(e.target.checked));
-                          showToast(e.target.checked ? '🛑 Режим тех.работ включен' : '✅ Сайт доступен в штатном режиме');
+                          showToast(e.target.checked ? tr('admin.settings.maintenanceOn') : tr('admin.settings.maintenanceOff'));
                         }}
                         className="w-4.5 h-4.5 text-[#FF7A50] focus:ring-opacity-40 rounded" 
                       />
                       <div>
-                        <span className="text-xs font-bold text-gray-800 block">Включить технические работы (Maintenance Mode)</span>
-                        <span className="text-[10px] text-gray-400 font-semibold block font-sans">Ограничивает доступ к сайту с выводом заглушки для внешних клиентов.</span>
+                        <span className="text-xs font-bold text-gray-800 block">{tr('admin.settings.maintenance')}</span>
+                        <span className="text-[10px] text-gray-400 font-semibold block font-sans">{tr('admin.settings.maintenanceBody')}</span>
                       </div>
                     </label>
 
                     {/* Commission Rate selection overlay */}
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-700 block">Базовая комиссия платформы (%):</label>
+                      <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.commission')}</label>
                       <div className="flex gap-2 items-center">
                         <Percent className="w-4 h-4 text-gray-400" />
                         <input 
@@ -77,7 +79,7 @@ export function SettingsTab(props: AdminTabProps) {
                           onChange={(e) => setCommissionRate(Number(e.target.value))}
                           className="w-24 bg-slate-50 border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none text-xs font-bold font-mono text-[#1E293B]"
                         />
-                        <span className="text-[10.5px] text-gray-400 font-semibold">Удерживается при аренде премиум пакетов</span>
+                        <span className="text-[10.5px] text-gray-400 font-semibold">{tr('admin.settings.commissionBody')}</span>
                       </div>
                     </div>
                   </div>
@@ -86,14 +88,14 @@ export function SettingsTab(props: AdminTabProps) {
                 {/* Right Card: Platform variables meta */}
                 <div className="bg-white p-6 rounded-3xl border border-gray-150 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">Брендинг & Контакты поддержки</h3>
-                    <p className="text-[10px] text-gray-400">Укажите контактные пути для пользователей.</p>
+                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">{tr('admin.settings.brandingTitle')}</h3>
+                    <p className="text-[10px] text-gray-400">{tr('admin.settings.brandingBody')}</p>
                   </div>
 
                   <div className="space-y-4">
                     {/* Site Name text input */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-700 block">Заголовок сервиса:</label>
+                      <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.serviceTitle')}</label>
                       <input 
                         type="text" 
                         value={siteName}
@@ -104,7 +106,7 @@ export function SettingsTab(props: AdminTabProps) {
 
                     {/* Telegram Support Link text input */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-700 block">Ссылка на Telegram-поддержку:</label>
+                      <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.telegram')}</label>
                       <input 
                         type="text" 
                         value={telegramSupportLink}
@@ -117,7 +119,7 @@ export function SettingsTab(props: AdminTabProps) {
                     <div className="p-3.5 bg-amber-50 text-amber-800 border border-amber-100 rounded-2xl text-xs sm:text-[12.5px] font-semibold space-y-1 flex gap-2">
                       <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
                       <div>
-                        <span>Интеграция с WhatsApp для хостов и клиентов работает напрямую через API вызовы без промежуточных тарификаций.</span>
+                        <span>{tr('admin.settings.whatsappNote')}</span>
                       </div>
                     </div>
                   </div>
@@ -128,10 +130,10 @@ export function SettingsTab(props: AdminTabProps) {
                     <div>
                       <h3 className="font-extrabold text-[#0F172A] text-base sm:text-lg flex items-center gap-2">
                         <FileText className="w-5 h-5 text-[#2F7D69]" />
-                        <span>Импорт JSON в Firebase</span>
+                        <span>{tr('admin.settings.importTitle')}</span>
                       </h3>
                       <p className="text-xs text-gray-500 mt-1 max-w-2xl">
-                        Загрузите JSON-файл с объявлениями. Если в файле не хватает полей, импорт попробует определить их из title и description. Сейчас активна коллекция housing_for_rent_listing; транспорт и инвестиции будут подключены следующим шагом.
+                        {tr('admin.settings.importBody')}
                       </p>
                     </div>
 
@@ -142,15 +144,15 @@ export function SettingsTab(props: AdminTabProps) {
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-700 block">Коллекция Firebase:</label>
+                      <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.collection')}</label>
                       <select
                         value={jsonImportCollection}
                         onChange={(e) => setJsonImportCollection(e.target.value)}
                         className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-[#2F7D69]"
                       >
                         <option value="housing_for_rent_listing">housing_for_rent_listing</option>
-                        <option value="transport_listing" disabled>transport_listing - скоро</option>
-                        <option value="investment_listing" disabled>investment_listing - скоро</option>
+                        <option value="transport_listing" disabled>transport_listing - {tr('admin.settings.soon')}</option>
+                        <option value="investment_listing" disabled>investment_listing - {tr('admin.settings.soon')}</option>
                       </select>
                     </div>
 
@@ -184,10 +186,10 @@ export function SettingsTab(props: AdminTabProps) {
                         )}
                         <div>
                           <span className="text-xs font-black block">
-                            {isJsonImporting ? 'Импортируем файл...' : 'Выбрать JSON или CSV-файл для импорта'}
+                            {isJsonImporting ? tr('admin.settings.importing') : tr('admin.settings.chooseImport')}
                           </span>
                           <span className="text-[10px] text-gray-500 font-semibold block">
-                            JSON: массив или объект housing_for_rent_listing. CSV: первая строка должна быть заголовками колонок.
+                            {tr('admin.settings.importFormat')}
                           </span>
                         </div>
                       </label>
@@ -196,7 +198,7 @@ export function SettingsTab(props: AdminTabProps) {
 
                   {(jsonImportFileName || jsonImportSummary) && (
                     <div className="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-xs text-gray-600 font-semibold space-y-1">
-                      {jsonImportFileName && <div>Файл: <span className="font-mono">{jsonImportFileName}</span></div>}
+                      {jsonImportFileName && <div>{tr('admin.settings.file')} <span className="font-mono">{jsonImportFileName}</span></div>}
                       {jsonImportSummary && <div>{jsonImportSummary}</div>}
                     </div>
                   )}
@@ -208,9 +210,9 @@ export function SettingsTab(props: AdminTabProps) {
                     <div>
                       <h3 className="font-extrabold text-[#0F172A] text-base sm:text-lg flex items-center gap-2">
                         <Database className="w-5.5 h-5.5 text-[#FF7A50]" />
-                        <span>Мастер кастомизации меню (L1 & L2)</span>
+                        <span>{tr('admin.settings.menuWizard')}</span>
                       </h3>
-                      <p className="text-xs text-gray-500 mt-1">Здесь вы можете загрузить фоновые картинки для меню первого уровня и 3D-иконки для второго уровня.</p>
+                      <p className="text-xs text-gray-500 mt-1">{tr('admin.settings.menuWizardBody')}</p>
                     </div>
 
                     {/* Step Selector Tab buttons */}
@@ -222,7 +224,7 @@ export function SettingsTab(props: AdminTabProps) {
                         }`}
                       >
                         <List className="w-4 h-4" />
-                        <span>L1: Категории</span>
+                        <span>{tr('admin.settings.l1Categories')}</span>
                       </button>
                       <button
                         onClick={() => setWizardLevel(2)}
@@ -231,7 +233,7 @@ export function SettingsTab(props: AdminTabProps) {
                         }`}
                       >
                         <Settings className="w-4 h-4" />
-                        <span>L2: Подкатегории</span>
+                        <span>{tr('admin.settings.l2Subcategories')}</span>
                       </button>
                     </div>
                   </div>
@@ -239,8 +241,8 @@ export function SettingsTab(props: AdminTabProps) {
                   {/* Mode & Storage Settings */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-150 text-xs">
                     <div className="space-y-0.5">
-                      <span className="font-bold text-gray-800 block">Метод сохранения файлов</span>
-                      <span className="text-gray-400 block font-medium">Куда загружать медиафайлы при обновлении разделов меню?</span>
+                      <span className="font-bold text-gray-800 block">{tr('admin.settings.storageMethod')}</span>
+                      <span className="text-gray-400 block font-medium">{tr('admin.settings.storageMethodBody')}</span>
                     </div>
 
                     <div className="flex items-center gap-2 select-none">
@@ -252,7 +254,7 @@ export function SettingsTab(props: AdminTabProps) {
                             : 'border-gray-200 text-gray-500 hover:text-black hover:border-gray-300 bg-slate-50'
                         }`}
                       >
-                        Base64 в Firestore
+                        {tr('admin.settings.base64InFirestore')}
                       </button>
                       <button
                         onClick={() => setUploadMethod('storage')}
@@ -263,7 +265,7 @@ export function SettingsTab(props: AdminTabProps) {
                         }`}
                       >
                         <Database className="w-3.5 h-3.5" />
-                        <span>Firebase Storage (Рекомендовано)</span>
+                        <span>{tr('admin.settings.firebaseStorageRecommended')}</span>
                       </button>
                     </div>
                   </div>
@@ -273,17 +275,17 @@ export function SettingsTab(props: AdminTabProps) {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
                       {/* L1 Categories selectors */}
                       <div className="space-y-2 select-none">
-                        <label className="text-xs font-bold text-gray-700 block">1. Выберите категорию первого уровня:</label>
+                        <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.selectL1')}</label>
                         <div className="grid grid-cols-2 lg:grid-cols-1 gap-2.5">
                           {[
-                            { id: 'housing', label: '🏡 Жилье' },
-                            { id: 'transport', label: '🛵 Транспорт' },
-                            { id: 'investments', label: '📈 Инвестиции' },
-                            { id: 'services', label: '💼 Услуги' },
-                            { id: 'ads', label: '📢 Объявления' },
-                            { id: 'afisha', label: '🎉 Афиша' },
-                            { id: 'life', label: '💬 Жизнь' },
-                            { id: 'useful', label: '🧭 Полезное' }
+                            { id: 'housing', label: `🏡 ${tr('category.housing.label')}` },
+                            { id: 'transport', label: `🛵 ${tr('category.transport.label')}` },
+                            { id: 'investments', label: `📈 ${tr('category.investments.label')}` },
+                            { id: 'services', label: `💼 ${tr('category.services.label')}` },
+                            { id: 'ads', label: `📢 ${tr('category.ads.label')}` },
+                            { id: 'afisha', label: `🎉 ${tr('category.afisha.label')}` },
+                            { id: 'life', label: `💬 ${tr('category.life.label')}` },
+                            { id: 'useful', label: `🧭 ${tr('category.useful.label')}` }
                           ].map(item => (
                             <button
                               key={item.id}
@@ -306,36 +308,36 @@ export function SettingsTab(props: AdminTabProps) {
                         <div className="space-y-4 bg-white p-5 rounded-3xl border border-slate-100">
                           <h4 className="font-bold text-gray-850 text-xs sm:text-sm flex items-center gap-1">
                             <Sparkles className="w-4 h-4 text-[#FF7A50]" />
-                            <span>2. Настройки отображения категории</span>
+                            <span>{tr('admin.settings.categoryDisplay')}</span>
                           </h4>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5 text-left">
-                              <label className="text-xs font-bold text-gray-600">Название меню:</label>
+                              <label className="text-xs font-bold text-gray-600">{tr('admin.settings.menuName')}</label>
                               <input
                                 type="text"
                                 value={l1Label}
                                 onChange={e => setL1Label(e.target.value)}
                                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF7A50]"
-                                placeholder="Например: Аренда жилья"
+                                placeholder={tr('admin.settings.menuNamePlaceholder')}
                               />
                             </div>
 
                             <div className="space-y-1.5 text-left">
-                              <label className="text-xs font-bold text-gray-600">Описание раздела:</label>
+                              <label className="text-xs font-bold text-gray-600">{tr('admin.settings.sectionDescription')}</label>
                               <input
                                 type="text"
                                 value={l1Desc}
                                 onChange={e => setL1Desc(e.target.value)}
                                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF7A50]"
-                                placeholder="Например: Виллы напрямую от собственников"
+                                placeholder={tr('admin.settings.sectionDescriptionPlaceholder')}
                               />
                             </div>
                           </div>
 
                           {/* Image drag upload panel */}
                           <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-600 block">Загрузить фоновое изображение (классическое море, терассы и т.д.):</label>
+                            <label className="text-xs font-bold text-gray-600 block">{tr('admin.settings.uploadBackground')}</label>
                             
                             <div className="flex flex-col md:flex-row items-center gap-5">
                               {/* Preview Box */}
@@ -358,7 +360,7 @@ export function SettingsTab(props: AdminTabProps) {
                                 ) : (
                                   <div className="text-center p-2 text-gray-300 flex flex-col items-center">
                                     <ImageIcon className="w-8 h-8 opacity-40 mb-1" />
-                                    <span className="text-[9px] font-bold">Нет фонового изображения</span>
+                                    <span className="text-[9px] font-bold">{tr('admin.settings.noBackground')}</span>
                                   </div>
                                 )}
                               </div>
@@ -393,8 +395,8 @@ export function SettingsTab(props: AdminTabProps) {
                                 />
                                 <label htmlFor="l1-file-input" className="cursor-pointer space-y-1">
                                   <PlusCircle className="w-6 h-6 text-[#FF7A50] mx-auto opacity-75 animate-pulse" />
-                                  <span className="text-xs font-bold text-gray-700 block">Перетащите сюда файл или кликните для выбора</span>
-                                  <span className="text-[10px] text-gray-400 block font-medium">Рекомендуется PNG/JPG с разрешением от 500px</span>
+                                  <span className="text-xs font-bold text-gray-700 block">{tr('admin.settings.dropOrClick')}</span>
+                                  <span className="text-[10px] text-gray-400 block font-medium">{tr('admin.settings.imageRecommendation')}</span>
                                 </label>
                               </div>
                             </div>
@@ -409,12 +411,12 @@ export function SettingsTab(props: AdminTabProps) {
                               {isMenuSaving ? (
                                 <>
                                   <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span>Синхронизация...</span>
+                                  <span>{tr('admin.settings.syncing')}</span>
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span>Принять и обновить L1</span>
+                                  <span>{tr('admin.settings.updateL1')}</span>
                                 </>
                               )}
                             </button>
@@ -430,47 +432,47 @@ export function SettingsTab(props: AdminTabProps) {
                       {/* Selection row */}
                       <div className="space-y-4">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-gray-700 block">1. Родителельская категория L1:</label>
+                          <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.parentL1')}</label>
                           <select
                             value={l2ParentId}
                             onChange={e => setL2ParentId(e.target.value)}
                             className="w-full bg-white border border-gray-250 rounded-xl px-3 py-2 text-xs font-bold font-sans text-gray-700 outline-none focus:border-[#FF7A50]"
                           >
-                            <option value="housing">🏡 Жилье</option>
-                            <option value="transport">🛵 Транспорт</option>
-                            <option value="investments">📈 Инвестиции</option>
-                            <option value="services">💼 Услуги</option>
-                            <option value="ads">📢 Объявления</option>
-                            <option value="afisha">🎉 Афиша</option>
-                            <option value="life">💬 Жизнь</option>
-                            <option value="useful">🧭 Полезная Информация</option>
+                            <option value="housing">🏡 {tr('category.housing.label')}</option>
+                            <option value="transport">🛵 {tr('category.transport.label')}</option>
+                            <option value="investments">📈 {tr('category.investments.label')}</option>
+                            <option value="services">💼 {tr('category.services.label')}</option>
+                            <option value="ads">📢 {tr('category.ads.label')}</option>
+                            <option value="afisha">🎉 {tr('category.afisha.label')}</option>
+                            <option value="life">💬 {tr('category.life.label')}</option>
+                            <option value="useful">🧭 {tr('category.useful.label')}</option>
                           </select>
                         </div>
 
                         <div className="space-y-1.5 select-none">
-                          <label className="text-xs font-bold text-gray-700 block">2. Подкатегория L2 для настройки:</label>
+                          <label className="text-xs font-bold text-gray-700 block">{tr('admin.settings.selectL2')}</label>
                           <div className="grid grid-cols-1 gap-2.5 max-h-52 overflow-y-auto pr-1">
                             {([
-                              { id: 'entire_place', label: '🏠 Частная Вилла / Дом' },
-                              { id: 'private_suite', label: '🏢 Апартаменты' },
-                              { id: 'private_room', label: '🛌 Частная комната' },
-                              { id: 'scooters', label: '🛵 Скутеры' },
-                              { id: 'motorcycles', label: '🏍 Мотоциклы' },
-                              { id: 'cars', label: '🚗 Автомобили' },
-                              { id: 'villas', label: '🏢 Виллы & Апартаменты' },
-                              { id: 'land', label: '🏝 Участки Земли' },
-                              { id: 'business', label: '💼 Готовый Бизнес' },
-                              { id: 'for_leisure', label: '🏄‍♂️ Для отдыха & Серфинг' },
-                              { id: 'for_living', label: '💼 Для жизни & Консультации' },
-                              { id: 'electronics', label: '🔌 Электроника & Фото' },
-                              { id: 'trans_sale', label: '🏍 Транспорт продажа' },
-                              { id: 'clothes', label: '👕 Одежда и вещи' },
-                              { id: 'house_furn', label: '🏡 Дом и интерьер' },
-                              { id: 'festivals', label: '🎉 Фестивали & Вечеринки' },
-                              { id: 'seminars', label: '💼 Бизнес-семинары' },
-                              { id: 'exhibitions', label: '🎨 Выставки & Искусство' },
-                              { id: 'meetings', label: '💬 Встречи & Спорт' },
-                              { id: 'buddies', label: '🛵 Попутчики & Трипы' }
+                              { id: 'entire_place', label: `🏠 ${tr('subcategory.entire_place')}` },
+                              { id: 'private_suite', label: `🏢 ${tr('subcategory.private_suite')}` },
+                              { id: 'private_room', label: `🛌 ${tr('subcategory.private_room')}` },
+                              { id: 'scooters', label: `🛵 ${tr('subcategory.scooters')}` },
+                              { id: 'motorcycles', label: `🏍 ${tr('subcategory.motorcycles')}` },
+                              { id: 'cars', label: `🚗 ${tr('subcategory.cars')}` },
+                              { id: 'villas', label: `🏢 ${tr('subcategory.villas')}` },
+                              { id: 'land', label: `🏝 ${tr('subcategory.land')}` },
+                              { id: 'business', label: `💼 ${tr('subcategory.business')}` },
+                              { id: 'for_leisure', label: `🏄‍♂️ ${tr('subcategory.for_leisure')}` },
+                              { id: 'for_living', label: `💼 ${tr('subcategory.for_living')}` },
+                              { id: 'electronics', label: `🔌 ${tr('subcategory.electronics')}` },
+                              { id: 'trans_sale', label: `🏍 ${tr('subcategory.trans_sale')}` },
+                              { id: 'clothes', label: `👕 ${tr('subcategory.clothes')}` },
+                              { id: 'house_furn', label: `🏡 ${tr('subcategory.house_furn')}` },
+                              { id: 'festivals', label: `🎉 ${tr('subcategory.festivals')}` },
+                              { id: 'seminars', label: `💼 ${tr('subcategory.seminars')}` },
+                              { id: 'exhibitions', label: `🎨 ${tr('subcategory.exhibitions')}` },
+                              { id: 'meetings', label: `💬 ${tr('subcategory.meetings')}` },
+                              { id: 'buddies', label: `🛵 ${tr('subcategory.buddies')}` }
                             ].filter(item => {
                               // Filter subcategories matching the parent
                               if (l2ParentId === 'housing') return ['entire_place', 'private_suite', 'private_room'].includes(item.id);
@@ -504,23 +506,23 @@ export function SettingsTab(props: AdminTabProps) {
                         <div className="space-y-4 bg-white p-5 rounded-3xl border border-slate-100">
                           <h4 className="font-bold text-gray-850 text-xs sm:text-sm flex items-center gap-1">
                             <Sparkles className="w-4 h-4 text-[#2F7D69]" />
-                            <span>3. Настройки отображения подкатегории</span>
+                            <span>{tr('admin.settings.subcategoryDisplay')}</span>
                           </h4>
                           
                           <div className="space-y-1.5 text-left">
-                            <label className="text-xs font-bold text-gray-600">Название подкатегории:</label>
+                            <label className="text-xs font-bold text-gray-600">{tr('admin.settings.subcategoryName')}</label>
                             <input
                               type="text"
                               value={l2Label}
                               onChange={e => setL2Label(e.target.value)}
                               className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#2F7D69]"
-                              placeholder="Например: Частные Виллы"
+                              placeholder={tr('admin.settings.subcategoryPlaceholder')}
                             />
                           </div>
 
                           {/* Icon Selector Type Toggle tabs */}
                           <div className="space-y-2 select-none">
-                            <label className="text-xs font-bold text-gray-600 block">Тип иконки:</label>
+                            <label className="text-xs font-bold text-gray-600 block">{tr('admin.settings.iconType')}</label>
                             <div className="bg-slate-150 p-1 rounded-xl flex w-64 text-[11px] font-bold">
                               <button
                                 onClick={() => setL2IconType('emoji')}
@@ -536,7 +538,7 @@ export function SettingsTab(props: AdminTabProps) {
                                   l2IconType === 'image' ? 'bg-white text-black shadow-2xs font-extrabold' : 'text-gray-500 hover:text-black'
                                 }`}
                               >
-                                Картинка / Файл
+                                {tr('admin.settings.imageFile')}
                               </button>
                             </div>
                           </div>
@@ -545,19 +547,19 @@ export function SettingsTab(props: AdminTabProps) {
                           {l2IconType === 'emoji' && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-gray-150">
                               <div className="space-y-2 text-left">
-                                <label className="text-xs font-extrabold text-gray-500 block">Эмодзи символ подгруппы:</label>
+                                <label className="text-xs font-extrabold text-gray-500 block">{tr('admin.settings.emojiSymbol')}</label>
                                 <input
                                   type="text"
                                   value={l2Icon}
                                   onChange={e => setL2Icon(e.target.value)}
                                   className="w-full bg-white border border-gray-250 rounded-xl px-3 py-1.5 text-xs font-bold text-center outline-none focus:border-[#2F7D69]"
-                                  placeholder="Эмодзи например: 🛌"
+                                  placeholder={tr('admin.settings.emojiPlaceholder')}
                                 />
-                                <span className="text-[10px] text-gray-400 block leading-tight font-medium">Система автоматически подберет и отобразит высококачественный 3D-ассет!</span>
+                                <span className="text-[10px] text-gray-400 block leading-tight font-medium">{tr('admin.settings.emojiHelp')}</span>
                               </div>
 
                               <div className="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-dashed border-gray-200">
-                                <span className="text-[10px] font-bold text-gray-400 mb-1.5">Текущее эмодзи</span>
+                                <span className="text-[10px] font-bold text-gray-400 mb-1.5">{tr('admin.settings.currentEmoji')}</span>
                                 <div className="text-3.5xl filter hover:scale-[1.12] transition duration-200">
                                   {l2Icon || '🏡'}
                                 </div>
@@ -568,7 +570,7 @@ export function SettingsTab(props: AdminTabProps) {
                           {/* Dynamic Custom Image uploader */}
                           {l2IconType === 'image' && (
                             <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-gray-150">
-                              <label className="text-[11px] font-extrabold text-gray-500 block">Кастомная картинка 1:1 для иконки L2 подгруппы:</label>
+                              <label className="text-[11px] font-extrabold text-gray-500 block">{tr('admin.settings.customL2Image')}</label>
                               
                               <div className="flex flex-col md:flex-row items-center gap-4">
                                 <div className="w-16 h-16 rounded-xl bg-white border border-gray-250 shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm">
@@ -616,7 +618,7 @@ export function SettingsTab(props: AdminTabProps) {
                                   />
                                   <label htmlFor="l2-file-input" className="cursor-pointer space-y-0.5">
                                     <PlusCircle className="w-5 h-5 text-[#2F7D69] mx-auto opacity-75" />
-                                    <span className="text-[10px] font-bold text-gray-700 block">Перетащите сюда или кликните</span>
+                                    <span className="text-[10px] font-bold text-gray-700 block">{tr('admin.settings.dropOrClickShort')}</span>
                                   </label>
                                 </div>
                               </div>
@@ -632,12 +634,12 @@ export function SettingsTab(props: AdminTabProps) {
                               {isMenuSaving ? (
                                 <>
                                   <RefreshCw className="w-4 h-4 animate-spin" />
-                                  <span>Синхронизация...</span>
+                                  <span>{tr('admin.settings.syncing')}</span>
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span>Принять и обновить L2</span>
+                                  <span>{tr('admin.settings.updateL2')}</span>
                                 </>
                               )}
                             </button>

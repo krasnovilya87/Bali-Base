@@ -15,6 +15,31 @@ export interface Coordinates {
   type: 'supermarket' | 'restaurant' | 'gym' | 'sunset' | 'nightclub';
 }
 
+export interface ListingNearbySpot {
+  emoji: string;
+  title: string;
+  desc: string;
+  time?: string;
+  note?: string;
+  position?: LatLng;
+  placeId?: string;
+  rating?: number;
+  route?: ListingNearbyRoute;
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface ListingNearbyRoute {
+  overviewPath: LatLng[];
+  distanceText?: string;
+  durationText?: string;
+  travelMode?: 'DRIVING';
+  updatedAt: string;
+}
+
 export interface Listing {
   id: string;
   ownerId: string;
@@ -26,13 +51,17 @@ export interface Listing {
   description: string;
   district: string; // Seminyak, Canggu, Ubud, Uluwatu, Sanur, Nusa Dua, Kuta, Jimbaran, Amed, Lovina
   address: string;
+  locationCoords?: LatLng;
+  googlePlaceId?: string;
+  placeId?: string;
+  googleReviewsUpdatedAt?: string;
   images: string[];
   rating: number;
   reviewsCount: number;
   reviews: Review[];
   
   // Badges & status
-  isApproved: boolean; // Bali Base Approved
+  isApproved: boolean; // Approved
   isNew: boolean;
   status: 'active' | 'paused' | 'draft' | 'moderation';
   expirationDate?: string;
@@ -59,7 +88,7 @@ export interface Listing {
   bedType?: string;
   bedTypes?: string[];
   roomType?: 'standard' | 'deluxe' | 'super_deluxe' | 'family';
-  kitchenType?: 'basic' | 'equipped' | 'none';
+  kitchenType?: 'basic' | 'equipped' | 'private_basic' | 'private_equipped' | 'none';
   poolType?: 'none' | 'shared' | 'private' | 'infinity';
   internetSpeed?: number; // Mb/s, 0 for none
   bathroomType?: 'standard' | 'modern' | 'designer';
@@ -67,7 +96,7 @@ export interface Listing {
   amenities?: string[]; // AC, cold_AC, smart_tv, washing_machine, parking, workspace, spa
   cleaningFrequency?: 'none' | '3_times_week' | 'once_week' | 'daily';
   viewType?: 'rice_fields' | 'garden' | 'pool' | 'ocean' | 'jungle';
-  extraOptions?: string[]; // pets_allowed, quiet_location, all_bills_included, transfer_included, airport_transfer, breakfast_included, breakfast_paid, nanny, chef
+  extraOptions?: string[]; // pets_allowed, quiet_location, all_bills_included, airport_transfer_included, airport_transfer_paid, breakfast_included, breakfast_paid, nanny, chef
   
   // Construction metrics
   yearBuilt: number | 'other';
@@ -89,6 +118,11 @@ export interface Listing {
   blockedDates?: string[];
   pushedAt?: string;
   reachMultiplier?: number;
+  createdAt?: string;
+  nearbySpots?: ListingNearbySpot[];
+  nearbySpotsUpdatedAt?: string;
+  nearbySpotsStatus?: 'pending' | 'ready' | 'empty' | 'error';
+  nearbySpotsError?: string;
 }
 
 export interface BookingRequest {

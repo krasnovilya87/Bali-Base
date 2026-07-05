@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookingRequest } from '../../types';
+import { useI18n } from '../../i18nContext';
 
 interface BookingRequestControlsProps {
   request: BookingRequest;
@@ -18,6 +19,7 @@ export default function BookingRequestControls({
   onUpdateBooking,
   compact = false
 }: BookingRequestControlsProps) {
+  const { tr } = useI18n();
   const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'paid' | 'deposit'>(
     request.paymentStatus || 'unpaid'
   );
@@ -41,7 +43,7 @@ export default function BookingRequestControls({
         <div className="min-w-0">
           <p className="font-bold text-[#1E293B] truncate">{request.guestName}</p>
           <p className="text-[9.5px] text-gray-400 font-mono">
-            {formatShortDate(request.startDate)} - {formatShortDate(request.endDate)} · {request.totalDays} ночей
+            {formatShortDate(request.startDate)} - {formatShortDate(request.endDate)} · {tr('booking.nights', { count: request.totalDays })}
           </p>
         </div>
         <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
@@ -51,12 +53,12 @@ export default function BookingRequestControls({
               ? 'bg-rose-100 text-rose-800'
               : 'bg-amber-100 text-amber-800'
         }`}>
-          {request.status === 'accepted' ? 'Принято' : request.status === 'declined' ? 'Отклонено' : 'Новая'}
+          {request.status === 'accepted' ? tr('booking.status.accepted') : request.status === 'declined' ? tr('booking.status.declined') : tr('booking.status.new')}
         </span>
       </div>
 
       <div className="flex items-center justify-between gap-2 text-[10px]">
-        <span className="text-gray-500">Сумма</span>
+        <span className="text-gray-500">{tr('booking.total')}</span>
         <span className="font-mono font-bold text-gray-800">
           {convertPrice(request.totalPrice)} {currencySymbol}
         </span>
@@ -66,9 +68,9 @@ export default function BookingRequestControls({
         <div className="pt-2 border-t border-gray-200/70 space-y-2">
           <div className="grid grid-cols-3 gap-1">
             {([
-              ['unpaid', 'Не оплачено'],
-              ['paid', 'Оплачено'],
-              ['deposit', 'Депозит']
+              ['unpaid', tr('booking.payment.unpaid')],
+              ['paid', tr('booking.payment.paid')],
+              ['deposit', tr('booking.payment.deposit')]
             ] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -94,7 +96,7 @@ export default function BookingRequestControls({
 
           {paymentStatus === 'deposit' && (
             <label className="flex items-center gap-2">
-              <span className="text-[9.5px] text-gray-500 shrink-0">Сумма депозита:</span>
+              <span className="text-[9.5px] text-gray-500 shrink-0">{tr('booking.depositAmount')}</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -121,14 +123,14 @@ export default function BookingRequestControls({
               })}
               className="py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition"
             >
-              Подтвердить
+              {tr('booking.accept')}
             </button>
             <button
               type="button"
               onClick={() => onUpdateStatus(request.id, 'declined')}
               className="py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[10px] transition"
             >
-              Отклонить
+              {tr('booking.decline')}
             </button>
           </div>
         </div>

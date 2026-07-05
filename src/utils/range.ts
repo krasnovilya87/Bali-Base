@@ -24,3 +24,14 @@ export const snapRangeValue = (
 
   return progress >= 0.5 ? upper : lower;
 };
+
+export const snapRangeValueToNearest = (
+  value: number,
+  min: number,
+  max: number,
+  step: number
+) => {
+  const clampedValue = Math.max(min, Math.min(max, value));
+  const index = Math.round((clampedValue - min) / step);
+  return Math.max(min, Math.min(max, min + index * step));
+};

@@ -10,6 +10,7 @@ import {
   ListingsTab,
   MessagesTab,
   ModerationTab,
+  PlacesTab,
   SettingsTab,
   UsersTab
 } from './admin-dashboard/AdminTabs';
@@ -103,6 +104,7 @@ export default function AdminDashboard({
             {activeTab === 'listings' && <ListingsTab {...tabProps} />}
             {activeTab === 'moderation' && <ModerationTab {...tabProps} />}
             {activeTab === 'messages' && <MessagesTab {...tabProps} />}
+            {activeTab === 'places' && <PlacesTab showToast={showToast} />}
             {activeTab === 'settings' && <SettingsTab {...tabProps} />}
 
 

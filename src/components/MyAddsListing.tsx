@@ -12,6 +12,7 @@ import CalendarListingModal from './my-adds/CalendarListingModal';
 import DropPriceModal from './my-adds/DropPriceModal';
 import BookingsModal from './my-adds/BookingsModal';
 import AnalyticsModal from './my-adds/AnalyticsModal';
+import { useI18n } from '../i18nContext';
 
 interface MyAddsListingProps {
   listings: Listing[];
@@ -44,9 +45,10 @@ export default function MyAddsListing({
   onEditClick,
   onDeleteListing
 }: MyAddsListingProps) {
+  const { tr } = useI18n();
 
   // Filtration for listings belonging to current user session
-  const ownerListings = listings.filter(item => item.ownerId === 'owner-1' || item.ownerId === 'owner-personal');
+  const ownerListings = listings.filter(item => item.ownerId === 'owner-1' || item.ownerId === 'owner-personal' || item.ownerId === 'owner-direct');
 
   // Sub-modal overlay states
   const [promoteListing, setPromoteListing] = useState<Listing | null>(null);
@@ -62,12 +64,12 @@ export default function MyAddsListing({
   // Helper type emoji labeling
   const getExpirationTimer = (item: Listing) => {
     switch (item.category) {
-      case 'housing': return 'Постоянно (Без лимита)';
-      case 'transport': return '6 месяцев осталось';
-      case 'services': return '3 месяца осталось';
-      case 'ads': return '28 дней осталось';
-      case 'afisha': return 'До завершения ивента';
-      default: return 'Постоянно';
+      case 'housing': return tr('myListings.expiration.housing');
+      case 'transport': return tr('myListings.expiration.transport');
+      case 'services': return tr('myListings.expiration.services');
+      case 'ads': return tr('myListings.expiration.ads');
+      case 'afisha': return tr('myListings.expiration.afisha');
+      default: return tr('myListings.expiration.default');
     }
   };
 
@@ -136,7 +138,7 @@ export default function MyAddsListing({
             </div>
             <div>
               <h2 className="font-display text-[#1E293B] text-base sm:text-lg font-black tracking-tight select-none">
-                Мои объявления: {ownerListings.length}
+                {tr('myListings.title', { count: ownerListings.length })}
               </h2>
             </div>
           </div>
@@ -147,13 +149,13 @@ export default function MyAddsListing({
               className="px-4 py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Создать объявление</span>
+              <span>{tr('myListings.create')}</span>
             </button>
 
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition active:scale-95 shrink-0"
-              title="Закрыть кабинет"
+              title={tr('myListings.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -167,12 +169,12 @@ export default function MyAddsListing({
           {ownerListings.length === 0 ? (
             <div className="pl rounded-2xl p-12 text-center text-gray-400 max-w-md mx-auto mt-6">
               <LayoutGrid className="w-8 h-8 mx-auto text-gray-300 stroke-1 mb-3" />
-              <p className="text-xs font-medium text-gray-500">У вас пока нет активных объявлений</p>
+              <p className="text-xs font-medium text-gray-500">{tr('myListings.empty')}</p>
               <button
                 onClick={onCreateClick}
                 className="mt-4 px-3.5 py-2 bg-[#2F7D69]/10 text-[#2F7D69] text-[11px] font-extrabold rounded-xl hover:bg-[#2F7D69]/20 transition"
               >
-                Создать первое объявление
+                {tr('myListings.createFirst')}
               </button>
             </div>
           ) : (
@@ -209,28 +211,28 @@ export default function MyAddsListing({
                           />
                         </div>
                         {item.status === 'active' ? (
-                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" title="Активно" />
+                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" title={tr('myListings.active')} />
                         ) : (
-                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="На паузе" />
+                          <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title={tr('myListings.paused')} />
                         )}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-                            {item.category === 'housing' ? '🏡 Жилье' : item.category === 'transport' ? '🛵 Транспорт' : '🏷 Услуга'}
+                            {item.category === 'housing' ? tr('myListings.category.housing') : item.category === 'transport' ? tr('myListings.category.transport') : tr('myListings.category.service')}
                           </span>
                           <span className="text-gray-300 text-[10px]">•</span>
                           <span className="text-[10px] font-mono text-gray-500">{item.district}</span>
 
                           {/* Active promotion attributes tags indicators */}
                           {item.isPromoTop && (
-                            <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.2 rounded border border-amber-200">ТОП ✨</span>
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.2 rounded border border-amber-200">TOP ✨</span>
                           )}
                           {item.isPromoPremium && (
                             <span className="text-[9px] bg-orange-100 text-orange-800 font-extrabold px-1.5 py-0.2 rounded border border-orange-200">👑 VIP</span>
                           )}
                           {item.isPromoTurbo && (
-                            <span className="text-[9px] bg-rose-100 text-rose-800 font-extrabold px-1.5 py-0.2 rounded border border-rose-200">⚡ ТУРБО</span>
+                            <span className="text-[9px] bg-rose-100 text-rose-800 font-extrabold px-1.5 py-0.2 rounded border border-rose-200">⚡ TURBO</span>
                           )}
                         </div>
 
@@ -240,7 +242,7 @@ export default function MyAddsListing({
 
                         <p className={`text-[10px] font-mono font-semibold tracking-wide mt-0.5 ${item.status === 'active' ? 'text-[#2F7D69]' : 'text-amber-600'
                           }`}>
-                          Таймер: {getExpirationTimer(item)}
+                          {tr('myListings.timer', { value: getExpirationTimer(item) })}
                         </p>
                       </div>
                     </div>
@@ -248,27 +250,27 @@ export default function MyAddsListing({
                     {/* Compact stats strip right on the card */}
                     <div className="pl flex gap-4 sm:gap-6 font-mono text-center text-xs self-stretch sm:self-auto p-2.5 rounded-xl">
                       <div>
-                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Вьюзы</span>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">{tr('myListings.views')}</span>
                         <span className="font-extrabold text-gray-800 flex items-center gap-0.5 justify-center mt-0.5">
                           <Eye className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           {item.viewsCount}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Клики WA</span>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">{tr('myListings.waClicks')}</span>
                         <span className="font-extrabold text-amber-600 flex items-center gap-0.5 justify-center mt-0.5">
                           <Send className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           {item.clicksCount}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">Конверсия CTR</span>
+                        <span className="text-gray-400 text-[9px] uppercase font-sans font-light block">{tr('myListings.ctr')}</span>
                         <span className="font-extrabold text-blue-600 block mt-0.5">
                           {item.viewsCount > 0 ? ((item.clicksCount / item.viewsCount) * 100).toFixed(1) : '0'}%
                         </span>
                       </div>
                       <div className="flex flex-col items-center justify-center">
-                        <span className="text-emerald-700 text-[9px] uppercase font-sans font-extrabold block">Рейтинг</span>
+                        <span className="text-emerald-700 text-[9px] uppercase font-sans font-extrabold block">{tr('myListings.rating')}</span>
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="font-black text-emerald-800">
                             {(() => {
@@ -288,7 +290,7 @@ export default function MyAddsListing({
                           ? 'bg-rose-50 border-rose-100 text-[#E05A30] hover:bg-rose-100'
                           : 'bg-emerald-50 border-emerald-100 text-emerald-650 hover:bg-emerald-100'
                           }`}
-                        title={item.status === 'active' ? 'Поставить на паузу' : 'Запустить объявление'}
+                        title={item.status === 'active' ? tr('myListings.pause') : tr('myListings.start')}
                       >
                         {item.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                       </button>
@@ -296,7 +298,7 @@ export default function MyAddsListing({
                       <button
                         onClick={() => setListingToDelete(item)}
                         className="p-2 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition active:scale-95 flex items-center justify-center cursor-pointer"
-                        title="Удалить объявление"
+                        title={tr('myListings.delete')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -306,14 +308,14 @@ export default function MyAddsListing({
 
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     <div className="px-3 py-2 rounded-xl bg-[#F4F7F6]/75 border border-slate-200/70">
-                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">За сутки</span>
+                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">{tr('myListings.perDay')}</span>
                       <span className="text-xs font-mono font-black text-[#1E293B]">
                         {convertPrice(item.pricePerDay)} {currencySymbol}
                       </span>
                     </div>
 
                     <div className="px-3 py-2 rounded-xl bg-[#F4F7F6]/75 border border-slate-200/70">
-                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">За месяц</span>
+                      <span className="text-[9px] uppercase tracking-wide text-gray-400 font-bold block">{tr('myListings.perMonth')}</span>
                       <span className="text-xs font-mono font-black text-[#1E293B]">
                         {convertPrice(item.pricePerMonth || item.pricePerDay * 30)} {currencySymbol}
                       </span>
@@ -322,11 +324,11 @@ export default function MyAddsListing({
                     {item.hasDropPrice && item.dropPricePerDay && (
                       <div className="px-3 py-2 rounded-xl bg-[#FF7A50]/10 border border-[#FF7A50]/25">
                         <span className="text-[9px] uppercase tracking-wide text-[#E05A30] font-bold block">
-                          Drop Price · осталось {getDropPriceDaysLeft(item.dropPriceEndsAt)} дн.
+                          Drop Price · {tr('myListings.daysLeftShort', { count: getDropPriceDaysLeft(item.dropPriceEndsAt) })}
                         </span>
                         <span className="text-xs font-mono font-black text-[#FF7A50]">
-                          {convertPrice(item.dropPricePerDay)} {currencySymbol}/сутки
-                          {item.dropPricePerMonth && ` · ${convertPrice(item.dropPricePerMonth)} ${currencySymbol}/месяц`}
+                          {convertPrice(item.dropPricePerDay)} {currencySymbol}{tr('map.pricePerDayShort')}
+                          {item.dropPricePerMonth && ` · ${convertPrice(item.dropPricePerMonth)} ${currencySymbol}${tr('filters.perMonthShort')}`}
                         </span>
                       </div>
                     )}
@@ -342,12 +344,12 @@ export default function MyAddsListing({
                         className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <CalendarIcon className="w-3.5 h-3.5" />
-                        <span>Календарь</span>
+                        <span>{tr('myListings.calendar')}</span>
                       </button>
                     ) : (
                       <div className="pl px-3 py-2 text-gray-400 rounded-xl text-[11px] font-sans font-bold flex items-center justify-center gap-1.5 select-none opacity-50 cursor-not-allowed">
                         <CalendarIcon className="w-3.5 h-3.5" />
-                        <span>Календарь Н/Д</span>
+                        <span>{tr('myListings.calendarNA')}</span>
                       </div>
                     )}
 
@@ -389,7 +391,7 @@ export default function MyAddsListing({
                             style={pendingCount > 0 ? { color: '#FF7A50' } : undefined}
                           />
                           <span style={pendingCount > 0 ? { color: '#FF7A50' } : undefined}>
-                            Заявки {itemBookings.length > 0 ? `(${itemBookings.length})` : ''}
+                            {tr('myListings.requests', { count: itemBookings.length > 0 ? `(${itemBookings.length})` : '' })}
                           </span>
                         </button>
                       );
@@ -401,7 +403,7 @@ export default function MyAddsListing({
                       className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <BarChart3 className="w-3.5 h-3.5" />
-                      <span>Статистика</span>
+                      <span>{tr('myListings.analytics')}</span>
                     </button>
 
                     {/* BUTTON 5: Edit details button */}
@@ -410,7 +412,7 @@ export default function MyAddsListing({
                       className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Settings className="w-3.5 h-3.5" />
-                      <span>Редактировать</span>
+                      <span>{tr('myListings.edit')}</span>
                     </button>
 
                     {/* BUTTON 6: Promote button (🚀 Highlighted, distinctive design) */}
@@ -419,7 +421,7 @@ export default function MyAddsListing({
                       className="pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-3 py-3 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-display font-black active:scale-95 lg:tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Crown className="w-3.5 h-3.5 text-[#FF7A50] fill-[#FF7A50]/20" />
-                      <span>🚀 Продвигать</span>
+                      <span>{tr('myListings.promote')}</span>
                     </button>
 
                   </div>
@@ -498,9 +500,9 @@ export default function MyAddsListing({
                   <Trash2 className="w-6 h-6 animate-pulse" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-display font-black text-sm uppercase text-red-700">Удаление объявления</h3>
+                  <h3 className="font-display font-black text-sm uppercase text-red-700">{tr('myListings.deleteTitle')}</h3>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Вы уверены, что хотите удалить объявление <strong className="text-gray-800">«{listingToDelete.title}»</strong>? Это действие полностью удалит его из поиска Базы и никак не может быть отменено.
+                    {tr('myListings.deleteBody', { title: listingToDelete.title })}
                   </p>
                 </div>
               </div>
@@ -510,7 +512,7 @@ export default function MyAddsListing({
                   onClick={() => setListingToDelete(null)}
                   className="py-2.5 bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center"
                 >
-                  Отмена
+                  {tr('common.cancel')}
                 </button>
                 <button
                   onClick={() => {
@@ -519,7 +521,7 @@ export default function MyAddsListing({
                   }}
                   className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center shadow-xs"
                 >
-                  Да, удалить
+                  {tr('myListings.deleteConfirm')}
                 </button>
               </div>
             </div>
@@ -558,7 +560,7 @@ export default function MyAddsListing({
                 <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                   <div className="flex items-center gap-2">
                     <SlidersHorizontal className="w-5 h-5 text-[#2F7D69]" />
-                    <h3 className="font-display font-black text-sm uppercase">Настройка отображения</h3>
+                    <h3 className="font-display font-black text-sm uppercase">{tr('myListings.displaySettings')}</h3>
                   </div>
                   <button
                     onClick={() => setAdjustListing(null)}
@@ -570,7 +572,7 @@ export default function MyAddsListing({
 
                 <div className="space-y-3.5">
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">Объявление</span>
+                    <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">{tr('myListings.listing')}</span>
                     <p className="text-xs font-bold font-sans text-gray-800 line-clamp-1 mt-0.5">{adjustListing.title}</p>
                   </div>
 
@@ -578,10 +580,10 @@ export default function MyAddsListing({
                   <div className="bg-emerald-50/40 p-4 border border-emerald-100/65 rounded-xl space-y-3">
                     <div className="flex justify-between items-center gap-2">
                       <div>
-                        <span className="text-[10px] font-bold text-emerald-800 uppercase font-mono block">Положение в поиске</span>
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase font-mono block">{tr('myListings.searchPosition')}</span>
                         <div className="text-[13px] font-black text-gray-800 mt-1 flex items-center gap-1.5">
-                          <span>Рейтинг:</span>
-                          <span className="text-[#2F7D69] text-sm font-extrabold">{positionInSimilar} из {totalSimilar}</span>
+                          <span>{tr('myListings.rating')}:</span>
+                          <span className="text-[#2F7D69] text-sm font-extrabold">{tr('myListings.positionOf', { position: positionInSimilar, total: totalSimilar })}</span>
                         </div>
                       </div>
 
@@ -598,18 +600,18 @@ export default function MyAddsListing({
                         className="px-3 py-2 bg-[#2F7D69] hover:bg-[#256353] text-white rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
                       >
                         <Rocket className="w-3.5 h-3.5" />
-                        <span>Поднять (Push)</span>
+                        <span>{tr('myListings.push')}</span>
                       </button>
                     </div>
                     <p className="text-[10.5px] text-emerald-700/80 leading-snug">
-                      Функция мгновенного поднятия (Push) обновляет дату публикации объявления на текущую секунду, возвращая его на лидирующие позиции без изменения основного тарифа.
+                      {tr('myListings.pushInfo')}
                     </p>
                   </div>
 
                   {/* 2. Custom Reach Multiplier Slider */}
                   <div className="bg-gray-50/50 p-4 border border-gray-100 rounded-xl space-y-2.5">
                     <div className="flex justify-between items-center gap-2">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase block font-mono">Множитель охвата аудитории</span>
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block font-mono">{tr('myListings.audienceMultiplier')}</span>
                       <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-mono">
                         {(adjustListing.reachMultiplier || 1.0).toFixed(1)}x
                       </span>
@@ -631,17 +633,17 @@ export default function MyAddsListing({
                     />
 
                     <div className="flex justify-between text-[9px] font-bold text-gray-400 font-mono">
-                      <span>1.0x (Баз)</span>
+                      <span>1.0x ({tr('myListings.base')})</span>
                       <span>1.5x</span>
-                      <span>2.0x (Топ)</span>
+                      <span>2.0x ({tr('myListings.top')})</span>
                       <span>2.5x</span>
-                      <span>3.0x (Макс)</span>
+                      <span>3.0x ({tr('myListings.max')})</span>
                     </div>
                   </div>
 
                   {/* 3. Toggle visual badging formats */}
                   <div className="bg-gray-50/30 p-4 border border-gray-150/40 rounded-xl space-y-3">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase block font-mono tracking-wider mb-1">Визуальные маркеры плашки</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase block font-mono tracking-wider mb-1">{tr('myListings.visualMarkers')}</span>
 
                     <div className="grid grid-cols-2 gap-3.5">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -657,7 +659,7 @@ export default function MyAddsListing({
                         />
                         <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
                           <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-pulse" />
-                          <span>Турбо тариф</span>
+                          <span>{tr('myListings.turboTariff')}</span>
                         </div>
                       </label>
 
@@ -674,7 +676,7 @@ export default function MyAddsListing({
                         />
                         <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
                           <Crown className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                          <span>Премиум рамка</span>
+                          <span>{tr('myListings.premiumFrame')}</span>
                         </div>
                       </label>
 
@@ -691,7 +693,7 @@ export default function MyAddsListing({
                         />
                         <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
                           <Tag className="w-3.5 h-3.5 text-green-650" />
-                          <span>Снижение цены</span>
+                          <span>{tr('myListings.priceDrop')}</span>
                         </div>
                       </label>
 
@@ -708,7 +710,7 @@ export default function MyAddsListing({
                         />
                         <div className="text-[11px] font-medium text-gray-700 flex items-center gap-1">
                           <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                          <span>Новинка</span>
+                          <span>{tr('myListings.newBadge')}</span>
                         </div>
                       </label>
                     </div>
@@ -721,7 +723,7 @@ export default function MyAddsListing({
                     onClick={() => setAdjustListing(null)}
                     className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition cursor-pointer active:scale-95 text-center shadow-xs text-center"
                   >
-                    Готово
+                    {tr('myListings.done')}
                   </button>
                 </div>
               </div>

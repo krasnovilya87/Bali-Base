@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Listing } from '../../../types';
 import { defaultCategoriesList, defaultSubcategoriesMap } from '../defaultMenu';
+import { useI18n } from '../../../i18nContext';
 
 type CategorySourceItem = {
   id: string;
@@ -30,6 +31,7 @@ export const useCategorySteps = ({
   propSubcategoriesMap,
   menuOverrides
 }: UseCategoryStepsParams) => {
+  const { tr } = useI18n();
   const categoriesToUse = (propCategoriesList || defaultCategoriesList) as CategorySourceItem[];
   const subcategoriesMapToUse = propSubcategoriesMap || defaultSubcategoriesMap;
 
@@ -38,10 +40,10 @@ export const useCategorySteps = ({
 
   const categoriesList = useMemo(() => {
     return categoriesToUse.map(cat => {
-      const displayLabel = menuOverrides?.l1?.[cat.id]?.label || cat.label;
+      const displayLabel = tr(`category.${cat.id}.label`);
       const displayIcon = menuOverrides?.l1?.[cat.id]?.icon || cat.icon || '📦';
       const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
-      const displayDesc = cat.desc;
+      const displayDesc = tr(`category.${cat.id}.desc`);
       return {
         id: cat.id,
         label: displayLabel,
@@ -50,12 +52,12 @@ export const useCategorySteps = ({
         desc: displayDesc
       };
     });
-  }, [categoriesToUse, menuOverrides]);
+  }, [categoriesToUse, menuOverrides, tr]);
 
   const subcategories = useMemo(() => {
     const rawSubs = subcategoriesMapToUse[category] || [];
     return rawSubs.map(sub => {
-      const displayLabel = menuOverrides?.l2?.[sub.id]?.label || sub.label;
+      const displayLabel = tr(`subcategory.${sub.id}`);
       const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon || '⭐';
       const displayCustomImage = menuOverrides?.l2?.[sub.id]?.customImage;
       return {
@@ -65,7 +67,7 @@ export const useCategorySteps = ({
         customImage: displayCustomImage
       };
     });
-  }, [category, menuOverrides, subcategoriesMapToUse]);
+  }, [category, menuOverrides, subcategoriesMapToUse, tr]);
 
   const handleSelectCategory = (catId: any) => {
     setCategory(catId);

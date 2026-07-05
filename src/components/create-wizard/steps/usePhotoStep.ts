@@ -1,6 +1,7 @@
 ﻿import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
 import { uploadFileToStorage } from '../../../firebase';
+import { useI18n } from '../../../i18nContext';
 import {
   PHOTO_SLOT_CONFIG,
   PhotoSlotConfig,
@@ -13,14 +14,11 @@ type UsePhotoStepParams = {
 };
 
 export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
+  const { tr } = useI18n();
+
   // STEP 6: Dropzone & ImgBB upload library replica with previews
   const [photoUrls, setPhotoUrls] = useState<string[]>(
-    initialListing?.images?.length
-      ? initialListing.images
-      : [
-          'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&fit=crop&q=80'
-        ]
+    initialListing?.images?.length ? initialListing.images : []
   );
   const [photoSlotAssignments, setPhotoSlotAssignments] = useState<Partial<Record<PhotoSlotId, string[]>>>(() => {
     if (!initialListing?.images?.length) return {};
@@ -225,7 +223,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
         setPhotoUrls(prev => [...prev, base64Url]);
       } catch (readerErr) {
         console.error('Local Base64 fallback failed', readerErr);
-        setUploadError('Не удалось загрузить изображение');
+        setUploadError(tr('wizard.photos.loadImageError'));
       }
     } finally {
       setIsUploading(false);

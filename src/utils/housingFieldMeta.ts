@@ -1,0 +1,467 @@
+import { Listing } from '../types';
+
+export type ListingFieldSection = 'characteristics' | 'amenities';
+export type ListingFieldValueType = 'string' | 'number' | 'boolean' | 'enum' | 'list';
+export type ListingTranslator = (key: string, params?: Record<string, string | number>) => string;
+
+export interface ListingFieldMeta {
+  key: string;
+  label: string;
+  section: ListingFieldSection;
+  group: string;
+  valueType: ListingFieldValueType;
+  icon: string;
+  priority: number;
+}
+
+export interface ListingDisplayField {
+  key: string;
+  icon: string;
+  label: string;
+  value: string;
+}
+
+export interface ListingDisplayAmenity {
+  key: string;
+  name: string;
+  config: {
+    label: string;
+    icon: string;
+  };
+}
+
+export const HOUSING_LISTING_FIELDS: ListingFieldMeta[] = [
+  {
+    key: 'housingType',
+    label: 'Тип объекта',
+    section: 'characteristics',
+    group: 'Объект',
+    valueType: 'enum',
+    icon: 'home',
+    priority: 10
+  },
+  {
+    key: 'distanceToSeaMinutes',
+    label: 'Удаление от моря',
+    section: 'characteristics',
+    group: 'Локация',
+    valueType: 'number',
+    icon: 'compass',
+    priority: 20
+  },
+  {
+    key: 'area',
+    label: 'Площадь',
+    section: 'characteristics',
+    group: 'Объект',
+    valueType: 'number',
+    icon: 'ruler',
+    priority: 30
+  },
+  {
+    key: 'roomsTotal',
+    label: 'Кол. комнат',
+    section: 'characteristics',
+    group: 'Объект',
+    valueType: 'number',
+    icon: 'building',
+    priority: 40
+  },
+  {
+    key: 'interiorStyle',
+    label: 'Интерьер',
+    section: 'characteristics',
+    group: 'Стиль',
+    valueType: 'enum',
+    icon: 'palette',
+    priority: 50
+  },
+  {
+    key: 'densityType',
+    label: 'Плотность комплекса',
+    section: 'characteristics',
+    group: 'Территория',
+    valueType: 'enum',
+    icon: 'leaf',
+    priority: 60
+  },
+  {
+    key: 'territoryType',
+    label: 'Тип территории',
+    section: 'characteristics',
+    group: 'Территория',
+    valueType: 'enum',
+    icon: 'fence',
+    priority: 70
+  },
+  {
+    key: 'poolType',
+    label: 'Бассейн',
+    section: 'characteristics',
+    group: 'Территория',
+    valueType: 'enum',
+    icon: 'pool',
+    priority: 80
+  },
+  {
+    key: 'viewType',
+    label: 'Вид',
+    section: 'characteristics',
+    group: 'Локация',
+    valueType: 'enum',
+    icon: 'view',
+    priority: 90
+  },
+  {
+    key: 'cleaningFrequency',
+    label: 'Уборка',
+    section: 'characteristics',
+    group: 'Сервис',
+    valueType: 'enum',
+    icon: 'cleaning',
+    priority: 100
+  },
+  {
+    key: 'internetSpeed',
+    label: 'Интернет',
+    section: 'amenities',
+    group: 'Комфорт',
+    valueType: 'number',
+    icon: 'wifi',
+    priority: 10
+  },
+  {
+    key: 'bedTypes',
+    label: 'Кровать',
+    section: 'amenities',
+    group: 'Планировка',
+    valueType: 'list',
+    icon: 'bed',
+    priority: 20
+  },
+  {
+    key: 'kitchenType',
+    label: 'Кухня',
+    section: 'amenities',
+    group: 'Планировка',
+    valueType: 'enum',
+    icon: 'kitchen',
+    priority: 30
+  },
+  {
+    key: 'bathroomOptions',
+    label: 'Ванная',
+    section: 'amenities',
+    group: 'Комфорт',
+    valueType: 'list',
+    icon: 'bath',
+    priority: 40
+  },
+  {
+    key: 'amenities',
+    label: 'Удобства и комфорт',
+    section: 'amenities',
+    group: 'Комфорт',
+    valueType: 'list',
+    icon: 'comfort',
+    priority: 50
+  },
+  {
+    key: 'extraOptions',
+    label: 'Преференции',
+    section: 'amenities',
+    group: 'Сервис',
+    valueType: 'list',
+    icon: 'sparkles',
+    priority: 60
+  }
+];
+
+const iconMap: Record<string, string> = {
+  home: '🏘️',
+  compass: '🧭',
+  ruler: '📐',
+  building: '🏢',
+  palette: '🎨',
+  leaf: '🍀',
+  fence: '🏡',
+  pool: '💦',
+  view: '🌅',
+  cleaning: '🧹',
+  wifi: '📶',
+  bed: '🛌',
+  kitchen: '🍳',
+  bath: '🚿',
+  comfort: '🛋️',
+  sparkles: '✨'
+};
+
+const labelMaps = {
+  housingType: {
+    'Privet Villa (must pool)': 'Вилла',
+    'House (no pool)': 'Дом',
+    'Bungalow (standalone unit)': 'Бунгало',
+    'Apartment Complex (privet unit)': 'Апартаменты',
+    'Guesthouse (privet room, shared property)': 'Guesthouse',
+    'Home stay (Host on-site)': 'Homestay',
+    'Hotel (privet room)': 'Hotel'
+  } as Record<string, string>,
+  interiorStyle: {
+    basic: 'Базовый',
+    bali_style: 'Бали Стайл',
+    modern: 'Современный',
+    luxury: 'Роскошный'
+  } as Record<string, string>,
+  densityType: {
+    cozy: 'Уютный, до 4 комнат',
+    medium: 'Средний, 5-10 комнат',
+    large: 'Большой, 10+ комнат'
+  } as Record<string, string>,
+  territoryType: {
+    private: 'Приватная',
+    shared: 'Общая',
+    resort: 'Резорт'
+  } as Record<string, string>,
+  poolType: {
+    none: 'Без бассейна',
+    shared: 'Общий бассейн',
+    private: 'Частный бассейн',
+    infinity: 'Инфинити-бассейн'
+  } as Record<string, string>,
+  viewType: {
+    rice_fields: 'Рисовые поля',
+    garden: 'Сад',
+    pool: 'Бассейн',
+    ocean: 'Океан',
+    jungle: 'Джунгли'
+  } as Record<string, string>,
+  cleaningFrequency: {
+    none: 'Не указана',
+    '3_times_week': '3 раза в неделю',
+    once_week: 'Раз в неделю',
+    daily: 'Ежедневно'
+  } as Record<string, string>,
+  bedTypes: {
+    queen_size: 'Queen size',
+    king_size: 'King size',
+    single_1: '1 односпальная',
+    single_2: '2 односпальные'
+  } as Record<string, string>,
+  kitchenType: {
+    none: 'Без кухни',
+    basic: 'Базовая кухня',
+    equipped: 'Оснащенная кухня',
+    private_basic: 'Базовая, своя кухня',
+    private_equipped: 'Оснащенная, своя кухня'
+  } as Record<string, string>,
+  bathroomOptions: {
+    hot_water: 'Горячая вода',
+    tropical_shower: 'Тропический душ',
+    double_sink: 'Две раковины',
+    bathtub: 'Ванна',
+    garden_view: 'Вид на сад',
+    sauna_hammam: 'Сауна / хаммам'
+  } as Record<string, string>,
+  amenities: {
+    AC: 'AC',
+    cold_AC: 'Холодный кондиционер',
+    hair_dryer: 'Фен',
+    washing_machine: 'Стиральная машина',
+    smart_tv: 'Smart TV',
+    workspace: 'Рабочее пространство',
+    yoga: 'Зона йоги',
+    room_fridge: 'Холодильник в номере',
+    water_cooler: 'Кулер',
+    parking: 'Парковка для машины',
+    'Без плесени и запаха': 'Без плесени и запаха',
+    'Идеальная сантехника': 'Исправная сантехника'
+  } as Record<string, string>,
+  extraOptions: {
+    airport_transfer_included: 'Трансфер включен',
+    airport_transfer_paid: 'Трансфер за доп. плату',
+    transfer_included: 'Трансфер включен',
+    airport_transfer: 'Трансфер за доп. плату',
+    breakfast_included: 'Завтрак включен',
+    breakfast_paid: 'Завтрак за доп. плату',
+    pets_allowed: 'С питомцами',
+    quiet_location: 'Тишина',
+    all_bills_included: 'Bills включены',
+    nanny: 'Няня',
+    chef: 'Личный шеф'
+  } as Record<string, string>
+};
+
+const optionIconMaps: Record<string, Record<string, string>> = {
+  bedTypes: {
+    queen_size: '🛏️',
+    king_size: '👑',
+    single_1: '🧸',
+    single_2: '🛌'
+  },
+  bathroomOptions: {
+    hot_water: '🔥',
+    tropical_shower: '🌴',
+    double_sink: '🚰',
+    bathtub: '🛁',
+    garden_view: '🪴',
+    sauna_hammam: '🧖'
+  },
+  amenities: {
+    AC: '❄️',
+    cold_AC: '🥶',
+    hair_dryer: '💨',
+    washing_machine: '👕',
+    smart_tv: '📺',
+    workspace: '💻',
+    yoga: '🧘',
+    room_fridge: '🧊',
+    water_cooler: '💧',
+    parking: '🚗',
+    'Без плесени и запаха': '🧼',
+    'Идеальная сантехника': '🚿'
+  },
+  extraOptions: {
+    airport_transfer_included: '✈️',
+    airport_transfer_paid: '🚕',
+    transfer_included: '✈️',
+    airport_transfer: '🚕',
+    breakfast_included: '☕',
+    breakfast_paid: '🥐',
+    pets_allowed: '🐾',
+    quiet_location: '🔕',
+    all_bills_included: '⚡',
+    nanny: '🧸',
+    chef: '👨‍🍳'
+  }
+};
+
+const formatToken = (value: string, map?: Record<string, string>, fieldKey?: string, tr?: ListingTranslator) => {
+  const key = fieldKey ? `details.option.${fieldKey}.${value}` : '';
+  const translated = key && tr ? tr(key) : '';
+  return translated && translated !== key ? translated : map?.[value] || value.replace(/_/g, ' ');
+};
+
+const formatList = (values: string[] | undefined, map?: Record<string, string>, fieldKey?: string, tr?: ListingTranslator) =>
+  (values || []).map(value => formatToken(value, map, fieldKey, tr)).filter(Boolean).join(', ');
+
+const getListValues = (listing: Listing, key: string): string[] => {
+  switch (key) {
+    case 'bedTypes':
+      return listing.bedTypes?.length ? listing.bedTypes : listing.bedType ? [listing.bedType] : [];
+    case 'bathroomOptions':
+      return listing.bathroomOptions || [];
+    case 'amenities':
+      return listing.amenities || [];
+    case 'extraOptions':
+      return listing.extraOptions || [];
+    default:
+      return [];
+  }
+};
+
+const getLabelMap = (key: string): Record<string, string> | undefined =>
+  key in labelMaps ? labelMaps[key as keyof typeof labelMaps] : undefined;
+
+const buildHousingListItems = (listing: Listing, field: ListingFieldMeta, tr?: ListingTranslator): ListingDisplayAmenity[] =>
+  getListValues(listing, field.key).map((value, index) => ({
+    key: `${field.key}-${value}-${index}`,
+    name: value,
+    config: {
+      icon: optionIconMaps[field.key]?.[value] || iconMap[field.icon] || field.icon,
+      label: field.key === 'bedTypes'
+        ? `${tr ? tr('details.bedPrefix') : 'Bed'}\n${formatToken(value, getLabelMap(field.key), field.key, tr)}`
+        : formatToken(value, getLabelMap(field.key), field.key, tr)
+    }
+  }));
+
+const isApartmentListing = (listing: Listing) =>
+  listing.housingType === 'Apartment Complex (privet unit)' || (listing.housingType || '').toLowerCase().includes('apartment');
+
+const formatHousingFieldValue = (listing: Listing, field: ListingFieldMeta, tr?: ListingTranslator): string | undefined => {
+  switch (field.key) {
+    case 'housingType':
+      return listing.housingType ? formatToken(listing.housingType, labelMaps.housingType, field.key, tr) : undefined;
+    case 'distanceToSeaMinutes':
+      return listing.distanceToSeaMinutes !== undefined
+        ? (tr ? tr('details.minutes', { count: listing.distanceToSeaMinutes }) : `${listing.distanceToSeaMinutes} min`)
+        : undefined;
+    case 'area':
+      return listing.area ? (tr ? tr('details.areaSqm', { count: listing.area }) : `${listing.area} m²`) : undefined;
+    case 'roomsTotal':
+      if (listing.subCategory === 'private_room' || isApartmentListing(listing)) return undefined;
+      return listing.roomsTotal
+        ? (listing.roomsTotal >= 9
+          ? (tr ? tr('details.roomsPlus') : '9+ rooms')
+          : (tr ? tr('details.roomsShort', { count: listing.roomsTotal }) : `${listing.roomsTotal} rooms`))
+        : undefined;
+    case 'interiorStyle':
+      return listing.interiorStyle ? formatToken(listing.interiorStyle, labelMaps.interiorStyle, field.key, tr) : undefined;
+    case 'densityType':
+      return listing.densityType ? formatToken(listing.densityType, labelMaps.densityType, field.key, tr) : undefined;
+    case 'territoryType':
+      return listing.territoryType ? formatToken(listing.territoryType, labelMaps.territoryType, field.key, tr) : undefined;
+    case 'poolType':
+      return listing.poolType ? formatToken(listing.poolType, labelMaps.poolType, field.key, tr) : undefined;
+    case 'viewType':
+      return listing.viewType ? formatToken(listing.viewType, labelMaps.viewType, field.key, tr) : undefined;
+    case 'cleaningFrequency':
+      return listing.cleaningFrequency && listing.cleaningFrequency !== 'none'
+        ? formatToken(listing.cleaningFrequency, labelMaps.cleaningFrequency, field.key, tr)
+        : undefined;
+    case 'internetSpeed':
+      return listing.internetSpeed !== undefined
+        ? (listing.internetSpeed
+          ? (tr ? tr('details.mbps', { count: listing.internetSpeed }) : `${listing.internetSpeed} Mbps`)
+          : (tr ? tr('details.noWifi') : 'No WiFi'))
+        : undefined;
+    case 'bedTypes':
+      return formatList(listing.bedTypes?.length ? listing.bedTypes : listing.bedType ? [listing.bedType] : [], labelMaps.bedTypes, field.key, tr);
+    case 'kitchenType':
+      return listing.kitchenType ? formatToken(listing.kitchenType, labelMaps.kitchenType, field.key, tr) : undefined;
+    case 'bathroomOptions':
+      return formatList(listing.bathroomOptions, labelMaps.bathroomOptions, field.key, tr);
+    case 'amenities':
+      return formatList(listing.amenities, labelMaps.amenities, field.key, tr);
+    case 'extraOptions':
+      return formatList(listing.extraOptions, labelMaps.extraOptions, field.key, tr);
+    default:
+      return undefined;
+  }
+};
+
+const housingFieldsBySection = (section: ListingFieldSection) =>
+  HOUSING_LISTING_FIELDS
+    .filter(field => field.section === section)
+    .sort((a, b) => a.priority - b.priority);
+
+export const buildHousingCharacteristics = (listing: Listing, tr?: ListingTranslator): ListingDisplayField[] =>
+  housingFieldsBySection('characteristics')
+    .map(field => ({
+      key: field.key,
+      icon: iconMap[field.icon] || field.icon,
+      label: tr ? tr(`details.field.${field.key}`) : field.label,
+      value: formatHousingFieldValue(listing, field, tr)
+    }))
+    .filter((field): field is ListingDisplayField => Boolean(field.value));
+
+export const buildHousingAmenities = (listing: Listing, tr?: ListingTranslator): ListingDisplayAmenity[] =>
+  housingFieldsBySection('amenities')
+    .flatMap(field => {
+      if (field.valueType === 'list') {
+        return buildHousingListItems(listing, field, tr);
+      }
+
+      const value = formatHousingFieldValue(listing, field, tr);
+      return value
+        ? [{
+            key: field.key,
+            name: field.key,
+            config: {
+              icon: iconMap[field.icon] || field.icon,
+              label: field.key === 'internetSpeed'
+                ? `${tr ? tr('details.field.internetSpeed') : 'Internet'}\n${value}`
+                : value
+            }
+          }]
+        : [];
+    });

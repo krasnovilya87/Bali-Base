@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { calculateGraphDailyPrice, calculateGraphTotalPrice } from '../../../utils/pricing';
 
 type PricingGraphProps = {
   pricePerDay: number;
@@ -35,20 +36,12 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
     const basePriceMonth = pricePerMonth
       ? pricePerMonth * (1 - percent / 100)
       : pricePerDay * 0.55 * 30 * (1 - percent / 100);
-    const baseMonthlyDaily = basePriceMonth / 30;
 
-    if (day < 8) return Math.round(basePriceDay / 10000) * 10000;
-    if (day >= 30) return Math.round(baseMonthlyDaily / 10000) * 10000;
-
-    const diff = basePriceDay - baseMonthlyDaily;
-    let stepPct = 0.1;
-    if (day >= 8 && day <= 9) stepPct = 0.15;
-    else if (day >= 10 && day <= 14) stepPct = 0.30;
-    else if (day >= 15 && day <= 19) stepPct = 0.45;
-    else if (day >= 20 && day <= 24) stepPct = 0.60;
-    else if (day >= 25 && day <= 29) stepPct = 0.75;
-
-    return Math.round((basePriceDay - diff * stepPct) / 10000) * 10000;
+    return calculateGraphDailyPrice({
+      days: day,
+      pricePerDay: basePriceDay,
+      pricePerMonth: basePriceMonth
+    });
   };
 
   const totalRepresentedDays = 34;
@@ -104,8 +97,21 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
   const fillOrangeString = `${pathOrange} L ${getXCoords(30)} ${zeroY} L ${getXCoords(7)} ${zeroY} Z`;
   const fillGreenString = `${pathGreen} L ${getXCoords(totalRepresentedDays)} ${zeroY} L ${getXCoords(30)} ${zeroY} Z`;
 
+  const activeBasePriceDay = pricePerDay * (1 - selectedDiscountPercent / 100);
+  const activeBasePriceMonth = pricePerMonth
+    ? pricePerMonth * (1 - selectedDiscountPercent / 100)
+    : pricePerDay * 0.55 * 30 * (1 - selectedDiscountPercent / 100);
   const activeDailyPrice = getPriceForDayNum(interactiveDays, selectedDiscountPercent);
-  const activeTotalPrice = interactiveDays * activeDailyPrice;
+  const activeTotalPrice = calculateGraphTotalPrice({
+    days: interactiveDays,
+    pricePerDay: activeBasePriceDay,
+    pricePerMonth: activeBasePriceMonth
+  });
+  const activeBaseTotalPrice = activeBasePriceDay * interactiveDays;
+  const graphDiscountPercent = activeBaseTotalPrice > activeTotalPrice
+    ? Math.round((1 - activeTotalPrice / activeBaseTotalPrice) * 100)
+    : 0;
+  const tooltipDaysLabel = `${interactiveDays} ${interactiveDays === 1 ? '\u0434\u0435\u043d\u044c' : '\u0434\u043d\u0435\u0439'}`;
 
   const priceTickStep = 100000;
   const startTick = Math.ceil(minPrice / priceTickStep) * priceTickStep;
@@ -150,7 +156,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
 
       <div className="relative pt-2">
         <div
-          className="absolute bg-white px-2.5 py-2 rounded-2xl shadow-xl border border-[#E5E7EB] text-left pointer-events-none z-20 flex flex-col space-y-1 w-[150px]"
+          className="absolute bg-white px-2.5 py-2 rounded-2xl shadow-xl border border-[#E5E7EB] text-left pointer-events-none z-20 flex flex-col space-y-1 w-[170px]"
           style={{
             left: `${(getXCoords(interactiveDays) / svgWidth) * 100}%`,
             top: `${(getYCoords(activeDailyPrice) / svgHeight) * 100}%`,
@@ -159,27 +165,29 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
           }}
         >
           <div className="text-[10px] font-bold text-[#1E293B] flex items-center justify-between gap-1">
-            <span>{formatDaysRussian(interactiveDays)}</span>
-            {selectedDiscountPercent > 0 && (
-              <span className="text-[8px] font-black bg-[#FF7A50]/15 text-[#FF7A50] px-1 rounded">
-                -{selectedDiscountPercent}%
-              </span>
-            )}
+            <span>{tooltipDaysLabel}</span>
           </div>
 
           <div className="flex items-center justify-between text-[9px] font-normal text-[#1E293B]/70">
-            <span>в день:</span>
+            <span>{'\u0446\u0435\u043d\u0430 \u0437\u0430 \u0434\u0435\u043d\u044c:'}</span>
             <span className="font-mono text-[9px] font-bold text-[#1E293B]">
               {formatValue(activeDailyPrice)}
             </span>
           </div>
 
+          {graphDiscountPercent > 0 && (
+            <div className="flex items-center justify-between text-[9px] font-normal text-[#1E293B]/70">
+              <span>{'\u0441\u043a\u0438\u0434\u043a\u0430:'}</span>
+              <span className="font-mono text-[9px] font-bold text-[#2F7D69]">-{graphDiscountPercent}%</span>
+            </div>
+          )}
+
           <div className="border-t border-gray-100 my-0.5" />
 
           <div className="flex items-center justify-between text-[10px] font-bold text-[#1E293B]">
-            <span className="text-[#FF7A50]">Итого:</span>
+            <span className="text-[#FF7A50]">{'\u0438\u0442\u043e\u0433\u043e \u0446\u0435\u043d\u0430:'}</span>
             <span className="font-mono text-[#FF7A50]">
-              {formatValue(activeTotalPrice)} IDR
+              {formatValue(activeTotalPrice)}
             </span>
           </div>
 

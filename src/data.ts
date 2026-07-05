@@ -30,7 +30,7 @@ export const MOCK_REVIEWS: Review[] = [
     rating: 4.8,
     date: '2026-05-20',
     text: 'Wayan was an incredible host. The location in Canggu is close to the beach but very quiet. The workspace was perfect for remote work.',
-    cleanlinessLabels: ['Bali Base Approved']
+    cleanlinessLabels: ['Approved']
   },
   {
     id: 'rev-3',
@@ -553,43 +553,89 @@ export const MOCK_GUIDES = [
   }
 ];
 
-// Helper to load current state from localStorage or initialize if missing
+const LEGACY_LISTINGS_CACHE_KEY = 'bali_base_listings';
+const LEGACY_BOOKINGS_CACHE_KEY = 'bali_base_bookings';
+const STATIC_LISTINGS_CACHE_KEY = 'bali_base_static_listings_cache';
+const DELETED_LISTING_IDS_KEY = 'bali_base_deleted_listing_ids';
+
+const DYNAMIC_LISTING_FIELDS = [
+  'status',
+  'expirationDate',
+  'pricePerDay',
+  'pricePerMonth',
+  'bookingComPrice',
+  'competitorPlatform',
+  'competitorUrl',
+  'hasDropPrice',
+  'dropPricePerDay',
+  'dropPricePerMonth',
+  'dropPriceEndsAt',
+  'blockedDates',
+  'isApproved',
+  'isNew',
+  'rating',
+  'reviewsCount',
+  'reviews',
+  'clicksCount',
+  'viewsCount',
+  'isPromoTop',
+  'isPromoPremium',
+  'isPromoTurbo',
+  'pushedAt',
+  'reachMultiplier',
+  'googleReviewsUpdatedAt',
+  'nearbySpots',
+  'nearbySpotsUpdatedAt',
+  'nearbySpotsStatus',
+  'nearbySpotsError'
+] as const;
+
+const stripDynamicListingFields = (listing: Listing) => {
+  const staticListing: Record<string, unknown> = { ...listing };
+  DYNAMIC_LISTING_FIELDS.forEach(field => {
+    delete staticListing[field];
+  });
+  return staticListing;
+};
+
+const readDeletedListingIds = () => {
+  if (typeof window === 'undefined') return new Set<string>();
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DELETED_LISTING_IDS_KEY) || '[]') as string[];
+    return new Set(parsed);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+export const filterDeletedListings = (listings: Listing[]) => {
+  const deletedIds = readDeletedListingIds();
+  if (deletedIds.size === 0) return listings;
+  return listings.filter(listing => !deletedIds.has(listing.id));
+};
+
+export const rememberDeletedListingId = (listingId: string) => {
+  if (typeof window === 'undefined') return;
+
+  const deletedIds = readDeletedListingIds();
+  deletedIds.add(listingId);
+  localStorage.setItem(DELETED_LISTING_IDS_KEY, JSON.stringify(Array.from(deletedIds)));
+};
+
+// Helper to load startup state. Dynamic listing data is server-owned and must not be restored from localStorage.
 export const getStoredData = () => {
   if (typeof window === 'undefined') return { listings: [], bookings: [] };
-  
-  const savedListings = localStorage.getItem('bali_base_listings');
-  const savedBookings = localStorage.getItem('bali_base_bookings');
-  
-  let listings: Listing[] = [];
-  let bookings: BookingRequest[] = [];
-  
-  if (savedListings) {
-    try {
-      listings = JSON.parse(savedListings);
-    } catch {
-      listings = [...MOCK_HOUSING_LISTINGS, ...MOCK_OTHER_LISTINGS];
-    }
-  } else {
-    listings = [...MOCK_HOUSING_LISTINGS, ...MOCK_OTHER_LISTINGS];
-    localStorage.setItem('bali_base_listings', JSON.stringify(listings));
-  }
-  
-  if (savedBookings) {
-    try {
-      bookings = JSON.parse(savedBookings);
-    } catch {
-      bookings = MOCK_BOOKINGS;
-    }
-  } else {
-    bookings = MOCK_BOOKINGS;
-    localStorage.setItem('bali_base_bookings', JSON.stringify(bookings));
-  }
-  
-  return { listings, bookings };
+
+  localStorage.removeItem(LEGACY_LISTINGS_CACHE_KEY);
+  localStorage.removeItem(LEGACY_BOOKINGS_CACHE_KEY);
+
+  return { listings: [], bookings: [] };
 };
 
 export const saveStoredData = (listings: Listing[], bookings: BookingRequest[]) => {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('bali_base_listings', JSON.stringify(listings));
-  localStorage.setItem('bali_base_bookings', JSON.stringify(bookings));
+  localStorage.removeItem(LEGACY_LISTINGS_CACHE_KEY);
+  localStorage.removeItem(LEGACY_BOOKINGS_CACHE_KEY);
+  localStorage.setItem(STATIC_LISTINGS_CACHE_KEY, JSON.stringify(listings.map(stripDynamicListingFields)));
 };

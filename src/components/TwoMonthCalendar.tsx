@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useI18n } from '../i18nContext';
 
 interface TwoMonthCalendarProps {
   checkInDate: string;
@@ -18,6 +19,7 @@ export default function TwoMonthCalendar({
   singleDateMode = false,
   modalPlacement = false
 }: TwoMonthCalendarProps) {
+  const { language, tr } = useI18n();
   // Anchored dynamically to current local system date
   const today = new Date();
   const initialBaseDate = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -52,12 +54,17 @@ export default function TwoMonthCalendar({
   const getMonthlyDates = () => {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const nextMonth = new Date(tomorrow);
-    nextMonth.setMonth(tomorrow.getMonth() + 1);
     return {
       checkIn: toStr(tomorrow),
-      checkOut: toStr(nextMonth)
+      checkOut: toStr(addOneCalendarMonth(tomorrow))
     };
+  };
+
+  const addOneCalendarMonth = (date: Date) => {
+    const targetYear = date.getMonth() === 11 ? date.getFullYear() + 1 : date.getFullYear();
+    const targetMonth = (date.getMonth() + 1) % 12;
+    const targetMonthDays = new Date(targetYear, targetMonth + 1, 0).getDate();
+    return new Date(targetYear, targetMonth, Math.min(date.getDate(), targetMonthDays));
   };
 
   const defaultMonthly = getMonthlyDates();
@@ -113,12 +120,23 @@ export default function TwoMonthCalendar({
     }
   };
 
-  const RUSSIAN_MONTHS = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-  ];
+  const localeByLanguage = {
+    EN: 'en-US',
+    ID: 'id-ID',
+    RU: 'ru-RU',
+    FR: 'fr-FR',
+    DE: 'de-DE'
+  } as const;
 
-  const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const WEEKDAYS = [
+    tr('calendar.monday'),
+    tr('calendar.tuesday'),
+    tr('calendar.wednesday'),
+    tr('calendar.thursday'),
+    tr('calendar.friday'),
+    tr('calendar.saturday'),
+    tr('calendar.sunday')
+  ];
 
   // Months to display (Base Month and Next Month)
   const month1 = new Date(baseMonth.getFullYear(), baseMonth.getMonth(), 1);
@@ -179,6 +197,12 @@ export default function TwoMonthCalendar({
       return;
     }
 
+    if (bookingMode === 'monthly') {
+      setLocalCheckIn(dateStr);
+      setLocalCheckOut(toStr(addOneCalendarMonth(fullDate)));
+      return;
+    }
+
     if (!localCheckIn || (localCheckIn && localCheckOut)) {
       setLocalCheckIn(dateStr);
       setLocalCheckOut('');
@@ -206,7 +230,7 @@ export default function TwoMonthCalendar({
     dateStr: string,
     fullDate: Date
   ) => {
-    if (singleDateMode || fullDate < today || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (singleDateMode || bookingMode === 'monthly' || fullDate < today || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragMovedRef.current = false;
@@ -272,7 +296,10 @@ export default function TwoMonthCalendar({
 
   const renderMonthGrid = (targetMonth: Date) => {
     const days = generateMonthDays(targetMonth);
-    const title = `${RUSSIAN_MONTHS[targetMonth.getMonth()]} ${targetMonth.getFullYear()}`;
+    const title = targetMonth.toLocaleDateString(localeByLanguage[language], {
+      month: 'long',
+      year: 'numeric'
+    });
 
     return (
       <div className="flex-1 min-w-[240px]">
@@ -350,12 +377,12 @@ export default function TwoMonthCalendar({
                 <button
                   type="button"
                   disabled={isPast}
-                  onClick={singleDateMode ? (e) => handleDayClick(e, dateStr, fullDate) : undefined}
+                  onClick={(singleDateMode || bookingMode === 'monthly') ? (e) => handleDayClick(e, dateStr, fullDate) : undefined}
                   onPointerDown={(event) => handleDayPointerDown(event, dateStr, fullDate)}
                   onPointerMove={handleDayPointerMove}
                   onPointerUp={(event) => handleDayPointerUp(event, dateStr, fullDate)}
                   onPointerCancel={resetDrag}
-                  style={{ touchAction: singleDateMode ? 'auto' : 'none' }}
+                  style={{ touchAction: (singleDateMode || bookingMode === 'monthly') ? 'auto' : 'none' }}
                   className={cellClass}
                 >
                   {day}
@@ -386,7 +413,7 @@ export default function TwoMonthCalendar({
             onClose();
           }}
           className="absolute top-4 right-4 p-1 hover:bg-red-50 hover:text-red-500 rounded-full transition active:scale-95 sm:hidden z-30"
-          title="Закрыть"
+          title={tr('calendar.close')}
         >
           <X className="w-5 h-5 text-gray-400" />
         </button>
@@ -408,27 +435,16 @@ export default function TwoMonthCalendar({
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            Посуточно
+            {tr('calendar.daily')}
           </button>
           <button
             type="button"
             onClick={() => {
               setBookingMode('monthly');
               setBaseMonth(initialBaseDate); // ensure visible month is showing the selected dates
-              const { checkIn, checkOut } = getMonthlyDates();
-              setLocalCheckIn(checkIn);
-              setLocalCheckOut(checkOut);
-              
-              // Sync selectedMonths with the default range
-              const start = new Date(checkIn);
-              const end = new Date(checkOut);
-              const initialMonths = [];
-              let current = new Date(start.getFullYear(), start.getMonth(), 1);
-              while (current < end) {
-                initialMonths.push(toStr(current));
-                current.setMonth(current.getMonth() + 1);
-              }
-              setSelectedMonths(initialMonths);
+              setLocalCheckIn('');
+              setLocalCheckOut('');
+              setSelectedMonths([]);
             }}
             className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all outline-none focus:outline-none border-0 ${
               bookingMode === 'monthly'
@@ -436,13 +452,13 @@ export default function TwoMonthCalendar({
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            Помесячно
+            {tr('calendar.monthly')}
           </button>
         </div>
         )}
         {singleDateMode && (
           <>
-            <h3 className="text-center text-sm font-bold text-gray-950">До какого числа действует скидка</h3>
+            <h3 className="text-center text-sm font-bold text-gray-950">{tr('calendar.discountUntil')}</h3>
             <button
               type="button"
               onClick={(e) => {
@@ -450,7 +466,7 @@ export default function TwoMonthCalendar({
                 onClose();
               }}
               className="absolute top-4 right-4 p-1 hover:bg-red-50 hover:text-red-500 rounded-full transition active:scale-95 z-30"
-              title="Закрыть"
+              title={tr('calendar.close')}
             >
               <X className="w-5 h-5 text-gray-400" />
             </button>
@@ -460,49 +476,18 @@ export default function TwoMonthCalendar({
 
       {/* Middle Body Section */}
       <div className="bg-[#F4F7F6] p-5 overflow-y-auto sm:overflow-visible flex-1">
-        {!singleDateMode && bookingMode === 'monthly' ? (
-          <div className="grid grid-cols-4 gap-2 mb-2 w-full">
-            {getFourMonths().map((mDate) => {
-              const selected = isMonthSelected(mDate);
-              const mName = RUSSIAN_MONTHS[mDate.getMonth()];
-              
-              return (
-                <button
-                  key={mDate.toISOString()}
-                  type="button"
-                  onClick={(e) => handleMonthClick(e, mDate)}
-                  className={`flex-1 flex flex-col items-center justify-center p-2 rounded-2xl select-none transition-all duration-200 aspect-square ${
-                    selected
-                      ? 'pl selected interactive scale-102'
-                      : 'pl interactive text-[#1E293B]'
-                  }`}
-                >
-                  <svg 
-                    className={`w-5 h-5 mb-2.5 transition-colors duration-200 ${
-                      selected ? 'text-[#FF7A50]' : 'text-gray-400'
-                    }`} 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                  </svg>
-                  <span className={`text-[13px] sm:text-sm text-center font-semibold ${selected ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>
-                    {mName}
-                  </span>
-                </button>
-              );
-            })}
+        {!singleDateMode && bookingMode === 'monthly' && !localCheckIn && (
+          <div className="mb-3 text-center text-xs font-bold text-[#2F7D69] bg-[#2F7D69]/10 rounded-xl px-3 py-2">
+            {tr('calendar.selectCheckIn')}
           </div>
-        ) : (
+        )}
           <div className="flex flex-col sm:flex-row gap-6 relative">
             {/* Navigation arrows aligned inline with month titles */}
             <button
               type="button"
               onClick={handlePrevMonth}
               className="absolute left-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
-              title="Предыдущий месяц"
+              title={tr('calendar.prevMonth')}
             >
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
@@ -510,7 +495,7 @@ export default function TwoMonthCalendar({
               type="button"
               onClick={handleNextMonth}
               className="absolute right-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
-              title="Следующий месяц"
+              title={tr('calendar.nextMonth')}
             >
               <ChevronRight className="w-5 h-5 text-gray-600" />
             </button>
@@ -519,24 +504,24 @@ export default function TwoMonthCalendar({
             <div className="hidden sm:block w-[1px] bg-gray-200/50 self-stretch" />
             {renderMonthGrid(month2)}
           </div>
-        )}
       </div>
 
       {/* Bottom Footer Section */}
       <div className="bg-[#EAEAEC] p-5 pb-9 sm:pb-5 border-t border-[#D1D5DB]/30 mt-auto shrink-0">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          {bookingMode !== 'monthly' && (
             <div className="text-xs">
               {singleDateMode ? (
                 localCheckIn
                   ? (
                     <span className="font-extrabold text-gray-950">
-                      Скидка на {Math.max(1, Math.ceil(
+                      {tr('calendar.discountFor', { days: Math.max(1, Math.ceil(
                         (new Date(`${localCheckIn}T23:59:59`).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                      ))} дней
+                      )) })}
                     </span>
                   )
-                  : <span className="text-gray-400 font-bold">Дата не выбрана</span>
+                  : <span className="text-gray-400 font-bold">{tr('calendar.noDateSelected')}</span>
+              ) : bookingMode === 'monthly' && !localCheckIn ? (
+                <span className="text-gray-400 font-bold">{tr('calendar.selectCheckIn')}</span>
               ) : localCheckIn && localCheckOut ? (
                 (() => {
                   const start = new Date(localCheckIn);
@@ -545,6 +530,7 @@ export default function TwoMonthCalendar({
                   const count = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                   
                   const pluralizeDays = (n: number) => {
+                    if (language !== 'RU') return n === 1 ? tr('listing.day') : tr('listing.days');
                     const mod10 = n % 10;
                     const mod100 = n % 100;
                     if (mod100 >= 11 && mod100 <= 19) return 'дней';
@@ -555,25 +541,24 @@ export default function TwoMonthCalendar({
                   
                   return (
                     <span className="font-extrabold text-gray-950">
-                      Итого: {count} {pluralizeDays(count)}
+                      {tr('calendar.total', { count, days: pluralizeDays(count) })}
                     </span>
                   );
                 })()
               ) : localCheckIn ? (
-                <span className="text-gray-400 font-bold">Выберите дату выезда</span>
+                <span className="text-gray-400 font-bold">{tr('calendar.selectCheckOut')}</span>
               ) : (
-                <span className="text-gray-400 font-bold">Даты не выбраны</span>
+                <span className="text-gray-400 font-bold">{tr('calendar.selectDates')}</span>
               )}
             </div>
-          )}
 
-          <div className={`flex items-center gap-2 ${bookingMode === 'monthly' ? 'w-full justify-end' : ''}`}>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleClear}
               className="px-3 py-1.5 text-xs text-gray-500 hover:text-rose-600 font-bold rounded-lg transition"
             >
-              Сбросить
+              {tr('common.reset')}
             </button>
             <button
               type="button"
@@ -581,7 +566,7 @@ export default function TwoMonthCalendar({
               disabled={!localCheckIn || (!singleDateMode && !localCheckOut)}
               className="px-4 py-1.5 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-xs font-bold rounded-lg transition active:scale-95 shadow-sm"
             >
-              Применить
+              {tr('common.apply')}
             </button>
           </div>
         </div>

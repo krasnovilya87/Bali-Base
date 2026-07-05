@@ -83,6 +83,36 @@
   animation: var(--animate-scale-up);
 }
 
+.cover-swipe-hand {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 640px) and (max-width: 1279px) {
+  .cover-swipe-hand {
+    width: 86px;
+    height: 86px;
+  }
+}
+
+.cover-swipe-lottie {
+  width: 72px;
+  height: 72px;
+  -webkit-filter: brightness(0) invert(1) contrast(1.18) drop-shadow(0 0 12px rgba(255, 255, 255, 0.35));
+  filter: brightness(0) invert(1) contrast(1.18) drop-shadow(0 0 12px rgba(255, 255, 255, 0.35));
+  opacity: 0.96;
+}
+
+@media (min-width: 640px) {
+  .cover-swipe-lottie {
+    width: 86px;
+    height: 86px;
+  }
+}
+
 /* Optimize custom range inputs theme styling */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -167,14 +197,65 @@ body {
 /* Ensure smooth styling for inputs and selects in the light theme */
 select {
   border-color: #E5E7EB !important;
+  border-radius: 1rem !important;
   color: var(--color-text-dark) !important;
   background-color: #ffffff !important;
+  background-clip: padding-box;
+  min-height: 2.5rem;
+  padding: 0.625rem 2.25rem 0.625rem 1rem;
+  font-family: var(--font-sans);
+  outline: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: none !important;
+}
+
+select option {
+  background-color: #ffffff;
+  color: var(--color-text-dark);
 }
 
 input[type="text"], input[type="date"] {
   border-color: #E5E7EB !important;
   color: var(--color-text-dark) !important;
   background-color: #ffffff !important;
+}
+
+.phone-input-shell {
+  position: relative;
+  width: 100%;
+}
+
+.phone-input-shell .phone-input-field {
+  width: 100% !important;
+  min-height: 2.5rem;
+  color: var(--color-text-dark) !important;
+  font-family: var(--font-sans) !important;
+  box-shadow: none !important;
+  padding-right: 3.5rem !important;
+}
+
+.phone-input-shell .phone-input-field:focus {
+  border-color: #94A3B8 !important;
+  box-shadow: none !important;
+}
+
+.phone-input-country {
+  position: absolute;
+  right: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: rgb(244 247 246 / 75%);
+  color: #64748B;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  pointer-events: none;
 }
 
 /* PL Cards (Product/Listing Cards) Hover Effects */
@@ -185,13 +266,6 @@ input[type="text"], input[type="date"] {
   transform: translateY(-6px) !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
-.pl-card .pl-card-active-image {
-  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-}
-.pl-card:hover .pl-card-active-image {
-  transform: scale(1.05) !important;
-}
-
 /* Style for pl pills/cards */
 .pl {
   border: none !important;
@@ -225,5 +299,33 @@ input[type="text"], input[type="date"] {
 .pl.interactive:hover img,
 .pl.interactive:hover svg {
   transform: scale(1.08) !important;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .pl,
+  .pl:hover,
+  .pl:active,
+  .pl.interactive,
+  .pl.interactive:hover,
+  .pl.interactive:active,
+  .pl-card,
+  .pl-card:hover,
+  .pl-card:active {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .pl img,
+  .pl svg,
+  .pl:hover img,
+  .pl:hover svg,
+  .pl:active img,
+  .pl:active svg,
+  .pl.interactive:hover img,
+  .pl.interactive:hover svg,
+  .pl.interactive:active img,
+  .pl.interactive:active svg {
+    transform: none !important;
+  }
 }
 

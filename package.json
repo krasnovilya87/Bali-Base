@@ -7,11 +7,15 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
+    "server": "tsx src/server/app.ts",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "places:refresh": "tsx scripts/refresh-google-place-reviews.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@lottiefiles/dotlottie-react": "^0.19.6",
+    "@lottiefiles/dotlottie-web": "^0.75.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vis.gl/react-google-maps": "^1.8.3",
     "@vitejs/plugin-react": "^5.0.4",

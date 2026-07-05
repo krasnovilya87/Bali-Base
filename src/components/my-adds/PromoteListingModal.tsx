@@ -1,6 +1,7 @@
 import React from 'react';
 import { Crown, X } from 'lucide-react';
 import { Listing } from '../../types';
+import { useI18n } from '../../i18nContext';
 
 interface PromoteListingModalProps {
   listing: Listing;
@@ -13,6 +14,7 @@ export default function PromoteListingModal({
   onChange,
   onClose
 }: PromoteListingModalProps) {
+  const { tr } = useI18n();
   const togglePackage = (packageType: 'top' | 'premium' | 'turbo') => {
     const updated = packageType === 'top'
       ? { ...listing, isPromoTop: !listing.isPromoTop }
@@ -29,7 +31,7 @@ export default function PromoteListingModal({
         <div className="pu-header -mx-5 -mt-5 px-5 py-4 flex justify-between items-center border-b border-[#D1D5DB]/30">
           <div className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-amber-500" />
-            <h3 className="font-display font-black text-base uppercase">Продвижение объявления</h3>
+            <h3 className="font-display font-black text-base uppercase">{tr('promo.title')}</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer">
             <X className="w-4 h-4" />
@@ -37,7 +39,7 @@ export default function PromoteListingModal({
         </div>
 
         <p className="pu-body text-xs text-gray-550 leading-relaxed">
-          Максимально увеличьте количество обращений по объекту <strong>{listing.title}</strong> с помощью премиум тарифов Bali Base.
+          {tr('promo.body', { title: listing.title })}
         </p>
 
         <div className="pu-body space-y-3">
@@ -46,9 +48,9 @@ export default function PromoteListingModal({
             activeClass="border-amber-400 bg-amber-50/40"
             icon="✨"
             iconClass="bg-amber-100 text-amber-700"
-            title="Пакет «Топ» (Выделение цветом)"
+            title={tr('promo.topTitle')}
             titleClass="text-amber-900"
-            description="Объявление подсвечивается привлекательным фоном в общей поисковой ленте."
+            description={tr('promo.topDesc')}
             buttonClass="bg-amber-500"
             onClick={() => togglePackage('top')}
           />
@@ -57,9 +59,9 @@ export default function PromoteListingModal({
             activeClass="border-orange-400 bg-orange-50/40"
             icon="👑"
             iconClass="bg-orange-100 text-orange-700"
-            title="Пакет «Премиум» (Стильный бейдж)"
+            title={tr('promo.premiumTitle')}
             titleClass="text-orange-900"
-            description="На карточку крепится красивый VIP бейдж, моментально притягивающий взгляд."
+            description={tr('promo.premiumDesc')}
             buttonClass="bg-orange-500"
             onClick={() => togglePackage('premium')}
           />
@@ -68,22 +70,22 @@ export default function PromoteListingModal({
             activeClass="border-rose-400 bg-rose-50/40"
             icon="⚡"
             iconClass="bg-rose-100 text-rose-700"
-            title="Пакет «Турбо» (Первая строчка в поиске)"
+            title={tr('promo.turboTitle')}
             titleClass="text-rose-900"
-            description="Объявление раз в день автоматически поднимается в самый верх поискового каталога."
+            description={tr('promo.turboDesc')}
             buttonClass="bg-rose-500"
             onClick={() => togglePackage('turbo')}
           />
         </div>
 
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-[11px] leading-relaxed text-amber-800">
-          🔥 <strong>Хотите еще больше эффекта?</strong> Не забудьте также установить скидку через функцию <strong>Drop Price</strong>.
+          🔥 <strong>{tr('promo.tipTitle')}</strong> {tr('promo.tipBody')}
         </div>
 
         <div className="pu-footer -mx-5 -mb-5 px-5 py-4 flex justify-between items-center border-t border-[#D1D5DB]/30">
-          <span className="text-[10px] text-gray-400 font-mono">Баланс: лимиты промо бесплатно</span>
+          <span className="text-[10px] text-gray-400 font-mono">{tr('promo.balance')}</span>
           <button onClick={onClose} className="px-4 py-2 bg-[#2F7D69] text-white text-xs font-bold rounded-xl transition cursor-pointer active:scale-95">
-            Готово
+            {tr('myListings.done')}
           </button>
         </div>
       </div>
@@ -114,6 +116,7 @@ function PromoOption({
   buttonClass,
   onClick
 }: PromoOptionProps) {
+  const { tr } = useI18n();
   return (
     <div className={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
       active ? activeClass : 'border-gray-150 hover:bg-gray-50/50'
@@ -131,7 +134,7 @@ function PromoOption({
           active ? `${buttonClass} text-white shadow-xs` : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
         }`}
       >
-        {active ? 'Активен' : 'Подключить'}
+        {active ? tr('promo.active') : tr('promo.connect')}
       </button>
     </div>
   );

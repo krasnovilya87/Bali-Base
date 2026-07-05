@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FilterState, Listing } from '../types';
-import { X, Check, ArrowRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, HelpCircle, Wifi, Compass, Waves } from 'lucide-react';
+import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, HelpCircle, Wifi, Compass, Waves } from 'lucide-react';
 import Polzunok from './Polzunok';
 import { isListingFresh } from '../utils/listingFreshness';
 import { snapRangeValue } from '../utils/range';
+import { useI18n } from '../i18nContext';
 
 interface HousingFiltersProps {
   listings: Listing[];
   subCategory: string; // 'entire_place' | 'private_suite' | 'private_room' | string
+  selectedSubCategories?: string[];
+  onSubCategoryChange?: (subCategoryId: string) => void;
   filters: FilterState;
   onApplyFilters: (newFilters: FilterState) => void;
   onClose: () => void;
@@ -18,12 +21,15 @@ interface HousingFiltersProps {
 export default function HousingFilters({
   listings,
   subCategory,
+  selectedSubCategories = [subCategory],
+  onSubCategoryChange,
   filters,
   onApplyFilters,
   onClose,
   currencySymbol,
   currencyRate
 }: HousingFiltersProps) {
+  const { tr } = useI18n();
   // Slider Boundaries for monthly rates (e.g. 1M IDR to 30M IDR)
   const minBound = 1000000;
   const maxBound = 30000000;
@@ -42,6 +48,43 @@ export default function HousingFilters({
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
   const [showKitchenTooltip, setShowKitchenTooltip] = useState(false);
+  const activeSubCategoryIndex = Math.max(0, selectedSubCategories.indexOf(subCategory));
+  const hasSubCategorySwitcher = selectedSubCategories.length > 1 && !!onSubCategoryChange;
+  const roomOnlyAmenityOptions = subCategory === 'private_room'
+    ? [
+      { value: 'room_fridge', label: 'Холодильник в номере', icon: '🧊', type: 'amenity' },
+      { value: 'water_cooler', label: 'Кулер', icon: '💧', type: 'amenity' }
+    ]
+    : [];
+  const translateOption = (option: { value: string; label: string }) => {
+    const fieldKeys = [
+      'housingType',
+      'interiorStyle',
+      'densityType',
+      'territoryType',
+      'bedTypes',
+      'kitchenType',
+      'poolType',
+      'viewType',
+      'bathroomOptions',
+      'amenities',
+      'cleanlinessTags',
+      'cleaningFrequency',
+      'extraOptions'
+    ];
+    for (const fieldKey of fieldKeys) {
+      const key = `details.option.${fieldKey}.${option.value}`;
+      const translated = tr(key);
+      if (translated !== key) return translated;
+    }
+    return option.label;
+  };
+
+  const switchSubCategory = (direction: -1 | 1) => {
+    if (!hasSubCategorySwitcher) return;
+    const nextIndex = (activeSubCategoryIndex + direction + selectedSubCategories.length) % selectedSubCategories.length;
+    onSubCategoryChange?.(selectedSubCategories[nextIndex]);
+  };
 
   const handleApply = () => {
     onApplyFilters(localFilters);
@@ -224,7 +267,7 @@ export default function HousingFilters({
     const converted = Math.round(idrValue * currencyRate);
     if (currencyRate === 1) {
       const million = idrValue / 1000000;
-      return `${million.toFixed(1).replace('.0', '')} млн Rp`;
+      return `${million.toFixed(1).replace('.0', '')} ${tr('filters.millionRp')}`;
     } else {
       return `${converted.toLocaleString()} ${currencySymbol}`;
     }
@@ -256,7 +299,7 @@ export default function HousingFilters({
       // Cleanliness
       if (localFilters.cleanlinessTags.length > 0) {
         const matchesAllTags = localFilters.cleanlinessTags.every(tag => {
-          if (tag === 'Bali Base Approved') return item.isApproved;
+          if (tag === 'Approved') return item.isApproved;
           const revTags = item.reviews ? item.reviews.flatMap(r => r.cleanlinessLabels || []) : [];
           return revTags.includes(tag);
         });
@@ -342,7 +385,16 @@ export default function HousingFilters({
 
       // Extra options
       if (localFilters.extraOptions.length > 0) {
-        const hasAll = localFilters.extraOptions.every(opt => item.extraOptions && item.extraOptions.includes(opt));
+        const extraOptionAliases: Record<string, string[]> = {
+          airport_transfer_included: ['airport_transfer_included', 'transfer_included'],
+          airport_transfer_paid: ['airport_transfer_paid', 'airport_transfer'],
+          transfer_included: ['airport_transfer_included', 'transfer_included'],
+          airport_transfer: ['airport_transfer_paid', 'airport_transfer']
+        };
+        const hasAll = localFilters.extraOptions.every(opt => {
+          const acceptedValues = extraOptionAliases[opt] || [opt];
+          return acceptedValues.some(value => item.extraOptions && item.extraOptions.includes(value));
+        });
         if (!hasAll) return false;
       }
 
@@ -375,15 +427,36 @@ export default function HousingFilters({
       >
         
         {/* HEADER SECTION */}
-        <div className="px-6 py-5 border-b border-[#F4F7F6] flex items-center justify-between bg-white relative z-10">
+        <div className={`px-6 ${hasSubCategorySwitcher ? 'pt-5 pb-8' : 'py-5'} border-b border-[#F4F7F6] flex items-center justify-between bg-white relative z-10`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#2F7D69]/10 flex items-center justify-center text-[#FF7A50]">
               <SlidersHorizontal className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-sans text-lg font-bold text-[#1E293B] leading-tight">
-                {subCategory === 'entire_place' ? '🏡 Жилье целиком' : subCategory === 'private_suite' ? '🏢 Апартаменты (Suite)' : '🛌 Частная комната'}
+                {subCategory === 'entire_place' ? tr('filters.subEntirePlace') : subCategory === 'private_suite' ? tr('filters.subPrivateSuite') : tr('filters.subPrivateRoom')}
               </h2>
+              {hasSubCategorySwitcher && (
+                <div className="absolute left-[88px] bottom-2 flex items-center gap-0.5 rounded-full bg-[#F4F7F6] p-0.5 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => switchSubCategory(-1)}
+                    className="w-5 h-5 rounded-full bg-white text-[#1E293B] hover:text-[#FF7A50] shadow-2xs flex items-center justify-center transition active:scale-90 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                  <span className="min-w-[22px] text-center text-[9px] font-bold text-gray-400 font-mono">
+                    {activeSubCategoryIndex + 1}/{selectedSubCategories.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => switchSubCategory(1)}
+                    className="w-5 h-5 rounded-full bg-white text-[#1E293B] hover:text-[#FF7A50] shadow-2xs flex items-center justify-center transition active:scale-90 cursor-pointer"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -399,7 +472,7 @@ export default function HousingFilters({
           
           {/* QUICK PREMIUM TAGS */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">Быстрый отбор по статусу</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">{tr('filters.quickStatus')}</span>
             <div className="grid grid-cols-2 gap-3">
 
               {/* Checked card 1: Approved */}
@@ -416,7 +489,7 @@ export default function HousingFilters({
                   <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                 )}
                 <span className="text-2xl leading-none">✨</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-emerald-900' : 'text-[#1E293B]'}`}>Approved</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-emerald-900' : 'text-[#1E293B]'}`}>{tr('filters.approvedOnly')}</span>
               </button>
 
 
@@ -435,7 +508,7 @@ export default function HousingFilters({
                   <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                 )}
                 <span className="text-2xl leading-none">🧭</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-blue-950' : 'text-[#1E293B]'}`}>Новое жилье</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-blue-950' : 'text-[#1E293B]'}`}>{tr('filters.newHousing')}</span>
               </button>
 
             </div>
@@ -447,11 +520,11 @@ export default function HousingFilters({
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-gray-500 tracking-wider block">Ценовой диапазон</span>
+                  <span className="text-xs font-bold text-gray-500 tracking-wider block">{tr('filters.priceRange')}</span>
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                    {formatPriceWithMillionLabel(localFilters.priceMin)} – {formatPriceWithMillionLabel(localFilters.priceMax)} / мес
+                    {formatPriceWithMillionLabel(localFilters.priceMin)} – {formatPriceWithMillionLabel(localFilters.priceMax)} {tr('filters.perMonthShort')}
                   </span>
                 </div>
               </div>
@@ -467,7 +540,7 @@ export default function HousingFilters({
                       <div 
                         key={idx} 
                         className="flex-1 flex flex-col justify-end h-full group"
-                        title={`${bin.count} предложений в диапазоне ${formatPriceWithMillionLabel(bin.startPrice)} - ${formatPriceWithMillionLabel(bin.endPrice)}`}
+                        title={tr('filters.offersInRange', { count: bin.count, start: formatPriceWithMillionLabel(bin.startPrice), end: formatPriceWithMillionLabel(bin.endPrice) })}
                       >
                         <div 
                           className={`w-full rounded-t-[3px] transition-all duration-300 ${
@@ -530,9 +603,9 @@ export default function HousingFilters({
                 </div>
 
                 <div className="flex justify-between items-center text-[10.5px] text-[#1E293B] font-semibold mt-2 px-1">
-                  <span>1 млн Rp</span>
-                  <span>15 млн Rp</span>
-                  <span>30 млн Rp+</span>
+                  <span>1 {tr('filters.millionRp')}</span>
+                  <span>15 {tr('filters.millionRp')}</span>
+                  <span>30 {tr('filters.millionRp')}+</span>
                 </div>
               </div>
             </div>
@@ -541,9 +614,9 @@ export default function HousingFilters({
           {/* SEA DISTANCE SLIDER (SEPARATE BLOCK) */}
           <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🛵 Удаление от моря</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🛵 {tr('filters.distanceSea')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                до {localFilters.distanceToSeaMax} мин
+                {tr('filters.distanceToSeaValue', { count: localFilters.distanceToSeaMax })}
               </span>
             </div>
 
@@ -556,9 +629,9 @@ export default function HousingFilters({
                 onChange={value => setLocalFilters({ ...localFilters, distanceToSeaMin: 0, distanceToSeaMax: value })}
               />
               <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>У берега</span>
-                <span>20 мин</span>
-                <span>45+ минут</span>
+                <span>{tr('filters.nearBeach')}</span>
+                <span>{tr('filters.minLabel', { count: 20 })}</span>
+                <span>{tr('filters.minutesPlusLabel', { count: 45 })}</span>
               </div>
             </div>
           </div>
@@ -568,9 +641,9 @@ export default function HousingFilters({
           {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
             <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500 tracking-wider block">📐 Площадь</span>
+                <span className="text-xs font-bold text-gray-500 tracking-wider block">📐 {tr('filters.area')}</span>
                 <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                  от {localFilters.areaMin !== undefined ? localFilters.areaMin : 5} м²
+                  {tr('filters.fromArea', { count: localFilters.areaMin !== undefined ? localFilters.areaMin : 5 })}
                 </span>
               </div>
               
@@ -583,18 +656,18 @@ export default function HousingFilters({
                   onChange={value => setLocalFilters({ ...localFilters, areaMin: value })}
                 />
                 <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                  <span>5 м²</span>
-                  <span>25 м²</span>
-                  <span>50 м²+</span>
+                  <span>{tr('filters.areaValue', { count: 5 })}</span>
+                  <span>{tr('filters.areaValue', { count: 25 })}</span>
+                  <span>{tr('filters.areaValuePlus', { count: 50 })}</span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500 tracking-wider block">🏢 Количество комнат</span>
+                <span className="text-xs font-bold text-gray-500 tracking-wider block">🏢 {tr('filters.rooms')}</span>
                 <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                  {localFilters.roomsMin === 1 ? 'от 1 комнаты' : `от ${localFilters.roomsMin} ком.`}
+                  {tr('filters.fromRooms', { count: localFilters.roomsMin })}
                 </span>
               </div>
               
@@ -607,9 +680,9 @@ export default function HousingFilters({
                   onChange={value => setLocalFilters({ ...localFilters, roomsMin: value, roomsMax: 10 })}
                 />
                 <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                  <span>от 1 комнаты</span>
-                  <span>5 комнат</span>
-                  <span>10 комнат+</span>
+                  <span>{tr('filters.fromRooms', { count: 1 })}</span>
+                  <span>{tr('filters.roomsValue', { count: 5 })}</span>
+                  <span>{tr('filters.roomsValuePlus', { count: 10 })}</span>
                 </div>
               </div>
             </div>
@@ -617,7 +690,7 @@ export default function HousingFilters({
 
           {/* 4. Дизайн и интерьер */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🎨 Интерьер & дизайн</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🎨 {tr('filters.section.interior')}</span>
             <div className="grid grid-cols-4 gap-2">
               {[
                 { value: 'basic', label: 'Базовый', icon: '🪑' },
@@ -641,7 +714,7 @@ export default function HousingFilters({
                       <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-[900] z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-3xl leading-none">{style.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{style.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(style)}</span>
                   </button>
                 );
               })}
@@ -651,7 +724,7 @@ export default function HousingFilters({
           {/* DYNAMIC FOR PRIVATE_ROOM: TYPE OF OBJECT */}
           {subCategory === 'private_room' && (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ Тип объекта</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ {tr('filters.section.objectType')}</span>
               <div className="grid grid-cols-3 gap-2.5">
                 {[
                   { value: 'Villa', label: 'Вилла', icon: '🏘️' },
@@ -677,7 +750,7 @@ export default function HousingFilters({
                         <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                       )}
                       <span className="text-3xl leading-none">{t.icon}</span>
-                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{t.label}</span>
+                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(t)}</span>
                     </button>
                   );
                 })}
@@ -688,7 +761,7 @@ export default function HousingFilters({
           {/* 5. Тип объекта или Плотность комплекса */}
           {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍀 Плотность комплекса</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍀 {tr('filters.section.density')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { value: 'cozy', label: 'Уютный', icon: '🍃' },
@@ -711,7 +784,7 @@ export default function HousingFilters({
                         <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                       )}
                       <span className="text-3xl leading-none">{density.icon}</span>
-                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{density.label}</span>
+                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(density)}</span>
                     </button>
                   );
                 })}
@@ -719,7 +792,7 @@ export default function HousingFilters({
             </div>
           ) : (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ Тип объекта</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ {tr('filters.section.objectType')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { value: 'Villa', label: 'Вилла', icon: '🏘️' },
@@ -742,7 +815,7 @@ export default function HousingFilters({
                         <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                       )}
                       <span className="text-4xl leading-none">{t.icon}</span>
-                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{t.label}</span>
+                      <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(t)}</span>
                     </button>
                   );
                 })}
@@ -752,7 +825,7 @@ export default function HousingFilters({
 
           {/* 6. Территория */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🏡 Тип территории</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🏡 {tr('filters.section.territory')}</span>
             <div className="grid grid-cols-3 gap-2.5">
               {[
                 { value: 'private', label: 'Приватная', icon: '🔒' },
@@ -775,7 +848,7 @@ export default function HousingFilters({
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-3xl leading-none">{t.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{t.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(t)}</span>
                   </button>
                 );
               })}
@@ -784,7 +857,7 @@ export default function HousingFilters({
 
           {/* 8. Кровать */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛌 Конфигурация кроватей</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛌 {tr('filters.section.beds')}</span>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { value: 'queen_size', label: 'Queen size', icon: '🛏️' },
@@ -810,7 +883,7 @@ export default function HousingFilters({
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-3xl leading-none my-0.5">{bed.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{bed.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(bed)}</span>
                   </button>
                 );
               })}
@@ -820,10 +893,10 @@ export default function HousingFilters({
           {/* 9. Кухня */}
           <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍳 Оснащение кухни</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍳 {tr('filters.section.kitchen')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.kitchenType.includes('equipped') ? 'Полностью оснащённая' :
-                 localFilters.kitchenType.includes('basic') ? 'Базовая кухня' : 'Любая / Без плиты'}
+                {localFilters.kitchenType.includes('equipped') ? tr('details.option.kitchenType.equipped') :
+                 localFilters.kitchenType.includes('basic') ? tr('details.option.kitchenType.basic') : tr('filters.kitchen.any')}
               </span>
             </div>
 
@@ -847,10 +920,10 @@ export default function HousingFilters({
                 }}
               />
               <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>Любая / Нет</span>
-                <span>Базовая</span>
+                <span>{tr('filters.kitchen.any')}</span>
+                <span>{tr('filters.kitchen.basic')}</span>
                 <span className="relative inline-flex items-center gap-1">
-                  <span>Оснащенная</span>
+                  <span>{tr('filters.kitchen.equipped')}</span>
                   <button
                     type="button"
                     onMouseEnter={() => setShowKitchenTooltip(true)}
@@ -865,7 +938,7 @@ export default function HousingFilters({
                   </button>
                   {showKitchenTooltip && (
                     <span className="absolute bottom-full mb-2 right-0 w-[208px] p-2.5 bg-slate-900 text-white text-[10px] font-medium leading-normal rounded-xl shadow-xl z-50 text-left block">
-                      Комфортная для долгого проживания и приготовления любимых ваших блюд
+                      {tr('filters.kitchen.equippedTooltip')}
                     </span>
                   )}
                 </span>
@@ -876,12 +949,12 @@ export default function HousingFilters({
           {/* 10. Бассейн */}
           <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 Бассейн</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 {tr('filters.section.pool')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.poolType.includes('private') && localFilters.poolType.includes('infinity') ? 'Частный инфинити-бассейн' :
-                 localFilters.poolType.includes('shared') && localFilters.poolType.includes('infinity') ? 'Общий инфинити-бассейн' :
-                 localFilters.poolType.includes('private') ? 'Частный бассейн' :
-                 localFilters.poolType.includes('shared') ? 'Общий бассейн' : 'Без бассейна / Любой'}
+                {localFilters.poolType.includes('private') && localFilters.poolType.includes('infinity') ? tr('details.option.poolType.infinity') :
+                 localFilters.poolType.includes('shared') && localFilters.poolType.includes('infinity') ? tr('details.option.poolType.infinity') :
+                 localFilters.poolType.includes('private') ? tr('details.option.poolType.private') :
+                 localFilters.poolType.includes('shared') ? tr('details.option.poolType.shared') : tr('filters.pool.any')}
               </span>
             </div>
 
@@ -915,9 +988,9 @@ export default function HousingFilters({
                 }}
               />
               <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>Любой / Нет</span>
-                <span>Общий</span>
-                <span>Частный</span>
+                <span>{tr('filters.pool.any')}</span>
+                <span>{tr('details.option.poolType.shared')}</span>
+                <span>{tr('details.option.poolType.private')}</span>
               </div>
             </div>
 
@@ -948,7 +1021,7 @@ export default function HousingFilters({
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-xl">🌅</span>
-                  <span className="text-xs font-semibold text-[#1E293B]">Бассейн инфинити</span>
+                  <span className="text-xs font-semibold text-[#1E293B]">{tr('filters.pool.infinity')}</span>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   localFilters.poolType.includes('infinity')
@@ -963,7 +1036,7 @@ export default function HousingFilters({
 
           {/* 11. Вид */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🌅 Вид</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🌅 {tr('filters.section.view')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
                 { value: 'rice_fields', label: 'Рис. поля', icon: '🌾' },
@@ -988,7 +1061,7 @@ export default function HousingFilters({
                       <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[7px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-2xl leading-none">{v.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{v.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(v)}</span>
                   </button>
                 );
               })}
@@ -998,9 +1071,9 @@ export default function HousingFilters({
           {/* 12. Скорость интернета (WiFi) */}
           <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">⚡ Скорость интернета</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">⚡ {tr('filters.section.internet')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.internetSpeedMin === 0 ? 'Любая' : `${localFilters.internetSpeedMin}+ Мб/с`}
+                {localFilters.internetSpeedMin === 0 ? tr('filters.internet.any') : tr('details.mbps', { count: `${localFilters.internetSpeedMin}+` })}
               </span>
             </div>
 
@@ -1020,17 +1093,17 @@ export default function HousingFilters({
                 }}
               />
               <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>Любая</span>
-                <span>50 Мб/с</span>
-                <span>100 Мб/с</span>
-                <span>200+ Мб/с</span>
+                <span>{tr('filters.internet.any')}</span>
+                <span>{tr('details.mbps', { count: 50 })}</span>
+                <span>{tr('details.mbps', { count: 100 })}</span>
+                <span>{tr('details.mbps', { count: '200+' })}</span>
               </div>
             </div>
           </div>
 
           {/* 13. Ванная комната */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🚿 Ванная комната</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🚿 {tr('filters.section.bathroom')}</span>
             
             <div className="grid grid-cols-3 gap-2.5">
               {[
@@ -1057,7 +1130,7 @@ export default function HousingFilters({
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-3xl shrink-0">{opt.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{opt.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(opt)}</span>
                   </button>
                 );
               })}
@@ -1066,7 +1139,7 @@ export default function HousingFilters({
 
           {/* 7. Удобства и Комфорт */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛋️ Удобства и Комфорт</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛋️ {tr('filters.section.amenities')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {[
                 { value: 'cold_AC', label: 'Холодный кондиционер', icon: '🥶', type: 'amenity' },
@@ -1075,6 +1148,7 @@ export default function HousingFilters({
                 { value: 'smart_tv', label: 'Smart TV', icon: '📺', type: 'amenity' },
                 { value: 'workspace', label: 'Рабочее пространство', icon: '💻', type: 'amenity' },
                 { value: 'yoga', label: 'Зона йоги', icon: '🧘', type: 'amenity' },
+                ...roomOnlyAmenityOptions,
                 { value: 'Без плесени и запаха', label: 'Без плесени и запаха', icon: '🧼', type: 'cleanliness' },
                 { value: 'Идеальная сантехника', label: 'Исправная сантехника', icon: '🚿', type: 'cleanliness' },
                 { value: 'parking', label: 'Парковка для машин', icon: '🚗', type: 'amenity' }
@@ -1104,7 +1178,7 @@ export default function HousingFilters({
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-2xl leading-none">{item.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{item.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(item)}</span>
                   </button>
                 );
               })}
@@ -1114,11 +1188,11 @@ export default function HousingFilters({
           {/* 15. Уборка */}
           <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🧹 Периодичность уборки</span>
+              <span className="text-xs font-bold text-gray-500 tracking-wider block">🧹 {tr('filters.section.cleaning')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.cleaningFrequency.includes('daily') ? 'Ежедневно' :
-                 localFilters.cleaningFrequency.includes('3_times_week') ? '3 раза в неделю' :
-                 localFilters.cleaningFrequency.includes('once_week') ? '1 раз в неделю' : 'Не включено'}
+                {localFilters.cleaningFrequency.includes('daily') ? tr('details.option.cleaningFrequency.daily') :
+                 localFilters.cleaningFrequency.includes('3_times_week') ? tr('details.option.cleaningFrequency.3_times_week') :
+                 localFilters.cleaningFrequency.includes('once_week') ? tr('details.option.cleaningFrequency.once_week') : tr('filters.cleaning.none')}
               </span>
             </div>
 
@@ -1138,17 +1212,17 @@ export default function HousingFilters({
                 }}
               />
               <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>Не включено</span>
-                <span>1 раз/нед</span>
-                <span>3 раза/нед</span>
-                <span>Ежедневно</span>
+                <span>{tr('filters.cleaning.none')}</span>
+                <span>{tr('filters.cleaning.onceShort')}</span>
+                <span>{tr('filters.cleaning.threeShort')}</span>
+                <span>{tr('details.option.cleaningFrequency.daily')}</span>
               </div>
             </div>
           </div>
 
           {/* Особые преференции */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block font-sans">🐾 Особые преференции</span>
+            <span className="text-xs font-bold text-gray-500 tracking-wider block font-sans">🐾 {tr('filters.section.extraOptions')}</span>
             <div className="flex flex-row overflow-x-auto gap-2.5 pb-2 scrollbar-thin">
               {[
                 { value: 'pets_allowed', label: 'С питомцами', icon: '🐾' },
@@ -1176,7 +1250,7 @@ export default function HousingFilters({
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                     )}
                     <span className="text-3xl leading-none">{opt.icon}</span>
-                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{opt.label}</span>
+                    <span className={`text-xs font-semibold leading-tight mt-1 transition-colors ${isActive ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{translateOption(opt)}</span>
                   </button>
                 );
               })}
@@ -1191,7 +1265,7 @@ export default function HousingFilters({
             className="px-5 py-3.5 rounded-2xl border border-[#E5E7EB] text-[#1E293B] text-xs font-bold hover:bg-gray-50 hover:text-rose-600 active:scale-95 transition cursor-pointer shrink-0"
             id="reset-filter"
           >
-            Сбросить
+            {tr('common.reset')}
           </button>
           
           <button
@@ -1199,7 +1273,7 @@ export default function HousingFilters({
             className="flex-1 py-3.5 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-2xl text-xs font-extrabold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
             id="apply-filter"
           >
-            <span>Показать все варианты ({matchingCount})</span>
+            <span>{tr('filters.showAll', { count: matchingCount })}</span>
             <ArrowRight className="w-4 h-4 ml-0.5" />
           </button>
         </div>

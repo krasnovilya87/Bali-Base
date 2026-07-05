@@ -14,13 +14,16 @@ const StepPreview: React.FC<StepPreviewProps> = ({
   currencyRate
 }) => (
   <div className="space-y-4 animate-fade-in">
-    <div className="w-full max-w-sm mx-auto">
-      <ListingCard
-        listing={buildListing('listing-preview')}
-        onSelect={() => {}}
-        currencySymbol={currencySymbol}
-        currencyRate={currencyRate}
-      />
+
+    <div className="w-full flex justify-center">
+      <div className="w-full max-w-[307.5px]">
+        <ListingCard
+          listing={buildListing('listing-preview')}
+          onSelect={() => { }}
+          currencySymbol={currencySymbol}
+          currencyRate={currencyRate}
+        />
+      </div>
     </div>
   </div>
 );

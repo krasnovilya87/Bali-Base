@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { snapRangeValue } from '../utils/range';
+import { snapRangeValue, snapRangeValueToNearest } from '../utils/range';
 
 interface PolzunokProps {
   min: number;
@@ -24,6 +24,8 @@ export default function Polzunok({
   const isDragging = useRef<boolean>(false);
   const dragStartValue = useRef<number>(value);
   const latestDragValue = useRef<number>(value);
+  const pointerStartX = useRef<number>(0);
+  const hasPointerMoved = useRef<boolean>(false);
 
   // Keep local state in sync when external value changes
   useEffect(() => {
@@ -33,23 +35,35 @@ export default function Polzunok({
     }
   }, [value]);
 
-  const handleStart = () => {
+  const handleStart = (event: React.PointerEvent<HTMLInputElement>) => {
     isDragging.current = true;
-    dragStartValue.current = value;
-    latestDragValue.current = value;
+    pointerStartX.current = event.clientX;
+    hasPointerMoved.current = false;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    const pointerValue = min + Math.max(0, Math.min(1, ratio)) * (max - min);
+    const snappedValue = snapRangeValueToNearest(pointerValue, min, max, step);
+
+    dragStartValue.current = snappedValue;
+    latestDragValue.current = snappedValue;
+    setDragValue(snappedValue);
+    onChange(snappedValue);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLInputElement>) => {
+    if (!isDragging.current) return;
+    if (Math.abs(event.clientX - pointerStartX.current) > 3) {
+      hasPointerMoved.current = true;
+    }
   };
 
   const handleEnd = () => {
     if (!isDragging.current) return;
     isDragging.current = false;
 
-    const finalValue = snapRangeValue(
-      latestDragValue.current,
-      dragStartValue.current,
-      min,
-      max,
-      step
-    );
+    const finalValue = hasPointerMoved.current
+      ? snapRangeValue(latestDragValue.current, dragStartValue.current, min, max, step)
+      : snapRangeValueToNearest(latestDragValue.current, min, max, step);
 
     setDragValue(finalValue);
     latestDragValue.current = finalValue;
@@ -58,8 +72,14 @@ export default function Polzunok({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    setDragValue(val);
-    latestDragValue.current = val;
+    const nextValue = hasPointerMoved.current
+      ? val
+      : snapRangeValueToNearest(val, min, max, step);
+    setDragValue(nextValue);
+    latestDragValue.current = nextValue;
+    if (!hasPointerMoved.current) {
+      onChange(nextValue);
+    }
   };
 
   useEffect(() => {
@@ -87,6 +107,7 @@ export default function Polzunok({
       step="any"
       value={dragValue}
       onPointerDown={handleStart}
+      onPointerMove={handlePointerMove}
       onChange={handleChange}
       className={`polzunok ${className || ''}`}
       style={{ ...backgroundStyle, ...style }}

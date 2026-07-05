@@ -61,5 +61,19 @@ service cloud.firestore {
     match /configs/{configId} {
       allow read, write: if true;
     }
+
+    match /google_places_review_cache/{listingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /google_places_api_usage/{monthKey} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /google_places_api_request_log/{logId} {
+      allow read, write: if true;
+    }
   }
 }

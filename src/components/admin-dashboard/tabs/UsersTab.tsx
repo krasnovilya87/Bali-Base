@@ -5,9 +5,11 @@ import {
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type AdminTabProps = Record<string, any>;
 export function UsersTab(props: AdminTabProps) {
+  const { tr } = useI18n();
   const {
     setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
@@ -28,7 +30,7 @@ export function UsersTab(props: AdminTabProps) {
                     <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input 
                       type="text"
-                      placeholder="Поиск по имени, email или WhatsApp..."
+                      placeholder={tr('admin.users.search')}
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-gray-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:border-[#FF7A50] font-sans font-medium text-[#1E293B]"
@@ -42,11 +44,11 @@ export function UsersTab(props: AdminTabProps) {
                       onChange={(e) => setUserRoleFilter(e.target.value)}
                       className="px-3 py-2 bg-slate-50 border border-gray-200 rounded-2xl text-xs font-bold text-gray-700 focus:outline-none"
                     >
-                      <option value="all">Все роли</option>
-                      <option value="admin">Admin</option>
-                      <option value="moderator">Moderator</option>
-                      <option value="host">Host</option>
-                      <option value="guest">Guest</option>
+                      <option value="all">{tr('admin.users.allRoles')}</option>
+                      <option value="admin">{tr('admin.users.role.admin')}</option>
+                      <option value="moderator">{tr('admin.users.role.moderator')}</option>
+                      <option value="host">{tr('admin.users.role.host')}</option>
+                      <option value="guest">{tr('admin.users.role.guest')}</option>
                     </select>
 
                     {/* Status Filter dropdown */}
@@ -55,9 +57,9 @@ export function UsersTab(props: AdminTabProps) {
                       onChange={(e) => setUserStatusFilter(e.target.value)}
                       className="px-3 py-2 bg-slate-50 border border-gray-200 rounded-2xl text-xs font-bold text-gray-700 focus:outline-none"
                     >
-                      <option value="all">Все статусы</option>
-                      <option value="active">Активные</option>
-                      <option value="banned">Забаненные</option>
+                      <option value="all">{tr('admin.users.allStatuses')}</option>
+                      <option value="active">{tr('admin.users.active')}</option>
+                      <option value="banned">{tr('admin.users.banned')}</option>
                     </select>
 
                     <button
@@ -65,7 +67,7 @@ export function UsersTab(props: AdminTabProps) {
                       className="ml-auto bg-[#FF7A50] hover:bg-[#E05A30] text-white px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
                     >
                       <PlusCircle className="w-4 h-4" />
-                      <span>Создать</span>
+                      <span>{tr('admin.users.create')}</span>
                     </button>
                   </div>
                 </div>
@@ -76,12 +78,12 @@ export function UsersTab(props: AdminTabProps) {
                     <table className="w-full text-left border-collapse text-xs sm:text-sm">
                       <thead>
                         <tr className="bg-slate-50/70 text-gray-500 font-bold border-b border-gray-100">
-                          <th className="p-4 pl-6">Пользователь</th>
-                          <th className="p-4">WhatsApp контакты</th>
-                          <th className="p-4">Роль кабинета</th>
-                          <th className="p-4">Записей</th>
-                          <th className="p-4">Статус</th>
-                          <th className="p-4 pr-6 text-right">Действие</th>
+                          <th className="p-4 pl-6">{tr('admin.users.user')}</th>
+                          <th className="p-4">{tr('admin.users.whatsappContacts')}</th>
+                          <th className="p-4">{tr('admin.users.role')}</th>
+                          <th className="p-4">{tr('admin.users.records')}</th>
+                          <th className="p-4">{tr('admin.users.status')}</th>
+                          <th className="p-4 pr-6 text-right">{tr('admin.users.action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
@@ -105,10 +107,10 @@ export function UsersTab(props: AdminTabProps) {
                                 onChange={(e) => handleChangeRole(u.id, e.target.value as any)}
                                 className="bg-slate-100 hover:bg-slate-200 text-[#1E293B] font-bold text-[10.5px] px-2.5 py-1 rounded-xl focus:outline-none"
                               >
-                                <option value="admin">Admin</option>
-                                <option value="moderator">Moderator</option>
-                                <option value="host">Host / Хозяин</option>
-                                <option value="guest">Guest / Гость</option>
+                                <option value="admin">{tr('admin.users.role.admin')}</option>
+                                <option value="moderator">{tr('admin.users.role.moderator')}</option>
+                                <option value="host">{tr('admin.users.role.host')}</option>
+                                <option value="guest">{tr('admin.users.role.guest')}</option>
                               </select>
                             </td>
                             <td className="p-4 font-mono font-bold text-[#FF7A50]">
@@ -118,7 +120,7 @@ export function UsersTab(props: AdminTabProps) {
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
                                 u.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-650'
                               }`}>
-                                {u.status}
+                                {tr(`admin.users.status.${u.status}`)}
                               </span>
                             </td>
                             <td className="p-4 pr-6 text-right space-x-1.5 whitespace-nowrap">
@@ -127,7 +129,7 @@ export function UsersTab(props: AdminTabProps) {
                                 className={`p-1.5 rounded-xl text-xs cursor-pointer ${
                                   u.status === 'banned' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100'
                                 }`}
-                                title={u.status === 'banned' ? 'Разблокировать' : 'Заблокировать'}
+                                title={u.status === 'banned' ? tr('admin.users.unban') : tr('admin.users.ban')}
                               >
                                 <Ban className="w-4 h-4" />
                               </button>
@@ -139,24 +141,24 @@ export function UsersTab(props: AdminTabProps) {
                                     userName: u.name,
                                     userPhone: u.phone,
                                     userAvatar: u.avatar,
-                                    subject: 'Сообщение модерации',
+                                    subject: tr('admin.users.messageSubject'),
                                     status: 'open',
                                     createdAt: new Date().toISOString(),
                                     messages: [
-                                      { id: 'gen1', sender: 'admin', text: 'Пожалуйста, верифицируйте профиль', timestamp: new Date().toISOString() }
+                                      { id: 'gen1', sender: 'admin', text: tr('admin.users.messageText'), timestamp: new Date().toISOString() }
                                     ]
                                   });
                                   setActiveTab('messages');
                                 }}
                                 className="p-1.5 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-xl text-xs cursor-pointer"
-                                title="Написать сообщение"
+                                title={tr('admin.users.writeMessage')}
                               >
                                 <MessageCircle className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(u.id)}
                                 className="p-1.5 bg-gray-100 text-gray-500 hover:bg-red-105 hover:text-red-600 rounded-xl text-xs cursor-pointer"
-                                title="Удалить"
+                                title={tr('myListings.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
