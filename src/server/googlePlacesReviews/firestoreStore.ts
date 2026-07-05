@@ -14,7 +14,7 @@ import {
   updateDoc,
   where
 } from 'firebase/firestore';
-import firebaseConfig from '../../../firebase-applet-config.json';
+import firebaseConfig from '../../config/firebaseConfig';
 import type { Listing } from '../../types';
 import { getCurrentMonthKey, GOOGLE_PLACES_REVIEWS_CONFIG } from './config';
 import type { GooglePlaceReviewCacheRecord, GooglePlacesQuotaSnapshot, GooglePlacesRequestPurpose } from './types';

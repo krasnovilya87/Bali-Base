@@ -17,7 +17,7 @@ import {
   persistentLocalCache
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import firebaseConfig from '../firebase-applet-config.json';
+import firebaseConfig from './config/firebaseConfig';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
