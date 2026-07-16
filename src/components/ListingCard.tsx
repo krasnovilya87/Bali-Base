@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Listing } from '../types';
-import { Heart, Star, BookmarkCheck, Flame, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { Heart, Star, BookmarkCheck, Flame, ShieldCheck, ShieldAlert, BadgeInfo } from 'lucide-react';
 import { THEME } from '../theme';
 import { isListingFresh } from '../utils/listingFreshness';
 import { motion } from 'motion/react';
@@ -10,6 +10,7 @@ import { ROOM_TYPE_LABELS } from './create-wizard/constants';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
 import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
+import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useI18n } from '../i18nContext';
 
 interface ListingCardProps {
@@ -21,7 +22,6 @@ interface ListingCardProps {
   checkInDate?: string;
   checkOutDate?: string;
   onOpenCalendar?: () => void;
-  onFavoriteChange?: (listingId: string, isFavorite: boolean) => void;
   activeLanguage?: LanguageCode;
 }
 
@@ -33,12 +33,10 @@ export default function ListingCard({
   checkInDate,
   checkOutDate,
   onOpenCalendar,
-  onFavoriteChange,
   activeLanguage = DEFAULT_LANGUAGE
 }: ListingCardProps) {
   const { tr } = useI18n();
   const [currentPhoto, setCurrentPhoto] = useState<number>(0);
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [countdownText, setCountdownText] = useState<string>('');
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
@@ -49,6 +47,8 @@ export default function ListingCard({
   const isHorizontalTouchDragRef = useRef<boolean>(false);
   const hasDraggedRef = useRef<boolean>(false);
   const settleTimerRef = useRef<number | null>(null);
+  const { favoriteIds, toggleFavorite: toggleFavoriteListing } = useFavoriteListings();
+  const isFavorite = favoriteIds.has(listing.id);
 
   const visiblePhotoIndexes = listing.images
     .map((_, idx) => idx)
@@ -202,69 +202,6 @@ export default function ListingCard({
     }, 240);
   };
 
-  const handleWhatsAppClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    // If dates are not selected, open calendar and do not redirect
-    if (!checkInDate || !checkOutDate) {
-      if (onOpenCalendar) {
-        onOpenCalendar();
-        return;
-      }
-    }
-
-    const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
-    const templateMessage = tr('listing.whatsappMessage', {
-      title: listing.title,
-      price: convertPrice(activeDailyPrice),
-      currency: currencySymbol
-    });
-    const encodedMessage = encodeURIComponent(templateMessage);
-    const waUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
-
-    // Add to bali_base_whatsapp_history
-    try {
-      const existingHistory = localStorage.getItem('bali_base_whatsapp_history');
-      let historyList: any[] = [];
-      if (existingHistory) {
-        historyList = JSON.parse(existingHistory);
-      }
-      const alreadyClickedIndex = historyList.findIndex((h: any) => h.id === listing.id);
-      if (alreadyClickedIndex !== -1) {
-        const found = historyList.splice(alreadyClickedIndex, 1)[0];
-        found.clickedAt = new Date().toISOString();
-        historyList.unshift(found);
-      } else {
-        historyList.unshift({
-          id: listing.id,
-          title: listing.title,
-          district: listing.district,
-          pricePerDay: activeDailyPrice,
-          image: listing.images[0] || '',
-          whatsappNumber: listing.whatsappNumber,
-          clickedAt: new Date().toISOString()
-        });
-      }
-      localStorage.setItem('bali_base_whatsapp_history', JSON.stringify(historyList));
-    } catch (e) {
-      console.error('Error saving WhatsApp click history:', e);
-    }
-
-    // Direct redirection
-    window.open(waUrl, '_blank');
-  };
-
-  useEffect(() => {
-    // Check if item is in favorites
-    const favs = localStorage.getItem('bali_base_favorites');
-    if (favs) {
-      try {
-        const parsed = JSON.parse(favs) as string[];
-        setIsFavorite(parsed.includes(listing.id));
-      } catch { }
-    }
-  }, [listing.id]);
-
   useEffect(() => {
     setCarouselTransform(0, false);
   }, [currentPhoto, listing.images.length]);
@@ -301,25 +238,7 @@ export default function ListingCard({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const favs = localStorage.getItem('bali_base_favorites');
-    let list: string[] = [];
-    if (favs) {
-      try {
-        list = JSON.parse(favs);
-      } catch { }
-    }
-
-    if (list.includes(listing.id)) {
-      list = list.filter(id => id !== listing.id);
-      setIsFavorite(false);
-      onFavoriteChange?.(listing.id, false);
-    } else {
-      list.push(listing.id);
-      setIsFavorite(true);
-      onFavoriteChange?.(listing.id, true);
-    }
-    localStorage.setItem('bali_base_favorites', JSON.stringify(list));
-    window.dispatchEvent(new Event('bali_base_favorites_changed'));
+    toggleFavoriteListing(listing.id);
   };
 
   const handleNextPhoto = (e: React.MouseEvent) => {
@@ -627,7 +546,8 @@ export default function ListingCard({
           )}
           {listing.isApproved && (
             <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
-              <span>★ {tr('listing.approvedBadge')}</span>
+              <ShieldCheck className="w-[15px] h-[15px] text-[#2F7D69] shrink-0" />
+              <span>{tr('listing.approvedBadge')}</span>
             </div>
           )}
           {isListingFresh(listing) && (
@@ -639,9 +559,15 @@ export default function ListingCard({
 
         {/* Heart Favorite Upper Right */}
         <button
+          type="button"
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-10 min-w-[28px] min-h-[28px] flex items-center justify-center"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-30 min-w-[28px] min-h-[28px] flex items-center justify-center pointer-events-auto"
           title={tr('listing.toggleFavorite')}
+          aria-label={tr('listing.toggleFavorite')}
+          aria-pressed={isFavorite}
         >
           <Heart className="w-4 h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
         </button>
@@ -734,19 +660,6 @@ export default function ListingCard({
               </div>
             )}
           </div>
-        </div>
-
-        {/* WhatsApp direct contact button at bottom */}
-        <div className="mt-3.5">
-          <button
-            onClick={handleWhatsAppClick}
-            className="w-full py-2 px-3 whatsapp-green text-white font-normal rounded-xl flex items-center justify-center gap-2 hover:opacity-95 active:scale-97 transition-all text-[15px] sm:text-[13px] shadow-xs"
-          >
-            <svg className="w-[18px] h-[18px] sm:w-[15px] sm:h-[15px] fill-current shrink-0" viewBox="0 0 24 24">
-              <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
-            </svg>
-            <span>{tr('listing.writeWhatsapp')}</span>
-          </button>
         </div>
 
       </div>

@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { MOCK_GUIDES } from '../../data';
 import { FilterState, Listing } from '../../types';
+import { findDistrictByCoordsSync, getDefaultDistrictCoordsSync, getListingCoords, isPointInPolygon } from '../../utils/geo';
 import { isListingFresh } from '../../utils/listingFreshness';
-import { getListingCoords } from '../../utils/geoUtils';
-import { DISTRICT_COORDS, isPointInPolygon } from '../geometry';
 
 type MapPoint = { x: number; y: number };
 export type SearchGuide = (typeof MOCK_GUIDES)[number];
@@ -28,13 +27,14 @@ interface UseListingSearchParams {
   listings: Listing[];
   currentL1: string;
   currentL2: string[];
-  districtSearch: string;
+  districtSearch: string[];
   customPoint: MapPoint | null;
   customRadius: number;
   customPolygon: MapPoint[] | null;
   searchTerm: string;
   filters: FilterState;
   sortBy: string;
+  favoriteIds: Set<string>;
 }
 
 export const useListingSearch = ({
@@ -47,12 +47,14 @@ export const useListingSearch = ({
   customPolygon,
   searchTerm,
   filters,
-  sortBy
+  sortBy,
+  favoriteIds
 }: UseListingSearchParams) => {
   const filteredListings = useMemo(() => listings.filter(item => {
     if (item.status !== 'active') return false;
     if (item.category !== currentL1) return false;
     if (currentL2.length > 0 && !currentL2.includes(item.subCategory)) return false;
+    if (filters.favoritesOnly && !favoriteIds.has(item.id)) return false;
 
     if (customPolygon && customPolygon.length >= 3) {
       if (!isPointInPolygon(getListingMapPoint(item), customPolygon)) return false;
@@ -62,8 +64,10 @@ export const useListingSearch = ({
       const dy = coord.y - customPoint.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       if (distance > customRadius) return false;
-    } else if (districtSearch && item.district !== districtSearch) {
-      return false;
+    } else if (districtSearch.length > 0) {
+      const listingCoords = getListingCoords(item);
+      const listingDistrict = findDistrictByCoordsSync(listingCoords.lat, listingCoords.lng);
+      if (!listingDistrict || !districtSearch.includes(listingDistrict)) return false;
     }
 
     if (searchTerm) {
@@ -150,6 +154,7 @@ export const useListingSearch = ({
     customPolygon,
     customRadius,
     districtSearch,
+    favoriteIds,
     filters,
     listings,
     searchTerm
@@ -174,7 +179,7 @@ export const useListingSearch = ({
       return distA - distB;
     }
     if (sortBy === 'distance_point') {
-      const pt = customPoint ?? { x: 190, y: 240 };
+      const pt = customPoint ?? latLngToSvgPoint(getDefaultDistrictCoordsSync());
       const coordA = getListingMapPoint(a);
       const coordB = getListingMapPoint(b);
       const distSqrA = Math.pow(coordA.x - pt.x, 2) + Math.pow(coordA.y - pt.y, 2);

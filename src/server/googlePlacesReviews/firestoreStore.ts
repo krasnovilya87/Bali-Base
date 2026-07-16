@@ -101,7 +101,7 @@ export const logSuccessfulGooglePlacesRequest = async ({
       listingId,
       placeId,
       purpose,
-      fieldMask: 'id,rating,reviews',
+      fieldMask: 'id,rating,userRatingCount,reviews',
       createdAt: now
     });
     transaction.set(usageRef, {

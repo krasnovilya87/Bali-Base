@@ -31,12 +31,14 @@ export const applyGoogleReviewsCacheToListing = (
 
 export const requestListingCreateGoogleReviewsRefresh = async ({
   listingId,
-  placeId
+  placeId,
+  googleReviewsUpdatedAt
 }: {
   listingId: string;
   placeId?: string;
+  googleReviewsUpdatedAt?: string;
 }): Promise<GooglePlacesRefreshResponse | null> => {
-  if (!placeId) return null;
+  if (!placeId || googleReviewsUpdatedAt) return null;
 
   try {
     const response = await fetch('/api/google-places/reviews/refresh', {
@@ -49,7 +51,11 @@ export const requestListingCreateGoogleReviewsRefresh = async ({
       })
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const message = await response.text();
+      console.warn('Google Places reviews refresh failed:', message);
+      return null;
+    }
     return response.json() as Promise<GooglePlacesRefreshResponse>;
   } catch (error) {
     console.warn('Google Places reviews refresh request was skipped:', error);

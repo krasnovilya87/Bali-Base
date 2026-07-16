@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FilterState, Listing } from '../types';
-import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, HelpCircle, Wifi, Compass, Waves } from 'lucide-react';
+import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, ShieldCheck, HelpCircle, Wifi, Compass, Waves, Heart } from 'lucide-react';
 import Polzunok from './Polzunok';
 import { isListingFresh } from '../utils/listingFreshness';
 import { snapRangeValue } from '../utils/range';
 import { useI18n } from '../i18nContext';
+import { useFavoriteListings } from '../hooks/useFavoriteListings';
 
 interface HousingFiltersProps {
   listings: Listing[];
@@ -30,6 +31,7 @@ export default function HousingFilters({
   currencyRate
 }: HousingFiltersProps) {
   const { tr } = useI18n();
+  const { favoriteIds } = useFavoriteListings();
   // Slider Boundaries for monthly rates (e.g. 1M IDR to 30M IDR)
   const minBound = 1000000;
   const maxBound = 30000000;
@@ -47,13 +49,13 @@ export default function HousingFilters({
   const trackRef = useRef<HTMLDivElement>(null);
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
-  const [showKitchenTooltip, setShowKitchenTooltip] = useState(false);
   const activeSubCategoryIndex = Math.max(0, selectedSubCategories.indexOf(subCategory));
   const hasSubCategorySwitcher = selectedSubCategories.length > 1 && !!onSubCategoryChange;
+  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]));
   const roomOnlyAmenityOptions = subCategory === 'private_room'
     ? [
-      { value: 'room_fridge', label: 'Холодильник в номере', icon: '🧊', type: 'amenity' },
-      { value: 'water_cooler', label: 'Кулер', icon: '💧', type: 'amenity' }
+      { value: 'room_fridge', label: 'In-room fridge', icon: '🧊', type: 'amenity' },
+      { value: 'water_cooler', label: 'Water cooler', icon: '💧', type: 'amenity' }
     ]
     : [];
   const translateOption = (option: { value: string; label: string }) => {
@@ -80,6 +82,50 @@ export default function HousingFilters({
     return option.label;
   };
 
+  const renderSliderScaleLabels = (labels: React.ReactNode[]) => (
+    <div className="relative mt-1.5 px-0.5 h-4 text-[10.5px] text-[#1E293B] font-semibold">
+      {labels.map((label, index) => (
+        <span
+          key={index}
+          className="absolute top-0 whitespace-nowrap"
+          style={{
+            left: `${(index / Math.max(labels.length - 1, 1)) * 100}%`,
+            transform:
+              index === 0
+                ? 'translateX(0)'
+                : index === labels.length - 1
+                  ? 'translateX(-100%)'
+                  : 'translateX(-50%)'
+          }}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+
+  const sectionCardClass = 'pl p-5 rounded-3xl space-y-4';
+  const sectionTitleClass = 'text-xs font-semibold font-sans text-[#1E293B] tracking-wider block';
+  const activeTileClass = 'selected bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm scale-102';
+  const inactiveTileClass = 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50] hover:bg-gray-50/40';
+  const hasPrivateKitchen =
+    localFilters.kitchenType.includes('private_basic') || localFilters.kitchenType.includes('private_equipped');
+  const baseKitchenType = localFilters.kitchenType.includes('equipped') || localFilters.kitchenType.includes('private_equipped')
+    ? 'equipped'
+    : localFilters.kitchenType.includes('basic') || localFilters.kitchenType.includes('private_basic')
+      ? 'basic'
+      : '';
+  const kitchenLabel = hasPrivateKitchen
+    ? localFilters.kitchenType.includes('private_equipped')
+      ? tr('details.option.kitchenType.private_equipped')
+      : tr('details.option.kitchenType.private_basic')
+    : localFilters.kitchenType.includes('equipped')
+      ? tr('details.option.kitchenType.equipped')
+      : localFilters.kitchenType.includes('basic')
+        ? tr('details.option.kitchenType.basic')
+        : tr('filters.kitchen.any');
+  const infinityPoolLabel = tr('details.option.poolType.infinity');
+
   const switchSubCategory = (direction: -1 | 1) => {
     if (!hasSubCategorySwitcher) return;
     const nextIndex = (activeSubCategoryIndex + direction + selectedSubCategories.length) % selectedSubCategories.length;
@@ -96,14 +142,15 @@ export default function HousingFilters({
       priceMin: minBound,
       priceMax: maxBound,
       distanceToSeaMin: 0,
-      distanceToSeaMax: 45,
+      distanceToSeaMax: 40,
       interiorStyle: [],
       isNewOnly: false,
       isApprovedOnly: false,
       hasDropPriceOnly: false,
+      favoritesOnly: false,
       housingType: [],
       roomsMin: 1,
-      roomsMax: 10,
+      roomsMax: 9,
       areaMin: 5,
       wallMaterial: [],
       territoryType: [],
@@ -154,7 +201,9 @@ export default function HousingFilters({
   };
 
   // 2. Compute Histogram Distribution statistics
-  const relevantListings = listings.filter(item => item.category === 'housing' && item.subCategory === subCategory);
+  const relevantListings = listings.filter(
+    item => item.category === 'housing' && activeSubCategories.includes(item.subCategory)
+  );
   
   const numBins = 24;
   const binWidth = (maxBound - minBound) / numBins;
@@ -278,7 +327,7 @@ export default function HousingFilters({
     return listings.filter(item => {
       // Category L1 & subCategory mapping
       if (item.category !== 'housing') return false;
-      if (subCategory && item.subCategory !== subCategory) return false;
+      if (activeSubCategories.length > 0 && !activeSubCategories.includes(item.subCategory)) return false;
 
       // Pricing check matched to localFilters in real-time
       const price = getItemMonthlyPrice(item);
@@ -296,6 +345,8 @@ export default function HousingFilters({
         if (!isListingFresh(item)) return false;
       }
 
+      if (localFilters.favoritesOnly && !favoriteIds.has(item.id)) return false;
+
       // Cleanliness
       if (localFilters.cleanlinessTags.length > 0) {
         const matchesAllTags = localFilters.cleanlinessTags.every(tag => {
@@ -311,7 +362,22 @@ export default function HousingFilters({
       if (localFilters.hasDropPriceOnly && !item.hasDropPrice) return false;
 
       // Type
-      if (localFilters.housingType.length > 0 && item.housingType && !localFilters.housingType.includes(item.housingType)) return false;
+      if (localFilters.housingType.length > 0 && item.housingType) {
+        const housingTypeAliases: Record<string, string[]> = {
+          'Privet Villa (must pool)': ['Privet Villa (must pool)', 'Villa'],
+          'House (no pool)': ['House (no pool)', 'House'],
+          'Bungalow (standalone unit)': ['Bungalow (standalone unit)', 'Bungalow'],
+          'Apartment Complex (privet unit)': ['Apartment Complex (privet unit)', 'Apartment'],
+          'Guesthouse (privet room, shared property)': ['Guesthouse (privet room, shared property)', 'Guesthouse'],
+          'Home stay (Host on-site)': ['Home stay (Host on-site)', 'homestay'],
+          'Hotel (privet room)': ['Hotel (privet room)', 'Hotel']
+        };
+        const hasMatchingHousingType = localFilters.housingType.some(type => {
+          const acceptedValues = housingTypeAliases[type] || [type];
+          return acceptedValues.includes(item.housingType || '');
+        });
+        if (!hasMatchingHousingType) return false;
+      }
       
       // Territory
       if (localFilters.territoryType.length > 0 && item.territoryType && !localFilters.territoryType.includes(item.territoryType)) return false;
@@ -364,7 +430,7 @@ export default function HousingFilters({
       }
 
       // Room quantity or Area quantity check
-      if (subCategory === 'private_suite' || subCategory === 'private_room') {
+      if (item.subCategory === 'private_suite' || item.subCategory === 'private_room') {
         const areaMinFilter = localFilters.areaMin !== undefined ? localFilters.areaMin : 5;
         const itemArea = item.area !== undefined ? item.area : (item.roomsTotal ? item.roomsTotal * 12 : 25);
         if (itemArea < areaMinFilter) return false;
@@ -422,12 +488,12 @@ export default function HousingFilters({
       }}
     >
       <div 
-        className="w-full max-w-xl bg-white max-h-[88vh] flex flex-col shadow-[0_24px_60px_-15px_rgba(28,37,33,0.3)] relative rounded-[32px] border border-[#E5E7EB] overflow-hidden transition-all duration-300 transform scale-100"
+        className="pu w-full max-w-xl max-h-[88vh] flex flex-col shadow-[0_24px_60px_-15px_rgba(28,37,33,0.3)] relative rounded-[32px] border border-[#E5E7EB] overflow-hidden transition-all duration-300 transform scale-100"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* HEADER SECTION */}
-        <div className={`px-6 ${hasSubCategorySwitcher ? 'pt-5 pb-8' : 'py-5'} border-b border-[#F4F7F6] flex items-center justify-between bg-white relative z-10`}>
+        <div className={`pu-header px-6 ${hasSubCategorySwitcher ? 'pt-5 pb-8' : 'py-5'} border-b border-[#F4F7F6] flex items-center justify-between bg-white relative z-10`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#2F7D69]/10 flex items-center justify-center text-[#FF7A50]">
               <SlidersHorizontal className="w-5 h-5" />
@@ -468,28 +534,30 @@ export default function HousingFilters({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 select-none bg-[#F4F7F6]">
+        <div className="pu-body flex-1 overflow-y-auto p-6 space-y-8 select-none bg-[#F4F7F6]">
           
           {/* QUICK PREMIUM TAGS */}
-          <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">{tr('filters.quickStatus')}</span>
-            <div className="grid grid-cols-2 gap-3">
+          <div className={sectionCardClass}>
+            <span className={sectionTitleClass}>{tr('filters.quickStatus')}</span>
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
 
               {/* Checked card 1: Approved */}
               <button
                 type="button"
                 onClick={() => setLocalFilters({ ...localFilters, isApprovedOnly: !localFilters.isApprovedOnly })}
-                className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                   localFilters.isApprovedOnly 
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold shadow-sm scale-102' 
-                    : 'bg-white border-[#E5E7EB] text-gray-700 hover:border-emerald-400 hover:bg-emerald-50/10'
+                    ? activeTileClass 
+                    : inactiveTileClass
                 }`}
               >
                 {localFilters.isApprovedOnly && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center z-10 animate-scale-up">
+                    <ShieldCheck className="w-2.5 h-2.5 text-white shrink-0" />
+                  </span>
                 )}
                 <span className="text-2xl leading-none">✨</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-emerald-900' : 'text-[#1E293B]'}`}>{tr('filters.approvedOnly')}</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.approvedOnly')}</span>
               </button>
 
 
@@ -498,33 +566,50 @@ export default function HousingFilters({
               <button
                 type="button"
                 onClick={() => setLocalFilters({ ...localFilters, isNewOnly: !localFilters.isNewOnly })}
-                className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                   localFilters.isNewOnly
-                    ? 'bg-blue-50 border-blue-500 text-blue-950 font-bold shadow-sm scale-102' 
-                    : 'bg-white border-[#E5E7EB] text-gray-700 hover:border-blue-400 hover:bg-blue-50/10'
+                    ? activeTileClass
+                    : inactiveTileClass
                 }`}
               >
                 {localFilters.isNewOnly && (
                   <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                 )}
                 <span className="text-2xl leading-none">🧭</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-blue-950' : 'text-[#1E293B]'}`}>{tr('filters.newHousing')}</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.newHousing')}</span>
+              </button>
+
+              {/* Checked card 4: Favorites only */}
+              <button
+                type="button"
+                onClick={() => setLocalFilters({ ...localFilters, favoritesOnly: !localFilters.favoritesOnly })}
+                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                  localFilters.favoritesOnly
+                    ? activeTileClass
+                    : inactiveTileClass
+                }`}
+              >
+                {localFilters.favoritesOnly && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">♥</span>
+                )}
+                <span className="text-2xl leading-none flex items-center justify-center"><Heart className="w-6 h-6 text-rose-500 fill-rose-500" /></span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.favoritesOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.favoritesOnly')}</span>
               </button>
 
             </div>
           </div>
 
           {/* DRAGGABLE HISTOGRAM SECTION (PRICE) */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          <div className={sectionCardClass}>
             {/* PRICING DUAL-SLIDER HISTOGRAM */}
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-gray-500 tracking-wider block">{tr('filters.priceRange')}</span>
+                  <span className={sectionTitleClass}>{tr('filters.priceRange')}</span>
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                    {formatPriceWithMillionLabel(localFilters.priceMin)} – {formatPriceWithMillionLabel(localFilters.priceMax)} {tr('filters.perMonthShort')}
+                  <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                    {formatPriceWithMillionLabel(localFilters.priceMin)} - {formatPriceWithMillionLabel(localFilters.priceMax)} {tr('filters.perMonthShort')}
                   </span>
                 </div>
               </div>
@@ -602,47 +687,49 @@ export default function HousingFilters({
                   />
                 </div>
 
-                <div className="flex justify-between items-center text-[10.5px] text-[#1E293B] font-semibold mt-2 px-1">
-                  <span>1 {tr('filters.millionRp')}</span>
-                  <span>15 {tr('filters.millionRp')}</span>
-                  <span>30 {tr('filters.millionRp')}+</span>
-                </div>
+                {renderSliderScaleLabels([
+                  <>1 {tr('filters.millionRp')}</>,
+                  <>15 {tr('filters.millionRp')}</>,
+                  <>30 {tr('filters.millionRp')}+</>
+                ])}
               </div>
             </div>
           </div>
 
           {/* SEA DISTANCE SLIDER (SEPARATE BLOCK) */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🛵 {tr('filters.distanceSea')}</span>
-              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {tr('filters.distanceToSeaValue', { count: localFilters.distanceToSeaMax })}
-              </span>
+              <span className={sectionTitleClass}>🛵 {tr('filters.distanceSea')}</span>
+                <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                  {localFilters.distanceToSeaMax >= 40
+                    ? tr('filters.minutesPlusLabel', { count: 40 })
+                    : tr('filters.distanceToSeaValue', { count: localFilters.distanceToSeaMax })}
+                </span>
             </div>
 
             <div className="pt-2 relative">
               <Polzunok
                 min={0}
-                max={45}
+                max={40}
                 step={5}
                 value={localFilters.distanceToSeaMax}
                 onChange={value => setLocalFilters({ ...localFilters, distanceToSeaMin: 0, distanceToSeaMax: value })}
               />
-              <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>{tr('filters.nearBeach')}</span>
-                <span>{tr('filters.minLabel', { count: 20 })}</span>
-                <span>{tr('filters.minutesPlusLabel', { count: 45 })}</span>
-              </div>
+              {renderSliderScaleLabels([
+                tr('filters.nearBeach'),
+                tr('filters.minLabel', { count: 20 }),
+                tr('filters.minutesPlusLabel', { count: 40 })
+              ])}
             </div>
           </div>
 
           {/* DYNAMIC METRIC-SPECIFIC ADVANCED SECTIONS */}
-          {/* 1. Количество комнат или Площадь */}
+          {/* 1. Rooms or area */}
           {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
-            <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+            <div className={sectionCardClass}>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500 tracking-wider block">📐 {tr('filters.area')}</span>
-                <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
+                <span className={sectionTitleClass}>📐 {tr('filters.area')}</span>
+                <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
                   {tr('filters.fromArea', { count: localFilters.areaMin !== undefined ? localFilters.areaMin : 5 })}
                 </span>
               </div>
@@ -650,23 +737,23 @@ export default function HousingFilters({
               <div className="pt-2 relative">
                 <Polzunok
                   min={5}
-                  max={50}
+                  max={55}
                   step={5}
                   value={localFilters.areaMin !== undefined ? localFilters.areaMin : 5}
                   onChange={value => setLocalFilters({ ...localFilters, areaMin: value })}
                 />
-                <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                  <span>{tr('filters.areaValue', { count: 5 })}</span>
-                  <span>{tr('filters.areaValue', { count: 25 })}</span>
-                  <span>{tr('filters.areaValuePlus', { count: 50 })}</span>
-                </div>
+                {renderSliderScaleLabels([
+                  tr('filters.areaValue', { count: 5 }),
+                  tr('filters.areaValue', { count: 30 }),
+                  tr('filters.areaValuePlus', { count: 55 })
+                ])}
               </div>
             </div>
           ) : (
-            <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+            <div className={sectionCardClass}>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500 tracking-wider block">🏢 {tr('filters.rooms')}</span>
-                <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
+                <span className={sectionTitleClass}>🏢 {tr('filters.rooms')}</span>
+                <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
                   {tr('filters.fromRooms', { count: localFilters.roomsMin })}
                 </span>
               </div>
@@ -674,29 +761,29 @@ export default function HousingFilters({
               <div className="pt-2 relative">
                 <Polzunok
                   min={1}
-                  max={10}
+                  max={9}
                   step={1}
                   value={localFilters.roomsMin}
-                  onChange={value => setLocalFilters({ ...localFilters, roomsMin: value, roomsMax: 10 })}
+                  onChange={value => setLocalFilters({ ...localFilters, roomsMin: value, roomsMax: 9 })}
                 />
-                <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                  <span>{tr('filters.fromRooms', { count: 1 })}</span>
-                  <span>{tr('filters.roomsValue', { count: 5 })}</span>
-                  <span>{tr('filters.roomsValuePlus', { count: 10 })}</span>
-                </div>
+                {renderSliderScaleLabels([
+                  tr('filters.fromRooms', { count: 1 }),
+                  tr('filters.roomsValue', { count: 5 }),
+                  tr('filters.roomsValuePlus', { count: 9 })
+                ])}
               </div>
             </div>
           )}
 
-          {/* 4. Дизайн и интерьер */}
+          {/* 4. Interior and design */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🎨 {tr('filters.section.interior')}</span>
+            <span className={sectionTitleClass}>🎨 {tr('filters.section.interior')}</span>
             <div className="grid grid-cols-4 gap-2">
               {[
-                { value: 'basic', label: 'Базовый', icon: '🪑' },
-                { value: 'bali_style', label: 'Бали Стайл', icon: '🎋' },
-                { value: 'modern', label: 'Современный', icon: '🛋️' },
-                { value: 'luxury', label: 'Роскошный', icon: '👑' }
+                { value: 'basic', label: 'Basic', icon: '🪑' },
+                { value: 'bali_style', label: 'Bali style', icon: '🎋' },
+                { value: 'modern', label: 'Modern', icon: '🛋️' },
+                { value: 'luxury', label: 'Luxury', icon: '👑' }
               ].map(style => {
                 const isActive = localFilters.interiorStyle.includes(style.value);
                 return (
@@ -704,7 +791,7 @@ export default function HousingFilters({
                     key={style.value}
                     type="button"
                     onClick={() => toggleArrayFilter('interiorStyle', style.value)}
-                    className={`p-2 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[100px] ${
+                  className={`pl pl-interactive p-2 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[100px] ${
                       isActive
                         ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50] hover:bg-gray-50/40'
@@ -722,25 +809,27 @@ export default function HousingFilters({
           </div>
 
           {/* DYNAMIC FOR PRIVATE_ROOM: TYPE OF OBJECT */}
-          {subCategory === 'private_room' && (
+          {(subCategory === 'private_room' || subCategory === 'private_suite') && (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ {tr('filters.section.objectType')}</span>
-              <div className="grid grid-cols-3 gap-2.5">
-                {[
-                  { value: 'Villa', label: 'Вилла', icon: '🏘️' },
-                  { value: 'House', label: 'Дом', icon: '🏡' },
-                  { value: 'Guesthouse', label: 'Guesthouse', icon: '🌴' },
-                  { value: 'homestay', label: 'homestay', icon: '🏠' },
-                  { value: 'Hotel', label: 'Hotel', icon: '🏨' },
-                  { value: 'Bungalow', label: 'Bungalow', icon: '🛖' }
-                ].map(t => {
+              <span className={sectionTitleClass}>🏘️ {tr('filters.section.objectType')}</span>
+              <div className={`grid gap-2.5 ${subCategory === 'private_room' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                {(subCategory === 'private_room'
+                  ? [
+                    { value: 'Guesthouse (privet room, shared property)', label: 'Guesthouse', icon: '🌴' },
+                    { value: 'Home stay (Host on-site)', label: 'Homestay', icon: '🏠' },
+                    { value: 'Hotel (privet room)', label: 'Hotel', icon: '🏨' },
+                    { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' }
+                  ]
+                  : [
+                    { value: 'Apartment Complex (privet unit)', label: 'Apartment', icon: '🏢' }
+                  ]).map(t => {
                   const isActive = localFilters.housingType.includes(t.value);
                   return (
                     <button
                       key={t.value}
                       type="button"
                       onClick={() => toggleArrayFilter('housingType', t.value)}
-                      className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer relative h-[105px] ${
+                    className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer relative h-[105px] ${
                         isActive
                           ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102 font-sans'
                           : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50] hover:bg-white'
@@ -758,15 +847,15 @@ export default function HousingFilters({
             </div>
           )}
 
-          {/* 5. Тип объекта или Плотность комплекса */}
+          {/* 5. Object type or complex density */}
           {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍀 {tr('filters.section.density')}</span>
+                <span className={sectionTitleClass}>🍃 {tr('filters.section.density')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: 'cozy', label: 'Уютный', icon: '🍃' },
-                  { value: 'medium', label: 'Средний', icon: '🍀' },
-                  { value: 'large', label: 'Большой', icon: '🌿' }
+                  { value: 'cozy', label: 'Cozy', icon: '🍃' },
+                  { value: 'medium', label: 'Medium', icon: '🍀' },
+                  { value: 'large', label: 'Large', icon: '🌿' }
                 ].map(density => {
                   const isActive = localFilters.densityType.includes(density.value);
                   return (
@@ -774,7 +863,7 @@ export default function HousingFilters({
                       key={density.value}
                       type="button"
                       onClick={() => toggleArrayFilter('densityType', density.value)}
-                      className={`p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                      className={`pl pl-interactive p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                         isActive
                           ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-xs scale-102'
                           : 'bg-white border-[#E5E7EB] text-gray-600 hover:border-[#FF7A50] hover:bg-white'
@@ -792,12 +881,12 @@ export default function HousingFilters({
             </div>
           ) : (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🏘️ {tr('filters.section.objectType')}</span>
+              <span className={sectionTitleClass}>🏘️ {tr('filters.section.objectType')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: 'Villa', label: 'Вилла', icon: '🏘️' },
-                  { value: 'House', label: 'Дом', icon: '🏡' },
-                  { value: 'Bungalow', label: 'Бунгало', icon: '🛖' }
+                  { value: 'Privet Villa (must pool)', label: 'Villa', icon: '🏘️' },
+                  { value: 'House (no pool)', label: 'House', icon: '🏡' },
+                  { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' }
                 ].map(t => {
                   const isActive = localFilters.housingType.includes(t.value);
                   return (
@@ -805,7 +894,7 @@ export default function HousingFilters({
                       key={t.value}
                       type="button"
                       onClick={() => toggleArrayFilter('housingType', t.value)}
-                      className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer relative h-[105px] ${
+                    className={`pl pl-interactive p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer relative h-[105px] ${
                         isActive
                           ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102'
                           : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50] hover:bg-white'
@@ -823,14 +912,14 @@ export default function HousingFilters({
             </div>
           )}
 
-          {/* 6. Территория */}
+          {/* 6. Territory */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🏡 {tr('filters.section.territory')}</span>
+            <span className={sectionTitleClass}>🏡 {tr('filters.section.territory')}</span>
             <div className="grid grid-cols-3 gap-2.5">
               {[
-                { value: 'private', label: 'Приватная', icon: '🔒' },
-                { value: 'shared', label: 'Общая', icon: '👥' },
-                { value: 'resort', label: 'Резорт', icon: '✨' }
+                { value: 'private', label: 'Private', icon: '🔒' },
+                { value: 'shared', label: 'Shared', icon: '👥' },
+                { value: 'resort', label: 'Resort', icon: '✨' }
               ].map(t => {
                 const isActive = localFilters.territoryType.includes(t.value);
                 return (
@@ -838,7 +927,7 @@ export default function HousingFilters({
                     key={t.value}
                     type="button"
                     onClick={() => toggleArrayFilter('territoryType', t.value)}
-                    className={`p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
+                    className={`pl pl-interactive p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
                       isActive
                         ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -855,16 +944,16 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 8. Кровать */}
+          {/* 8. Beds */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛌 {tr('filters.section.beds')}</span>
+            <span className={sectionTitleClass}>🛌 {tr('filters.section.beds')}</span>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { value: 'queen_size', label: 'Queen size', icon: '🛏️' },
                 { value: 'king_size', label: 'King size', icon: '👑' },
                 ...(subCategory === 'private_room' ? [] : [
-                  { value: 'single_1', label: '1 односпальная', icon: '🧸' },
-                  { value: 'single_2', label: '2 односпальные', icon: '🛌' }
+                  { value: 'single_1', label: '1 single bed', icon: '🧸' },
+                  { value: 'single_2', label: '2 single beds', icon: '🛌' }
                 ])
               ].map(bed => {
                 const isActive = localFilters.bedType.includes(bed.value);
@@ -873,7 +962,7 @@ export default function HousingFilters({
                     key={bed.value}
                     type="button"
                     onClick={() => toggleArrayFilter('bedType', bed.value)}
-                    className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
+                    className={`pl pl-interactive p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -890,13 +979,12 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 9. Кухня */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          {/* 9. Kitchen */}
+          <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🍳 {tr('filters.section.kitchen')}</span>
-              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.kitchenType.includes('equipped') ? tr('details.option.kitchenType.equipped') :
-                 localFilters.kitchenType.includes('basic') ? tr('details.option.kitchenType.basic') : tr('filters.kitchen.any')}
+              <span className={sectionTitleClass}>🍳 {tr('filters.section.kitchen')}</span>
+              <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                {kitchenLabel}
               </span>
             </div>
 
@@ -906,8 +994,8 @@ export default function HousingFilters({
                 max={2}
                 step={1}
                 value={
-                  localFilters.kitchenType.includes('equipped') ? 2 :
-                  localFilters.kitchenType.includes('basic') ? 1 : 0
+                  localFilters.kitchenType.includes('equipped') || localFilters.kitchenType.includes('private_equipped') ? 2 :
+                  localFilters.kitchenType.includes('basic') || localFilters.kitchenType.includes('private_basic') ? 1 : 0
                 }
                 onChange={v => {
                   if (v === 2) {
@@ -919,40 +1007,61 @@ export default function HousingFilters({
                   }
                 }}
               />
-              <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>{tr('filters.kitchen.any')}</span>
-                <span>{tr('filters.kitchen.basic')}</span>
-                <span className="relative inline-flex items-center gap-1">
-                  <span>{tr('filters.kitchen.equipped')}</span>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setShowKitchenTooltip(true)}
-                    onMouseLeave={() => setShowKitchenTooltip(false)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowKitchenTooltip(!showKitchenTooltip);
-                    }}
-                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#1E293B]/10 hover:bg-[#FF7A50]/20 text-[#1E293B] hover:text-[#FF7A50] text-[9.5px] font-extrabold cursor-pointer transition-colors"
-                  >
-                    i
-                  </button>
-                  {showKitchenTooltip && (
-                    <span className="absolute bottom-full mb-2 right-0 w-[208px] p-2.5 bg-slate-900 text-white text-[10px] font-medium leading-normal rounded-xl shadow-xl z-50 text-left block">
-                      {tr('filters.kitchen.equippedTooltip')}
-                    </span>
-                  )}
-                </span>
-              </div>
+              {renderSliderScaleLabels([
+                tr('filters.kitchen.any'),
+                tr('filters.kitchen.basic'),
+                tr('filters.kitchen.equipped')
+              ])}
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasPrivateKitchen) {
+                    setLocalFilters({
+                      ...localFilters,
+                      kitchenType: localFilters.kitchenType.filter(type => type !== 'private_basic' && type !== 'private_equipped')
+                    });
+                  } else {
+                    const privateKitchenType = baseKitchenType === 'equipped' ? 'private_equipped' : 'private_basic';
+                    setLocalFilters({
+                      ...localFilters,
+                      kitchenType: [
+                        ...localFilters.kitchenType.filter(type => type !== 'basic' && type !== 'equipped'),
+                        privateKitchenType
+                      ]
+                    });
+                  }
+                }}
+                className={`pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between transition cursor-pointer select-none ${
+                  hasPrivateKitchen
+                    ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm'
+                    : 'text-gray-655'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">🍽️</span>
+                  <span className="text-xs font-semibold text-[#1E293B]">Своя кухня</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                  hasPrivateKitchen
+                    ? 'border-[#FF7A50] bg-[#FF7A50] text-white'
+                    : 'border-[#E5E7EB] bg-white'
+                }`}>
+                  {hasPrivateKitchen && <span className="text-[10px] font-bold">✓</span>}
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* 10. Бассейн */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          {/* 10. Pool */}
+          <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 {tr('filters.section.pool')}</span>
-              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
-                {localFilters.poolType.includes('private') && localFilters.poolType.includes('infinity') ? tr('details.option.poolType.infinity') :
-                 localFilters.poolType.includes('shared') && localFilters.poolType.includes('infinity') ? tr('details.option.poolType.infinity') :
+              <span className={sectionTitleClass}>💦 {tr('filters.section.pool')}</span>
+              <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                {localFilters.poolType.includes('private') && localFilters.poolType.includes('infinity') ? infinityPoolLabel :
+                 localFilters.poolType.includes('shared') && localFilters.poolType.includes('infinity') ? infinityPoolLabel :
                  localFilters.poolType.includes('private') ? tr('details.option.poolType.private') :
                  localFilters.poolType.includes('shared') ? tr('details.option.poolType.shared') : tr('filters.pool.any')}
               </span>
@@ -987,11 +1096,11 @@ export default function HousingFilters({
                   }
                 }}
               />
-              <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>{tr('filters.pool.any')}</span>
-                <span>{tr('details.option.poolType.shared')}</span>
-                <span>{tr('details.option.poolType.private')}</span>
-              </div>
+              {renderSliderScaleLabels([
+                tr('filters.pool.any'),
+                tr('details.option.poolType.shared'),
+                tr('details.option.poolType.private')
+              ])}
             </div>
 
             {/* Infinity check option */}
@@ -1013,15 +1122,15 @@ export default function HousingFilters({
                   }
                   setLocalFilters({ ...localFilters, poolType: nextPoolTypes });
                 }}
-                className={`p-3 rounded-2xl border w-full flex items-center justify-between transition cursor-pointer select-none ${
+                className={`pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between transition cursor-pointer select-none ${
                   localFilters.poolType.includes('infinity')
-                    ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold'
-                    : 'bg-gray-50/50 border-[#E5E7EB] text-gray-655 hover:bg-white hover:border-[#FF7A50]'
+                    ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm'
+                    : 'text-gray-655'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-xl">🌅</span>
-                  <span className="text-xs font-semibold text-[#1E293B]">{tr('filters.pool.infinity')}</span>
+                  <span className="text-xs font-semibold text-[#1E293B]">{infinityPoolLabel}</span>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   localFilters.poolType.includes('infinity')
@@ -1034,16 +1143,16 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 11. Вид */}
+          {/* 11. View */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🌅 {tr('filters.section.view')}</span>
+            <span className={sectionTitleClass}>🌅 {tr('filters.section.view')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
-                { value: 'rice_fields', label: 'Рис. поля', icon: '🌾' },
-                { value: 'garden', label: 'Сад', icon: '🌴' },
-                { value: 'pool', label: 'Бассейн', icon: '💦' },
-                { value: 'ocean', label: 'Океан', icon: '🌊' },
-                { value: 'jungle', label: 'Джунгли', icon: '🌿' }
+                { value: 'rice_fields', label: 'Rice fields', icon: '🌾' },
+                { value: 'garden', label: 'Garden', icon: '🌴' },
+                { value: 'pool', label: 'Pool', icon: '💦' },
+                { value: 'ocean', label: 'Ocean', icon: '🌊' },
+                { value: 'jungle', label: 'Jungle', icon: '🌿' }
               ].map(v => {
                 const isActive = localFilters.viewType.includes(v.value);
                 return (
@@ -1051,7 +1160,7 @@ export default function HousingFilters({
                     key={v.value}
                     type="button"
                     onClick={() => toggleArrayFilter('viewType', v.value)}
-                    className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer select-none h-[95px] relative ${
+                    className={`pl pl-interactive p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer select-none h-[95px] relative ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -1068,11 +1177,11 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 12. Скорость интернета (WiFi) */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          {/* 12. Internet speed (WiFi) */}
+          <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">⚡ {tr('filters.section.internet')}</span>
-              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
+              <span className={sectionTitleClass}>⚡ {tr('filters.section.internet')}</span>
+              <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
                 {localFilters.internetSpeedMin === 0 ? tr('filters.internet.any') : tr('details.mbps', { count: `${localFilters.internetSpeedMin}+` })}
               </span>
             </div>
@@ -1092,27 +1201,27 @@ export default function HousingFilters({
                   setLocalFilters({ ...localFilters, internetSpeedMin: speedMap[idx] });
                 }}
               />
-              <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>{tr('filters.internet.any')}</span>
-                <span>{tr('details.mbps', { count: 50 })}</span>
-                <span>{tr('details.mbps', { count: 100 })}</span>
-                <span>{tr('details.mbps', { count: '200+' })}</span>
-              </div>
+              {renderSliderScaleLabels([
+                tr('filters.internet.any'),
+                tr('details.mbps', { count: 50 }),
+                tr('details.mbps', { count: 100 }),
+                tr('details.mbps', { count: '200+' })
+              ])}
             </div>
           </div>
 
-          {/* 13. Ванная комната */}
+          {/* 13. Bathroom */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🚿 {tr('filters.section.bathroom')}</span>
+            <span className={sectionTitleClass}>🚿 {tr('filters.section.bathroom')}</span>
             
             <div className="grid grid-cols-3 gap-2.5">
               {[
-                { value: 'hot_water', label: 'Горячая вода', icon: '🔥' },
-                { value: 'tropical_shower', label: 'Тропический душ', icon: '🌴' },
-                { value: 'double_sink', label: 'Две раковины', icon: '🚰' },
-                { value: 'bathtub', label: 'Ванна', icon: '🛁' },
-                { value: 'garden_view', label: 'Вид на сад', icon: '🪴' },
-                { value: 'sauna_hammam', label: 'сауна / хаммам', icon: '🧖' }
+                { value: 'hot_water', label: 'Hot water', icon: '🔥' },
+                { value: 'tropical_shower', label: 'Tropical shower', icon: '🌴' },
+                { value: 'double_sink', label: 'Double sink', icon: '🚰' },
+                { value: 'bathtub', label: 'Bathtub', icon: '🛁' },
+                { value: 'garden_view', label: 'Garden view', icon: '🪴' },
+                { value: 'sauna_hammam', label: 'Sauna / hammam', icon: '🧖' }
               ].map(opt => {
                 const isActive = localFilters.bathroomOptions.includes(opt.value);
                 return (
@@ -1120,7 +1229,7 @@ export default function HousingFilters({
                     key={opt.value}
                     type="button"
                     onClick={() => toggleArrayFilter('bathroomOptions', opt.value)}
-                    className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative min-h-[105px] ${
+                    className={`pl pl-interactive p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative min-h-[105px] ${
                       isActive
                         ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-bold shadow-xs scale-102'
                         : 'bg-white border-[#E5E7EB] text-gray-500 hover:border-[#FF7A50]'
@@ -1137,21 +1246,21 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 7. Удобства и Комфорт */}
+          {/* 7. Amenities and comfort */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block">🛋️ {tr('filters.section.amenities')}</span>
+            <span className={sectionTitleClass}>🛋️ {tr('filters.section.amenities')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {[
-                { value: 'cold_AC', label: 'Холодный кондиционер', icon: '🥶', type: 'amenity' },
-                { value: 'hair_dryer', label: 'Фен', icon: '💨', type: 'amenity' },
-                { value: 'washing_machine', label: 'Стиральная машина', icon: '👕', type: 'amenity' },
+                { value: 'cold_AC', label: 'Cold AC', icon: '🥶', type: 'amenity' },
+                { value: 'hair_dryer', label: 'Hair dryer', icon: '💨', type: 'amenity' },
+                { value: 'washing_machine', label: 'Washing machine', icon: '👕', type: 'amenity' },
                 { value: 'smart_tv', label: 'Smart TV', icon: '📺', type: 'amenity' },
-                { value: 'workspace', label: 'Рабочее пространство', icon: '💻', type: 'amenity' },
-                { value: 'yoga', label: 'Зона йоги', icon: '🧘', type: 'amenity' },
+                { value: 'workspace', label: 'Workspace', icon: '💻', type: 'amenity' },
+                { value: 'yoga', label: 'Yoga area', icon: '🧘', type: 'amenity' },
                 ...roomOnlyAmenityOptions,
-                { value: 'Без плесени и запаха', label: 'Без плесени и запаха', icon: '🧼', type: 'cleanliness' },
-                { value: 'Идеальная сантехника', label: 'Исправная сантехника', icon: '🚿', type: 'cleanliness' },
-                { value: 'parking', label: 'Парковка для машин', icon: '🚗', type: 'amenity' }
+                { value: 'Без плесени и запаха', label: 'No mold or smell', icon: '🧼', type: 'cleanliness' },
+                { value: 'Идеальная сантехника', label: 'Perfect plumbing', icon: '🚿', type: 'cleanliness' },
+                { value: 'parking', label: 'Car parking', icon: '🚗', type: 'amenity' }
               ].map(item => {
                 const isActive = item.type === 'cleanliness'
                   ? localFilters.cleanlinessTags.includes(item.value)
@@ -1168,7 +1277,7 @@ export default function HousingFilters({
                         toggleArrayFilter('amenities', item.value);
                       }
                     }}
-                    className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative min-h-[90px] ${
+                    className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative min-h-[90px] ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -1185,11 +1294,11 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* 15. Уборка */}
-          <div className="bg-white p-5 rounded-3xl border border-[#E5E7EB] space-y-4">
+          {/* 15. Cleaning */}
+          <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 tracking-wider block">🧹 {tr('filters.section.cleaning')}</span>
-              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full">
+            <span className={sectionTitleClass}>🧹 {tr('filters.section.cleaning')}</span>
+              <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
                 {localFilters.cleaningFrequency.includes('daily') ? tr('details.option.cleaningFrequency.daily') :
                  localFilters.cleaningFrequency.includes('3_times_week') ? tr('details.option.cleaningFrequency.3_times_week') :
                  localFilters.cleaningFrequency.includes('once_week') ? tr('details.option.cleaningFrequency.once_week') : tr('filters.cleaning.none')}
@@ -1211,28 +1320,27 @@ export default function HousingFilters({
                   setLocalFilters({ ...localFilters, cleaningFrequency: [freqMap[idx]] });
                 }}
               />
-              <div className="flex justify-between text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                <span>{tr('filters.cleaning.none')}</span>
-                <span>{tr('filters.cleaning.onceShort')}</span>
-                <span>{tr('filters.cleaning.threeShort')}</span>
-                <span>{tr('details.option.cleaningFrequency.daily')}</span>
-              </div>
+              {renderSliderScaleLabels([
+                tr('filters.cleaning.none'),
+                tr('filters.cleaning.onceShort'),
+                tr('filters.cleaning.threeShort'),
+                tr('details.option.cleaningFrequency.daily')
+              ])}
             </div>
           </div>
 
-          {/* Особые преференции */}
+          {/* Extra options */}
           <div className="space-y-3">
-            <span className="text-xs font-bold text-gray-500 tracking-wider block font-sans">🐾 {tr('filters.section.extraOptions')}</span>
-            <div className="flex flex-row overflow-x-auto gap-2.5 pb-2 scrollbar-thin">
+            <span className={sectionTitleClass}>🐾 {tr('filters.section.extraOptions')}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
-                { value: 'pets_allowed', label: 'С питомцами', icon: '🐾' },
-                { value: 'quiet_location', label: 'Тишина', icon: '🔕' },
-                { value: 'all_bills_included', label: 'Bills включены', icon: '⚡' },
-                { value: 'transfer_included', label: 'Трансфер включен', icon: '✈️' },
-                { value: 'airport_transfer', label: 'Трансфер за доп плату', icon: '🚕' },
-                { value: 'breakfast_included', label: 'Завтрак включен', icon: '☕' },
-                { value: 'breakfast_paid', label: 'Завтрак за доп плату', icon: '🥐' },
-                { value: 'chef', label: 'Личный шеф', icon: '👨‍🍳' }
+                { value: 'pets_allowed', label: 'Pets allowed', icon: '🐾' },
+                { value: 'quiet_location', label: 'Quiet location', icon: '🔕' },
+                { value: 'all_bills_included', label: 'Bills included', icon: '⚡' },
+                { value: 'airport_transfer_included', label: 'Airport transfer included', icon: '✈️' },
+                { value: 'airport_transfer_paid', label: 'Paid airport transfer', icon: '🚕' },
+                { value: 'breakfast_included', label: 'Breakfast included', icon: '☕' },
+                { value: 'breakfast_paid', label: 'Paid breakfast', icon: '🥐' }
               ].map(opt => {
                 const isActive = localFilters.extraOptions.includes(opt.value);
                 return (
@@ -1240,7 +1348,7 @@ export default function HousingFilters({
                     key={opt.value}
                     type="button"
                     onClick={() => toggleArrayFilter('extraOptions', opt.value)}
-                    className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden shrink-0 w-[110px] h-[105px] ${
+                    className={`pl pl-interactive p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold scale-102 shadow-sm'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -1259,7 +1367,7 @@ export default function HousingFilters({
         </div>
 
         {/* BOTTOM STICKY ACTION FOOTER */}
-        <div className="p-5 bg-white border-t border-[#F4F7F6] flex items-center gap-3 relative z-10 shadow-[0_-10px_35px_-10px_rgba(0,0,0,0.04)]">
+        <div className="pu-footer p-5 bg-white border-t border-[#F4F7F6] flex items-center gap-3 relative z-10 shadow-[0_-10px_35px_-10px_rgba(0,0,0,0.04)]">
           <button
             onClick={handleReset}
             className="px-5 py-3.5 rounded-2xl border border-[#E5E7EB] text-[#1E293B] text-xs font-bold hover:bg-gray-50 hover:text-rose-600 active:scale-95 transition cursor-pointer shrink-0"
@@ -1282,3 +1390,4 @@ export default function HousingFilters({
     </div>
   );
 }
+

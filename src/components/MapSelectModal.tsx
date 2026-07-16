@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Compass, MapPin, Navigation } from 'lucide-react';
 import { THEME } from '../theme';
+import { getDistrictCoordMap } from '../utils/geo';
 
 interface Point {
   x: number;
@@ -15,19 +16,6 @@ interface MapSelectModalProps {
   onReset: () => void;
 }
 
-const DISTRICT_COORDS: Record<string, { x: number, y: number }> = {
-  'Canggu': { x: 190, y: 240 },
-  'Ubud': { x: 260, y: 160 },
-  'Seminyak': { x: 180, y: 280 },
-  'Uluwatu': { x: 120, y: 380 },
-  'Sanur': { x: 290, y: 290 },
-  'Nusa Dua': { x: 280, y: 390 },
-  'Kuta': { x: 160, y: 320 },
-  'Jimbaran': { x: 170, y: 350 },
-  'Amed': { x: 420, y: 80 },
-  'Lovina': { x: 210, y: 60 }
-};
-
 export default function MapSelectModal({
   initialPoint,
   initialRadius,
@@ -35,10 +23,10 @@ export default function MapSelectModal({
   onApply,
   onReset
 }: MapSelectModalProps) {
-  // Safe default to South Bali center
-  const [tempPoint, setTempPoint] = useState<Point | null>(initialPoint || { x: 190, y: 240 });
+  const [tempPoint, setTempPoint] = useState<Point | null>(initialPoint);
   const [tempRadius, setTempRadius] = useState<number>(initialRadius || 80);
   const [selectionState, setSelectionState] = useState<'idle' | 'fixed'>(initialPoint ? 'fixed' : 'idle');
+  const [districtCoords, setDistrictCoords] = useState<Record<string, Point>>({});
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +40,24 @@ export default function MapSelectModal({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDistrictCoordMap().then(coords => {
+      if (!cancelled) {
+        setDistrictCoords(coords);
+        if (!initialPoint) {
+          const fallback = Object.values(coords)[0] || null;
+          if (fallback) {
+            setTempPoint(fallback);
+          }
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPoint]);
 
   const getSVGCoords = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = e.currentTarget;
@@ -153,7 +159,7 @@ export default function MapSelectModal({
                 )}
 
                 {/* District Points indicators */}
-                {Object.entries(DISTRICT_COORDS).map(([name, coords]) => {
+                {(Object.entries(districtCoords) as Array<[string, Point]>).map(([name, coords]) => {
                   const active = tempPoint && isDistrictInRadius(coords);
                   return (
                     <g key={`select-pt-${name}`} className="pointer-events-none">

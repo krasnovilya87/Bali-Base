@@ -1,24 +1,8 @@
-const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  Canggu: { lat: -8.6481, lng: 115.1385 },
-  Ubud: { lat: -8.5069, lng: 115.2625 },
-  Seminyak: { lat: -8.6821, lng: 115.1513 },
-  Uluwatu: { lat: -8.8290, lng: 115.0860 },
-  Sanur: { lat: -8.6805, lng: 115.2638 },
-  Jimbaran: { lat: -8.7779, lng: 115.1685 }
-};
+import { findDistrictByCoords, getDefaultDistrictNameSync, getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 
-export const findClosestDistrict = (lat: number, lng: number): string => {
-  let closest = 'Canggu';
-  let minDist = Infinity;
-
-  for (const [name, coords] of Object.entries(DISTRICT_COORDINATES)) {
-    const dist = Math.sqrt(Math.pow(lat - coords.lat, 2) + Math.pow(lng - coords.lng, 2));
-    if (dist < minDist) {
-      minDist = dist;
-      closest = name;
-    }
-  }
-  return closest;
+const detectDistrictFromText = (text: string) => {
+  const lowerText = text.toLowerCase();
+  return getDistrictNamesFromGeoJSONSync().find(district => lowerText.includes(district.toLowerCase())) || '';
 };
 
 export const fetchAddressFromCoords = async (lat: number, lng: number): Promise<{ address: string; district: string }> => {
@@ -43,32 +27,23 @@ export const fetchAddressFromCoords = async (lat: number, lng: number): Promise<
           formattedAddress = parts.slice(0, 3).map((p: string) => p.trim()).join(', ');
         }
 
-        let detectedDistrict = '';
-        const possibleDistricts = ['Canggu', 'Ubud', 'Seminyak', 'Uluwatu', 'Sanur', 'Jimbaran'];
-        const addressTextLower = JSON.stringify(addressObj).toLowerCase() + ' ' + data.display_name.toLowerCase();
-
-        for (const dist of possibleDistricts) {
-          if (addressTextLower.includes(dist.toLowerCase())) {
-            detectedDistrict = dist;
-            break;
-          }
-        }
-
-        if (!detectedDistrict) {
-          detectedDistrict = findClosestDistrict(lat, lng);
-        }
+        const geoDistrict = await findDistrictByCoords(lat, lng);
+        const textDistrict = detectDistrictFromText(
+          `${JSON.stringify(addressObj)} ${data.display_name} ${placeName || ''}`
+        );
 
         return {
           address: formattedAddress || `Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-          district: detectedDistrict
+          district: geoDistrict || textDistrict || getDefaultDistrictNameSync()
         };
       }
     }
   } catch (err) {
     console.error('Geocoding error:', err);
   }
+  const geoDistrict = await findDistrictByCoords(lat, lng);
   return {
     address: `Координаты GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-    district: findClosestDistrict(lat, lng)
+    district: geoDistrict || getDefaultDistrictNameSync()
   };
 };

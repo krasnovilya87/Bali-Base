@@ -9,10 +9,10 @@ Endpoint:
 ```http
 GET https://places.googleapis.com/v1/places/{PLACE_ID}
 X-Goog-Api-Key: $GOOGLE_PLACES_API_KEY
-X-Goog-FieldMask: id,rating,reviews
+X-Goog-FieldMask: id,rating,userRatingCount,reviews
 ```
 
-The field mask is intentionally locked to `id,rating,reviews`. Do not add photos, addresses, phones, display names, or other fields here because they change billing and payload size.
+The field mask is intentionally locked to `id,rating,userRatingCount,reviews`. Do not add photos, addresses, phones, display names, or other fields here because they change billing and payload size.
 
 ## Firestore Structure
 
@@ -59,9 +59,9 @@ Firestore collections used by the code:
 
 ## Refresh Policy
 
-- Cache younger than 14 days is returned without a Google request.
-- Missing cache can be refreshed immediately if the quota allows it.
-- Stale cache is returned immediately and can be refreshed in the background.
+- Google data is requested only once during listing creation.
+- Existing cache is returned without a Google request.
+- Stale cache is not refreshed automatically.
 - Monthly hard limit defaults to `9500`.
 - `500` requests are reserved for listing creation/manual refresh.
 - Background cron stops at `9000`, protecting the creation reserve.
@@ -74,4 +74,4 @@ npm run places:refresh
 npm run places:refresh -- 150
 ```
 
-The optional number limits that run. Production cron can run this once daily.
+Automatic refresh is disabled. The command remains as a safe no-op for old cron setups and returns without calling Google.

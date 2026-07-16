@@ -1,6 +1,6 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Listing } from '../../../types';
-import { findClosestDistrict } from '../geo';
+import { findDistrictByCoords, getDefaultDistrictNameSync, getDistrictNamesFromGeoJSONSync } from '../../../utils/geo';
 import { ensureGoogleMapsLibraries } from '../../../utils/googleMapsLoader';
 
 type UseLocationStepParams = {
@@ -18,7 +18,11 @@ export const useLocationStep = ({
   apiKey,
   hasValidKey
 }: UseLocationStepParams) => {
-  const [district, setDistrict] = useState<string>(initialListing?.district || 'Canggu');
+  const defaultDistrict = getDefaultDistrictNameSync();
+  const districtOptions = getDistrictNamesFromGeoJSONSync();
+  const findDistrictInText = (text: string) =>
+    districtOptions.find(dist => text.includes(dist.toLowerCase())) || '';
+  const [district, setDistrict] = useState<string>(initialListing?.district || defaultDistrict);
   const [address, setAddress] = useState<string>(initialListing?.address || '');
   const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(
     initialListing?.locationCoords || null
@@ -116,7 +120,7 @@ export const useLocationStep = ({
     });
   };
 
-  const detectDistrictFromGooglePlace = (place: any, lat: number, lng: number) => {
+  const detectDistrictFromGooglePlace = async (place: any, lat: number, lng: number) => {
     const components = place?.address_components || [];
     const text = [
       place?.name,
@@ -124,8 +128,8 @@ export const useLocationStep = ({
       ...components.map((component: any) => component.long_name)
     ].join(' ').toLowerCase();
 
-    const possibleDistricts = ['Canggu', 'Ubud', 'Seminyak', 'Uluwatu', 'Sanur', 'Nusa Dua', 'Kuta', 'Jimbaran', 'Amed', 'Lovina'];
-    return possibleDistricts.find(dist => text.includes(dist.toLowerCase())) || findClosestDistrict(lat, lng);
+    const geoDistrict = await findDistrictByCoords(lat, lng);
+    return findDistrictInText(text) || geoDistrict || defaultDistrict;
   };
 
   const fetchSuggestions = async (query: string) => {
@@ -164,16 +168,7 @@ export const useLocationStep = ({
     setSelectedGooglePlaceId('');
 
     const normalized = val.toLowerCase();
-    if (normalized.includes('ubud')) setDistrict('Ubud');
-    else if (normalized.includes('seminyak')) setDistrict('Seminyak');
-    else if (normalized.includes('uluwatu')) setDistrict('Uluwatu');
-    else if (normalized.includes('sanur')) setDistrict('Sanur');
-    else if (normalized.includes('nusa dua')) setDistrict('Nusa Dua');
-    else if (normalized.includes('kuta')) setDistrict('Kuta');
-    else if (normalized.includes('jimbaran')) setDistrict('Jimbaran');
-    else if (normalized.includes('amed')) setDistrict('Amed');
-    else if (normalized.includes('lovina')) setDistrict('Lovina');
-    else setDistrict('Canggu');
+    setDistrict(findDistrictInText(normalized) || defaultDistrict);
 
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -201,7 +196,7 @@ export const useLocationStep = ({
         setAddress(cleanAddress);
         setPickedCoords({ lat, lng });
         setSelectedGooglePlaceId(sug.place_id);
-        setDistrict(detectDistrictFromGooglePlace(place, lat, lng));
+        setDistrict(await detectDistrictFromGooglePlace(place, lat, lng));
         setShowSuggestionsDropdown(false);
         return { lat, lng };
       }
@@ -232,16 +227,15 @@ export const useLocationStep = ({
     setSelectedGooglePlaceId('');
 
     let detectedDistrict = '';
-    const possibleDistricts = ['Canggu', 'Ubud', 'Seminyak', 'Uluwatu', 'Sanur', 'Jimbaran'];
     const lowerText = JSON.stringify(addressObj).toLowerCase() + ' ' + sug.display_name.toLowerCase();
-    for (const dist of possibleDistricts) {
+    for (const dist of districtOptions) {
       if (lowerText.includes(dist.toLowerCase())) {
         detectedDistrict = dist;
         break;
       }
     }
     if (!detectedDistrict) {
-      detectedDistrict = findClosestDistrict(lat, lng);
+      detectedDistrict = (await findDistrictByCoords(lat, lng)) || defaultDistrict;
     }
 
     setDistrict(detectedDistrict);

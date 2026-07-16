@@ -21,15 +21,15 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
                       <div className="pt-2 relative">
                         <Polzunok
                           min={5}
-                          max={100}
+                          max={55}
                           step={5}
                           value={area}
                           onChange={setArea}
                         />
                         <div className="grid grid-cols-3 text-[10px] text-gray-400 font-sans font-bold mt-1.5 px-0.5">
                           <span className="text-left">5 м²</span>
-                          <span className="text-center">50 м²</span>
-                          <span className="text-right">100 м²+</span>
+                          <span className="text-center">30 м²</span>
+                          <span className="text-right">55 м²+</span>
                         </div>
                       </div>
                     </div>

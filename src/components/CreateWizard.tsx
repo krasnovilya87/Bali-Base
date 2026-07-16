@@ -307,7 +307,7 @@ export default function CreateWizard({
       title: cleanListingTitle,
       description: description || 'Стильный объект в центральном районе, ждет своих гостей.',
       district,
-      address: address || 'Jl. Pantai Batu Mejan, Canggu',
+      address: address || district,
       locationCoords,
       googlePlaceId: selectedGooglePlaceId || initialListing?.googlePlaceId || initialListing?.placeId,
       images: orderedPhotoUrls,
@@ -401,7 +401,8 @@ export default function CreateWizard({
     try {
       const reviewsResponse = await requestListingCreateGoogleReviewsRefresh({
         listingId: listingForPublish.id,
-        placeId: listingForPublish.googlePlaceId || listingForPublish.placeId
+        placeId: listingForPublish.googlePlaceId || listingForPublish.placeId,
+        googleReviewsUpdatedAt: initialListing?.googleReviewsUpdatedAt
       });
       await onPublish(applyGoogleReviewsCacheToListing(listingForPublish, reviewsResponse));
       onClose();

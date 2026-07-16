@@ -1,4 +1,4 @@
-export const GOOGLE_PLACES_REVIEWS_FIELD_MASK = 'id,rating,reviews';
+export const GOOGLE_PLACES_REVIEWS_FIELD_MASK = 'id,rating,userRatingCount,reviews';
 
 export const GOOGLE_PLACES_REVIEWS_CONFIG = {
   cacheTtlDays: Number(process.env.GOOGLE_PLACES_REVIEWS_CACHE_TTL_DAYS || 14),

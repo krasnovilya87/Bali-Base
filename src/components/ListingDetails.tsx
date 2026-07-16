@@ -10,7 +10,7 @@ import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { getHaversineDistance, getListingCoords } from '../utils/geoUtils';
+import { getHaversineDistance, getListingCoords } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics } from '../utils/housingFieldMeta';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
@@ -104,19 +104,6 @@ const isSportVenue = (place: google.maps.places.PlaceResult) => {
   const hasStoreType = types.some(type => SPORT_STORE_TYPES.includes(type));
   const hasStoreName = SPORT_STORE_KEYWORDS.some(keyword => name.includes(normalizePlaceName(keyword)));
   return !hasStoreType && !hasStoreName;
-};
-
-const DISTRICT_TRANSLATIONS: Record<string, string> = {
-  'Seminyak': 'Семиньяк',
-  'Canggu': 'Чангу',
-  'Ubud': 'Убуд',
-  'Uluwatu': 'Улувату',
-  'Sanur': 'Санур',
-  'Nusa Dua': 'Нуса Дуа',
-  'Kuta': 'Кута',
-  'Jimbaran': 'Джимбаран',
-  'Amed': 'Амед',
-  'Lovina': 'Ловина'
 };
 
 const formatBookingDate = (date: string) => {

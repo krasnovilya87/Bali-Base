@@ -3,6 +3,7 @@ import { GOOGLE_PLACES_REVIEWS_FIELD_MASK } from './config';
 type GooglePlacesReviewResponse = {
   id?: string;
   rating?: number;
+  userRatingCount?: number;
   reviews?: Array<{
     name?: string;
     relativePublishTimeDescription?: string;

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useI18n } from '../i18nContext';
 
@@ -81,7 +81,7 @@ export default function TwoMonthCalendar({
 
   const getMonthEmoji = (monthIndex: number) => {
     const emojis = [
-      '❄️', '🏔️', '🌱', '🌸', '☀️', '🏖️', '🌊', '🍍', '🍂', '🎃', '🌧️', '🎄'
+      '❄️', '🏔️', '🌱', '🌸', '☀️', '🏖️', '🌊', '🍌', '🍂', '🎃', '🌧️', '🎄'
     ];
     return emojis[monthIndex] || '📅';
   };

@@ -198,96 +198,96 @@ const iconMap: Record<string, string> = {
 
 const labelMaps = {
   housingType: {
-    'Privet Villa (must pool)': 'Вилла',
-    'House (no pool)': 'Дом',
-    'Bungalow (standalone unit)': 'Бунгало',
-    'Apartment Complex (privet unit)': 'Апартаменты',
+    'Privet Villa (must pool)': 'Villa',
+    'House (no pool)': 'House',
+    'Bungalow (standalone unit)': 'Bungalow',
+    'Apartment Complex (privet unit)': 'Apartment',
     'Guesthouse (privet room, shared property)': 'Guesthouse',
     'Home stay (Host on-site)': 'Homestay',
     'Hotel (privet room)': 'Hotel'
   } as Record<string, string>,
   interiorStyle: {
-    basic: 'Базовый',
-    bali_style: 'Бали Стайл',
-    modern: 'Современный',
-    luxury: 'Роскошный'
+    basic: 'Basic',
+    bali_style: 'Bali style',
+    modern: 'Modern',
+    luxury: 'Luxury'
   } as Record<string, string>,
   densityType: {
-    cozy: 'Уютный, до 4 комнат',
-    medium: 'Средний, 5-10 комнат',
-    large: 'Большой, 10+ комнат'
+    cozy: 'Cozy, up to 4 rooms',
+    medium: 'Medium, 5-10 rooms',
+    large: 'Large, 10+ rooms'
   } as Record<string, string>,
   territoryType: {
-    private: 'Приватная',
-    shared: 'Общая',
-    resort: 'Резорт'
+    private: 'Private',
+    shared: 'Shared',
+    resort: 'Resort'
   } as Record<string, string>,
   poolType: {
-    none: 'Без бассейна',
-    shared: 'Общий бассейн',
-    private: 'Частный бассейн',
-    infinity: 'Инфинити-бассейн'
+    none: 'No pool',
+    shared: 'Shared pool',
+    private: 'Private pool',
+    infinity: 'Infinity pool'
   } as Record<string, string>,
   viewType: {
-    rice_fields: 'Рисовые поля',
-    garden: 'Сад',
-    pool: 'Бассейн',
-    ocean: 'Океан',
-    jungle: 'Джунгли'
+    rice_fields: 'Rice fields',
+    garden: 'Garden',
+    pool: 'Pool',
+    ocean: 'Ocean',
+    jungle: 'Jungle'
   } as Record<string, string>,
   cleaningFrequency: {
-    none: 'Не указана',
-    '3_times_week': '3 раза в неделю',
-    once_week: 'Раз в неделю',
-    daily: 'Ежедневно'
+    none: 'Not included',
+    '3_times_week': '3 times per week',
+    once_week: 'Once per week',
+    daily: 'Daily'
   } as Record<string, string>,
   bedTypes: {
     queen_size: 'Queen size',
     king_size: 'King size',
-    single_1: '1 односпальная',
-    single_2: '2 односпальные'
+    single_1: '1 single bed',
+    single_2: '2 single beds'
   } as Record<string, string>,
   kitchenType: {
-    none: 'Без кухни',
-    basic: 'Базовая кухня',
-    equipped: 'Оснащенная кухня',
-    private_basic: 'Базовая, своя кухня',
-    private_equipped: 'Оснащенная, своя кухня'
+    none: 'No kitchen',
+    basic: 'Basic kitchen',
+    equipped: 'Equipped kitchen',
+    private_basic: 'Private basic kitchen',
+    private_equipped: 'Private equipped kitchen'
   } as Record<string, string>,
   bathroomOptions: {
-    hot_water: 'Горячая вода',
-    tropical_shower: 'Тропический душ',
-    double_sink: 'Две раковины',
-    bathtub: 'Ванна',
-    garden_view: 'Вид на сад',
-    sauna_hammam: 'Сауна / хаммам'
+    hot_water: 'Hot water',
+    tropical_shower: 'Tropical shower',
+    double_sink: 'Double sink',
+    bathtub: 'Bathtub',
+    garden_view: 'Garden view',
+    sauna_hammam: 'Sauna / hammam'
   } as Record<string, string>,
   amenities: {
     AC: 'AC',
-    cold_AC: 'Холодный кондиционер',
-    hair_dryer: 'Фен',
-    washing_machine: 'Стиральная машина',
+    cold_AC: 'Cold AC',
+    hair_dryer: 'Hair dryer',
+    washing_machine: 'Washing machine',
     smart_tv: 'Smart TV',
-    workspace: 'Рабочее пространство',
-    yoga: 'Зона йоги',
-    room_fridge: 'Холодильник в номере',
-    water_cooler: 'Кулер',
-    parking: 'Парковка для машины',
-    'Без плесени и запаха': 'Без плесени и запаха',
-    'Идеальная сантехника': 'Исправная сантехника'
+    workspace: 'Workspace',
+    yoga: 'Yoga area',
+    room_fridge: 'In-room fridge',
+    water_cooler: 'Water cooler',
+    parking: 'Car parking',
+    'Без плесени и запаха': 'No mold or smell',
+    'Идеальная сантехника': 'Perfect plumbing'
   } as Record<string, string>,
   extraOptions: {
-    airport_transfer_included: 'Трансфер включен',
-    airport_transfer_paid: 'Трансфер за доп. плату',
-    transfer_included: 'Трансфер включен',
-    airport_transfer: 'Трансфер за доп. плату',
-    breakfast_included: 'Завтрак включен',
-    breakfast_paid: 'Завтрак за доп. плату',
-    pets_allowed: 'С питомцами',
-    quiet_location: 'Тишина',
-    all_bills_included: 'Bills включены',
-    nanny: 'Няня',
-    chef: 'Личный шеф'
+    airport_transfer_included: 'Airport transfer included',
+    airport_transfer_paid: 'Paid airport transfer',
+    transfer_included: 'Transfer included',
+    airport_transfer: 'Paid airport transfer',
+    breakfast_included: 'Breakfast included',
+    breakfast_paid: 'Paid breakfast',
+    pets_allowed: 'Pets allowed',
+    quiet_location: 'Quiet location',
+    all_bills_included: 'Bills included',
+    nanny: 'Nanny',
+    chef: 'Private chef'
   } as Record<string, string>
 };
 

@@ -1,6 +1,6 @@
-import { BALI_DISTRICTS } from '../../data';
 import { Listing } from '../../types';
 import { isListingFresh } from '../../utils/listingFreshness';
+import { getDefaultDistrictNameSync, getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 
 const DEFAULT_IMAGE =
   'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&fit=crop&q=80';
@@ -31,7 +31,7 @@ const slugify = (value: string, fallback: string): string => {
 
 const inferDistrict = (text: string): string => {
   const lowered = text.toLowerCase();
-  return BALI_DISTRICTS.find(district => lowered.includes(district.toLowerCase())) || 'Canggu';
+  return getDistrictNamesFromGeoJSONSync().find(district => lowered.includes(district.toLowerCase())) || getDefaultDistrictNameSync();
 };
 
 const inferSubCategory = (text: string): string => {

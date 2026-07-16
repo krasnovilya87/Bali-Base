@@ -1,18 +1,5 @@
 import { Listing, Review, BookingRequest } from './types';
 
-export const BALI_DISTRICTS = [
-  'Canggu',
-  'Ubud',
-  'Seminyak',
-  'Uluwatu',
-  'Sanur',
-  'Nusa Dua',
-  'Kuta',
-  'Jimbaran',
-  'Amed',
-  'Lovina'
-];
-
 export const MOCK_REVIEWS: Review[] = [
   {
     id: 'rev-1',

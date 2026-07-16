@@ -4,10 +4,343 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
+    <style>
+      .pu-window-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0;padding:1rem 1.25rem;border-bottom:1px solid #E5E7EB}
+      .pu-close{width:2.25rem;height:2.25rem;flex-shrink:0;border:0;border-radius:9999px;background:#fff;color:#6B7280;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background-color 180ms ease,color 180ms ease,transform 180ms ease}
+      .pu-close:hover{background:#F9FAFB;color:#374151}
+      .pu-close:active{transform:scale(.95)}
+      .pu-close svg,.pu-close-icon{width:1.25rem;height:1.25rem}
+      .pu-footer{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-shrink:0;padding:1rem;border-top:1px solid #E5E7EB}
+      .pu-button-secondary,.pu-button-primary{min-height:2.5rem;border-radius:.75rem;font-size:.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.375rem;transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease,opacity 180ms ease,transform 180ms ease}
+      .pu-button-secondary{padding:.625rem 1rem;border:1px solid #E5E7EB;background:transparent;color:#374151}
+      .pu-button-secondary:hover{background:#F9FAFB}
+      .pu-button-primary{padding:.625rem 1.25rem;border:0;background:#FF7A50;color:#fff;box-shadow:0 4px 6px -1px rgb(0 0 0 / 10%),0 2px 4px -2px rgb(0 0 0 / 10%)}
+      .pu-button-primary:hover{background:#E05A30}
+      .pu-button-secondary:active,.pu-button-primary:active{transform:scale(.95)}
+      .pu-button-secondary:disabled,.pu-button-primary:disabled{cursor:not-allowed;opacity:.5;transform:none}
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        const STORAGE_KEY = 'bali_base_admin_tickets';
+        const PROBLEM_BUTTON_ATTR = 'data-problem-report-button';
+        const PROBLEM_OVERLAY_ID = 'problem-report-overlay';
+        const FALLBACK_LISTING_TITLE = 'Listing';
+        const FALLBACK_TRANSLATIONS = {
+          EN: {
+            fallbackListingTitle: 'Listing',
+            reportProblem: 'Report a problem',
+            problemDescription: 'Problem description',
+            cancel: 'Cancel',
+            close: 'Close',
+            sendMessage: 'Send message',
+            tooltip: 'Send a message to the admin panel',
+            subject: 'Problem with listing: {title}'
+          },
+          RU: {
+            fallbackListingTitle: 'Объявление',
+            reportProblem: 'Сообщить о проблеме',
+            problemDescription: 'Описание проблемы',
+            cancel: 'Отмена',
+            close: 'Закрыть',
+            sendMessage: 'Отправить',
+            tooltip: 'Отправить сообщение в админпанель',
+            subject: 'Проблема с объявлением: {title}'
+          },
+          ID: {
+            fallbackListingTitle: 'Iklan',
+            reportProblem: 'Laporkan masalah',
+            problemDescription: 'Deskripsi masalah',
+            cancel: 'Batal',
+            close: 'Tutup',
+            sendMessage: 'Kirim pesan',
+            tooltip: 'Kirim pesan ke panel admin',
+            subject: 'Masalah dengan iklan: {title}'
+          },
+          DE: {
+            fallbackListingTitle: 'Angebot',
+            reportProblem: 'Problem melden',
+            problemDescription: 'Problembeschreibung',
+            cancel: 'Abbrechen',
+            close: 'Schliessen',
+            sendMessage: 'Nachricht senden',
+            tooltip: 'Nachricht an das Admin-Panel senden',
+            subject: 'Problem mit Angebot: {title}'
+          },
+          FR: {
+            fallbackListingTitle: 'Annonce',
+            reportProblem: 'Signaler un probleme',
+            problemDescription: 'Description du probleme',
+            cancel: 'Annuler',
+            close: 'Fermer',
+            sendMessage: 'Envoyer le message',
+            tooltip: 'Envoyer un message au panneau admin',
+            subject: "Probleme avec l'annonce : {title}"
+          }
+        };
+        let lastOpenedListingTitle = '';
+
+        const removeListingContactButtons = () => {
+          document.querySelectorAll('button.whatsapp-green').forEach((button) => button.remove());
+        };
+
+        const readTickets = () => {
+          try {
+            const raw = window.localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        };
+
+        const writeTickets = (tickets) => {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+          window.dispatchEvent(new CustomEvent('bali-base-support-tickets-updated', { detail: { tickets } }));
+        };
+
+        const normalizeListingTitle = (value) => {
+          const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+          return normalized && !/^(listing|listings)$/i.test(normalized) ? normalized : '';
+        };
+
+        const escapeHtml = (value) => String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+        const getCurrentLanguage = () => {
+          const visibleLanguage = Array.from(document.querySelectorAll('button span'))
+            .map((element) => String(element.textContent || '').trim().toUpperCase())
+            .find((code) => FALLBACK_TRANSLATIONS[code]);
+          if (visibleLanguage) return visibleLanguage;
+
+          const candidates = [
+            window.localStorage.getItem('bali_base_language'),
+            window.localStorage.getItem('language'),
+            window.localStorage.getItem('locale'),
+            document.documentElement.lang,
+            navigator.language,
+            ...(navigator.languages || [])
+          ];
+          const match = candidates
+            .map((value) => String(value || '').slice(0, 2).toUpperCase())
+            .find((code) => FALLBACK_TRANSLATIONS[code]);
+          return match || 'EN';
+        };
+
+        const translate = (key, params = {}) => {
+          const dictionary = FALLBACK_TRANSLATIONS[getCurrentLanguage()] || FALLBACK_TRANSLATIONS.EN;
+          return String(dictionary[key] || FALLBACK_TRANSLATIONS.EN[key] || key).replace(/\{(\w+)\}/g, (_, paramKey) => params[paramKey] ?? '');
+        };
+
+        const rememberListingTitleFromCard = (target) => {
+          const card = target?.closest?.('[id^="card-"]');
+          const cardTitle = normalizeListingTitle(card?.querySelector('h3')?.textContent);
+          if (cardTitle) {
+            lastOpenedListingTitle = cardTitle;
+          }
+        };
+
+        const getCurrentListingTitle = () => {
+          const modal = document.getElementById('details-modal');
+          const markedTitle = normalizeListingTitle(modal?.getAttribute('data-listing-title'));
+          const visibleTitle = normalizeListingTitle(modal?.querySelector('[data-listing-title]')?.textContent);
+          const pageTitle = normalizeListingTitle(document.querySelector('h1')?.textContent);
+          return markedTitle || visibleTitle || lastOpenedListingTitle || pageTitle || translate('fallbackListingTitle') || FALLBACK_LISTING_TITLE;
+        };
+
+        const closeProblemDialog = () => {
+          document.getElementById(PROBLEM_OVERLAY_ID)?.remove();
+        };
+
+        const openProblemDialog = () => {
+          if (document.getElementById(PROBLEM_OVERLAY_ID)) return;
+
+          const listingTitle = getCurrentListingTitle();
+          const safeListingTitle = escapeHtml(listingTitle);
+          const overlay = document.createElement('div');
+          overlay.id = PROBLEM_OVERLAY_ID;
+          overlay.className = 'fixed inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4';
+          overlay.style.zIndex = '10000';
+          overlay.innerHTML = `
+            <div class="pu w-full max-w-lg rounded-[32px] shadow-2xl border border-[#E5E7EB] overflow-hidden">
+              <div class="pu-header pu-head pu-window-header">
+                <div>
+                  <h3>${escapeHtml(translate('reportProblem'))}</h3>
+                </div>
+                <button
+                  type="button"
+                  class="pu-close"
+                  data-close-problem-dialog="true"
+                  aria-label="${escapeHtml(translate('close'))}"
+                >
+                  <svg class="pu-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <form class="pu-body pu-base" data-problem-report-form="true">
+                <div class="p-5 space-y-4">
+                <div class="text-sm font-bold text-[#1E293B]">${safeListingTitle}</div>
+
+                <label class="block">
+                  <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${escapeHtml(translate('problemDescription'))}</span>
+                  <textarea
+                    rows="5"
+                    required
+                    class="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] px-4 py-3 text-sm text-[#1E293B] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF7A50]/20 focus:border-[#FF7A50]/40 resize-none"
+                    data-problem-report-text="true"
+                  ></textarea>
+                </label>
+
+                </div>
+
+                <div class="pu-footer">
+                  <button
+                    type="button"
+                    class="pu-button-secondary"
+                    data-cancel-problem-dialog="true"
+                  >
+                    ${escapeHtml(translate('cancel'))}
+                  </button>
+                  <button
+                    type="submit"
+                    class="pu-button-primary"
+                  >
+                    <span>${escapeHtml(translate('sendMessage'))}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          `;
+
+          overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+              closeProblemDialog();
+            }
+          });
+
+          overlay.querySelector('[data-close-problem-dialog="true"]')?.addEventListener('click', closeProblemDialog);
+          overlay.querySelector('[data-cancel-problem-dialog="true"]')?.addEventListener('click', closeProblemDialog);
+          overlay.querySelector('[data-problem-report-form="true"]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const textField = overlay.querySelector('[data-problem-report-text="true"]');
+            const rawText = textField instanceof HTMLTextAreaElement ? textField.value.trim() : '';
+            if (!rawText) return;
+
+            const createdAt = new Date().toISOString();
+            const tickets = readTickets();
+            tickets.unshift({
+              id: `ticket-${Date.now()}`,
+              userId: 'local-user',
+              userName: 'User',
+              userPhone: '',
+              userAvatar: '',
+              subject: translate('subject', { title: listingTitle }),
+              status: 'open',
+              createdAt,
+              listingId: window.location.pathname,
+              listingTitle,
+              messages: [
+                {
+                  id: `msg-${Date.now()}`,
+                  sender: 'user',
+                  text: rawText,
+                  timestamp: createdAt
+                }
+              ]
+            });
+            writeTickets(tickets);
+            closeProblemDialog();
+          });
+
+          document.body.appendChild(overlay);
+        };
+
+        const renderProblemButtonContent = (button) => {
+          const language = getCurrentLanguage();
+          if (button.getAttribute('data-problem-report-language') === language) return;
+          button.setAttribute('data-problem-report-language', language);
+          button.title = translate('tooltip');
+          button.innerHTML = `
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+            </svg>
+            <span>${escapeHtml(translate('reportProblem'))}</span>
+          `;
+        };
+
+        const insertProblemButton = () => {
+          const bookingButton = document.getElementById('wa-booking-btn');
+          if (!bookingButton) return;
+          const wrapper = bookingButton.closest('div.pt-2');
+          const buttonContainer = wrapper?.parentElement;
+
+          const existingButton = document.querySelector(`[${PROBLEM_BUTTON_ATTR}="true"]`);
+          if (existingButton instanceof HTMLButtonElement) {
+            renderProblemButtonContent(existingButton);
+            if (buttonContainer && existingButton.parentElement === buttonContainer && existingButton.nextElementSibling) {
+              buttonContainer.appendChild(existingButton);
+            }
+            return;
+          }
+
+          if (!buttonContainer) return;
+
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.setAttribute(PROBLEM_BUTTON_ATTR, 'true');
+          button.className = 'mt-2 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-2xl text-xs font-normal transition bg-[#FFF7F2] text-[#FF7A50]';
+          renderProblemButtonContent(button);
+          button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            openProblemDialog();
+          });
+
+          buttonContainer.appendChild(button);
+        };
+
+        document.addEventListener('click', (event) => {
+          rememberListingTitleFromCard(event.target);
+        }, true);
+
+        const syncButtons = () => {
+          removeListingContactButtons();
+          insertProblemButton();
+        };
+
+        const syncLanguage = () => {
+          closeProblemDialog();
+          document.querySelectorAll(`[${PROBLEM_BUTTON_ATTR}="true"]`).forEach((button) => {
+            button.removeAttribute('data-problem-report-language');
+          });
+          syncButtons();
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', syncButtons, { once: true });
+        } else {
+          syncButtons();
+        }
+
+        const observer = new MutationObserver(syncButtons);
+        observer.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('bali-base-language-updated', syncLanguage);
+        window.addEventListener('storage', (event) => {
+          if (event.key === 'bali_base_language') syncLanguage();
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

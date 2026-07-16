@@ -1,5 +1,5 @@
 import { LatLng, ListingNearbyRoute, ListingNearbySpot } from '../types';
-import { getHaversineDistance } from './geoUtils';
+import { getHaversineDistance } from './geo';
 import { ensureGoogleMapsLibraries } from './googleMapsLoader';
 
 const GOOGLE_MAPS_API_KEY =

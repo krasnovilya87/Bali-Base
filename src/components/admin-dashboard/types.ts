@@ -21,6 +21,8 @@ export interface SupportTicket {
   userPhone: string;
   userAvatar: string;
   subject: string;
+  listingId?: string;
+  listingTitle?: string;
   messages: {
     id: string;
     sender: 'user' | 'admin';

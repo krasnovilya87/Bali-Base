@@ -36,9 +36,9 @@ type AppOverlaysProps = {
   setCheckOutDate: Dispatch<SetStateAction<string>>;
   setCustomPoint: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
   setCustomRadius: Dispatch<SetStateAction<number>>;
-  setDistrictSearch: Dispatch<SetStateAction<string>>;
+  setDistrictSearch: Dispatch<SetStateAction<string[]>>;
   setEditingListing: Dispatch<SetStateAction<Listing | null>>;
-  setFilters: Dispatch<SetStateAction<FilterState>>;
+  setFilters: (filters: FilterState) => void;
   setSelectedListing: Dispatch<SetStateAction<Listing | null>>;
   setPrimaryL2: (subCategoryId: string) => void;
   setShowAdminDashboard: Dispatch<SetStateAction<boolean>>;
@@ -225,13 +225,13 @@ export default function AppOverlays({
           onApply={(point, radius) => {
             setCustomPoint(point);
             setCustomRadius(radius);
-            setDistrictSearch('');
+            setDistrictSearch([]);
             setSortBy('distance_point');
             setShowMapSelectModal(false);
           }}
           onReset={() => {
             setCustomPoint(null);
-            setDistrictSearch('');
+            setDistrictSearch([]);
             setSortBy('popular');
             setShowMapSelectModal(false);
           }}

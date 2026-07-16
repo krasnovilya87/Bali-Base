@@ -78,6 +78,11 @@ export default function CurrencyLanguageControls({
               <button
                 key={lang.code}
                 onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.localStorage.setItem('bali_base_language', lang.code);
+                    document.documentElement.lang = lang.code.toLowerCase();
+                    window.dispatchEvent(new CustomEvent('bali-base-language-updated', { detail: { language: lang.code } }));
+                  }
                   setActiveLanguage(lang.code);
                   setShowLanguageDrop(false);
                 }}

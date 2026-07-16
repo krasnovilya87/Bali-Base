@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Listing } from '../../types';
-import { BALI_DISTRICTS } from '../../data';
 import { LISTINGS_COLLECTION, deleteDocument, setDocument, uploadFileToStorage } from '../../firebase';
-import { DEFAULT_ADMIN_USERS, DEFAULT_TICKETS } from './mockData';
+import { DEFAULT_ADMIN_USERS } from './mockData';
 import { normalizeHousingListingForImport } from './importListingNormalizer';
 import { AdminDashboardProps, AdminTab, AdminUser, SupportTicket } from './types';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
 import { GooglePlacesQuotaAdminStats, loadGooglePlacesQuotaAdminStats } from '../../utils/googlePlacesQuota';
+import {
+  readSupportTickets,
+  SUPPORT_TICKETS_UPDATED_EVENT,
+  writeSupportTickets
+} from '../../utils/supportTickets';
+import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -58,6 +63,7 @@ export function useAdminDashboardController({
   const [jsonImportSummary, setJsonImportSummary] = useState<string>('');
   const [isJsonImporting, setIsJsonImporting] = useState<boolean>(false);
   const [googlePlacesQuota, setGooglePlacesQuota] = useState<GooglePlacesQuotaAdminStats | null>(null);
+  const [districtOptions] = useState<string[]>(() => getDistrictNamesFromGeoJSONSync());
 
   useEffect(() => {
     loadGooglePlacesQuotaAdminStats()
@@ -501,24 +507,26 @@ export function useAdminDashboardController({
       localStorage.setItem('bali_base_admin_users', JSON.stringify(DEFAULT_ADMIN_USERS));
     }
 
-    // Load Tickets
-    const storedTickets = localStorage.getItem('bali_base_admin_tickets');
-    if (storedTickets) {
-      try {
-        setTickets(JSON.parse(storedTickets));
-      } catch {
-        setTickets(DEFAULT_TICKETS);
+    const syncTickets = () => {
+      const loadedTickets = readSupportTickets();
+      setTickets(loadedTickets);
+      if (!localStorage.getItem('bali_base_admin_tickets')) {
+        writeSupportTickets(loadedTickets);
       }
-    } else {
-      setTickets(DEFAULT_TICKETS);
-      localStorage.setItem('bali_base_admin_tickets', JSON.stringify(DEFAULT_TICKETS));
-    }
+    };
+
+    syncTickets();
+    window.addEventListener(SUPPORT_TICKETS_UPDATED_EVENT, syncTickets as EventListener);
 
     // Config flags
     const savedAutoApprove = localStorage.getItem('bali_base_config_autoapprove');
     if (savedAutoApprove) setAutoApprove(savedAutoApprove === 'true');
     const savedMaintenance = localStorage.getItem('bali_base_config_maintenance');
     if (savedMaintenance) setMaintenanceMode(savedMaintenance === 'true');
+
+    return () => {
+      window.removeEventListener(SUPPORT_TICKETS_UPDATED_EVENT, syncTickets as EventListener);
+    };
   }, []);
 
   const saveUsers = (newUsersList: AdminUser[]) => {
@@ -528,7 +536,7 @@ export function useAdminDashboardController({
 
   const saveTicketsList = (newTicketsList: SupportTicket[]) => {
     setTickets(newTicketsList);
-    localStorage.setItem('bali_base_admin_tickets', JSON.stringify(newTicketsList));
+    writeSupportTickets(newTicketsList);
     if (selectedTicket) {
       const updated = newTicketsList.find(t => t.id === selectedTicket.id);
       if (updated) setSelectedTicket(updated);
@@ -662,7 +670,7 @@ export function useAdminDashboardController({
   const totalClicksCol = listings.reduce((sum, item) => sum + (item.clicksCount || 0), 0);
 
   // Group views by district for a high-fidelity visual statistics indicator 
-  const districtViewsStats = BALI_DISTRICTS.map(dist => {
+  const districtViewsStats = districtOptions.map(dist => {
     const dListings = listings.filter(l => l.district === dist);
     const dViews = dListings.reduce((sum, item) => sum + (item.viewsCount || 0), 0);
     const dClicks = dListings.reduce((sum, item) => sum + (item.clicksCount || 0), 0);

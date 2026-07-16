@@ -49,7 +49,7 @@ export interface Listing {
   subCategory: string; // e.g. 'entire_place' | 'private_suite' | 'private_room' for housing, 'scooters' | 'motorcycles' | 'cars' for transport
   title: string;
   description: string;
-  district: string; // Seminyak, Canggu, Ubud, Uluwatu, Sanur, Nusa Dua, Kuta, Jimbaran, Amed, Lovina
+  district: string; // District name from area.geojson
   address: string;
   locationCoords?: LatLng;
   googlePlaceId?: string;
@@ -160,9 +160,10 @@ export interface FilterState {
   isNewOnly: boolean;
   isApprovedOnly: boolean;
   hasDropPriceOnly: boolean;
+  favoritesOnly: boolean;
   
   // Housing specifics
-  housingType: string[]; // Villa, House, Bungalow, Apartment, Guesthouse, Hotel
+  housingType: string[]; // wizard housingType values, with legacy aliases handled in filters
   roomsMin: number;
   roomsMax: number;
   areaMin?: number;

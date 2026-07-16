@@ -5,6 +5,10 @@ type FeatureSectionProps = Record<string, any>;
 
 const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const sliderValue =
+    poolType === 'none' ? 0 :
+      (poolType === 'shared' || (poolType === 'infinity' && (territoryType === 'shared' || territoryType === 'resort'))) ? 1 : 2;
+  const sliderBadgeText = sliderValue === 0 ? 'Любой / Нет' : sliderValue === 1 ? 'Общий' : 'Частный';
 
   return (
     <>
@@ -13,10 +17,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                     <div className="flex justify-between items-center text-left">
                       <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 Бассейн</span>
                       <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full animate-fade-in">
-                        {poolType === 'infinity' && (territoryType === 'shared' || territoryType === 'resort') ? 'Общий инфинити-бассейн' :
-                          poolType === 'infinity' ? 'Частный инфинити-бассейн' :
-                            poolType === 'private' ? 'Частный бассейн' :
-                              poolType === 'shared' ? 'Общий бассейн' : 'Без бассейна'}
+                        {sliderBadgeText}
                       </span>
                     </div>
 
@@ -25,10 +26,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                         min={0}
                         max={2}
                         step={1}
-                        value={
-                          poolType === 'none' ? 0 :
-                            (poolType === 'shared' || (poolType === 'infinity' && (territoryType === 'shared' || territoryType === 'resort'))) ? 1 : 2
-                        }
+                        value={sliderValue}
                         onChange={v => {
                           const hasInfinity = poolType === 'infinity';
                           if (v === 2) {

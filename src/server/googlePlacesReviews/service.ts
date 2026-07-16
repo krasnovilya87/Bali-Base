@@ -36,11 +36,13 @@ const buildCacheRecord = ({
   listingId,
   placeId,
   rating,
+  userRatingCount,
   reviews
 }: {
   listingId: string;
   placeId: string;
   rating: number | null;
+  userRatingCount?: number;
   reviews: GooglePlaceReview[];
 }): GooglePlaceReviewCacheRecord => {
   const now = new Date();
@@ -49,7 +51,7 @@ const buildCacheRecord = ({
     placeId,
     rating,
     reviews: reviews.slice(0, 5),
-    reviewsCount: reviews.length,
+    reviewsCount: typeof userRatingCount === 'number' ? userRatingCount : reviews.length,
     updatedAt: now.toISOString(),
     staleAfter: addDays(now, GOOGLE_PLACES_REVIEWS_CONFIG.cacheTtlDays).toISOString(),
     source: 'google_places_new'
@@ -65,8 +67,25 @@ export const refreshGooglePlaceReviews = async ({
   placeId: string;
   purpose: GooglePlacesRequestPurpose;
 }) => {
-  const quotaCheck = await canSpendGooglePlacesRequest(purpose);
   const existingCache = await readReviewCache(listingId);
+
+  if (existingCache) {
+    return {
+      status: 'cache_hit',
+      cache: existingCache,
+      warning: 'Google reviews were already captured for this listing; no new Google API request was made'
+    } satisfies GooglePlacesRefreshResult;
+  }
+
+  if (purpose !== 'listing_create') {
+    return {
+      status: 'blocked',
+      cache: null,
+      warning: 'Google reviews can only be requested once during listing creation'
+    } satisfies GooglePlacesRefreshResult;
+  }
+
+  const quotaCheck = await canSpendGooglePlacesRequest(purpose);
 
   if (!quotaCheck.allowed) {
     console.warn(`[Google Places Reviews] blocked ${purpose} request for ${listingId}: ${quotaCheck.reason}`);
@@ -84,6 +103,7 @@ export const refreshGooglePlaceReviews = async ({
     listingId,
     placeId: data.id || placeId,
     rating: typeof data.rating === 'number' ? data.rating : null,
+    userRatingCount: data.userRatingCount,
     reviews: (data.reviews || []).slice(0, 5).map(mapGoogleReview)
   });
 
@@ -95,13 +115,11 @@ export const refreshGooglePlaceReviews = async ({
 export const getGooglePlaceReviewsForListing = async ({
   listingId,
   placeId,
-  purpose = 'background',
-  allowBackgroundRefresh = true
+  purpose = 'background'
 }: {
   listingId: string;
   placeId?: string;
   purpose?: GooglePlacesRequestPurpose;
-  allowBackgroundRefresh?: boolean;
 }): Promise<GooglePlacesRefreshResult> => {
   const cache = await readReviewCache(listingId);
 
@@ -117,11 +135,12 @@ export const getGooglePlaceReviewsForListing = async ({
     };
   }
 
-  if (cache && allowBackgroundRefresh && purpose === 'background') {
-    refreshGooglePlaceReviews({ listingId, placeId, purpose }).catch(error => {
-      console.error(`[Google Places Reviews] background refresh failed for ${listingId}`, error);
-    });
-    return { status: 'scheduled', cache };
+  if (purpose !== 'listing_create') {
+    return {
+      status: cache ? 'cache_hit' : 'blocked',
+      cache,
+      warning: 'Automatic Google reviews refresh is disabled; reviews are captured only once during listing creation'
+    };
   }
 
   return refreshGooglePlaceReviews({ listingId, placeId, purpose });

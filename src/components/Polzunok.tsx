@@ -72,14 +72,10 @@ export default function Polzunok({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    const nextValue = hasPointerMoved.current
-      ? val
-      : snapRangeValueToNearest(val, min, max, step);
+    const nextValue = snapRangeValueToNearest(val, min, max, step);
     setDragValue(nextValue);
     latestDragValue.current = nextValue;
-    if (!hasPointerMoved.current) {
-      onChange(nextValue);
-    }
+    onChange(nextValue);
   };
 
   useEffect(() => {

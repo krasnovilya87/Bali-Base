@@ -37,7 +37,7 @@ export type GooglePlacesQuotaSnapshot = GooglePlacesUsageRecord & {
 };
 
 export type GooglePlacesRefreshResult = {
-  status: 'cache_hit' | 'refreshed' | 'scheduled' | 'blocked' | 'missing_place_id' | 'error';
+  status: 'cache_hit' | 'refreshed' | 'blocked' | 'missing_place_id' | 'error';
   cache: GooglePlaceReviewCacheRecord | null;
   warning?: string;
 };

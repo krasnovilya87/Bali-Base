@@ -1,4 +1,4 @@
-import { getHaversineDistance } from './geoUtils';
+import { getHaversineDistance } from './geo';
 
 export type PlaceLibraryCategory = 'restaurants' | 'sport' | 'supermarkets' | 'attractions' | 'beaches';
 

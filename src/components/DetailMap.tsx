@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Listing, ListingNearbyRoute } from '../types';
 import { Maximize, Minimize, Plus, Minus, MapPin } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, AdvancedMarkerAnchorPoint, useMap } from '@vis.gl/react-google-maps';
-import { getListingCoords } from '../utils/geoUtils';
+import { getListingCoords } from '../utils/geo';
 
 export type DetailMapPlace = {
   id: string;
@@ -23,18 +23,7 @@ interface DetailMapProps {
   selectedPlaceIndex?: number | null;
 }
 
-const DISTRICT_TRANSLATIONS: Record<string, string> = {
-  'Seminyak': 'Семиньяк',
-  'Canggu': 'Чангу',
-  'Ubud': 'Убуд',
-  'Uluwatu': 'Улувату',
-  'Sanur': 'Санур',
-  'Nusa Dua': 'Нуса Дуа',
-  'Kuta': 'Кута',
-  'Jimbaran': 'Джимбаран',
-  'Amed': 'Амед',
-  'Lovina': 'Ловина'
-};
+
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -250,21 +239,20 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
 
   return (
     <div
-      className={`transition-all duration-300 relative ${
-        isFullscreen
+      className={`transition-all duration-300 relative ${isFullscreen
           ? 'bg-black'
           : 'w-full h-[280px] sm:h-[350px] rounded-2xl border [border-width:0.5px] border-[#94A3B8]/30 overflow-hidden'
-      }`}
+        }`}
       style={
         isFullscreen
           ? {
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              zIndex: 99999
-            }
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 99999
+          }
           : undefined
       }
     >
@@ -320,7 +308,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
           {/* District Name Badge in the bottom left */}
           <div className="absolute left-4 bottom-4 z-20 bg-white/95 backdrop-blur-xs text-[#1E293B] px-3.5 py-2 rounded-2xl shadow-md border border-[#94A3B8]/20 text-xs font-extrabold flex items-center gap-1.5 pointer-events-none select-none font-sans">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF7A50] animate-pulse" />
-            <span>{DISTRICT_TRANSLATIONS[listing.district] || listing.district}</span>
+            <span>{listing.district}</span>
           </div>
 
           {/* Styled Floating Controls overlaying the cropped map */}
@@ -406,28 +394,28 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
                 const isSelectedPlace = selectedPlaceIndex === index;
                 const labelPlacement = getLabelPlacement(place.position, index, coords, mapPlaces, visibleLngRange);
                 return (
-                <AdvancedMarker
-                  key={place.id}
-                  position={place.position}
-                  anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM_CENTER}
-                  zIndex={isSelectedPlace ? 20000 : 100}
-                >
-                  <div className={`relative h-7 w-7 ${isSelectedPlace ? 'z-[20000]' : 'z-[100]'}`}>
-                    <div className={`relative flex h-7 w-7 -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] bg-[#2F7D69] text-white shadow-[0_8px_18px_rgba(15,23,42,0.22)] ring-2 ring-white ${isSelectedPlace ? 'scale-110 ring-[#F4F7F6]' : ''}`}>
-                      <div className="absolute inset-[6px] rounded-full bg-white/20" />
-                      <MapPin className="w-3.5 h-3.5 rotate-45 fill-current" />
+                  <AdvancedMarker
+                    key={place.id}
+                    position={place.position}
+                    anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM_CENTER}
+                    zIndex={isSelectedPlace ? 20000 : 100}
+                  >
+                    <div className={`relative h-7 w-7 ${isSelectedPlace ? 'z-[20000]' : 'z-[100]'}`}>
+                      <div className={`relative flex h-7 w-7 -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] bg-[#2F7D69] text-white shadow-[0_8px_18px_rgba(15,23,42,0.22)] ring-2 ring-white ${isSelectedPlace ? 'scale-110 ring-[#F4F7F6]' : ''}`}>
+                        <div className="absolute inset-[6px] rounded-full bg-white/20" />
+                        <MapPin className="w-3.5 h-3.5 rotate-45 fill-current" />
+                      </div>
+                      <div className={`${labelBaseClass} ${isSelectedPlace ? 'bg-white/90 border-white/80' : 'bg-white/60'} ${getLabelPlacementClass(labelPlacement)}`}>
+                        <span className="block line-clamp-2">{place.name}</span>
+                        {place.time && (
+                          <span className="block text-[9px] font-semibold text-[#2F7D69] mt-0.5">{place.time}</span>
+                        )}
+                        {place.rating !== undefined && (
+                          <span className="block text-[9px] font-bold text-[#FF7A50] mt-0.5">★ {place.rating.toFixed(1)}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className={`${labelBaseClass} ${isSelectedPlace ? 'bg-white/90 border-white/80' : 'bg-white/60'} ${getLabelPlacementClass(labelPlacement)}`}>
-                      <span className="block line-clamp-2">{place.name}</span>
-                      {place.time && (
-                        <span className="block text-[9px] font-semibold text-[#2F7D69] mt-0.5">{place.time}</span>
-                      )}
-                      {place.rating !== undefined && (
-                        <span className="block text-[9px] font-bold text-[#FF7A50] mt-0.5">★ {place.rating.toFixed(1)}</span>
-                      )}
-                    </div>
-                  </div>
-                </AdvancedMarker>
+                  </AdvancedMarker>
                 );
               })}
               <RoutePolyline route={activeRoute} origin={coords} />
@@ -437,7 +425,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
           {/* District Name Badge in the bottom left */}
           <div className="absolute left-4 bottom-4 z-20 bg-white/95 backdrop-blur-xs text-[#1E293B] px-3.5 py-2 rounded-2xl shadow-md border border-[#94A3B8]/20 text-xs font-extrabold flex items-center gap-1.5 pointer-events-none select-none font-sans">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF7A50] animate-pulse" />
-            <span>{DISTRICT_TRANSLATIONS[listing.district] || listing.district}</span>
+            <span>{listing.district}</span>
           </div>
 
           {/* Styled Floating Controls overlaying the API map */}

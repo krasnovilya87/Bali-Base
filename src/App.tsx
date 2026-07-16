@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { Listing, SearchState, FilterState } from './types';
-import { MOCK_GUIDES, BALI_DISTRICTS } from './data';
+import { MOCK_GUIDES } from './data';
 import MapBox from './components/MapBox';
 import ListingCard from './components/ListingCard';
 import TwoMonthCalendar from './components/TwoMonthCalendar';
@@ -21,12 +21,20 @@ import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
 import { useListingsData } from './app/hooks/useListingsData';
 import { useListingSearch } from './app/hooks/useListingSearch';
+import { useFavoriteListings } from './hooks/useFavoriteListings';
+import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
 
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize
+  Maximize, Minimize, Heart
 } from 'lucide-react';
+
+const DISTRICT_MENU_GROUPS = [
+  ['Canggu', 'Ubud', 'Seminyak', 'Kuta', 'Sanur', 'Uluwatu', 'Nusa Dua', 'Jimbaran', 'Amed', 'Kintamani', 'Lovina'],
+  ['Gili Trawangan', 'Gili Meno', 'Gili Air'],
+  ['Nusa Penida']
+];
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'cover' | 'menu' | 'app'>('cover');
@@ -47,7 +55,14 @@ export default function App() {
   // Search, category & routing states
   const [currentL1, setCurrentL1] = useState<string>('housing');
   const [currentL2, setCurrentL2] = useState<string[]>(['entire_place']);
-  const [districtSearch, setDistrictSearch] = useState<string>('');
+  const [districtSearch, setDistrictSearch] = useState<string[]>([]);
+  const [districtOptions] = useState<string[]>(() => {
+    const districtsFromGeoJSON = new Set(getDistrictNamesFromGeoJSONSync());
+    return DISTRICT_MENU_GROUPS.flat().filter(district => districtsFromGeoJSON.has(district));
+  });
+  const districtGroups = DISTRICT_MENU_GROUPS
+    .map(group => group.filter(district => districtOptions.includes(district)))
+    .filter(group => group.length > 0);
 
   // Date Picker Checkin - Checkout simulation states 
   const [checkInDate, setCheckInDate] = useState<string>('');
@@ -88,7 +103,8 @@ export default function App() {
     extraOptions: [],
     engineSize: [],
     transmission: [],
-    vehicleBrand: []
+    vehicleBrand: [],
+    favoritesOnly: false
   });
 
   // Modals / Windows triggers states
@@ -111,6 +127,7 @@ export default function App() {
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
   const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
   const [showFooter, setShowFooter] = useState<boolean>(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
 
   // Coordinated Scrolling logic for Desktop/PC
   useEffect(() => {
@@ -208,6 +225,7 @@ export default function App() {
   const [showLanguageDrop, setShowLanguageDrop] = useState<boolean>(false);
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
+  const { favoriteIds } = useFavoriteListings();
 
   useEffect(() => {
     let isMounted = true;
@@ -230,6 +248,7 @@ export default function App() {
   const [customRadius, setCustomRadius] = useState<number>(100);
   const [customPolygon, setCustomPolygon] = useState<{ x: number, y: number }[] | null>(null);
   const [isMapSelectionActive, setIsMapSelectionActive] = useState<boolean>(false);
+  const [selectionFitRequest, setSelectionFitRequest] = useState<number>(0);
   const [backSwipeOffset, setBackSwipeOffset] = useState<number>(0);
   const [isBackSwipeSettling, setIsBackSwipeSettling] = useState<boolean>(false);
 
@@ -258,6 +277,13 @@ export default function App() {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };
+  }, [currentView]);
+
+  useEffect(() => {
+    if (currentView !== 'menu') return;
+
+    setShowFavoritesOnly(false);
+    setFilters(prev => (prev.favoritesOnly ? { ...prev, favoritesOnly: false } : prev));
   }, [currentView]);
 
   useEffect(() => {
@@ -622,6 +648,18 @@ export default function App() {
   };
 
   const primaryL2 = currentL2[0] || '';
+  const selectedDistrictLabel = districtSearch.length > 2
+    ? `${districtSearch.slice(0, 2).join(', ')} +${districtSearch.length - 2}`
+    : districtSearch.join(', ');
+  const activeFilters: FilterState = {
+    ...filters,
+    favoritesOnly: showFavoritesOnly
+  };
+
+  const applyFilters = (nextFilters: FilterState) => {
+    setFilters(nextFilters);
+    setShowFavoritesOnly(nextFilters.favoritesOnly);
+  };
 
   const { sortedListings, suggestions } = useListingSearch({
     listings,
@@ -632,8 +670,9 @@ export default function App() {
     customRadius,
     customPolygon,
     searchTerm,
-    filters,
-    sortBy
+    filters: activeFilters,
+    sortBy,
+    favoriteIds
   });
 
   return (
@@ -969,6 +1008,25 @@ export default function App() {
                     setShowLanguageDrop={setShowLanguageDrop}
                   />
 
+                  <button
+                    type="button"
+                    onClick={() => setShowFavoritesOnly(prev => {
+                      const next = !prev;
+                      setFilters(currentFilters => ({ ...currentFilters, favoritesOnly: next }));
+                      return next;
+                    })}
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-transparent border border-transparent hover:border-transparent hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-full cursor-pointer flex items-center justify-center active:scale-95 transition-transform shrink-0"
+                    title={tr('nav.favorites')}
+                    aria-label={tr('nav.favorites')}
+                    aria-pressed={showFavoritesOnly}
+                  >
+                    <Heart
+                      className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-[#FF4D5D] transition-colors"
+                      strokeWidth={showFavoritesOnly ? 2.2 : 1.6}
+                      fill={showFavoritesOnly ? 'currentColor' : 'none'}
+                    />
+                  </button>
+
                   {/* Create Listing Wizard trigger button */}
                   <button
                     onClick={() => setShowCreateWizard(true)}
@@ -1170,12 +1228,12 @@ export default function App() {
                             {tr('location.pointOnMap')}
                           </span>
                           <span className="text-[#FF7A50] font-bold text-[10px] leading-none block mt-0.5 truncate">
-                            R ~ {Math.round(customRadius)} РєРј
+                            R ~ {Math.round(customRadius)} km
                           </span>
                         </div>
-                      ) : districtSearch ? (
+                      ) : districtSearch.length > 0 ? (
                         <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
-                          {districtSearch}
+                          {selectedDistrictLabel}
                         </span>
                       ) : (
                         <span className="text-gray-400 font-normal text-[13px] sm:text-xs uppercase tracking-wider leading-none block truncate">
@@ -1203,7 +1261,7 @@ export default function App() {
                               className="w-full py-2 px-2 bg-[#FF7A50]/15 hover:bg-[#FF7A50]/25 text-[#FF7A50] rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition active:scale-95 text-[10px] sm:text-xs"
                             >
                               <Map className="w-3.5 h-3.5 shrink-0" />
-                              <span>рџ“Ќ {tr('location.selectOnMap')}</span>
+                              <span>{tr('location.selectOnMap')}</span>
                             </button>
                           </div>
 
@@ -1213,31 +1271,45 @@ export default function App() {
 
                           <button
                             onClick={() => {
-                              setDistrictSearch('');
+                              setDistrictSearch([]);
                               setCustomPoint(null);
                               setCustomPolygon(null);
                               setShowDistrictDropdown(false);
                             }}
-                            className={`w-full text-left px-3.5 py-2 hover:bg-gray-100 transition font-bold ${!districtSearch && !customPoint && !customPolygon ? 'text-[#FF7A50] bg-[#FF7A50]/5' : 'text-[#1E293B]'
+                            className={`w-full text-left px-3.5 py-2 hover:bg-gray-100 transition font-bold ${districtSearch.length === 0 && !customPoint && !customPolygon ? 'text-[#FF7A50] bg-[#FF7A50]/5' : 'text-[#1E293B]'
                               }`}
                           >
                             {tr('location.allDistricts')}
                           </button>
 
-                          {BALI_DISTRICTS.map((dist) => (
-                            <button
-                              key={dist}
-                              onClick={() => {
-                                setDistrictSearch(dist);
-                                setCustomPoint(null);
-                                setCustomPolygon(null);
-                                setShowDistrictDropdown(false);
-                              }}
-                              className={`w-full text-left px-3.5 py-2 hover:bg-[#FF7A50]/10 transition ${districtSearch === dist && !customPoint && !customPolygon ? 'text-[#FF7A50] bg-[#FF7A50]/5 font-bold' : 'text-[#1E293B]'
-                                }`}
-                            >
-                              {dist}
-                            </button>
+                          {districtGroups.map((group, groupIndex) => (
+                            <React.Fragment key={`district-group-${groupIndex}`}>
+                              {groupIndex > 0 && <div className="my-1 border-t border-[#E5E7EB]" />}
+                              {group.map((dist) => {
+                                const isSelected = districtSearch.includes(dist) && !customPoint && !customPolygon;
+                                return (
+                                  <button
+                                    key={dist}
+                                    onClick={() => {
+                                      setDistrictSearch(prev => prev.includes(dist)
+                                        ? prev.filter(item => item !== dist)
+                                        : [...prev, dist]
+                                      );
+                                      setCustomPoint(null);
+                                      setCustomPolygon(null);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2 hover:bg-[#FF7A50]/10 transition flex items-center gap-2 ${isSelected ? 'text-[#FF7A50] bg-[#FF7A50]/5 font-bold' : 'text-[#1E293B]'
+                                      }`}
+                                  >
+                                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] leading-none ${isSelected ? 'bg-[#FF7A50] border-[#FF7A50] text-white' : 'border-[#CBD5E1] text-transparent'
+                                      }`}>
+                                      ✓
+                                    </span>
+                                    <span>{dist}</span>
+                                  </button>
+                                );
+                              })}
+                            </React.Fragment>
                           ))}
                         </div>
                       </>
@@ -1406,19 +1478,19 @@ export default function App() {
                         <Compass className="w-6 h-6 animate-pulse" />
                       </div>
                       <div>
-                        <h4 className="font-display font-semibold text-gray-700">{tr('empty.title', { district: districtSearch })}</h4>
+                        <h4 className="font-display font-semibold text-gray-700">{tr('empty.title', { district: selectedDistrictLabel })}</h4>
                         <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto leading-relaxed">
                           {tr('empty.body')}
                         </p>
                       </div>
                       <button
                         onClick={() => {
-                          setDistrictSearch('Canggu');
+                          setDistrictSearch([]);
                           setSearchTerm('');
                         }}
                         className="px-4 py-2 border border-[#E5E7EB] text-xs font-bold text-gray-600 rounded-xl hover:bg-gray-50 transition active:scale-95"
                       >
-                        {tr('empty.resetCanggu')}
+                        {tr('location.allDistricts')}
                       </button>
                     </div>
                   )}
@@ -1472,11 +1544,14 @@ export default function App() {
                         currencyRate={CURRENCIES[activeCurrency].rate}
                         isFullscreen={isMapFullscreen}
                         isSelectionActive={isMapSelectionActive}
+                        selectedDistricts={districtSearch}
                         onSelectionStart={() => setIsMapSelectionActive(true)}
                         onSelectionClose={() => setIsMapSelectionActive(false)}
                         onSelectionReset={() => {
                           setCustomPoint(null);
                           setCustomPolygon(null);
+                          setIsMapSelectionActive(false);
+                          setSelectionFitRequest(0);
                         }}
                         onSelectionApply={(point, radius) => {
                           if (Array.isArray(point)) {
@@ -1496,14 +1571,15 @@ export default function App() {
                             setCustomPoint(point as { x: number; y: number });
                             setCustomRadius(radius);
                           }
-                          setDistrictSearch(''); // Clear district filters in favor of map selection
+                          setDistrictSearch([]); // Clear district filters in favor of map selection
                           setSortBy('distance_point'); // Sort automatically by distance for best UX
-                          setIsMapSelectionActive(false);
                           setIsMapFullscreen(false);
+                          setSelectionFitRequest(request => request + 1);
                         }}
                         initialPoint={customPoint}
                         initialRadius={customRadius}
                         initialPolygon={customPolygon}
+                        selectionFitRequest={selectionFitRequest}
                       />
                     </div>
                   </div>
@@ -1545,7 +1621,7 @@ export default function App() {
           customPoint={customPoint}
           customRadius={customRadius}
           editingListing={editingListing}
-          filters={filters}
+          filters={activeFilters}
           handleAddBooking={handleAddBooking}
           handleDeleteListing={handleDeleteListing}
           handlePublishListing={handlePublishListing}
@@ -1566,7 +1642,7 @@ export default function App() {
           setCustomRadius={setCustomRadius}
           setDistrictSearch={setDistrictSearch}
           setEditingListing={setEditingListing}
-          setFilters={setFilters}
+          setFilters={applyFilters}
           setPrimaryL2={setPrimaryL2}
           setSelectedListing={setSelectedListing}
           setShowAdminDashboard={setShowAdminDashboard}

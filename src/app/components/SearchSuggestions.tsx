@@ -1,4 +1,4 @@
-import { Listing } from '../../types';
+﻿import { Listing } from '../../types';
 import { ListingSearchSuggestions, SearchGuide } from '../hooks/useListingSearch';
 
 interface SearchSuggestionsProps {
@@ -25,7 +25,7 @@ export default function SearchSuggestions({
       {suggestions.housing.length > 0 && (
         <div className="space-y-2">
           <span className="text-[10px] uppercase font-mono font-bold text-gray-400 block pb-1 border-b border-gray-100">
-            рџЏЁ {tr('search.housing')} ({suggestions.housing.length})
+            🏠 {tr('search.housing')} ({suggestions.housing.length})
           </span>
           {suggestions.housing.map(item => (
             <div
@@ -43,7 +43,7 @@ export default function SearchSuggestions({
       {suggestions.transport.length > 0 && (
         <div className="space-y-2">
           <span className="text-[10px] uppercase font-mono font-bold text-amber-600 block pb-1 border-b border-gray-100">
-            рџ›µ {tr('search.transport')} ({suggestions.transport.length})
+            🛵 {tr('search.transport')} ({suggestions.transport.length})
           </span>
           {suggestions.transport.map(item => (
             <div
@@ -61,7 +61,7 @@ export default function SearchSuggestions({
       {suggestions.guides.length > 0 && (
         <div className="space-y-2">
           <span className="text-[10px] uppercase font-mono font-bold text-blue-600 block pb-1 border-b border-gray-100">
-            рџ“– {tr('search.guides')} ({suggestions.guides.length})
+            📘 {tr('search.guides')} ({suggestions.guides.length})
           </span>
           {suggestions.guides.map(guide => (
             <div

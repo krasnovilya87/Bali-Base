@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Listing } from '../types';
 import ContactHistoryTab, { ContactHistoryItem } from './ContactHistoryTab';
 import FavoritesTab from './FavoritesTab';
+import { useFavoriteListings } from '../hooks/useFavoriteListings';
 
 interface UsersModalProps {
   listings: Listing[];
@@ -23,22 +24,15 @@ export default function UsersModal({
   initialTab,
 }: UsersModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'favorites');
-  const [favorites, setFavorites] = useState<Listing[]>([]);
   const [contactHistory, setContactHistory] = useState<ContactHistoryItem[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { favoriteIds } = useFavoriteListings();
 
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab);
   }, [initialTab]);
 
   const loadData = () => {
-    try {
-      const favoriteIds = JSON.parse(localStorage.getItem('bali_base_favorites') || '[]') as string[];
-      setFavorites(listings.filter((item) => favoriteIds.includes(item.id)));
-    } catch {
-      setFavorites([]);
-    }
-
     try {
       const history = JSON.parse(
         localStorage.getItem('bali_base_whatsapp_history') || '[]'
@@ -67,9 +61,10 @@ export default function UsersModal({
     loadData();
   }, [listings]);
 
-  const handleRemoveFavorite = (id: string) => {
-    setFavorites((current) => current.filter((item) => item.id !== id));
-  };
+  const favorites = useMemo(
+    () => listings.filter((item) => favoriteIds.has(item.id)),
+    [favoriteIds, listings]
+  );
 
   const handleClearContactHistory = () => {
     localStorage.removeItem('bali_base_whatsapp_history');
@@ -98,7 +93,6 @@ export default function UsersModal({
         currencySymbol={currencySymbol}
         currencyRate={currencyRate}
         onViewListing={openListing}
-        onRemoveFavorite={handleRemoveFavorite}
         onClose={onClose}
         onLogout={handleLogout}
         successMsg={successMsg}

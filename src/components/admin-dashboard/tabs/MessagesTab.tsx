@@ -78,6 +78,11 @@ export function MessagesTab(props: AdminTabProps) {
                           <div>
                             <h3 className="font-extrabold text-sm text-[#1E293B]">{selectedTicket.userName}</h3>
                             <span className="text-[10px] text-[#FF7A50] font-mono block">{tr('admin.messages.subject', { subject: selectedTicket.subject })}</span>
+                            {selectedTicket.listingTitle && (
+                              <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
+                                {tr('details.problem.subtitle', { title: selectedTicket.listingTitle })}
+                              </span>
+                            )}
                           </div>
                         </div>
 

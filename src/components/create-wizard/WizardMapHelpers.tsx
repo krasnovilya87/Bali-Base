@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
 import { RefreshCw } from 'lucide-react';
 import { fetchAddressFromCoords } from './geo';
+import { getDefaultDistrictNameSync, getDistrictCoords } from '../../utils/geo';
 
 export function MapViewControllerHelper({
   pickedCoords,
@@ -48,6 +49,7 @@ export function LeafletFallbackMap({
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [initialCoords, setInitialCoords] = useState<{ lat: number; lng: number } | null>(pickedCoords);
 
   useEffect(() => {
     if ((window as any).L) {
@@ -79,10 +81,29 @@ export function LeafletFallbackMap({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !containerRef.current || !(window as any).L) return;
+    let cancelled = false;
+    if (pickedCoords) {
+      setInitialCoords(pickedCoords);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    getDistrictCoords(district || getDefaultDistrictNameSync()).then(coords => {
+      if (!cancelled) {
+        setInitialCoords(coords);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [district, pickedCoords]);
+
+  useEffect(() => {
+    if (!isLoaded || !containerRef.current || !(window as any).L || !initialCoords) return;
 
     const L = (window as any).L;
-    const initialCoords = pickedCoords || { lat: -8.6481, lng: 115.1385 };
 
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -138,7 +159,7 @@ export function LeafletFallbackMap({
         mapRef.current.setZoom(zoom);
       }
     }
-  }, [isLoaded, pickedCoords, zoom, setAddress, setDistrict, setPickedCoords]);
+  }, [initialCoords, isLoaded, zoom, setAddress, setDistrict, setPickedCoords]);
 
   useEffect(() => {
     if (mapRef.current) {

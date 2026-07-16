@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Listing } from '../types';
-import { getDistrictCoordsSync, getListingCoords as utilGetListingCoords } from '../utils/geoUtils';
-import { Info, Plus, Minus, Locate, CircleDot, Pentagon, Star, Heart, Flame } from 'lucide-react';
+import { getDistrictBounds, getDistrictBoundsSync, getDistrictCoordsSync, getListingCoords as utilGetListingCoords } from '../utils/geo';
+import { Info, Plus, Minus, Locate, CircleDot, Pentagon, Star, Heart, Flame, ShieldCheck } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useI18n } from '../i18nContext';
 import { THEME } from '../theme';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { isListingFresh } from '../utils/listingFreshness';
+import { useFavoriteListings } from '../hooks/useFavoriteListings';
 
 interface MapBoxProps {
   listings: Listing[];
@@ -25,6 +26,8 @@ interface MapBoxProps {
   initialPoint?: { x: number; y: number } | null;
   initialRadius?: number;
   initialPolygon?: { x: number; y: number }[] | null;
+  selectedDistricts?: string[];
+  selectionFitRequest?: number;
 }
 
 const API_KEY =
@@ -34,8 +37,6 @@ const API_KEY =
   '';
 
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
-const FAVORITES_STORAGE_KEY = 'bali_base_favorites';
-const FAVORITES_CHANGED_EVENT = 'bali_base_favorites_changed';
 
 // Custom controller component inside APIProvider that has access to map API
 interface MapViewControllerProps {
@@ -43,8 +44,10 @@ interface MapViewControllerProps {
   selectedListing: Listing | null;
   geoError: string | null;
   setGeoError: (err: string | null) => void;
+  districtBounds?: { south: number; west: number; north: number; east: number } | null;
   isSelectionActive: boolean;
   onSelectionStart?: () => void;
+  onMyLocationDetected?: (pos: { lat: number; lng: number }) => void;
   selectionMode?: 'radius' | 'area';
   setSelectionMode?: (m: 'radius' | 'area') => void;
   setSelectionState?: (s: 'idle' | 'drawing' | 'fixed') => void;
@@ -52,6 +55,13 @@ interface MapViewControllerProps {
   setRadiusMarkerPoint?: (p: { lat: number; lng: number } | null) => void;
   setPolygonPoints?: (pts: { lat: number; lng: number }[]) => void;
   setActiveMousePoint?: (p: { lat: number; lng: number } | null) => void;
+  polygonPoints?: { lat: number; lng: number }[];
+  tempPoint?: { lat: number; lng: number } | null;
+  tempRadius?: number;
+  selectionState?: 'idle' | 'drawing' | 'fixed';
+  isFullscreen?: boolean;
+  selectionFitRequest?: number;
+  mapResizeVersion?: number;
 }
 
 function MapViewController({
@@ -61,23 +71,50 @@ function MapViewController({
   setGeoError,
   isSelectionActive,
   onSelectionStart,
+  onMyLocationDetected,
   selectionMode = 'radius',
   setSelectionMode,
   setSelectionState,
   setTempPoint,
   setRadiusMarkerPoint,
   setPolygonPoints,
-  setActiveMousePoint
+  setActiveMousePoint,
+  districtBounds,
+  polygonPoints = [],
+  tempPoint = null,
+  tempRadius = 0,
+  selectionState = 'idle',
+  isFullscreen = false,
+  selectionFitRequest = 0,
+  mapResizeVersion = 0
 }: MapViewControllerProps) {
   const { tr } = useI18n();
   const map = useMap();
   const lastSelectedListingId = useRef<string | null>(null);
   const lastCenterCoords = useRef<{ lat: number; lng: number } | null>(null);
+  const fitCameraToPoints = (
+    shapePoints: { lat: number; lng: number }[],
+    padding: google.maps.Padding = { top: 28, right: 64, bottom: 48, left: 28 }
+  ) => {
+    if (!map || shapePoints.length < 2) return;
+
+    const mapDiv = map.getDiv();
+    const mapWidth = mapDiv.clientWidth;
+    const mapHeight = mapDiv.clientHeight;
+    if (!mapWidth || !mapHeight) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    shapePoints.forEach(point => bounds.extend(point));
+
+    google.maps.event.trigger(map, 'resize');
+    map.fitBounds(bounds, padding);
+  };
 
   // Pan map when centerCoords or selectedListing changes
   useEffect(() => {
     if (!map) return;
     if (isSelectionActive) return;
+    if (districtBounds) return;
 
     const selectedId = selectedListing ? selectedListing.id : null;
     const centerChanged = !lastCenterCoords.current ||
@@ -93,7 +130,59 @@ function MapViewController({
       lastSelectedListingId.current = selectedId;
       lastCenterCoords.current = centerCoords;
     }
-  }, [map, centerCoords, selectedListing, isSelectionActive]);
+  }, [map, centerCoords, selectedListing, isSelectionActive, districtBounds]);
+
+  useEffect(() => {
+    if (!map || isSelectionActive || !districtBounds) return;
+
+    const districtPoints = [
+      { lat: districtBounds.south, lng: districtBounds.west },
+      { lat: districtBounds.south, lng: districtBounds.east },
+      { lat: districtBounds.north, lng: districtBounds.east },
+      { lat: districtBounds.north, lng: districtBounds.west }
+    ];
+
+    const fitDistrict = () => fitCameraToPoints(districtPoints, { top: 28, right: 64, bottom: 48, left: 28 });
+    const frame = window.requestAnimationFrame(fitDistrict);
+    const timers = [120, 320, 620, 860].map(delay => window.setTimeout(fitDistrict, delay));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      timers.forEach(timer => window.clearTimeout(timer));
+    };
+  }, [map, districtBounds, isSelectionActive, isFullscreen, mapResizeVersion]);
+
+  useEffect(() => {
+    if (!map || !isSelectionActive || selectionState !== 'fixed') return;
+    if (selectionMode === 'area' && polygonPoints.length < 3) return;
+    if (selectionMode === 'radius' && !tempPoint) return;
+
+    const fitSelectedShape = () => {
+      const shapePoints = selectionMode === 'radius' && tempPoint
+        ? (() => {
+            const radiusKm = Math.max(tempRadius || 0.1, 0.1);
+            const latDelta = radiusKm / 111.32;
+            const lngDelta = radiusKm / (111.32 * Math.max(Math.cos((tempPoint.lat * Math.PI) / 180), 0.12));
+            return [
+              { lat: tempPoint.lat - latDelta, lng: tempPoint.lng - lngDelta },
+              { lat: tempPoint.lat - latDelta, lng: tempPoint.lng + lngDelta },
+              { lat: tempPoint.lat + latDelta, lng: tempPoint.lng + lngDelta },
+              { lat: tempPoint.lat + latDelta, lng: tempPoint.lng - lngDelta }
+            ];
+          })()
+        : polygonPoints;
+
+      fitCameraToPoints(shapePoints, { top: 32, right: 76, bottom: 92, left: 32 });
+    };
+
+    const frame = window.requestAnimationFrame(fitSelectedShape);
+    const timers = [120, 320, 620, 860].map(delay => window.setTimeout(fitSelectedShape, delay));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      timers.forEach(timer => window.clearTimeout(timer));
+    };
+  }, [map, isSelectionActive, selectionMode, selectionState, polygonPoints, tempPoint, tempRadius, isFullscreen, selectionFitRequest, mapResizeVersion]);
 
   const handleZoomIn = () => {
     if (!map) return;
@@ -114,6 +203,7 @@ function MapViewController({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
+          onMyLocationDetected?.(pos);
           map.panTo(pos);
           map.setZoom(15);
           setGeoError(null);
@@ -293,7 +383,11 @@ function MapListingPopup({
 
   return (
     <div
-      className="group pl-card bg-white rounded-2xl overflow-hidden shadow-xl border border-[#E5E7EB] w-[300px] max-w-[82vw] cursor-pointer select-none text-left"
+      className="group pl-card bg-white rounded-2xl overflow-hidden shadow-xl border border-[#E5E7EB] cursor-pointer select-none text-left"
+      style={{
+        width: 'var(--map-popup-width, 300px)',
+        maxWidth: 'calc(100vw - 1rem)'
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={(e) => {
@@ -347,7 +441,7 @@ function MapListingPopup({
           </>
         )}
 
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start z-10">
+        <div className="absolute top-1.5 left-2.5 flex flex-col gap-1.5 items-start z-30">
           {item.isPromoPremium && (
             <div className={`bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-white ${THEME.fonts.heading} text-[10px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wider`}>
               <Flame className="w-3.5 h-3.5 fill-white text-white animate-bounce" />
@@ -356,6 +450,7 @@ function MapListingPopup({
           )}
           {item.isApproved && (
             <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
+              <ShieldCheck className="w-[15px] h-[15px] text-[#2F7D69] shrink-0" />
               <span>{tr('listing.approvedBadge')}</span>
             </div>
           )}
@@ -369,8 +464,12 @@ function MapListingPopup({
         <button
           type="button"
           onClick={onFavoriteToggle}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-10 min-w-[28px] min-h-[28px] flex items-center justify-center"
+          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-50 min-w-[28px] min-h-[28px] flex items-center justify-center pointer-events-auto"
           title={tr('listing.toggleFavorite')}
+          aria-label={tr('listing.toggleFavorite')}
         >
           <Heart
             className="w-4 h-4 color-rose-500"
@@ -568,6 +667,7 @@ function MapPolygon({ path }: { path: { lat: number; lng: number }[] }) {
 }
 
 interface MapDrawingControllerProps {
+  isInteractive: boolean;
   selectionMode: 'radius' | 'area';
   selectionState: 'idle' | 'drawing' | 'fixed';
   setSelectionState: (s: 'idle' | 'drawing' | 'fixed') => void;
@@ -585,6 +685,7 @@ interface MapDrawingControllerProps {
 
 // Google Maps Drawing Controller
 function MapDrawingController({
+  isInteractive,
   selectionMode,
   selectionState,
   setSelectionState,
@@ -606,7 +707,7 @@ function MapDrawingController({
   const [activeRadius, setActiveRadius] = useState<number>(0);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !isInteractive) return;
 
     map.setOptions({ clickableIcons: false });
 
@@ -672,7 +773,7 @@ function MapDrawingController({
       google.maps.event.removeListener(moveListener);
       map.setOptions({ clickableIcons: true });
     };
-  }, [map, selectionMode, selectionState, tempPoint, tempRadius, polygonPoints, setTempPoint, setTempRadius, setSelectionState, setRadiusMarkerPoint, setPolygonPoints, setActiveMousePoint]);
+  }, [map, isInteractive, selectionMode, selectionState, tempPoint, tempRadius, polygonPoints, setTempPoint, setTempRadius, setSelectionState, setRadiusMarkerPoint, setPolygonPoints, setActiveMousePoint]);
 
   return (
     <>
@@ -732,6 +833,7 @@ export default function MapBox({
   listings,
   selectedListing,
   hoveredListing = null,
+  selectedDistricts = [],
   onListingHover,
   onListingSelect,
   currencySymbol,
@@ -744,13 +846,17 @@ export default function MapBox({
   onSelectionApply,
   initialPoint = null,
   initialRadius = 80,
-  initialPolygon = null
+  initialPolygon = null,
+  selectionFitRequest = 0
 }: MapBoxProps) {
   const { tr } = useI18n();
   const [infoWindowListingId, setInfoWindowListingId] = useState<string | null>(null);
   const [popupMode, setPopupMode] = useState<'click' | 'hover' | null>(null);
   const [isMobileMap, setIsMobileMap] = useState(false);
-  const [favoriteListingIds, setFavoriteListingIds] = useState<Set<string>>(() => new Set());
+  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapResizeVersion, setMapResizeVersion] = useState<number>(0);
+  const { favoriteIds, toggleFavorite: toggleFavoriteListing } = useFavoriteListings();
+  const mapShellRef = useRef<HTMLDivElement | null>(null);
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
   const isPopupHoveredRef = useRef<boolean>(false);
@@ -784,6 +890,8 @@ export default function MapBox({
     return null;
   });
 
+  const isFullscreen = isFullscreenProp ?? false;
+
   const [polygonPoints, setPolygonPoints] = useState<{ lat: number; lng: number }[]>(() => {
     if (initialPolygon && initialPolygon.length > 0) {
       return initialPolygon.map(p => svgToLatLng(p.x, p.y));
@@ -791,6 +899,8 @@ export default function MapBox({
     return [];
   });
   const [activeMousePoint, setActiveMousePoint] = useState<{ lat: number; lng: number } | null>(null);
+  const isAppliedSelectionView = isSelectionActive && selectionFitRequest > 0 && selectionState === 'fixed';
+  const isSelectionEditing = isSelectionActive && !isAppliedSelectionView;
 
   useEffect(() => {
     if (isSelectionActive) {
@@ -859,30 +969,38 @@ export default function MapBox({
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const root = mapShellRef.current;
+    if (!root || typeof ResizeObserver === 'undefined') return;
 
-    const readFavorites = () => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]') as string[];
-        setFavoriteListingIds(new Set(parsed));
-      } catch {
-        setFavoriteListingIds(new Set());
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    const updateMapLayout = () => {
+      const rect = root.getBoundingClientRect();
+      const panelWidth = Math.round(rect.width);
+      const panelHeight = Math.round(rect.height);
+      if (!panelWidth || !panelHeight) return;
+
+      const usableWidth = isFullscreen && !isMobileMap ? panelWidth - 24 : panelWidth - 16;
+      const halfWidth = Math.floor((usableWidth - 24) / 2);
+      const nextWidth = Math.max(260, Math.min(360, halfWidth));
+      root.style.setProperty('--map-popup-width', `${nextWidth}px`);
+
+      if (panelWidth !== lastWidth || panelHeight !== lastHeight) {
+        lastWidth = panelWidth;
+        lastHeight = panelHeight;
+        setMapResizeVersion(version => version + 1);
       }
     };
 
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === FAVORITES_STORAGE_KEY) readFavorites();
-    };
-
-    readFavorites();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener(FAVORITES_CHANGED_EVENT, readFavorites);
+    updateMapLayout();
+    const observer = new ResizeObserver(updateMapLayout);
+    observer.observe(root);
 
     return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener(FAVORITES_CHANGED_EVENT, readFavorites);
+      observer.disconnect();
     };
-  }, []);
+  }, [isFullscreen, isMobileMap]);
 
   useEffect(() => {
     return () => {
@@ -895,9 +1013,8 @@ export default function MapBox({
     };
   }, []);
 
-  const isFullscreen = isFullscreenProp ?? false;
-
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [districtBounds, setDistrictBounds] = useState<{ south: number; west: number; north: number; east: number } | null>(null);
 
   // Compute map center
   const centerCoords = selectedListing
@@ -905,6 +1022,44 @@ export default function MapBox({
     : listings.length > 0
       ? getDistrictCoordsSync(listings[0].district)
       : { lat: -8.4095, lng: 115.1889 };
+
+  useEffect(() => {
+    if (selectedDistricts.length === 0) {
+      setDistrictBounds(null);
+      return;
+    }
+
+    const cachedBounds = selectedDistricts.map(district => getDistrictBoundsSync(district)).filter(Boolean) as Array<{ south: number; west: number; north: number; east: number }>;
+    if (cachedBounds.length === selectedDistricts.length) {
+      setDistrictBounds(cachedBounds.reduce((acc, bounds) => ({
+        south: Math.min(acc.south, bounds.south),
+        west: Math.min(acc.west, bounds.west),
+        north: Math.max(acc.north, bounds.north),
+        east: Math.max(acc.east, bounds.east)
+      })));
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(selectedDistricts.map(district => getDistrictBounds(district))).then(boundsList => {
+      if (!cancelled) {
+        const validBounds = boundsList.filter(Boolean) as Array<{ south: number; west: number; north: number; east: number }>;
+        setDistrictBounds(validBounds.length > 0
+          ? validBounds.reduce((acc, bounds) => ({
+              south: Math.min(acc.south, bounds.south),
+              west: Math.min(acc.west, bounds.west),
+              north: Math.max(acc.north, bounds.north),
+              east: Math.max(acc.east, bounds.east)
+            }))
+          : null
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDistricts]);
 
   const formatPrice = (priceIdr: number) => {
     const converted = Math.round(priceIdr * currencyRate);
@@ -946,6 +1101,14 @@ export default function MapBox({
     }
   };
 
+  const toggleClickListingPopup = (item: Listing) => {
+    if (popupMode === 'click' && infoWindowListingId === item.id) {
+      closeListingPopup();
+      return;
+    }
+    openListingPopup(item, 'click');
+  };
+
   const scheduleHoverPopup = (item: Listing) => {
     if (!isDesktopHoverDevice() || isSelectionActive || popupMode === 'click') return;
     clearHoverOpenTimer();
@@ -982,19 +1145,7 @@ export default function MapBox({
 
   const toggleFavorite = (event: React.MouseEvent, listingId: string) => {
     event.stopPropagation();
-
-    setFavoriteListingIds(prev => {
-      const next = new Set(prev);
-      if (next.has(listingId)) {
-        next.delete(listingId);
-      } else {
-        next.add(listingId);
-      }
-
-      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(next)));
-      window.dispatchEvent(new Event(FAVORITES_CHANGED_EVENT));
-      return next;
-    });
+    toggleFavoriteListing(listingId);
   };
 
   const handleMapClick = () => {
@@ -1014,7 +1165,7 @@ export default function MapBox({
     ? 'left-1/2 top-4 -translate-x-1/2'
     : 'left-3 top-3';
   const mapElement = (
-    <div className={`relative transition-all duration-300 flex flex-col ${isFullscreen
+    <div ref={mapShellRef} className={`relative transition-all duration-300 flex flex-col ${isFullscreen
       ? 'fixed inset-0 z-50 bg-white w-full h-full'
       : 'flex-1 h-full min-h-[400px] md:min-h-0 w-full rounded-3xl overflow-hidden'
       }`}>
@@ -1099,7 +1250,7 @@ export default function MapBox({
                 style={{ width: '100%', height: '100%' }}
                 disableDefaultUI={true}
                 gestureHandling="greedy"
-                onClick={isSelectionActive ? undefined : handleMapClick}
+                onClick={isSelectionEditing ? undefined : handleMapClick}
                 options={{
                   clickableIcons: false
                 }}
@@ -1107,7 +1258,7 @@ export default function MapBox({
                 {listingsWithCoords.map(({ item, coords, price }) => {
                   const isInfoWindowOpen = infoWindowListingId === item.id;
                   const isSelected = selectedListing?.id === item.id || hoveredListing?.id === item.id || isInfoWindowOpen;
-                  const isFavorite = favoriteListingIds.has(item.id);
+                  const isFavorite = favoriteIds.has(item.id);
 
                   return (
                     <React.Fragment key={item.id}>
@@ -1117,20 +1268,20 @@ export default function MapBox({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (!isSelectionActive) {
+                            if (!isSelectionEditing) {
                               lastMarkerInteractionRef.current = Date.now();
-                              openListingPopup(item, 'click');
+                              toggleClickListingPopup(item);
                             }
                           }}
                           onPointerDown={(e) => {
                             e.stopPropagation();
                             lastMarkerInteractionRef.current = Date.now();
                           }}
-                          onMouseEnter={isSelectionActive ? undefined : () => scheduleHoverPopup(item)}
-                          onMouseMove={isSelectionActive ? undefined : () => scheduleHoverPopup(item)}
-                          onMouseLeave={isSelectionActive ? undefined : scheduleHoverClose}
+                          onMouseEnter={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+                          onMouseMove={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+                          onMouseLeave={isSelectionEditing ? undefined : scheduleHoverClose}
                           type="button"
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-bold shadow-md transition-all ${isSelectionActive
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-bold shadow-md transition-all ${isSelectionEditing
                             ? 'pointer-events-none opacity-80'
                             : 'cursor-pointer hover:bg-[#FF7A50] hover:text-white hover:scale-105'
                             } ${isSelected
@@ -1142,7 +1293,7 @@ export default function MapBox({
                           style={{
                             whiteSpace: 'nowrap',
                             width: 'auto',
-                            pointerEvents: isSelectionActive ? 'none' : 'auto'
+                            pointerEvents: isSelectionEditing ? 'none' : 'auto'
                           }}
                         >
                           <span>{formatPrice(price)}</span>
@@ -1181,6 +1332,17 @@ export default function MapBox({
                   );
                 })}
 
+                {myLocation && (
+                  <AdvancedMarker position={myLocation} title={tr('map.myLocation')}>
+                    <div
+                      className="flex items-center justify-center w-5 h-5 rounded-full bg-[#1D4ED8] shadow-[0_0_0_6px_rgba(29,78,216,0.15)] border-2 border-white"
+                      aria-hidden="true"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    </div>
+                  </AdvancedMarker>
+                )}
+
                 {/* ViewController nested component to handle pan and beautiful custom controls */}
                 <MapViewController
                   centerCoords={centerCoords}
@@ -1189,6 +1351,7 @@ export default function MapBox({
                   setGeoError={setGeoError}
                   isSelectionActive={isSelectionActive}
                   onSelectionStart={onSelectionStart}
+                  onMyLocationDetected={setMyLocation}
                   selectionMode={selectionMode}
                   setSelectionMode={setSelectionMode}
                   setSelectionState={setSelectionState}
@@ -1196,10 +1359,19 @@ export default function MapBox({
                   setRadiusMarkerPoint={setRadiusMarkerPoint}
                   setPolygonPoints={setPolygonPoints}
                   setActiveMousePoint={setActiveMousePoint}
+                  districtBounds={districtBounds}
+                  polygonPoints={polygonPoints}
+                  tempPoint={tempPoint}
+                  tempRadius={tempRadius}
+                  selectionState={selectionState}
+                  isFullscreen={isFullscreen}
+                  selectionFitRequest={selectionFitRequest}
+                  mapResizeVersion={mapResizeVersion}
                 />
 
                 {isSelectionActive && (
                   <MapDrawingController
+                    isInteractive={isSelectionEditing}
                     selectionMode={selectionMode}
                     selectionState={selectionState}
                     setSelectionState={setSelectionState}
@@ -1222,18 +1394,18 @@ export default function MapBox({
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <MapListingPopup
-                    item={clickedPopupEntry.item}
-                    currencySymbol={currencySymbol}
-                    currencyRate={currencyRate}
-                    tr={tr}
-                    isFavorite={favoriteListingIds.has(clickedPopupEntry.item.id)}
-                    onFavoriteToggle={(event) => toggleFavorite(event, clickedPopupEntry.item.id)}
-                    onSelect={() => {
-                      closeListingPopup();
-                      onListingSelect(clickedPopupEntry.item);
-                    }}
-                  />
+                        <MapListingPopup
+                          item={clickedPopupEntry.item}
+                          currencySymbol={currencySymbol}
+                          currencyRate={currencyRate}
+                          tr={tr}
+                          isFavorite={favoriteIds.has(clickedPopupEntry.item.id)}
+                          onFavoriteToggle={(event) => toggleFavorite(event, clickedPopupEntry.item.id)}
+                          onSelect={() => {
+                            closeListingPopup();
+                            onListingSelect(clickedPopupEntry.item);
+                          }}
+                        />
                 </div>
               )}
             </APIProvider>

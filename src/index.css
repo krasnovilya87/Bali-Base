@@ -280,6 +280,9 @@ input[type="text"], input[type="date"] {
   color: #FF7A50 !important;
   box-shadow: 0 4px 12px rgba(255, 122, 80, 0.08) !important;
 }
+.pl.selected :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: #FF7A50 !important;
+}
 .pl.selected svg {
   color: #FF7A50 !important;
 }
