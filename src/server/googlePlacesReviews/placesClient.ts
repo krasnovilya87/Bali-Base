@@ -21,10 +21,12 @@ type GooglePlacesReviewResponse = {
 
 export const fetchGooglePlaceReviews = async (
   placeId: string,
-  apiKey = process.env.GOOGLE_PLACES_API_KEY
+  apiKey = process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+    process.env.VITE_GOOGLE_MAPS_PLATFORM_KEY
 ): Promise<GooglePlacesReviewResponse> => {
   if (!apiKey) {
-    throw new Error('GOOGLE_PLACES_API_KEY is not configured on the server');
+    throw new Error('Google Places API key is not configured on the server. Set GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_PLATFORM_KEY.');
   }
 
   const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {

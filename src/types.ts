@@ -5,6 +5,10 @@ export interface Review {
   rating: number;
   date: string;
   text: string;
+  textLanguageCode?: string;
+  originalText?: string;
+  originalLanguageCode?: string;
+  relativePublishTimeDescription?: string;
   cleanlinessLabels?: string[];
 }
 

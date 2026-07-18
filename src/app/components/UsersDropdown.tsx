@@ -1,4 +1,6 @@
 import { ChevronDown, Heart, List, LogOut, MessageSquare, ShieldAlert, User } from 'lucide-react';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { useAuth } from '../../auth/AuthContext';
 import { Listing } from '../../types';
 
 interface UsersDropdownProps {
@@ -8,6 +10,8 @@ interface UsersDropdownProps {
   tr: (key: string) => string;
   label?: string;
   chevronClassName?: string;
+  currentUser: FirebaseUser | null;
+  onRequireAuth: (reasonKey?: string) => boolean;
   setShowUsersDropdown: (show: boolean) => void;
   setShowAdminDashboard: (show: boolean) => void;
   setShowCreateWizard: (show: boolean) => void;
@@ -26,6 +30,8 @@ export default function UsersDropdown({
   tr,
   label = '',
   chevronClassName = 'w-3.5 h-3.5 text-gray-400',
+  currentUser,
+  onRequireAuth,
   setShowUsersDropdown,
   setShowAdminDashboard,
   setShowCreateWizard,
@@ -33,7 +39,9 @@ export default function UsersDropdown({
   setShowUsersModal,
   setUsersModalTab
 }: UsersDropdownProps) {
-  const ownListings = listings.filter(isOwnListing);
+  const { signOut } = useAuth();
+  const ownListings = listings.filter(item => item.ownerId === currentUser?.uid || isOwnListing(item));
+  const displayLabel = currentUser?.displayName || currentUser?.email || label;
 
   return (
     <div className="header-popover-root relative">
@@ -44,7 +52,7 @@ export default function UsersDropdown({
         title="Users Menu"
       >
         <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF7A50]" />
-        <span className="hidden sm:inline">{label}</span>
+        <span className="hidden sm:inline">{displayLabel}</span>
         <ChevronDown className={chevronClassName} />
       </button>
 
@@ -63,6 +71,7 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
+              if (!onRequireAuth('auth.reason.favorites')) return;
               setUsersModalTab('favorites');
               setShowUsersModal(true);
               setShowUsersDropdown(false);
@@ -75,6 +84,7 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
+              if (!onRequireAuth('auth.reason.messages')) return;
               setUsersModalTab('whatsapp');
               setShowUsersModal(true);
               setShowUsersDropdown(false);
@@ -87,6 +97,7 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
+              if (!onRequireAuth('auth.reason.myListings')) return;
               if (ownListings.length === 0) {
                 setShowCreateWizard(true);
               } else {
@@ -106,17 +117,18 @@ export default function UsersDropdown({
           <div className="border-t border-[#E5E7EB] my-1.5" />
 
           <button
-            onClick={() => {
+            onClick={async () => {
               setShowUsersDropdown(false);
-              localStorage.removeItem('bali_base_favorites');
-              localStorage.removeItem('bali_base_whatsapp_history');
-              alert(tr('nav.logoutAlert'));
-              window.location.reload();
+              if (!currentUser) {
+                onRequireAuth('auth.defaultReason');
+                return;
+              }
+              await signOut();
             }}
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition"
           >
             <LogOut className="w-4 h-4 text-[#FF7A50]" />
-            <span>{tr('nav.logout')}</span>
+            <span>{currentUser ? tr('nav.logout') : tr('auth.signIn')}</span>
           </button>
         </div>
       )}

@@ -12,6 +12,8 @@ import {
 } from '../../firebase';
 import { normalizeHousingListingForImport } from '../../components/admin-dashboard/importListingNormalizer';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
+import { applyGoogleReviewsCacheToListing, requestListingCreateGoogleReviewsRefresh } from '../../utils/googlePlacesReviewsClient';
+import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
 
 const getHousingListingCollection = (listing: Listing) => {
@@ -22,6 +24,7 @@ const getHousingListingCollection = (listing: Listing) => {
 };
 
 export const useListingsData = () => {
+  const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [menuOverrides, setMenuOverrides] = useState<any>({ l1: {}, l2: {} });
@@ -114,7 +117,29 @@ export const useListingsData = () => {
     saveUpdatedState(updated, bookings);
   };
 
-  const handleUpdateListing = (updatedListing: Listing) => {
+  const refreshGoogleReviewsForListing = async (
+    listing: Listing,
+    purpose: 'listing_create' | 'listing_update'
+  ) => {
+    const placeId = listing.googlePlaceId || listing.placeId;
+    if (!placeId) {
+      console.warn('Google Places reviews refresh skipped: listing has no googlePlaceId/placeId.');
+      return listing;
+    }
+
+    const reviewsResponse = await requestListingCreateGoogleReviewsRefresh({
+      listingId: listing.id,
+      placeId,
+      googleReviewsUpdatedAt: listing.googleReviewsUpdatedAt,
+      purpose
+    });
+
+    return sanitizeListingForFirestore(
+      applyGoogleReviewsCacheToListing(listing, reviewsResponse)
+    ) as Listing;
+  };
+
+  const handleUpdateListing = async (updatedListing: Listing) => {
     const listingForSave = updatedListing.category === 'housing'
       ? normalizeHousingListingForImport(updatedListing, 0)
       : updatedListing;
@@ -122,15 +147,20 @@ export const useListingsData = () => {
       listingForSave.title,
       listings.filter(listing => listing.id !== updatedListing.id).map(listing => listing.id)
     );
-    const finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
-    const updated = listings.map(item => {
-      if (item.id === updatedListing.id) {
-        if (targetId !== updatedListing.id) deleteDocument(LISTINGS_COLLECTION, updatedListing.id);
-        setDocument(LISTINGS_COLLECTION, targetId, finalListing);
-        return finalListing;
-      }
-      return item;
-    });
+    let finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
+    if (targetId !== updatedListing.id) {
+      await deleteDocument(LISTINGS_COLLECTION, updatedListing.id);
+    }
+
+    await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+    finalListing = await refreshGoogleReviewsForListing(finalListing, 'listing_update');
+    if (finalListing.googleReviewsUpdatedAt) {
+      await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+    }
+
+    const updated = listings.map(item =>
+      item.id === updatedListing.id ? finalListing : item
+    );
     saveUpdatedState(updated, bookings);
   };
 
@@ -178,15 +208,26 @@ export const useListingsData = () => {
       newListing.title,
       listings.filter(listing => listing.id !== newListing.id).map(listing => listing.id)
     );
-    const listingForSave = sanitizeListingForFirestore({ ...newListing, id: listingId }) as Listing;
+    let listingForSave = sanitizeListingForFirestore({
+      ...newListing,
+      id: listingId,
+      ownerId: user?.uid || newListing.ownerId
+    }) as Listing;
     const exists = listings.some(listing => listing.id === newListing.id);
-    const updated = exists
-      ? listings.map(listing => listing.id === newListing.id ? listingForSave : listing)
-      : [listingForSave, ...listings];
     if (exists && listingForSave.id !== newListing.id) {
       await deleteDocument(collectionPath, newListing.id);
     }
     await setDocument(collectionPath, listingForSave.id, listingForSave);
+
+    const listingWithReviews = await refreshGoogleReviewsForListing(listingForSave, 'listing_create');
+    if (listingWithReviews.googleReviewsUpdatedAt) {
+      listingForSave = listingWithReviews;
+      await setDocument(collectionPath, listingForSave.id, listingForSave);
+    }
+
+    const updated = exists
+      ? listings.map(listing => listing.id === newListing.id ? listingForSave : listing)
+      : [listingForSave, ...listings];
     saveUpdatedState(updated, bookings);
   };
 

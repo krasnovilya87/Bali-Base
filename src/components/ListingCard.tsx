@@ -11,6 +11,7 @@ import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/li
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
 import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 
 interface ListingCardProps {
@@ -23,6 +24,7 @@ interface ListingCardProps {
   checkOutDate?: string;
   onOpenCalendar?: () => void;
   activeLanguage?: LanguageCode;
+  onRequireAuth?: () => boolean;
 }
 
 export default function ListingCard({
@@ -33,9 +35,11 @@ export default function ListingCard({
   checkInDate,
   checkOutDate,
   onOpenCalendar,
-  activeLanguage = DEFAULT_LANGUAGE
+  activeLanguage = DEFAULT_LANGUAGE,
+  onRequireAuth
 }: ListingCardProps) {
   const { tr } = useI18n();
+  const { user } = useAuth();
   const [currentPhoto, setCurrentPhoto] = useState<number>(0);
   const [countdownText, setCountdownText] = useState<string>('');
   const [isExpired, setIsExpired] = useState<boolean>(false);
@@ -238,6 +242,7 @@ export default function ListingCard({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!user && onRequireAuth && !onRequireAuth()) return;
     toggleFavoriteListing(listing.id);
   };
 
@@ -465,7 +470,7 @@ export default function ListingCard({
         }
         onSelect(listing);
       }}
-      className={`group pl-card relative z-0 hover:z-20 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer select-none ${listing.isPromoTop
+      className={`group pl-card relative z-0 hover:z-20 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer select-none ${listing.isPromoTop
         ? 'bg-amber-50/[0.8] border-amber-400 shadow-md shadow-amber-200/40 ring-1 ring-amber-300/40'
         : 'bg-white'
         }`}
@@ -473,7 +478,7 @@ export default function ListingCard({
     >
       {/* Photo Carousel Container with Touch & Drag support */}
       <div
-        className="relative aspect-video w-full overflow-hidden bg-gray-50 touch-pan-y"
+        className="relative aspect-[4/3] sm:aspect-video w-full overflow-hidden bg-gray-50 touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -537,21 +542,21 @@ export default function ListingCard({
         )}
 
         {/* Badge Layers upper Left - scaled up for better mobile visibility */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start z-10">
+        <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex flex-col gap-1 sm:gap-1.5 items-start z-10">
           {listing.isPromoPremium && (
-            <div className={`bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-white ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wider`}>
-              <Flame className="w-3.5 h-3.5 fill-white text-white animate-bounce" />
+            <div className={`bg-gradient-to-r from-red-500 via-amber-500 to-yellow-500 text-white ${THEME.fonts.heading} text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded shadow-md flex items-center gap-1 sm:gap-1.5 tracking-wider`}>
+              <Flame className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-white text-white animate-bounce" />
               <span>👑 {tr('listing.vipPremium')}</span>
             </div>
           )}
           {listing.isApproved && (
-            <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[11px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
-              <ShieldCheck className="w-[15px] h-[15px] text-[#2F7D69] shrink-0" />
+            <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[8px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded shadow-md flex items-center gap-1 sm:gap-1.5 tracking-wide`}>
+              <ShieldCheck className="w-2.5 h-2.5 sm:w-[15px] sm:h-[15px] text-[#2F7D69] shrink-0" />
               <span>{tr('listing.approvedBadge')}</span>
             </div>
           )}
           {isListingFresh(listing) && (
-            <div className={`bg-brand-orange text-white ${THEME.fonts.heading} text-[11px] sm:text-[9px] font-extrabold px-2 py-0.5 rounded shadow-md`}>
+            <div className={`bg-brand-orange text-white ${THEME.fonts.heading} text-[8px] sm:text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded shadow-md`}>
               {tr('listing.newBadge')}
             </div>
           )}
@@ -564,33 +569,33 @@ export default function ListingCard({
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-30 min-w-[28px] min-h-[28px] flex items-center justify-center pointer-events-auto"
+          className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 sm:p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-30 min-w-[24px] min-h-[24px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center pointer-events-auto"
           title={tr('listing.toggleFavorite')}
           aria-label={tr('listing.toggleFavorite')}
           aria-pressed={isFavorite}
         >
-          <Heart className="w-4 h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
+          <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
         </button>
 
-        <div className={`absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-full bg-transparent px-2.5 py-1 text-[14px] sm:text-xs lg:text-sm font-bold text-white drop-shadow-md ${THEME.fonts.mono}`}>
-          <Star className="w-[15px] h-[15px] sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
+        <div className={`absolute right-1.5 bottom-1.5 sm:right-2 sm:bottom-2 z-10 flex items-center gap-1 sm:gap-1.5 rounded-full bg-transparent px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs lg:text-sm font-bold text-white drop-shadow-md ${THEME.fonts.mono}`}>
+          <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
           <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
           <span className="text-white/85 font-light">({listing.reviewsCount})</span>
         </div>
       </div>
 
       {/* Content details description */}
-      <div className={`p-4 sm:p-5 lg:p-4 flex-1 flex flex-col justify-between ${THEME.fonts.main}`}>
+      <div className={`p-2.5 sm:p-5 lg:p-4 flex-1 flex flex-col justify-between ${THEME.fonts.main}`}>
 
         <div>
           {/* Title and Rating Line */}
-          <div className="flex justify-between items-start gap-2 mb-1.5 lg:mb-1">
-            <h3 className={`${THEME.fonts.heading} font-bold text-[21px] sm:text-base lg:text-lg text-text-dark line-clamp-2 group-hover:text-brand-orange-hover transition-colors leading-tight`}>
+          <div className="flex justify-between items-start gap-2 mb-1 sm:mb-1.5 lg:mb-1">
+            <h3 className={`${THEME.fonts.heading} font-bold text-[13px] sm:text-base lg:text-lg text-text-dark line-clamp-2 group-hover:text-brand-orange-hover transition-colors leading-tight`}>
               {displayTitle}
             </h3>
           </div>
 
-          <p className="line-clamp-2 leading-relaxed mb-1.5 sm:mb-2 text-gray-500 font-light text-[14px] sm:text-xs lg:text-[13px]">
+          <p className="line-clamp-2 leading-snug sm:leading-relaxed mb-1 sm:mb-2 text-gray-500 font-light text-[10px] sm:text-xs lg:text-[13px]">
             {listing.category === 'housing' ? buildListingSubtitle(listing, 4, tr) : translatedDescription}
           </p>
         </div>
@@ -598,12 +603,12 @@ export default function ListingCard({
         {/* Pricing stack matching user specifications */}
         <div className="pt-0.5 sm:pt-1 pb-1">
           {stayDays && (
-            <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-xs font-bold text-text-dark ${THEME.fonts.heading}`}>
+            <div className={`mb-1 text-[10px] sm:text-xs lg:text-xs font-bold text-text-dark ${THEME.fonts.heading}`}>
               {tr('listing.totalFor')} {stayDays} {pluralizeDays(stayDays)}:
             </div>
           )}
 
-          <div className="flex flex-col gap-1 sm:gap-1.5">
+          <div className="flex flex-col gap-0.5 sm:gap-1.5">
             {/* Line 1: Competitor Price, grey/strikethrough and dynamic competitor logo */}
             {listing.bookingComPrice && (
               listing.competitorUrl ? (
@@ -612,16 +617,16 @@ export default function ListingCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-4 sm:gap-3 self-start cursor-pointer hover:opacity-75 transition"
+                  className="flex items-center gap-1.5 sm:gap-3 self-start cursor-pointer hover:opacity-75 transition"
                 >
-                  <span className={`text-[14px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
+                  <span className={`text-[10px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
                     {convertPrice(activeCompetitorPrice)} {currencySymbol}
                   </span>
                   <CompetitorLogo platform={listing.competitorPlatform} />
                 </a>
               ) : (
-                <div className="flex items-center gap-4 sm:gap-3">
-                  <span className={`text-[14px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
+                <div className="flex items-center gap-1.5 sm:gap-3">
+                  <span className={`text-[10px] sm:text-xs lg:text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
                     {convertPrice(activeCompetitorPrice)} {currencySymbol}
                   </span>
                   <CompetitorLogo platform={listing.competitorPlatform} />
@@ -630,16 +635,16 @@ export default function ListingCard({
             )}
 
             {/* Line 2: Direct Price and Direct price label */}
-            <div className="flex items-center gap-4 sm:gap-3">
-              <span className={`text-[21px] sm:text-base lg:text-lg font-bold text-text-dark ${THEME.fonts.mono}`}>
+            <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+              <span className={`text-[14px] sm:text-base lg:text-lg font-bold text-text-dark leading-none ${THEME.fonts.mono}`}>
                 {convertPrice(activeBasePrice)} {currencySymbol}
               </span>
               {listing.hasDropPrice && !isExpired ? (
-                <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
+                <span className={`bg-[#FF3B30] text-white font-extrabold text-[8px] sm:text-[9px] lg:text-[9px] px-1 sm:px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                   {tr('listing.dropPrice')} • {countdownText}
                 </span>
               ) : (
-                <span className={`text-[14px] sm:text-xs lg:text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
+                <span className={`text-[8px] sm:text-xs lg:text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
                   {tr('listing.directPrice')}
                 </span>
               )}
@@ -648,12 +653,12 @@ export default function ListingCard({
             {/* Line 3: Savings in small red font */}
             {hasSavings && (
               <div className="flex items-center self-start">
-                <div className="bg-[#FF3B30]/10 rounded-full px-2.5 py-1 sm:py-0.5 flex items-center gap-2 shadow-xs backdrop-blur-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
-                  <span className={`text-[14px] sm:text-xs lg:text-xs text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
+                <div className="bg-[#FF3B30]/10 rounded-full px-1.5 sm:px-2.5 py-0.5 flex items-center gap-1 sm:gap-2 shadow-xs backdrop-blur-xs">
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
+                  <span className={`text-[10px] sm:text-xs lg:text-xs text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
                     {showSavingsPercent ? `${savingsPercent}%` : `${convertPrice(savingsAmount)} ${currencySymbol}`}
                   </span>
-                  <span className={`text-[12.5px] sm:text-[10px] lg:text-[9px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
+                  <span className={`text-[8px] sm:text-[10px] lg:text-[9px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
                     {tr('listing.saved')}
                   </span>
                 </div>

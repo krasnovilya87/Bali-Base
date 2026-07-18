@@ -30,6 +30,7 @@ type AppOverlaysProps = {
   handleUpdateMenuOverrides: (newOverrides: any) => Promise<void>;
   listings: Listing[];
   menuOverrides: any;
+  onRequireAuth: (reasonKey?: string) => boolean;
   primaryL2: string;
   selectedListing: Listing | null;
   setCheckInDate: Dispatch<SetStateAction<string>>;
@@ -79,6 +80,7 @@ export default function AppOverlays({
   handleUpdateMenuOverrides,
   listings,
   menuOverrides,
+  onRequireAuth,
   primaryL2,
   selectedListing,
   setCheckInDate,
@@ -137,6 +139,7 @@ export default function AppOverlays({
             setCheckOutDate(checkOut);
           }}
           activeLanguage={activeLanguage}
+          onRequireAuth={onRequireAuth}
           onListingChange={(updatedListing) => {
             setSelectedListing(updatedListing);
             handleUpdateListing(updatedListing);
@@ -176,11 +179,13 @@ export default function AppOverlays({
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           onCreateClick={() => {
+            if (!onRequireAuth('auth.reason.createListing')) return;
             setShowMyAddsListing(false);
             setEditingListing(null);
             setShowCreateWizard(true);
           }}
           onEditClick={(listing) => {
+            if (!onRequireAuth('auth.reason.myListings')) return;
             setShowMyAddsListing(false);
             setEditingListing(listing);
             setShowCreateWizard(true);

@@ -19,9 +19,11 @@ import AppOverlays from './app/components/AppOverlays';
 import CurrencyLanguageControls from './app/components/CurrencyLanguageControls';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
+import AuthModal from './components/AuthModal';
 import { useListingsData } from './app/hooks/useListingsData';
 import { useListingSearch } from './app/hooks/useListingSearch';
 import { useFavoriteListings } from './hooks/useFavoriteListings';
+import { useAuth } from './auth/AuthContext';
 import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
 
 import {
@@ -37,6 +39,7 @@ const DISTRICT_MENU_GROUPS = [
 ];
 
 export default function App() {
+  const { authDebug, authError, user } = useAuth();
   const [currentView, setCurrentView] = useState<'cover' | 'menu' | 'app'>('cover');
   const {
     bookings,
@@ -118,6 +121,7 @@ export default function App() {
   const [showUsersModal, setShowUsersModal] = useState<boolean>(false);
   const [usersModalTab, setUsersModalTab] = useState<'favorites' | 'whatsapp'>('favorites');
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
+  const [authModalReason, setAuthModalReason] = useState<string>('');
   const [showListingMap, setShowListingMap] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024; // enabled by default for PC version (tablets & mobile hidden by default)
@@ -226,6 +230,21 @@ export default function App() {
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
+
+  const requestAuth = (reasonKey = 'auth.defaultReason') => {
+    if (user) return true;
+    setAuthModalReason(tr(reasonKey));
+    return false;
+  };
+
+  const requireAuth = (reasonKey: string, action: () => void) => {
+    if (!user) {
+      requestAuth(reasonKey);
+      return;
+    }
+
+    action();
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -840,7 +859,7 @@ export default function App() {
 
                   {/* Create Listing Wizard trigger button */}
                   <button
-                    onClick={() => setShowCreateWizard(true)}
+                    onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
                     className="px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn-menu"
                   >
@@ -853,6 +872,8 @@ export default function App() {
                     listings={listings}
                     showUsersDropdown={showUsersDropdown}
                     tr={tr}
+                    currentUser={user}
+                    onRequireAuth={requestAuth}
                     setShowUsersDropdown={setShowUsersDropdown}
                     setShowAdminDashboard={setShowAdminDashboard}
                     setShowCreateWizard={setShowCreateWizard}
@@ -1010,10 +1031,12 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => setShowFavoritesOnly(prev => {
-                      const next = !prev;
-                      setFilters(currentFilters => ({ ...currentFilters, favoritesOnly: next }));
-                      return next;
+                    onClick={() => requireAuth('auth.reason.favorites', () => {
+                      setShowFavoritesOnly(prev => {
+                        const next = !prev;
+                        setFilters(currentFilters => ({ ...currentFilters, favoritesOnly: next }));
+                        return next;
+                      });
                     })}
                     className="w-8 h-8 sm:w-9 sm:h-9 bg-transparent border border-transparent hover:border-transparent hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-full cursor-pointer flex items-center justify-center active:scale-95 transition-transform shrink-0"
                     title={tr('nav.favorites')}
@@ -1029,7 +1052,7 @@ export default function App() {
 
                   {/* Create Listing Wizard trigger button */}
                   <button
-                    onClick={() => setShowCreateWizard(true)}
+                    onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
                     className="px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn"
                   >
@@ -1044,6 +1067,8 @@ export default function App() {
                     tr={tr}
                     label="Users"
                     chevronClassName="w-3 h-3 text-gray-400"
+                    currentUser={user}
+                    onRequireAuth={requestAuth}
                     setShowUsersDropdown={setShowUsersDropdown}
                     setShowAdminDashboard={setShowAdminDashboard}
                     setShowCreateWizard={setShowCreateWizard}
@@ -1384,12 +1409,12 @@ export default function App() {
             </section>
 
             {/* MAIN RESULTS PAGE: COLLAPSIBLE LISTING MAP WITH ADAPTIVE LAYOUTS */}
-            <main className="flex-grow md:flex-1 md:min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 md:pt-6 md:pb-0 relative select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]">
+            <main className="flex-grow md:flex-1 md:min-h-0 max-w-7xl w-full mx-auto px-1 sm:px-6 py-6 md:pt-6 md:pb-0 relative select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]">
               <div className="flex flex-col md:flex-row gap-6 items-stretch md:h-full md:min-h-0">
 
                 {/* COLUMN 1: Listings scroll column (adapts dynamically) */}
                 <div
-                  className={`space-y-6 overflow-y-auto p-[18px] scroll-p-[18px] transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${showListingMap && currentL1 !== 'useful'
+                  className={`space-y-4 sm:space-y-6 overflow-y-auto px-0.5 sm:px-[18px] pb-[18px] pt-0 scroll-p-[18px] transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${showListingMap && currentL1 !== 'useful'
                     ? 'w-full md:w-[calc(50%-12px)] md:h-[calc(100%-15px)] md:min-h-0'
                     : 'w-full md:h-[calc(100%-15px)] md:min-h-0'
                     }`}
@@ -1454,9 +1479,9 @@ export default function App() {
                       ))}
                     </div>
                   ) : sortedListings.length > 0 ? (
-                    <div className={`grid gap-6 transition-all duration-300 ${showListingMap
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2'
-                      : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+                    <div className={`grid gap-1.5 sm:gap-6 transition-all duration-300 ${showListingMap
+                      ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-2'
+                      : 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
                       }`}>
                       {sortedListings.map(item => (
                         <ListingCard
@@ -1469,6 +1494,7 @@ export default function App() {
                           checkOutDate={checkOutDate}
                           onOpenCalendar={() => setShowCalendar(true)}
                           activeLanguage={activeLanguage}
+                          onRequireAuth={() => requestAuth('auth.reason.favorites')}
                         />
                       ))}
                     </div>
@@ -1636,6 +1662,7 @@ export default function App() {
           menuOverrides={menuOverrides}
           primaryL2={primaryL2}
           selectedListing={selectedListing}
+          onRequireAuth={requestAuth}
           setCheckInDate={setCheckInDate}
           setCheckOutDate={setCheckOutDate}
           setCustomPoint={setCustomPoint}
@@ -1660,6 +1687,24 @@ export default function App() {
           showUsersModal={showUsersModal}
           usersModalTab={usersModalTab}
         />
+
+        <AuthModal
+          isOpen={Boolean(authModalReason)}
+          onClose={() => setAuthModalReason('')}
+          reason={authModalReason}
+        />
+
+        {(authError || authDebug) && (
+          <div className={`fixed left-4 right-4 bottom-4 z-[650] mx-auto max-w-2xl rounded-2xl border px-4 py-3 text-xs font-bold shadow-2xl ${authError
+            ? 'border-red-200 bg-red-50 text-red-700'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            }`}>
+            <div>{authError || authDebug}</div>
+            {authError && authDebug && (
+              <div className="mt-1 text-[11px] opacity-80">{authDebug}</div>
+            )}
+          </div>
+        )}
       </div>
     </I18nProvider>
   );

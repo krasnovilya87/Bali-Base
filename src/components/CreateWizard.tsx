@@ -14,8 +14,8 @@ import { useLocationStep } from './create-wizard/steps/useLocationStep';
 import { usePhotoStep } from './create-wizard/steps/usePhotoStep';
 import { useTitleStep } from './create-wizard/steps/useTitleStep';
 import { calculateNearbySpotsOnce } from '../utils/nearbyPlaces';
-import { applyGoogleReviewsCacheToListing, requestListingCreateGoogleReviewsRefresh } from '../utils/googlePlacesReviewsClient';
 import { useI18n } from '../i18nContext';
+import { findDistrictByCoordsSync } from '../utils/geo';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -108,6 +108,7 @@ export default function CreateWizard({
     showSuggestionsDropdown,
     setShowSuggestionsDropdown,
     selectedGooglePlaceId,
+    resolveGooglePlaceIdForListing,
     handleAddressChange,
     handleInputKeyDown,
     triggerDirectSearch,
@@ -277,7 +278,7 @@ export default function CreateWizard({
     Math.abs(a.lng - b.lng) < 0.00001
   );
 
-  const buildListing = (id: string): Listing => {
+  const buildListing = (id: string, googlePlaceIdOverride = ''): Listing => {
     const dropPricePerDay = selectedDiscountPercent > 0
       ? Math.round(pricePerDay * (1 - selectedDiscountPercent / 100))
       : undefined;
@@ -298,6 +299,9 @@ export default function CreateWizard({
     ];
     const locationCoords = confirmedLocationCoords || pickedCoords || initialListing?.locationCoords;
     const canKeepNearbySpots = coordsMatch(initialListing?.locationCoords, locationCoords);
+    const resolvedDistrict = locationCoords
+      ? findDistrictByCoordsSync(locationCoords.lat, locationCoords.lng) || district
+      : district;
 
     return {
       id,
@@ -306,10 +310,10 @@ export default function CreateWizard({
       subCategory,
       title: cleanListingTitle,
       description: description || 'Стильный объект в центральном районе, ждет своих гостей.',
-      district,
-      address: address || district,
+      district: resolvedDistrict,
+      address: address || resolvedDistrict,
       locationCoords,
-      googlePlaceId: selectedGooglePlaceId || initialListing?.googlePlaceId || initialListing?.placeId,
+      googlePlaceId: selectedGooglePlaceId || googlePlaceIdOverride || initialListing?.googlePlaceId || initialListing?.placeId,
       images: orderedPhotoUrls,
       rating: initialListing?.rating || 4.9,
       reviewsCount: initialListing?.reviewsCount || 0,
@@ -365,7 +369,14 @@ export default function CreateWizard({
     if (isPublishing) return;
     setIsPublishing(true);
 
-    const baseListing = buildListing(initialListing?.id || `house-${Date.now()}`);
+    const resolvedGooglePlaceId = selectedGooglePlaceId || await resolveGooglePlaceIdForListing(
+      [title, address, district, 'Bali'].filter(Boolean).join(' ')
+    );
+    if (!resolvedGooglePlaceId) {
+      console.warn('Google reviews request will be skipped because no Google place_id was found for this listing.');
+    }
+
+    const baseListing = buildListing(initialListing?.id || `house-${Date.now()}`, resolvedGooglePlaceId);
     const publishCoords = confirmedLocationCoords || pickedCoords || baseListing.locationCoords;
     let listingForPublish: Listing = {
       ...baseListing,
@@ -399,12 +410,7 @@ export default function CreateWizard({
     }
 
     try {
-      const reviewsResponse = await requestListingCreateGoogleReviewsRefresh({
-        listingId: listingForPublish.id,
-        placeId: listingForPublish.googlePlaceId || listingForPublish.placeId,
-        googleReviewsUpdatedAt: initialListing?.googleReviewsUpdatedAt
-      });
-      await onPublish(applyGoogleReviewsCacheToListing(listingForPublish, reviewsResponse));
+      await onPublish(listingForPublish);
       onClose();
     } catch (error) {
       console.error('Failed to publish listing:', error);

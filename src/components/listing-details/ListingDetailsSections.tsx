@@ -5,6 +5,8 @@ import { DetailMapPlace } from '../DetailMap';
 import DetailMap from '../DetailMap';
 import { Star, ShieldAlert } from 'lucide-react';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../../utils/pricing';
+import { LanguageCode } from '../../i18n';
+import TranslatedReviewText from './TranslatedReviewText';
 
 type SectionId = 'description' | 'characteristics' | 'amenities' | 'nearby' | 'location' | 'reviews' | 'reportProblem';
 
@@ -43,6 +45,7 @@ interface ListingDetailsSectionsProps {
   activeNearbyRoute: any;
   detailMapSelectedPlaceIndex: number | null;
   onProblemReportOpen: () => void;
+  activeLanguage: LanguageCode;
   sections?: SectionId[];
   tr: (key: string, params?: Record<string, string | number>) => string;
 }
@@ -81,6 +84,7 @@ export default function ListingDetailsSections({
   activeNearbyRoute,
   detailMapSelectedPlaceIndex,
   onProblemReportOpen,
+  activeLanguage,
   sections,
   tr,
 }: ListingDetailsSectionsProps) {
@@ -215,7 +219,7 @@ export default function ListingDetailsSections({
                     <span>{review.rating.toFixed(1)}</span>
                   </div>
                 </div>
-                <p className="text-[#1E293B] text-xs sm:text-sm leading-relaxed italic">"{review.text}"</p>
+                <TranslatedReviewText review={review} activeLanguage={activeLanguage} tr={tr} />
                 {review.cleanlinessLabels && review.cleanlinessLabels.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {review.cleanlinessLabels.map(label => (

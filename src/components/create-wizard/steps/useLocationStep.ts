@@ -243,6 +243,23 @@ export const useLocationStep = ({
     return { lat, lng };
   };
 
+  const resolveGooglePlaceIdForListing = async (query: string) => {
+    if (selectedGooglePlaceId) return selectedGooglePlaceId;
+    if (!query.trim()) return '';
+
+    try {
+      const googleSuggestions = await fetchGoogleSuggestions(query);
+      const placeId = googleSuggestions[0]?.place_id || '';
+      if (placeId) {
+        setSelectedGooglePlaceId(placeId);
+      }
+      return placeId;
+    } catch (error) {
+      console.warn('Google place_id lookup failed:', error);
+      return '';
+    }
+  };
+
   const triggerDirectSearch = async (query: string) => {
     setIsSearchingMap(true);
     try {
@@ -301,6 +318,7 @@ export const useLocationStep = ({
     showSuggestionsDropdown,
     setShowSuggestionsDropdown,
     selectedGooglePlaceId,
+    resolveGooglePlaceIdForListing,
     handleAddressChange,
     handleInputKeyDown,
     triggerDirectSearch,

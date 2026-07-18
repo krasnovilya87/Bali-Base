@@ -10,12 +10,15 @@ import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { getHaversineDistance, getListingCoords } from '../utils/geo';
+import { findDistrictByCoordsSync, getHaversineDistance, getListingCoords } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics } from '../utils/housingFieldMeta';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
 import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useI18n } from '../i18nContext';
+import { useAuth } from '../auth/AuthContext';
+import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import TranslatedReviewText from './listing-details/TranslatedReviewText';
 import {
   getNearbyLibraryItems,
   isPlaceLibraryFresh,
@@ -24,10 +27,45 @@ import {
   PlaceLibraryItem,
   upsertPlaceLibraryItems
 } from '../utils/placeLibrary';
+import {
+  createSupportTicketFromListing,
+  readSupportTickets,
+  writeSupportTickets
+} from '../utils/supportTickets';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
 const NEARBY_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 183;
+const LISTING_NOTES_STORAGE_PREFIX = 'bali_base_listing_notes';
+
+const getListingNotesUserKey = () => {
+  if (typeof window === 'undefined') return 'guest';
+
+  const directUserKey =
+    window.localStorage.getItem('bali_base_current_user') ||
+    window.localStorage.getItem('bali_base_active_user') ||
+    window.localStorage.getItem('bali_base_user_id');
+
+  if (directUserKey?.trim()) {
+    return directUserKey.trim();
+  }
+
+  try {
+    const storedUsers = window.localStorage.getItem('bali_base_admin_users');
+    const parsedUsers = storedUsers ? JSON.parse(storedUsers) : null;
+    const firstUserId = Array.isArray(parsedUsers) ? parsedUsers[0]?.id : undefined;
+    if (typeof firstUserId === 'string' && firstUserId.trim()) {
+      return firstUserId.trim();
+    }
+  } catch {
+    return 'guest';
+  }
+
+  return 'guest';
+};
+
+const getListingNotesStorageKey = (listingId: string) =>
+  `${LISTING_NOTES_STORAGE_PREFIX}:${getListingNotesUserKey()}:${listingId}`;
 
 const SUPERMARKET_NAMES = [
   'pepito',
@@ -164,6 +202,7 @@ interface ListingDetailsProps {
   initialCheckOutDate?: string;
   onDatesChange?: (checkIn: string, checkOut: string) => void;
   onListingChange?: (listing: Listing) => void;
+  onRequireAuth?: (reasonKey?: string) => boolean;
   activeLanguage?: LanguageCode;
 }
 
@@ -177,9 +216,12 @@ export default function ListingDetails({
   initialCheckOutDate = '',
   onDatesChange,
   onListingChange,
+  onRequireAuth,
   activeLanguage = DEFAULT_LANGUAGE
 }: ListingDetailsProps) {
   const { tr } = useI18n();
+  const { user } = useAuth();
+  const { favoriteIds, toggleFavorite: toggleFavoriteListing } = useFavoriteListings();
   const [activePhoto, setActivePhoto] = useState<number>(0);
   const [isVerticalGalleryOpen, setIsVerticalGalleryOpen] = useState<boolean>(false);
   const [hasHeroDragged, setHasHeroDragged] = useState<boolean>(false);
@@ -195,7 +237,6 @@ export default function ListingDetails({
   const [countdownText, setCountdownText] = useState<string>('');
   const [isCharacteristicsExpanded, setIsCharacteristicsExpanded] = useState<boolean>(false);
   const [isAmenitiesExpanded, setIsAmenitiesExpanded] = useState<boolean>(false);
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [nearbySpots, setNearbySpots] = useState<ListingNearbySpot[]>(listing.nearbySpots || []);
   const [nearbyLoading, setNearbyLoading] = useState<boolean>(false);
   const [activeMapCategory, setActiveMapCategory] = useState<MapSpotCategory | null>(null);
@@ -203,6 +244,11 @@ export default function ListingDetails({
   const [mapPlacesLoading, setMapPlacesLoading] = useState<boolean>(false);
   const [selectedNearbyIndex, setSelectedNearbyIndex] = useState<number | null>(null);
   const [routeError, setRouteError] = useState<string>('');
+  const [listingNote, setListingNote] = useState<string>('');
+  const [isNotesExpanded, setIsNotesExpanded] = useState<boolean>(false);
+  const [isProblemModalOpen, setIsProblemModalOpen] = useState<boolean>(false);
+  const [problemMessage, setProblemMessage] = useState<string>('');
+  const [problemSent, setProblemSent] = useState<boolean>(false);
   const { translatedDescription, isTranslating } = useTranslatedDescription(listing.description, activeLanguage);
 
   const visibleHeroPhotoIndexes = listing.images
@@ -301,25 +347,8 @@ export default function ListingDetails({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const favs = localStorage.getItem('bali_base_favorites');
-    let list: string[] = [];
-
-    if (favs) {
-      try {
-        list = JSON.parse(favs);
-      } catch { }
-    }
-
-    if (list.includes(listing.id)) {
-      list = list.filter(id => id !== listing.id);
-      setIsFavorite(false);
-    } else {
-      list.push(listing.id);
-      setIsFavorite(true);
-    }
-
-    localStorage.setItem('bali_base_favorites', JSON.stringify(list));
-    window.dispatchEvent(new Event('bali_base_favorites_changed'));
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.favorites')) return;
+    toggleFavoriteListing(listing.id);
   };
 
   useEffect(() => {
@@ -330,24 +359,33 @@ export default function ListingDetails({
     setIsAmenitiesExpanded(false);
   }, [listing.id]);
 
-  useEffect(() => {
-    const favs = localStorage.getItem('bali_base_favorites');
-    if (!favs) {
-      setIsFavorite(false);
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(favs) as string[];
-      setIsFavorite(parsed.includes(listing.id));
-    } catch {
-      setIsFavorite(false);
-    }
-  }, [listing.id]);
+  const isFavorite = favoriteIds.has(listing.id);
 
   useEffect(() => {
     setHeroTrackTransform(0, false);
   }, [activePhoto, listing.images.length]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedNote = window.localStorage.getItem(getListingNotesStorageKey(listing.id)) || '';
+    setListingNote(savedNote);
+    setIsNotesExpanded(Boolean(savedNote.trim()));
+  }, [listing.id]);
+
+  const handleListingNoteChange = (value: string) => {
+    setListingNote(value);
+    setIsNotesExpanded(true);
+
+    if (typeof window === 'undefined') return;
+
+    const storageKey = getListingNotesStorageKey(listing.id);
+    if (value.trim()) {
+      window.localStorage.setItem(storageKey, value);
+    } else {
+      window.localStorage.removeItem(storageKey);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -447,9 +485,6 @@ export default function ListingDetails({
     setSelectedNearbyIndex(index);
     setActiveMapCategory(null);
     setRouteError('');
-    window.setTimeout(() => {
-      document.getElementById('detail-map-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
 
     if (!spot.route?.overviewPath?.length) {
       setRouteError(tr('details.recalculateRoute'));
@@ -591,6 +626,7 @@ export default function ListingDetails({
 
   // WhatsApp template dispatch
   const handleWhatsAppClick = () => {
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking')) return;
     if (!checkInDate || !checkOutDate) {
       setShowDateCalendar(true);
       return;
@@ -644,8 +680,8 @@ export default function ListingDetails({
       listingTitle: listing.title,
       listingImage: listing.images[0],
       listingCategory: listing.category as any,
-      guestName: 'Arnie Guest',
-      guestPhone: '+62899123412',
+      guestName: user?.displayName || user?.email || 'Bali Base user',
+      guestPhone: user?.phoneNumber || '+62899123412',
       startDate: checkInDate,
       endDate: checkOutDate,
       totalDays: diffDays,
@@ -660,6 +696,36 @@ export default function ListingDetails({
     setTimeout(() => {
       window.open(waUrl, '_blank');
     }, 1500);
+  };
+
+  const openProblemReport = () => {
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem')) return;
+    setProblemSent(false);
+    setIsProblemModalOpen(true);
+  };
+
+  const submitProblemReport = () => {
+    if (!problemMessage.trim()) return;
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem')) return;
+
+    const nextTicket = createSupportTicketFromListing({
+      listingId: listing.id,
+      listingTitle: listing.title,
+      userId: user?.uid || 'registered-user',
+      userName: user?.displayName || user?.email || tr('details.problem.defaultUser'),
+      userPhone: user?.phoneNumber || '',
+      userAvatar: user?.photoURL || '',
+      subject: tr('details.problem.subject', { title: listing.title }),
+      message: problemMessage.trim()
+    });
+
+    writeSupportTickets([nextTicket, ...readSupportTickets()]);
+    setProblemMessage('');
+    setProblemSent(true);
+    window.setTimeout(() => {
+      setIsProblemModalOpen(false);
+      setProblemSent(false);
+    }, 1400);
   };
 
   // Format metadata values for Housing Category
@@ -722,17 +788,22 @@ export default function ListingDetails({
   }
   const mainFeatures = features.slice(0, 2).join(', ');
 
+  const coordsDistrict = listing.locationCoords
+    ? findDistrictByCoordsSync(listing.locationCoords.lat, listing.locationCoords.lng)
+    : null;
+  const displayDistrict = coordsDistrict || listing.district;
+
   let distanceText = '';
   const min = listing.distanceToSeaMinutes !== undefined ? listing.distanceToSeaMinutes : 5;
-  if (listing.district.toLowerCase() === 'ubud') {
+  if (displayDistrict.toLowerCase() === 'ubud') {
     distanceText = tr('details.distanceToCenter', { count: min });
   } else {
     distanceText = tr('details.distanceToSea', { count: min });
   }
 
-  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${listing.title} ${listing.address || ''} ${listing.district} Bali`)}`;
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${listing.title} ${listing.address || ''} ${displayDistrict} Bali`)}`;
 
-  const DISTRICT_TEXT = listing.district;
+  const DISTRICT_TEXT = displayDistrict;
   const displayTitle = stripListingRoomTypeFromTitle(listing.title);
 
   const metadataParts: React.ReactNode[] = [
@@ -793,7 +864,7 @@ export default function ListingDetails({
     { emoji: '🌋', title: tr('details.nearby.mountBaturTitle'), desc: tr('details.notCalculated') }
   ];
   const getFallbackNearbyPills = () => {
-    const normalizedDistrict = normalizeNearbyText(listing.district || '');
+    const normalizedDistrict = normalizeNearbyText(displayDistrict || '');
     if (normalizedDistrict.includes('ubud')) return ubudNearbyPills;
     if (normalizedDistrict.includes('kintamani') || normalizedDistrict.includes('kintomani')) return kintamaniNearbyPills;
     return standardNearbyPills;
@@ -1475,6 +1546,29 @@ export default function ListingDetails({
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNotesExpanded(prev => listingNote.trim() ? true : !prev)}
+                  className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-extrabold text-[#1E293B] hover:text-[#FF7A50] transition-colors cursor-pointer select-none"
+                  aria-expanded={isNotesExpanded || Boolean(listingNote.trim())}
+                >
+                  <span>{tr('details.myNotes')}</span>
+                  {!listingNote.trim() && (
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isNotesExpanded ? 'rotate-90' : ''}`} />
+                  )}
+                </button>
+
+                {(isNotesExpanded || Boolean(listingNote.trim())) && (
+                  <textarea
+                    value={listingNote}
+                    onChange={event => handleListingNoteChange(event.target.value)}
+                    placeholder={tr('details.myNotesPlaceholder')}
+                    className="w-full min-h-[96px] rounded-2xl border border-[#E5E7EB] bg-white px-3.5 py-3 text-xs sm:text-sm text-[#1E293B] placeholder:text-gray-400 focus:outline-none focus:border-[#FF7A50]/50 focus:ring-2 focus:ring-[#FF7A50]/10 resize-y leading-relaxed"
+                  />
+                )}
+              </div>
+
               {/* Grey section container starting from Description */}
               <div className="bg-[#F4F7F6] p-4 sm:p-6 rounded-[24px] border border-[#E5E7EB] space-y-7">
 
@@ -1770,9 +1864,7 @@ export default function ListingDetails({
                         </div>
                       </div>
 
-                      <p className="text-[#1E293B] text-xs sm:text-sm leading-relaxed italic">
-                        "{review.text}"
-                      </p>
+                      <TranslatedReviewText review={review} activeLanguage={activeLanguage} tr={tr} />
 
                       {review.cleanlinessLabels && review.cleanlinessLabels.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
@@ -1786,6 +1878,18 @@ export default function ListingDetails({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={openProblemReport}
+                  title={tr('details.problem.tooltip')}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-xs font-bold transition border bg-[#FFF7F2] text-[#FF7A50] border-[#FFD8C9] hover:bg-[#FF7A50]/10 hover:border-[#FF7A50]/40"
+                >
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{tr('details.reportProblem')}</span>
+                </button>
               </div>
 
             </div>
@@ -1960,6 +2064,68 @@ export default function ListingDetails({
               }}
               onClose={() => setShowDateCalendar(false)}
             />
+          </div>
+        )}
+
+        {isProblemModalOpen && (
+          <div className="fixed inset-0 z-[520] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-[#E5E7EB]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF7A50]">{tr('details.problem.badge')}</p>
+                  <h3 className="mt-1 text-xl font-black text-[#1E293B]">{tr('details.problem.title')}</h3>
+                  <p className="mt-2 text-xs font-semibold text-[#5F6978]">
+                    {tr('details.problem.subtitle', { title: listing.title })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsProblemModalOpen(false)}
+                  className="h-9 w-9 shrink-0 rounded-full border border-[#E5E7EB] text-[#1E293B] hover:text-[#FF7A50] flex items-center justify-center transition"
+                  title={tr('common.close')}
+                  aria-label={tr('common.close')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {problemSent ? (
+                <div className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
+                  {tr('details.problem.sent')}
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  <p className="text-sm leading-relaxed text-[#5F6978]">{tr('details.problem.intro')}</p>
+                  <label className="block text-xs font-extrabold text-[#1E293B]">
+                    {tr('details.problem.label')}
+                  </label>
+                  <textarea
+                    value={problemMessage}
+                    onChange={(event) => setProblemMessage(event.target.value)}
+                    placeholder={tr('details.problem.placeholder')}
+                    className="min-h-[120px] w-full rounded-2xl border border-[#E5E7EB] bg-[#F4F7F6] p-3 text-sm font-semibold text-[#1E293B] outline-none transition focus:border-[#FF7A50]"
+                  />
+                  <p className="text-[11px] font-semibold text-[#94A3B8]">{tr('details.problem.helper')}</p>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsProblemModalOpen(false)}
+                      className="flex-1 rounded-2xl border border-[#E5E7EB] px-4 py-3 text-xs font-extrabold text-[#1E293B] transition hover:bg-[#F4F7F6]"
+                    >
+                      {tr('details.problem.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={submitProblemReport}
+                      disabled={!problemMessage.trim()}
+                      className="flex-1 rounded-2xl bg-[#FF7A50] px-4 py-3 text-xs font-extrabold text-white transition hover:bg-[#E05A30] disabled:opacity-60"
+                    >
+                      {tr('details.problem.submit')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

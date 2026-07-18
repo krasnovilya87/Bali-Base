@@ -7,6 +7,7 @@ import {
   Rocket, ArrowUp, Sliders, SlidersHorizontal, Settings2
 } from 'lucide-react';
 import { setDocument } from '../firebase';
+import { useAuth } from '../auth/AuthContext';
 import PromoteListingModal from './my-adds/PromoteListingModal';
 import CalendarListingModal from './my-adds/CalendarListingModal';
 import DropPriceModal from './my-adds/DropPriceModal';
@@ -46,9 +47,15 @@ export default function MyAddsListing({
   onDeleteListing
 }: MyAddsListingProps) {
   const { tr } = useI18n();
+  const { user } = useAuth();
 
   // Filtration for listings belonging to current user session
-  const ownerListings = listings.filter(item => item.ownerId === 'owner-1' || item.ownerId === 'owner-personal' || item.ownerId === 'owner-direct');
+  const ownerListings = listings.filter(item =>
+    item.ownerId === user?.uid ||
+    item.ownerId === 'owner-1' ||
+    item.ownerId === 'owner-personal' ||
+    item.ownerId === 'owner-direct'
+  );
 
   // Sub-modal overlay states
   const [promoteListing, setPromoteListing] = useState<Listing | null>(null);

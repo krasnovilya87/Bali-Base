@@ -28,7 +28,9 @@ const mapGoogleReview = (review: any, index: number): GooglePlaceReview => ({
   rating: Number(review.rating || 0),
   date: review.publishTime || new Date().toISOString(),
   text: review.text?.text || review.originalText?.text || '',
+  textLanguageCode: review.text?.languageCode,
   originalText: review.originalText?.text,
+  originalLanguageCode: review.originalText?.languageCode,
   relativePublishTimeDescription: review.relativePublishTimeDescription
 });
 
@@ -69,7 +71,7 @@ export const refreshGooglePlaceReviews = async ({
 }) => {
   const existingCache = await readReviewCache(listingId);
 
-  if (existingCache) {
+  if (existingCache && purpose !== 'listing_update') {
     return {
       status: 'cache_hit',
       cache: existingCache,
@@ -77,11 +79,11 @@ export const refreshGooglePlaceReviews = async ({
     } satisfies GooglePlacesRefreshResult;
   }
 
-  if (purpose !== 'listing_create') {
+  if (purpose !== 'listing_create' && purpose !== 'listing_update') {
     return {
       status: 'blocked',
       cache: null,
-      warning: 'Google reviews can only be requested once during listing creation'
+      warning: 'Google reviews can only be requested during listing creation or listing update'
     } satisfies GooglePlacesRefreshResult;
   }
 
@@ -135,11 +137,11 @@ export const getGooglePlaceReviewsForListing = async ({
     };
   }
 
-  if (purpose !== 'listing_create') {
+  if (purpose !== 'listing_create' && purpose !== 'listing_update') {
     return {
       status: cache ? 'cache_hit' : 'blocked',
       cache,
-      warning: 'Automatic Google reviews refresh is disabled; reviews are captured only once during listing creation'
+      warning: 'Automatic Google reviews refresh is disabled; reviews are captured only during listing creation or listing update'
     };
   }
 

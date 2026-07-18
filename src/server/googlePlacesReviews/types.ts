@@ -1,10 +1,12 @@
 import type { Review } from '../../types';
 
-export type GooglePlacesRequestPurpose = 'listing_create' | 'manual' | 'background';
+export type GooglePlacesRequestPurpose = 'listing_create' | 'listing_update' | 'manual' | 'background';
 
 export type GooglePlaceReview = Review & {
   relativePublishTimeDescription?: string;
   originalText?: string;
+  originalLanguageCode?: string;
+  textLanguageCode?: string;
 };
 
 export type GooglePlaceReviewCacheRecord = {

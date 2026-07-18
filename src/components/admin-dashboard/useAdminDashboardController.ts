@@ -65,13 +65,25 @@ export function useAdminDashboardController({
   const [googlePlacesQuota, setGooglePlacesQuota] = useState<GooglePlacesQuotaAdminStats | null>(null);
   const [districtOptions] = useState<string[]>(() => getDistrictNamesFromGeoJSONSync());
 
-  useEffect(() => {
+  const refreshGooglePlacesQuota = () => {
     loadGooglePlacesQuotaAdminStats()
       .then(setGooglePlacesQuota)
       .catch(error => {
         console.warn('Could not load Google Places quota stats', error);
       });
+  };
+
+  useEffect(() => {
+    refreshGooglePlacesQuota();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'dashboard') return;
+
+    refreshGooglePlacesQuota();
+    const intervalId = window.setInterval(refreshGooglePlacesQuota, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [activeTab]);
 
   const extractHousingListingsFromJson = (payload: any): Listing[] => {
     const source = payload?.[LISTINGS_COLLECTION] ?? payload?.listings ?? payload;
