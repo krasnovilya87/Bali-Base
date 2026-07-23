@@ -40,6 +40,7 @@ export interface AdminDashboardProps {
   onUpdateBookingStatus: (bookingId: string, status: 'accepted' | 'declined') => void;
   onUpdateListing: (listing: Listing) => void;
   onDeleteListing: (listingId: string) => void;
+  onSelectListing: (listing: Listing) => void;
   onClose: () => void;
   currencySymbol: string;
   currencyRate: number;

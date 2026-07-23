@@ -37,6 +37,7 @@
             close: 'Close',
             sendMessage: 'Send message',
             tooltip: 'Send a message to the admin panel',
+            onlyRegistered: 'Available only to registered users.',
             subject: 'Problem with listing: {title}'
           },
           RU: {
@@ -47,6 +48,7 @@
             close: 'Закрыть',
             sendMessage: 'Отправить',
             tooltip: 'Отправить сообщение в админпанель',
+            onlyRegistered: 'Доступно только зарегистрированным пользователям.',
             subject: 'Проблема с объявлением: {title}'
           },
           ID: {
@@ -57,6 +59,7 @@
             close: 'Tutup',
             sendMessage: 'Kirim pesan',
             tooltip: 'Kirim pesan ke panel admin',
+            onlyRegistered: 'Hanya tersedia untuk pengguna terdaftar.',
             subject: 'Masalah dengan iklan: {title}'
           },
           DE: {
@@ -67,6 +70,7 @@
             close: 'Schliessen',
             sendMessage: 'Nachricht senden',
             tooltip: 'Nachricht an das Admin-Panel senden',
+            onlyRegistered: 'Nur fuer registrierte Nutzer verfuegbar.',
             subject: 'Problem mit Angebot: {title}'
           },
           FR: {
@@ -77,6 +81,7 @@
             close: 'Fermer',
             sendMessage: 'Envoyer le message',
             tooltip: 'Envoyer un message au panneau admin',
+            onlyRegistered: 'Disponible uniquement pour les utilisateurs inscrits.',
             subject: "Probleme avec l'annonce : {title}"
           }
         };
@@ -139,6 +144,62 @@
           return String(dictionary[key] || FALLBACK_TRANSLATIONS.EN[key] || key).replace(/\{(\w+)\}/g, (_, paramKey) => params[paramKey] ?? '');
         };
 
+        const parseJson = (value) => {
+          try {
+            return value ? JSON.parse(value) : null;
+          } catch {
+            return null;
+          }
+        };
+
+        const normalizeRegisteredUser = (value) => {
+          if (!value || typeof value !== 'object') return null;
+          const uid = String(value.uid || value.userId || value.id || '').trim();
+          const email = String(value.email || '').trim();
+          if (!uid && !email) return null;
+          const displayName = String(value.displayName || value.name || value.userName || email || 'Registered user').trim();
+          return {
+            uid: uid || email,
+            displayName,
+            email,
+            phoneNumber: String(value.phoneNumber || value.phone || '').trim(),
+            photoURL: String(value.photoURL || value.avatar || value.userAvatar || '').trim()
+          };
+        };
+
+        const getRegisteredUser = () => {
+          const directKeys = [
+            'bali_base_current_user_profile',
+            'bali_base_current_user',
+            'bali_base_active_user'
+          ];
+          for (const key of directKeys) {
+            const directUser = normalizeRegisteredUser(parseJson(window.localStorage.getItem(key)));
+            if (directUser) return directUser;
+          }
+
+          for (let index = 0; index < window.localStorage.length; index += 1) {
+            const key = window.localStorage.key(index) || '';
+            if (!key.startsWith('firebase:authUser:')) continue;
+            const firebaseUser = normalizeRegisteredUser(parseJson(window.localStorage.getItem(key)));
+            if (firebaseUser) return firebaseUser;
+          }
+
+          return null;
+        };
+
+        let pendingProblemDialog = false;
+
+        const openAuthPanel = () => {
+          pendingProblemDialog = true;
+          document.getElementById('users-dropdown-btn-menu')?.click();
+          window.setTimeout(() => {
+            const signInButton = Array.from(document.querySelectorAll('button'))
+              .find((button) => /sign in|войти|masuk|anmelden|connexion/i.test(button.textContent || ''));
+            signInButton?.click();
+          }, 0);
+        };
+
         const rememberListingTitleFromCard = (target) => {
           const card = target?.closest?.('[id^="card-"]');
           const cardTitle = normalizeListingTitle(card?.querySelector('h3')?.textContent);
@@ -161,6 +222,10 @@
 
         const openProblemDialog = () => {
           if (document.getElementById(PROBLEM_OVERLAY_ID)) return;
+          if (!getRegisteredUser()) {
+            openAuthPanel();
+            return;
+          }
 
           const listingTitle = getCurrentListingTitle();
           const safeListingTitle = escapeHtml(listingTitle);
@@ -232,6 +297,12 @@
           overlay.querySelector('[data-cancel-problem-dialog="true"]')?.addEventListener('click', closeProblemDialog);
           overlay.querySelector('[data-problem-report-form="true"]')?.addEventListener('submit', (event) => {
             event.preventDefault();
+            const registeredUser = getRegisteredUser();
+            if (!registeredUser) {
+              closeProblemDialog();
+              openAuthPanel();
+              return;
+            }
             const textField = overlay.querySelector('[data-problem-report-text="true"]');
             const rawText = textField instanceof HTMLTextAreaElement ? textField.value.trim() : '';
             if (!rawText) return;
@@ -240,10 +311,10 @@
             const tickets = readTickets();
             tickets.unshift({
               id: `ticket-${Date.now()}`,
-              userId: 'local-user',
-              userName: 'User',
-              userPhone: '',
-              userAvatar: '',
+              userId: registeredUser.uid,
+              userName: registeredUser.displayName,
+              userPhone: registeredUser.phoneNumber,
+              userAvatar: registeredUser.photoURL,
               subject: translate('subject', { title: listingTitle }),
               status: 'open',
               createdAt,
@@ -283,13 +354,17 @@
         const insertProblemButton = () => {
           const bookingButton = document.getElementById('wa-booking-btn');
           if (!bookingButton) return;
+          if (document.querySelector('[data-problem-report-native="true"]')) {
+            document.querySelectorAll(`[${PROBLEM_BUTTON_ATTR}="true"]`).forEach((button) => button.remove());
+            return;
+          }
           const wrapper = bookingButton.closest('div.pt-2');
-          const buttonContainer = wrapper?.parentElement;
+          const buttonContainer = document.getElementById('details-scroll-container') || wrapper?.parentElement;
 
           const existingButton = document.querySelector(`[${PROBLEM_BUTTON_ATTR}="true"]`);
           if (existingButton instanceof HTMLButtonElement) {
             renderProblemButtonContent(existingButton);
-            if (buttonContainer && existingButton.parentElement === buttonContainer && existingButton.nextElementSibling) {
+            if (buttonContainer && (existingButton.parentElement !== buttonContainer || existingButton.nextElementSibling)) {
               buttonContainer.appendChild(existingButton);
             }
             return;
@@ -300,7 +375,7 @@
           const button = document.createElement('button');
           button.type = 'button';
           button.setAttribute(PROBLEM_BUTTON_ATTR, 'true');
-          button.className = 'mt-2 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-2xl text-xs font-normal transition bg-[#FFF7F2] text-[#FF7A50]';
+          button.className = 'mx-4 mb-4 sm:mx-7 sm:mb-7 w-[calc(100%-2rem)] sm:w-[calc(100%-3.5rem)] lg:w-auto lg:min-w-[180px] lg:ml-auto lg:mr-7 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-2xl text-xs font-normal transition text-gray-400 hover:text-gray-600';
           renderProblemButtonContent(button);
           button.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -317,6 +392,10 @@
         const syncButtons = () => {
           removeListingContactButtons();
           insertProblemButton();
+          if (pendingProblemDialog && getRegisteredUser()) {
+            pendingProblemDialog = false;
+            openProblemDialog();
+          }
         };
 
         const syncLanguage = () => {

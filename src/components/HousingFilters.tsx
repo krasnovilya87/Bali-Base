@@ -6,6 +6,8 @@ import { isListingFresh } from '../utils/listingFreshness';
 import { snapRangeValue } from '../utils/range';
 import { useI18n } from '../i18nContext';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+// @ts-ignore
+import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
 
 interface HousingFiltersProps {
   listings: Listing[];
@@ -17,6 +19,8 @@ interface HousingFiltersProps {
   onClose: () => void;
   currencySymbol: string;
   currencyRate: number;
+  checkInDate?: string;
+  checkOutDate?: string;
 }
 
 export default function HousingFilters({
@@ -28,30 +32,47 @@ export default function HousingFilters({
   onApplyFilters,
   onClose,
   currencySymbol,
-  currencyRate
+  currencyRate,
+  checkInDate,
+  checkOutDate
 }: HousingFiltersProps) {
   const { tr } = useI18n();
   const { favoriteIds } = useFavoriteListings();
-  // Slider Boundaries for monthly rates (e.g. 1M IDR to 30M IDR)
-  const minBound = 1000000;
-  const maxBound = 30000000;
+  const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
+  const minBound = 0;
+  const maxBound = Math.max(30000000, selectedDayCount * 1000000);
+  const priceMinGap = 100000;
+  const priceSnapStep = 100000;
+  const pricePeriodLabel = selectedDayCount === 1
+    ? tr('filters.forOneDay')
+    : tr('filters.forSelectedDays', { count: selectedDayCount });
 
   // Align filters within bounds or fallback to default
   const [localFilters, setLocalFilters] = useState<FilterState>({
     ...filters,
     priceMin: filters.priceMin < minBound ? minBound : filters.priceMin,
-    priceMax: filters.priceMax > maxBound || filters.priceMax === 30000000 ? maxBound : filters.priceMax,
+      priceMax: filters.priceMax > maxBound || filters.priceMax === 30000000 ? maxBound : filters.priceMax,
     distanceToSeaMin: filters.distanceToSeaMin !== undefined ? filters.distanceToSeaMin : 0,
     areaMin: filters.areaMin !== undefined ? filters.areaMin : 5
   });
 
   const [activeDrag, setActiveDrag] = useState<'min' | 'max' | null>(null);
+  const [showRiceFieldsNotice, setShowRiceFieldsNotice] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
-  const activeSubCategoryIndex = Math.max(0, selectedSubCategories.indexOf(subCategory));
-  const hasSubCategorySwitcher = selectedSubCategories.length > 1 && !!onSubCategoryChange;
-  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]));
+  const subCategoryOrder = ['entire_place', 'private_suite', 'private_room'];
+  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]))
+    .sort((a, b) => {
+      const aIndex = subCategoryOrder.indexOf(a);
+      const bIndex = subCategoryOrder.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  const activeSubCategoryIndex = Math.max(0, activeSubCategories.indexOf(subCategory));
+  const hasSubCategorySwitcher = activeSubCategories.length > 1 && !!onSubCategoryChange;
   const roomOnlyAmenityOptions = subCategory === 'private_room'
     ? [
       { value: 'room_fridge', label: 'In-room fridge', icon: '🧊', type: 'amenity' },
@@ -106,8 +127,20 @@ export default function HousingFilters({
 
   const sectionCardClass = 'pl p-5 rounded-3xl space-y-4';
   const sectionTitleClass = 'text-xs font-semibold font-sans text-[#1E293B] tracking-wider block';
-  const activeTileClass = 'selected bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm scale-102';
-  const inactiveTileClass = 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50] hover:bg-gray-50/40';
+  const quickStatusTileClasses = {
+    approved: {
+      active: 'selected bg-emerald-500 border-emerald-500 text-white font-extrabold shadow-[0_10px_22px_rgba(16,185,129,0.24)] scale-102',
+      inactive: 'bg-emerald-50 border-emerald-200 text-emerald-900 hover:border-emerald-300 hover:bg-emerald-100/80'
+    },
+    newOnly: {
+      active: 'selected bg-sky-500 border-sky-500 text-white font-extrabold shadow-[0_10px_22px_rgba(14,165,233,0.24)] scale-102',
+      inactive: 'bg-sky-50 border-sky-200 text-sky-900 hover:border-sky-300 hover:bg-sky-100/80'
+    },
+    favorites: {
+      active: 'selected bg-rose-500 border-rose-500 text-white font-extrabold shadow-[0_10px_22px_rgba(244,63,94,0.24)] scale-102',
+      inactive: 'bg-rose-50 border-rose-200 text-rose-900 hover:border-rose-300 hover:bg-rose-100/80'
+    }
+  };
   const hasPrivateKitchen =
     localFilters.kitchenType.includes('private_basic') || localFilters.kitchenType.includes('private_equipped');
   const baseKitchenType = localFilters.kitchenType.includes('equipped') || localFilters.kitchenType.includes('private_equipped')
@@ -128,8 +161,8 @@ export default function HousingFilters({
 
   const switchSubCategory = (direction: -1 | 1) => {
     if (!hasSubCategorySwitcher) return;
-    const nextIndex = (activeSubCategoryIndex + direction + selectedSubCategories.length) % selectedSubCategories.length;
-    onSubCategoryChange?.(selectedSubCategories[nextIndex]);
+    const nextIndex = (activeSubCategoryIndex + direction + activeSubCategories.length) % activeSubCategories.length;
+    onSubCategoryChange?.(activeSubCategories[nextIndex]);
   };
 
   const handleApply = () => {
@@ -188,16 +221,17 @@ export default function HousingFilters({
     }
   };
 
-  // 1. Get relevant monthly price of each listing
-  const getItemMonthlyPrice = (item: Listing) => {
-    if (item.hasDropPrice && item.dropPricePerMonth) {
-      return item.dropPricePerMonth;
+  const toggleViewTypeFilter = (value: string) => {
+    if (value === 'rice_fields' && !localFilters.viewType.includes(value)) {
+      setShowRiceFieldsNotice(true);
     }
-    if (item.pricePerMonth) {
-      return item.pricePerMonth;
-    }
+    toggleArrayFilter('viewType', value);
+  };
+
+  // 1. Get the relevant price for the current filter mode.
+  const getItemFilterPrice = (item: Listing) => {
     const dailyPrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
-    return dailyPrice * 30; // monthly fallback
+    return dailyPrice * selectedDayCount;
   };
 
   // 2. Compute Histogram Distribution statistics
@@ -212,7 +246,7 @@ export default function HousingFilters({
     const startPrice = minBound + i * binWidth;
     const endPrice = startPrice + binWidth;
     const count = relevantListings.filter(item => {
-      const price = getItemMonthlyPrice(item);
+      const price = getItemFilterPrice(item);
       return price >= startPrice && price < endPrice;
     }).length;
 
@@ -236,7 +270,7 @@ export default function HousingFilters({
       const rawPrice = minBound + fraction * (maxBound - minBound);
 
       if (activeDrag === 'min') {
-        const nextMin = Math.min(rawPrice, localFilters.priceMax - 1000000);
+        const nextMin = Math.min(rawPrice, localFilters.priceMax - priceMinGap);
         const constrainedMin = Math.max(minBound, nextMin);
         latestPriceDragValue.current = constrainedMin;
         setLocalFilters(prev => ({
@@ -244,7 +278,7 @@ export default function HousingFilters({
           priceMin: constrainedMin
         }));
       } else if (activeDrag === 'max') {
-        const nextMax = Math.max(rawPrice, localFilters.priceMin + 1000000);
+        const nextMax = Math.max(rawPrice, localFilters.priceMin + priceMinGap);
         const constrainedMax = Math.min(maxBound, nextMax);
         latestPriceDragValue.current = constrainedMax;
         setLocalFilters(prev => ({
@@ -260,14 +294,14 @@ export default function HousingFilters({
         priceDragStartValue.current,
         minBound,
         maxBound,
-        500000
+        priceSnapStep
       );
 
       setLocalFilters(prev => ({
         ...prev,
         ...(activeDrag === 'min'
-          ? { priceMin: Math.min(snappedValue, prev.priceMax - 1000000) }
-          : { priceMax: Math.max(snappedValue, prev.priceMin + 1000000) })
+          ? { priceMin: Math.min(snappedValue, prev.priceMax - priceMinGap) }
+          : { priceMax: Math.max(snappedValue, prev.priceMin + priceMinGap) })
       }));
       setActiveDrag(null);
     };
@@ -279,7 +313,7 @@ export default function HousingFilters({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [activeDrag, localFilters.priceMin, localFilters.priceMax]);
+  }, [activeDrag, localFilters.priceMin, localFilters.priceMax, maxBound, minBound, priceMinGap, priceSnapStep]);
 
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!trackRef.current) return;
@@ -291,7 +325,7 @@ export default function HousingFilters({
     const distMax = Math.abs(rawPrice - localFilters.priceMax);
     
     if (distMin < distMax) {
-      const nextMin = Math.max(minBound, Math.min(rawPrice, localFilters.priceMax - 1000000));
+      const nextMin = Math.max(minBound, Math.min(rawPrice, localFilters.priceMax - priceMinGap));
       priceDragStartValue.current = localFilters.priceMin;
       latestPriceDragValue.current = nextMin;
       setLocalFilters(prev => ({
@@ -300,7 +334,7 @@ export default function HousingFilters({
       }));
       setActiveDrag('min');
     } else {
-      const nextMax = Math.min(maxBound, Math.max(rawPrice, localFilters.priceMin + 1000000));
+      const nextMax = Math.min(maxBound, Math.max(rawPrice, localFilters.priceMin + priceMinGap));
       priceDragStartValue.current = localFilters.priceMax;
       latestPriceDragValue.current = nextMax;
       setLocalFilters(prev => ({
@@ -330,7 +364,7 @@ export default function HousingFilters({
       if (activeSubCategories.length > 0 && !activeSubCategories.includes(item.subCategory)) return false;
 
       // Pricing check matched to localFilters in real-time
-      const price = getItemMonthlyPrice(item);
+      const price = getItemFilterPrice(item);
       if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
 
       // Distance check
@@ -370,7 +404,9 @@ export default function HousingFilters({
           'Apartment Complex (privet unit)': ['Apartment Complex (privet unit)', 'Apartment'],
           'Guesthouse (privet room, shared property)': ['Guesthouse (privet room, shared property)', 'Guesthouse'],
           'Home stay (Host on-site)': ['Home stay (Host on-site)', 'homestay'],
-          'Hotel (privet room)': ['Hotel (privet room)', 'Hotel']
+          'Hotel (privet room)': ['Hotel (privet room)', 'Hotel'],
+          'Villa / House (privet room)': ['Villa / House (privet room)', 'Villa', 'House'],
+          'Apartment (privet room)': ['Apartment (privet room)', 'Apartment', 'Apartment Complex (privet unit)']
         };
         const hasMatchingHousingType = localFilters.housingType.some(type => {
           const acceptedValues = housingTypeAliases[type] || [type];
@@ -512,7 +548,7 @@ export default function HousingFilters({
                     <ChevronLeft className="w-3 h-3" />
                   </button>
                   <span className="min-w-[22px] text-center text-[9px] font-bold text-gray-400 font-mono">
-                    {activeSubCategoryIndex + 1}/{selectedSubCategories.length}
+                    {activeSubCategoryIndex + 1}/{activeSubCategories.length}
                   </span>
                   <button
                     type="button"
@@ -537,27 +573,27 @@ export default function HousingFilters({
         <div className="pu-body flex-1 overflow-y-auto p-6 space-y-8 select-none bg-[#F4F7F6]">
           
           {/* QUICK PREMIUM TAGS */}
-          <div className={sectionCardClass}>
-            <span className={sectionTitleClass}>{tr('filters.quickStatus')}</span>
+          <div className="space-y-3">
+            <span className={sectionTitleClass}>⚡ {tr('filters.quickStatus')}</span>
             <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
 
               {/* Checked card 1: Approved */}
               <button
                 type="button"
                 onClick={() => setLocalFilters({ ...localFilters, isApprovedOnly: !localFilters.isApprovedOnly })}
-                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                className={`pl pl-interactive quick-status-tile quick-status-tile--approved p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                   localFilters.isApprovedOnly 
-                    ? activeTileClass 
-                    : inactiveTileClass
+                    ? quickStatusTileClasses.approved.active 
+                    : quickStatusTileClasses.approved.inactive
                 }`}
               >
                 {localFilters.isApprovedOnly && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center z-10 animate-scale-up">
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/20 text-white ring-1 ring-white/30 flex items-center justify-center z-10 animate-scale-up">
                     <ShieldCheck className="w-2.5 h-2.5 text-white shrink-0" />
                   </span>
                 )}
                 <span className="text-2xl leading-none">✨</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.approvedOnly')}</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isApprovedOnly ? 'text-white' : 'text-emerald-900'}`}>{tr('filters.approvedOnly')}</span>
               </button>
 
 
@@ -566,34 +602,34 @@ export default function HousingFilters({
               <button
                 type="button"
                 onClick={() => setLocalFilters({ ...localFilters, isNewOnly: !localFilters.isNewOnly })}
-                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                className={`pl pl-interactive quick-status-tile quick-status-tile--new p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                   localFilters.isNewOnly
-                    ? activeTileClass
-                    : inactiveTileClass
+                    ? quickStatusTileClasses.newOnly.active
+                    : quickStatusTileClasses.newOnly.inactive
                 }`}
               >
                 {localFilters.isNewOnly && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/20 text-white ring-1 ring-white/30 flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                 )}
                 <span className="text-2xl leading-none">🧭</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.newHousing')}</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-white' : 'text-sky-900'}`}>{tr('filters.newHousing')}</span>
               </button>
 
               {/* Checked card 4: Favorites only */}
               <button
                 type="button"
                 onClick={() => setLocalFilters({ ...localFilters, favoritesOnly: !localFilters.favoritesOnly })}
-                className={`pl pl-interactive p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
+                className={`pl pl-interactive quick-status-tile quick-status-tile--favorites p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer select-none relative overflow-hidden h-[105px] ${
                   localFilters.favoritesOnly
-                    ? activeTileClass
-                    : inactiveTileClass
+                    ? quickStatusTileClasses.favorites.active
+                    : quickStatusTileClasses.favorites.inactive
                 }`}
               >
                 {localFilters.favoritesOnly && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">♥</span>
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/20 text-white ring-1 ring-white/30 flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">♥</span>
                 )}
-                <span className="text-2xl leading-none flex items-center justify-center"><Heart className="w-6 h-6 text-rose-500 fill-rose-500" /></span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.favoritesOnly ? 'text-[#FF7A50]' : 'text-[#1E293B]'}`}>{tr('filters.favoritesOnly')}</span>
+                <span className="text-2xl leading-none flex items-center justify-center"><Heart className={`w-6 h-6 ${localFilters.favoritesOnly ? 'text-white fill-white' : 'text-rose-500 fill-rose-500'}`} /></span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.favoritesOnly ? 'text-white' : 'text-rose-900'}`}>{tr('filters.favoritesOnly')}</span>
               </button>
 
             </div>
@@ -609,7 +645,7 @@ export default function HousingFilters({
                 </div>
                 <div>
                   <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
-                    {formatPriceWithMillionLabel(localFilters.priceMin)} - {formatPriceWithMillionLabel(localFilters.priceMax)} {tr('filters.perMonthShort')}
+                    {formatPriceWithMillionLabel(localFilters.priceMin)} - {formatPriceWithMillionLabel(localFilters.priceMax)} {pricePeriodLabel}
                   </span>
                 </div>
               </div>
@@ -725,7 +761,7 @@ export default function HousingFilters({
 
           {/* DYNAMIC METRIC-SPECIFIC ADVANCED SECTIONS */}
           {/* 1. Rooms or area */}
-          {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
+          {subCategory === 'private_suite' ? (
             <div className={sectionCardClass}>
               <div className="flex justify-between items-center">
                 <span className={sectionTitleClass}>📐 {tr('filters.area')}</span>
@@ -749,7 +785,7 @@ export default function HousingFilters({
                 ])}
               </div>
             </div>
-          ) : (
+          ) : subCategory === 'private_room' ? null : (
             <div className={sectionCardClass}>
               <div className="flex justify-between items-center">
                 <span className={sectionTitleClass}>🏢 {tr('filters.rooms')}</span>
@@ -809,16 +845,18 @@ export default function HousingFilters({
           </div>
 
           {/* DYNAMIC FOR PRIVATE_ROOM: TYPE OF OBJECT */}
-          {(subCategory === 'private_room' || subCategory === 'private_suite') && (
+          {subCategory === 'private_room' && (
             <div className="space-y-3">
               <span className={sectionTitleClass}>🏘️ {tr('filters.section.objectType')}</span>
-              <div className={`grid gap-2.5 ${subCategory === 'private_room' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <div className={`grid gap-2.5 ${subCategory === 'private_room' ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'}`}>
                 {(subCategory === 'private_room'
                   ? [
                     { value: 'Guesthouse (privet room, shared property)', label: 'Guesthouse', icon: '🌴' },
                     { value: 'Home stay (Host on-site)', label: 'Homestay', icon: '🏠' },
                     { value: 'Hotel (privet room)', label: 'Hotel', icon: '🏨' },
-                    { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' }
+                    { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' },
+                    { value: 'Villa / House (privet room)', label: 'Villa, House', icon: '🏘️' },
+                    { value: 'Apartment (privet room)', label: 'Apartment', icon: '🏢' }
                   ]
                   : [
                     { value: 'Apartment Complex (privet unit)', label: 'Apartment', icon: '🏢' }
@@ -947,7 +985,7 @@ export default function HousingFilters({
           {/* 8. Beds */}
           <div className="space-y-3">
             <span className={sectionTitleClass}>🛌 {tr('filters.section.beds')}</span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {[
                 { value: 'queen_size', label: 'Queen size', icon: '🛏️' },
                 { value: 'king_size', label: 'King size', icon: '👑' },
@@ -962,7 +1000,7 @@ export default function HousingFilters({
                     key={bed.value}
                     type="button"
                     onClick={() => toggleArrayFilter('bedType', bed.value)}
-                    className={`pl pl-interactive p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
+                    className={`pl pl-interactive p-2 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition cursor-pointer h-[105px] relative ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm scale-102'
                         : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
@@ -1159,7 +1197,7 @@ export default function HousingFilters({
                   <button
                     key={v.value}
                     type="button"
-                    onClick={() => toggleArrayFilter('viewType', v.value)}
+                    onClick={() => toggleViewTypeFilter(v.value)}
                     className={`pl pl-interactive p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer select-none h-[95px] relative ${
                       isActive
                         ? 'bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-sm'
@@ -1176,6 +1214,48 @@ export default function HousingFilters({
               })}
             </div>
           </div>
+
+          {showRiceFieldsNotice && (
+            <div
+              className="fixed inset-0 z-[620] flex items-center justify-center bg-[#1E293B]/55 backdrop-blur-sm p-4 animate-fade-in"
+              onClick={() => setShowRiceFieldsNotice(false)}
+            >
+              <div
+                className="pu w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_-18px_rgba(28,37,33,0.45)] border border-[#E5E7EB]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="relative">
+                  <img
+                    src={riceFieldColorsPopup}
+                    alt={tr('filters.riceFieldsNotice.imageAlt')}
+                    className="w-full h-36 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRiceFieldsNotice(false)}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-[#1E293B] hover:text-[#FF7A50] shadow-sm flex items-center justify-center transition active:scale-90 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-2.5">
+                  <h3 className="font-sans text-base font-extrabold text-[#1E293B] leading-tight">
+                    {tr('filters.riceFieldsNotice.title')}
+                  </h3>
+                  <p className="text-sm font-medium text-[#475569] leading-relaxed">
+                    {tr('filters.riceFieldsNotice.body')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowRiceFieldsNotice(false)}
+                    className="pl pl-interactive mt-3 w-full rounded-2xl bg-[#FF7A50] px-4 py-3 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(255,122,80,0.22)] hover:bg-[#ff6840] transition active:scale-[0.98] cursor-pointer"
+                  >
+                    {tr('filters.riceFieldsNotice.confirm')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 12. Internet speed (WiFi) */}
           <div className={sectionCardClass}>
@@ -1220,7 +1300,7 @@ export default function HousingFilters({
                 { value: 'tropical_shower', label: 'Tropical shower', icon: '🌴' },
                 { value: 'double_sink', label: 'Double sink', icon: '🚰' },
                 { value: 'bathtub', label: 'Bathtub', icon: '🛁' },
-                { value: 'garden_view', label: 'Garden view', icon: '🪴' },
+                { value: 'garden_view', label: 'Scenic window', icon: '🪴' },
                 { value: 'sauna_hammam', label: 'Sauna / hammam', icon: '🧖' }
               ].map(opt => {
                 const isActive = localFilters.bathroomOptions.includes(opt.value);
@@ -1389,5 +1469,13 @@ export default function HousingFilters({
       </div>
     </div>
   );
+}
+
+function getSelectedDayCount(checkInDate?: string, checkOutDate?: string) {
+  if (!checkInDate || !checkOutDate) return 1;
+  const start = new Date(`${checkInDate}T00:00:00`);
+  const end = new Date(`${checkOutDate}T00:00:00`);
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 1;
 }
 

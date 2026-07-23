@@ -1,6 +1,7 @@
 import { ChevronDown, Heart, List, LogOut, MessageSquare, ShieldAlert, User } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '../../auth/AuthContext';
+import { auth } from '../../firebase';
 import { Listing } from '../../types';
 
 interface UsersDropdownProps {
@@ -11,7 +12,7 @@ interface UsersDropdownProps {
   label?: string;
   chevronClassName?: string;
   currentUser: FirebaseUser | null;
-  onRequireAuth: (reasonKey?: string) => boolean;
+  onRequireAuth: (reasonKey?: string, afterAuth?: () => void) => boolean;
   setShowUsersDropdown: (show: boolean) => void;
   setShowAdminDashboard: (show: boolean) => void;
   setShowCreateWizard: (show: boolean) => void;
@@ -40,14 +41,36 @@ export default function UsersDropdown({
   setUsersModalTab
 }: UsersDropdownProps) {
   const { signOut } = useAuth();
-  const ownListings = listings.filter(item => item.ownerId === currentUser?.uid || isOwnListing(item));
+  const getOwnListings = () => {
+    const activeUserId = auth.currentUser?.uid || currentUser?.uid;
+    return listings.filter(item => item.ownerId === activeUserId || isOwnListing(item));
+  };
+  const ownListings = getOwnListings();
   const displayLabel = currentUser?.displayName || currentUser?.email || label;
+  const openFavorites = () => {
+    setUsersModalTab('favorites');
+    setShowUsersModal(true);
+    setShowUsersDropdown(false);
+  };
+  const openMessages = () => {
+    setUsersModalTab('whatsapp');
+    setShowUsersModal(true);
+    setShowUsersDropdown(false);
+  };
+  const openMyListings = () => {
+    if (getOwnListings().length === 0) {
+      setShowCreateWizard(true);
+    } else {
+      setShowMyAddsListing(true);
+    }
+    setShowUsersDropdown(false);
+  };
 
   return (
     <div className="header-popover-root relative">
       <button
         onClick={() => setShowUsersDropdown(!showUsersDropdown)}
-        className="p-2 sm:px-3 sm:py-2 bg-[#F4F7F6] border border-[#E5E7EB] hover:bg-gray-200 text-[#1E293B] rounded-xl font-bold font-sans transition active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 text-[12.5px] sm:text-xs text-text-dark"
+        className="h-8 sm:h-9 px-2.5 sm:px-3 py-0 bg-[#F4F7F6] border border-[#E5E7EB] hover:bg-gray-200 text-[#1E293B] rounded-xl font-bold font-sans transition active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 text-[12px] sm:text-xs leading-none text-text-dark"
         id={id}
         title="Users Menu"
       >
@@ -71,10 +94,11 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
-              if (!onRequireAuth('auth.reason.favorites')) return;
-              setUsersModalTab('favorites');
-              setShowUsersModal(true);
-              setShowUsersDropdown(false);
+              if (!onRequireAuth('auth.reason.favorites', openFavorites)) {
+                setShowUsersDropdown(false);
+                return;
+              }
+              openFavorites();
             }}
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition mt-1"
           >
@@ -84,10 +108,11 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
-              if (!onRequireAuth('auth.reason.messages')) return;
-              setUsersModalTab('whatsapp');
-              setShowUsersModal(true);
-              setShowUsersDropdown(false);
+              if (!onRequireAuth('auth.reason.messages', openMessages)) {
+                setShowUsersDropdown(false);
+                return;
+              }
+              openMessages();
             }}
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition"
           >
@@ -97,13 +122,11 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
-              if (!onRequireAuth('auth.reason.myListings')) return;
-              if (ownListings.length === 0) {
-                setShowCreateWizard(true);
-              } else {
-                setShowMyAddsListing(true);
+              if (!onRequireAuth('auth.reason.myListings', openMyListings)) {
+                setShowUsersDropdown(false);
+                return;
               }
-              setShowUsersDropdown(false);
+              openMyListings();
             }}
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition"
           >

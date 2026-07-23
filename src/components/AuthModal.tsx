@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, X } from 'lucide-react';
+import { BRAND_LOGO_SRC } from '../app/brand';
 import { useAuth } from '../auth/AuthContext';
+import { getDailyAuthImageUrl } from '../firebase';
 import { useI18n } from '../i18nContext';
 
 interface AuthModalProps {
@@ -32,8 +34,8 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isGoogleLinkedEmail, setIsGoogleLinkedEmail] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dailyImageUrl, setDailyImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,25 +46,36 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
     setConfirmPassword('');
     setShowPassword(false);
     setShowConfirmPassword(false);
-    setIsGoogleLinkedEmail(false);
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && user) onClose();
   }, [isOpen, onClose, user]);
 
+  useEffect(() => {
+    if (!isOpen || dailyImageUrl) return;
+    let isActive = true;
+
+    getDailyAuthImageUrl().then(url => {
+      if (isActive) setDailyImageUrl(url);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [dailyImageUrl, isOpen]);
+
   if (!isOpen) return null;
 
   const privacyLinks = (
-    <p className="text-[11px] leading-relaxed text-[#5F6978]">
-      {tr('auth.legalIntro')}{' '}
-      <a href="/privacy" className="font-extrabold text-[#FF7A50] underline" target="_blank" rel="noreferrer">
-        {tr('auth.privacyRu')}
+    <p className="text-center text-[11px] font-semibold leading-relaxed text-[#9AA19D]">
+      <a href="/privacy" className="text-[#7F8782] underline underline-offset-2 transition hover:text-[#C7603F]" target="_blank" rel="noreferrer">
+        {tr('auth.privacy')}
       </a>{' '}
-      {tr('auth.legalAnd')}{' '}
-      <a href="/terms" className="font-extrabold text-[#FF7A50] underline" target="_blank" rel="noreferrer">
-        {tr('auth.termsRu')}
-      </a>.
+      <span className="text-[#C3C7C4]">/</span>{' '}
+      <a href="/terms" className="text-[#7F8782] underline underline-offset-2 transition hover:text-[#C7603F]" target="_blank" rel="noreferrer">
+        {tr('auth.terms')}
+      </a>
     </p>
   );
 
@@ -80,8 +93,11 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
     setIsSubmitting(true);
     try {
       const methods = await getEmailSignInMethods(email);
+      if (methods.includes('google.com')) {
+        await signInWithGoogle(true);
+        return;
+      }
       const isRegistered = methods.length > 0;
-      setIsGoogleLinkedEmail(methods.includes('google.com'));
       setAccountState(isRegistered ? 'registered' : 'new');
       setMode('password');
       setPassword('');
@@ -116,7 +132,6 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
 
   const goBack = () => {
     clearAuthStatus();
-    if (mode === 'choice') return;
     if (mode === 'method') {
       onClose();
       return;
@@ -128,193 +143,202 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
     setMode('email');
     setPassword('');
     setConfirmPassword('');
-    setIsGoogleLinkedEmail(false);
   };
 
   return (
-    <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-[#E5E7EB]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF7A50]">{tr('auth.badge')}</p>
-            <h2 className="mt-1 text-xl font-black text-[#1E293B]">
-              {mode === 'method'
-                ? tr('auth.signUpOrLoginWith')
-                : mode === 'email'
-                  ? tr('auth.emailIntro')
-                  : accountState === 'registered'
-                    ? tr('auth.accountTitle', { email })
-                    : tr('auth.createAccountTitle')}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-[#5F6978]">
-              {reason || tr('auth.defaultReason')}
+    <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#0B1714]/75 px-3 py-4 backdrop-blur-md sm:px-5 sm:py-6">
+      <div className="grid h-[min(860px,calc(100vh-32px))] w-full max-w-[1240px] overflow-hidden rounded-[2rem] border border-white/25 bg-[#F8F5EC] shadow-[0_30px_110px_rgba(11,23,20,0.45)] lg:h-[min(780px,calc(100vh-48px))] lg:grid-cols-[minmax(0,3fr)_minmax(330px,1fr)]">
+        <div className="relative min-h-[240px] overflow-hidden bg-[#12362F] lg:min-h-0">
+          {dailyImageUrl ? (
+            <img
+              src={dailyImageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(255,202,135,0.42),transparent_30%),radial-gradient(circle_at_78%_36%,rgba(53,142,119,0.52),transparent_36%),linear-gradient(135deg,#0B2F2A_0%,#E6A56D_48%,#155A4E_100%)]" />
+          )}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,23,20,0.34),rgba(8,23,20,0.08)_50%,rgba(8,23,20,0.42)),linear-gradient(0deg,rgba(8,23,20,0.48),transparent_45%)]" />
+          <div className="absolute bottom-6 left-5 max-w-[680px] pr-6 text-white sm:bottom-9 sm:left-8">
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/75">{tr('cover.badge')}</p>
+            <img
+              src={BRAND_LOGO_SRC}
+              alt={tr('brand.name')}
+              className="mt-4 h-auto w-[min(440px,76vw)] max-w-full drop-shadow-[0_18px_38px_rgba(0,0,0,0.34)] lg:w-[520px]"
+            />
+            <p className="mt-4 max-w-md text-sm font-semibold leading-relaxed text-white/85 sm:text-base">
+              {tr('cover.subtitle')}
             </p>
           </div>
+        </div>
+
+        <div className="relative flex min-h-0 flex-col overflow-y-auto bg-[#FFFDF8] p-5 sm:p-7 lg:p-8">
           <button
             type="button"
             onClick={onClose}
-            className="h-9 w-9 shrink-0 rounded-full border border-[#E5E7EB] text-[#1E293B] hover:text-[#FF7A50] flex items-center justify-center transition"
+            className="absolute right-5 top-5 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E5E0D6] bg-white/80 text-[#1E293B] shadow-sm transition hover:border-[#FF7A50] hover:text-[#FF7A50]"
             title={tr('common.close')}
             aria-label={tr('common.close')}
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
 
-        {mode !== 'method' && (
-          <button
-            type="button"
-            onClick={goBack}
-            className="mt-5 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#5F6978] hover:text-[#FF7A50] transition"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>{tr('common.back')}</span>
-          </button>
-        )}
-
-        {mode === 'method' && (
-          <div className="mt-5 space-y-4">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={submitGoogle}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E293B] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#0F172A] disabled:opacity-60"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-black text-[#1E293B]">G</span>
-              <span>{tr('auth.google')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('email')}
-              className="w-full rounded-2xl border border-[#B9DED4] bg-[#ECF8F4] px-4 py-3 text-sm font-extrabold text-[#2F7D69] transition hover:bg-[#DDF1EB]"
-            >
-              {tr('auth.continueWithEmail')}
-            </button>
-
-            <div className="rounded-2xl bg-[#F4F7F6] p-3">
-              {privacyLinks}
-            </div>
-          </div>
-        )}
-
-        {mode === 'email' && (
-          <form onSubmit={continueWithEmail} className="mt-5 rounded-3xl border border-[#B9DED4] bg-[#ECF8F4] p-4 space-y-3">
-            <div className="text-center text-[11px] font-extrabold uppercase tracking-wider text-[#2F7D69]">
-              {tr('auth.emailIntro')}
-            </div>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={tr('auth.emailPlaceholder')}
-                className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-3 text-sm font-semibold text-[#1E293B] outline-none transition focus:border-[#2F7D69]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-2xl bg-[#2F7D69] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#256353] disabled:opacity-60"
-            >
-              {tr('auth.continue')}
-            </button>
-          </form>
-        )}
-
-        {mode === 'password' && (
-          <form onSubmit={submitPassword} className="mt-5 rounded-3xl border border-[#B9DED4] bg-[#ECF8F4] p-4 space-y-3">
-            <div className="text-center text-[11px] font-extrabold uppercase tracking-wider text-[#2F7D69]">
-              {accountState === 'registered' ? tr('auth.accountTitle', { email }) : tr('auth.createAccountTitle')}
-            </div>
-            <div className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold text-[#1E293B] break-all">
-              {email}
-            </div>
-            {isGoogleLinkedEmail && (
-              <div className="rounded-2xl border border-[#FFD8C9] bg-[#FFF7F2] p-3 space-y-3">
-                <p className="text-xs font-bold leading-relaxed text-[#1E293B]">
-                  {tr('auth.googleLinkedEmail')}
+          <div className="flex min-h-full flex-col pt-10 lg:pt-0">
+            <div className="my-auto">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#C7603F]">{tr('auth.badge')}</p>
+                <h2 className="mt-2 pr-10 text-2xl font-black leading-tight text-[#17231F]">
+                  {mode === 'method'
+                    ? tr('auth.signUpOrLoginWith')
+                    : mode === 'email'
+                      ? tr('auth.emailIntro')
+                      : accountState === 'registered'
+                        ? tr('auth.accountTitle', { email })
+                        : tr('auth.createAccountTitle')}
+                </h2>
+                <p className="mt-3 text-sm font-medium leading-relaxed text-[#68726E]">
+                  {reason || tr('auth.defaultReason')}
                 </p>
+              </div>
+
+              {mode !== 'method' && (
                 <button
                   type="button"
+                  onClick={goBack}
+                  className="mt-6 inline-flex w-fit items-center gap-1.5 text-xs font-extrabold text-[#68726E] transition hover:text-[#C7603F]"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>{tr('common.back')}</span>
+                </button>
+              )}
+
+              {mode === 'method' && (
+                <div className="mt-8 space-y-4">
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={submitGoogle}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#17231F] px-4 py-3.5 text-sm font-extrabold text-white shadow-[0_16px_38px_rgba(23,35,31,0.22)] transition hover:bg-[#0B1714] disabled:opacity-60"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-black leading-none text-[#17231F]">G</span>
+                    <span>{tr('auth.google')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMode('email')}
+                    className="w-full rounded-2xl border border-[#B9DED4] bg-[#E8F5EF] px-4 py-3.5 text-sm font-extrabold text-[#2F7D69] transition hover:bg-[#DDF1EB]"
+                  >
+                    {tr('auth.continueWithEmail')}
+                  </button>
+                </div>
+              )}
+
+              {mode === 'email' && (
+                <form onSubmit={continueWithEmail} className="mt-7 rounded-[1.4rem] border border-[#B9DED4] bg-[#E8F5EF] p-4 space-y-3">
+                <div className="text-center text-[11px] font-extrabold uppercase tracking-wider text-[#2F7D69]">
+                  {tr('auth.emailIntro')}
+                </div>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder={tr('auth.emailPlaceholder')}
+                    className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-3 text-sm font-semibold text-[#17231F] outline-none transition focus:border-[#2F7D69]"
+                  />
+                </div>
+                <button
+                  type="submit"
                   disabled={isSubmitting}
-                  onClick={submitGoogle}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E293B] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#0F172A] disabled:opacity-60"
+                  className="w-full rounded-2xl bg-[#2F7D69] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#256353] disabled:opacity-60"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-black text-[#1E293B]">G</span>
-                  <span>{tr('auth.google')}</span>
+                  {tr('auth.continue')}
                 </button>
-              </div>
-            )}
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={tr('auth.passwordPlaceholder')}
-                className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-11 text-sm font-semibold text-[#1E293B] outline-none transition focus:border-[#2F7D69]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(prev => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5F6978] hover:text-[#2F7D69]"
-                aria-label={showPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
-                title={showPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {accountState === 'new' && (
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder={tr('auth.confirmPasswordPlaceholder')}
-                  className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-11 text-sm font-semibold text-[#1E293B] outline-none transition focus:border-[#2F7D69]"
-                />
+                </form>
+              )}
+
+              {mode === 'password' && (
+                <form onSubmit={submitPassword} className="mt-7 rounded-[1.4rem] border border-[#B9DED4] bg-[#E8F5EF] p-4 space-y-3">
+                <div className="text-center text-[11px] font-extrabold uppercase tracking-wider text-[#2F7D69]">
+                  {accountState === 'registered' ? tr('auth.accountTitle', { email }) : tr('auth.createAccountTitle')}
+                </div>
+                <div className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold text-[#17231F] break-all">
+                  {email}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder={tr('auth.passwordPlaceholder')}
+                    className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-11 text-sm font-semibold text-[#17231F] outline-none transition focus:border-[#2F7D69]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#68726E] hover:text-[#2F7D69]"
+                    aria-label={showPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
+                    title={showPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {accountState === 'new' && (
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2F7D69]" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder={tr('auth.confirmPasswordPlaceholder')}
+                      className="w-full rounded-2xl border border-[#B9DED4] bg-white py-3 pl-10 pr-11 text-sm font-semibold text-[#17231F] outline-none transition focus:border-[#2F7D69]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#68726E] hover:text-[#2F7D69]"
+                      aria-label={showConfirmPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
+                      title={showConfirmPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                )}
+                {accountState === 'registered' && (
+                  <button
+                    type="button"
+                    onClick={sendReset}
+                    disabled={isSubmitting}
+                    className="text-xs font-extrabold text-[#C7603F] underline disabled:opacity-60"
+                  >
+                    {tr('auth.forgotPassword')}
+                  </button>
+                )}
                 <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(prev => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5F6978] hover:text-[#2F7D69]"
-                  aria-label={showConfirmPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
-                  title={showConfirmPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-2xl bg-[#2F7D69] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#256353] disabled:opacity-60"
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {accountState === 'registered' ? tr('auth.signIn') : tr('auth.signUp')}
                 </button>
-              </div>
-            )}
-            {accountState === 'registered' && (
-              <button
-                type="button"
-                onClick={sendReset}
-                disabled={isSubmitting}
-                className="text-xs font-extrabold text-[#FF7A50] underline disabled:opacity-60"
-              >
-                {tr('auth.forgotPassword')}
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-2xl bg-[#2F7D69] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#256353] disabled:opacity-60"
-            >
-              {accountState === 'registered' ? tr('auth.signIn') : tr('auth.signUp')}
-            </button>
-            <div className="rounded-2xl bg-white/60 p-3">
+                </form>
+              )}
+
+              {(authError || emailLinkSent) && (
+                <div className={`mt-4 rounded-2xl px-4 py-3 text-xs font-bold ${authError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {authError || tr('auth.passwordResetSent')}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 pb-1">
               {privacyLinks}
             </div>
-          </form>
-        )}
-
-        {(authError || emailLinkSent) && (
-          <div className={`mt-4 rounded-2xl px-4 py-3 text-xs font-bold ${authError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-            {authError || tr('auth.passwordResetSent')}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

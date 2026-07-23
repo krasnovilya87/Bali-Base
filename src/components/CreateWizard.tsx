@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { Listing } from '../types';
 import { isListingFresh } from '../utils/listingFreshness';
 import {
@@ -16,6 +17,8 @@ import { useTitleStep } from './create-wizard/steps/useTitleStep';
 import { calculateNearbySpotsOnce } from '../utils/nearbyPlaces';
 import { useI18n } from '../i18nContext';
 import { findDistrictByCoordsSync } from '../utils/geo';
+import { useAuth } from '../auth/AuthContext';
+import { db } from '../firebase';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -59,6 +62,7 @@ export default function CreateWizard({
   initialListing
 }: CreateWizardProps) {
   const { tr } = useI18n();
+  const { user } = useAuth();
   const stepLabels = stepLabelKeys.map(key => tr(key));
   const [step, setStep] = useState<number>(1);
   const wizardBodyRef = useRef<HTMLDivElement | null>(null);
@@ -176,6 +180,46 @@ export default function CreateWizard({
   const [whatsappNumber, setWhatsappNumber] = useState<string>(initialListing?.whatsappNumber || '');
   const [whatsappInput, setWhatsappInput] = useState<string>(initialListing?.whatsappNumber || '');
   const [ownerName, setOwnerName] = useState<string>(initialListing?.ownerName || '');
+
+  useEffect(() => {
+    if (initialListing || !user?.uid) return;
+
+    let isMounted = true;
+    const loadSavedContact = async () => {
+      try {
+        const profileSnapshot = await getDoc(doc(db, 'users', user.uid));
+        if (!isMounted || !profileSnapshot.exists()) return;
+
+        const profile = profileSnapshot.data();
+        const savedName = typeof profile.contactName === 'string' && profile.contactName.trim()
+          ? profile.contactName
+          : typeof profile.displayName === 'string'
+            ? profile.displayName
+            : '';
+        const savedPhone = typeof profile.contactPhone === 'string' && profile.contactPhone.trim()
+          ? profile.contactPhone
+          : typeof profile.whatsappNumber === 'string'
+            ? profile.whatsappNumber
+            : '';
+
+        if (savedName) {
+          setOwnerName(current => current || savedName);
+        }
+        if (savedPhone) {
+          setWhatsappInput(current => current || savedPhone);
+          setWhatsappNumber(current => current || savedPhone);
+        }
+      } catch (error) {
+        console.warn('Failed to load saved listing contact profile:', error);
+      }
+    };
+
+    loadSavedContact();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialListing, user?.uid]);
 
   useEffect(() => {
     const maxBeds = subCategory === 'private_room' ? 1 : Math.max(1, roomsTotal);
@@ -320,7 +364,7 @@ export default function CreateWizard({
       reviews: initialListing?.reviews || [],
       isApproved: initialListing?.isApproved ?? false,
       isNew: isListingFresh({ yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
-      status: initialListing?.status || 'moderation',
+      status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
       pricePerDay,
       pricePerMonth,
       bookingComPrice: competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,

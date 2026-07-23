@@ -22,6 +22,7 @@ export default function AdminDashboard({
   onUpdateBookingStatus,
   onUpdateListing,
   onDeleteListing,
+  onSelectListing,
   onClose,
   currencySymbol,
   currencyRate,
@@ -49,7 +50,9 @@ export default function AdminDashboard({
     handleCreateUser,
     rejectListingId,
     rejectionReason,
+    rejectionComment,
     setRejectionReason,
+    setRejectionComment,
     setRejectListingId,
     handleRejectConfirm
   } = useAdminDashboardController({
@@ -102,7 +105,14 @@ export default function AdminDashboard({
             {activeTab === 'dashboard' && <DashboardTab {...tabProps} />}
             {activeTab === 'users' && <UsersTab {...tabProps} />}
             {activeTab === 'listings' && <ListingsTab {...tabProps} />}
-            {activeTab === 'moderation' && <ModerationTab {...tabProps} />}
+            {activeTab === 'moderation' && (
+              <ModerationTab
+                {...tabProps}
+                currencySymbol={currencySymbol}
+                currencyRate={currencyRate}
+                onSelectListing={onSelectListing}
+              />
+            )}
             {activeTab === 'messages' && <MessagesTab {...tabProps} />}
             {activeTab === 'places' && <PlacesTab showToast={showToast} />}
             {activeTab === 'settings' && <SettingsTab {...tabProps} />}
@@ -131,6 +141,8 @@ export default function AdminDashboard({
         <RejectListingModal
           reason={rejectionReason}
           onReasonChange={setRejectionReason}
+          comment={rejectionComment}
+          onCommentChange={setRejectionComment}
           onClose={() => setRejectListingId(null)}
           onConfirm={handleRejectConfirm}
         />

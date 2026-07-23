@@ -3,7 +3,7 @@ import { Listing, BookingRequest, ListingNearbySpot } from '../types';
 import {
   X, Star, MapPin, Compass, Flame, ShieldCheck, Mail, Calendar,
   ChevronRight, Wifi, ShieldAlert, Waves, Home, Lock, RefreshCw, Sparkles, Send, LayoutGrid, Check, Info, BedDouble,
-  Utensils, Dumbbell, ShoppingBasket, Landmark, Heart
+  Utensils, Dumbbell, ShoppingBasket, Landmark, Heart, Share2, Settings
 } from 'lucide-react';
 import { THEME } from '../theme';
 import DetailMap, { DetailMapPlace } from './DetailMap';
@@ -12,12 +12,14 @@ import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
 import { findDistrictByCoordsSync, getHaversineDistance, getListingCoords } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
-import { buildHousingAmenities, buildHousingCharacteristics } from '../utils/housingFieldMeta';
+import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
+import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
 import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useI18n } from '../i18nContext';
 import { useAuth } from '../auth/AuthContext';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import { auth } from '../firebase';
 import TranslatedReviewText from './listing-details/TranslatedReviewText';
 import {
   getNearbyLibraryItems,
@@ -32,6 +34,7 @@ import {
   readSupportTickets,
   writeSupportTickets
 } from '../utils/supportTickets';
+import { shareListingLink } from '../utils/listingShare';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
@@ -155,7 +158,7 @@ const formatBookingDate = (date: string) => {
 const ALL_PILLS_MAPPING: Record<string, { label: string; icon: string }> = {
   // Amenities
   AC: { label: 'Кондиционер', icon: '❄️' },
-  cold_AC: { label: 'Холодный кондей', icon: '🥶' },
+  cold_AC: { label: 'Кондиционер', icon: '🥶' },
   hair_dryer: { label: 'Фен', icon: '💨' },
   washing_machine: { label: 'Стиральная машина', icon: '👕' },
   smart_tv: { label: 'Smart TV', icon: '📺' },
@@ -176,7 +179,7 @@ const ALL_PILLS_MAPPING: Record<string, { label: string; icon: string }> = {
   tropical_shower: { label: 'Тропический душ', icon: '🌴' },
   double_sink: { label: 'Две раковины', icon: '🚰' },
   bathtub: { label: 'Ванна', icon: '🛁' },
-  garden_view: { label: 'Вид на сад', icon: '🪴' },
+  garden_view: { label: 'Видовое окно', icon: '🪴' },
   sauna_hammam: { label: 'Сауна / хаммам', icon: '🧖' },
 
   // Extra Preferences
@@ -202,7 +205,8 @@ interface ListingDetailsProps {
   initialCheckOutDate?: string;
   onDatesChange?: (checkIn: string, checkOut: string) => void;
   onListingChange?: (listing: Listing) => void;
-  onRequireAuth?: (reasonKey?: string) => boolean;
+  onEditClick?: (listing: Listing) => void;
+  onRequireAuth?: (reasonKey?: string, afterAuth?: () => void) => boolean;
   activeLanguage?: LanguageCode;
 }
 
@@ -216,6 +220,7 @@ export default function ListingDetails({
   initialCheckOutDate = '',
   onDatesChange,
   onListingChange,
+  onEditClick,
   onRequireAuth,
   activeLanguage = DEFAULT_LANGUAGE
 }: ListingDetailsProps) {
@@ -229,6 +234,7 @@ export default function ListingDetails({
   const heroTouchStartXRef = useRef<number | null>(null);
   const hasHeroDraggedRef = useRef<boolean>(false);
   const heroSettleTimerRef = useRef<number | null>(null);
+  const lastShareActionRef = useRef<number>(0);
   const [checkInDate, setCheckInDate] = useState<string>(initialCheckInDate);
   const [checkOutDate, setCheckOutDate] = useState<string>(initialCheckOutDate);
   const [showDateCalendar, setShowDateCalendar] = useState<boolean>(false);
@@ -347,8 +353,31 @@ export default function ListingDetails({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user && onRequireAuth && !onRequireAuth('auth.reason.favorites')) return;
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.favorites', () => toggleFavoriteListing(listing.id))) return;
     toggleFavoriteListing(listing.id);
+  };
+
+  const triggerShareListing = async () => {
+    const now = Date.now();
+    if (now - lastShareActionRef.current < 600) return;
+    lastShareActionRef.current = now;
+    await shareListingLink(listing, {
+      copiedMessage: tr('listing.linkCopied'),
+      copyFailedMessage: tr('listing.linkCopyFailed')
+    });
+  };
+
+  const handleShareListing = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await triggerShareListing();
+  };
+
+  const handleSharePointerDown = async (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.pointerType === 'mouse') return;
+    await triggerShareListing();
   };
 
   useEffect(() => {
@@ -534,6 +563,8 @@ export default function ListingDetails({
   const stayDays = diffDays;
   const activeBasePrice = stayDays ? totalBudget : activeDailyPrice;
   const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice || 0;
+  const ownerDisplayName = listing.ownerName.trim() || tr('details.listingAuthor');
+  const ownerInitial = ownerDisplayName.charAt(0).toUpperCase();
   const {
     hasSavings,
     savingsAmount,
@@ -625,8 +656,8 @@ export default function ListingDetails({
   };
 
   // WhatsApp template dispatch
-  const handleWhatsAppClick = () => {
-    if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking')) return;
+  const placeWhatsAppBooking = () => {
+    const activeUser = auth.currentUser || user;
     if (!checkInDate || !checkOutDate) {
       setShowDateCalendar(true);
       return;
@@ -680,8 +711,8 @@ export default function ListingDetails({
       listingTitle: listing.title,
       listingImage: listing.images[0],
       listingCategory: listing.category as any,
-      guestName: user?.displayName || user?.email || 'Bali Base user',
-      guestPhone: user?.phoneNumber || '+62899123412',
+      guestName: activeUser?.displayName || activeUser?.email || 'Bali Base user',
+      guestPhone: activeUser?.phoneNumber || '+62899123412',
       startDate: checkInDate,
       endDate: checkOutDate,
       totalDays: diffDays,
@@ -698,23 +729,32 @@ export default function ListingDetails({
     }, 1500);
   };
 
+  const handleWhatsAppClick = () => {
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking', placeWhatsAppBooking)) return;
+    placeWhatsAppBooking();
+  };
+
   const openProblemReport = () => {
-    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem')) return;
-    setProblemSent(false);
-    setIsProblemModalOpen(true);
+    const showProblemReport = () => {
+      setProblemSent(false);
+      setIsProblemModalOpen(true);
+    };
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem', showProblemReport)) return;
+    showProblemReport();
   };
 
   const submitProblemReport = () => {
     if (!problemMessage.trim()) return;
-    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem')) return;
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.reportProblem', () => setIsProblemModalOpen(true))) return;
+    const activeUser = auth.currentUser || user;
 
     const nextTicket = createSupportTicketFromListing({
       listingId: listing.id,
       listingTitle: listing.title,
-      userId: user?.uid || 'registered-user',
-      userName: user?.displayName || user?.email || tr('details.problem.defaultUser'),
-      userPhone: user?.phoneNumber || '',
-      userAvatar: user?.photoURL || '',
+      userId: activeUser?.uid || 'registered-user',
+      userName: activeUser?.displayName || activeUser?.email || tr('details.problem.defaultUser'),
+      userPhone: activeUser?.phoneNumber || '',
+      userAvatar: activeUser?.photoURL || '',
       subject: tr('details.problem.subject', { title: listing.title }),
       message: problemMessage.trim()
     });
@@ -733,7 +773,9 @@ export default function ListingDetails({
   if (listing.category === 'housing') {
     const hType = (listing.housingType || '').toLowerCase();
     const subCat = listing.subCategory;
-    if (subCat === 'private_suite' || hType.includes('apartment') || hType.includes('апарт')) {
+    if (listing.housingType === 'Villa / House (privet room)') {
+      objectType = tr('details.option.housingType.Villa / House (privet room)');
+    } else if (listing.housingType === 'Apartment (privet room)' || subCat === 'private_suite' || hType.includes('apartment') || hType.includes('апарт')) {
       objectType = tr('details.option.housingType.Apartment Complex (privet unit)');
     } else if (subCat === 'private_room' || hType.includes('room') || hType.includes('комнат') || hType.includes('guesthouse') || hType.includes('гестхаус')) {
       objectType = tr('details.option.housingType.Guesthouse (privet room, shared property)');
@@ -748,7 +790,9 @@ export default function ListingDetails({
         'Bungalow': tr('details.option.housingType.Bungalow (standalone unit)'),
         'Apartment': tr('details.option.housingType.Apartment Complex (privet unit)'),
         'Guesthouse': tr('details.option.housingType.Guesthouse (privet room, shared property)'),
-        'Hotel': tr('details.option.housingType.Hotel (privet room)')
+        'Hotel': tr('details.option.housingType.Hotel (privet room)'),
+        'Villa / House (privet room)': tr('details.option.housingType.Villa / House (privet room)'),
+        'Apartment (privet room)': tr('details.option.housingType.Apartment (privet room)')
       };
       objectType = tr(`details.option.housingType.${listing.housingType}`);
       if (objectType === `details.option.housingType.${listing.housingType}`) {
@@ -802,6 +846,8 @@ export default function ListingDetails({
   }
 
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${listing.title} ${listing.address || ''} ${displayDistrict} Bali`)}`;
+  const googleMapsReviewsUrl = buildGoogleMapsReviewsUrl(listing);
+  const googleMapsWriteReviewUrl = buildGoogleMapsWriteReviewUrl(listing);
 
   const DISTRICT_TEXT = displayDistrict;
   const displayTitle = stripListingRoomTypeFromTitle(listing.title);
@@ -855,7 +901,7 @@ export default function ListingDetails({
     { emoji: '🍽️', title: tr('details.nearby.restaurantTitle'), desc: tr('details.notCalculated') },
     { emoji: '🛒', title: tr('details.nearby.groceriesTitle'), desc: tr('details.notCalculated') },
     { emoji: '🧘', title: tr('details.nearby.yogaTitle'), desc: tr('details.notCalculated') },
-    { emoji: '🌿', title: tr('details.nearby.monkeyForestTitle'), desc: tr('details.notCalculated') }
+    { emoji: '🌿', title: tr('details.nearby.ubudCenterTitle'), desc: 'Monkey Forest' }
   ];
   const kintamaniNearbyPills = [
     { emoji: '🍽️', title: tr('details.nearby.restaurantTitle'), desc: tr('details.notCalculated') },
@@ -888,7 +934,7 @@ export default function ListingDetails({
       return 'details.nearby.beachTitle';
     }
     if (normalized.includes('monkey forest') || emoji.includes('🌿')) {
-      return 'details.nearby.monkeyForestTitle';
+      return 'details.nearby.ubudCenterTitle';
     }
     if (normalized.includes('hot spring') || normalized.includes('горяч') || emoji.includes('♨')) {
       return 'details.nearby.hotSpringsTitle';
@@ -951,7 +997,9 @@ export default function ListingDetails({
       'Apartment Complex (privet unit)': 'Апартаменты',
       'Guesthouse (privet room, shared property)': 'Guesthouse',
       'Home stay (Host on-site)': 'Homestay',
-      'Hotel (privet room)': 'Hotel'
+      'Hotel (privet room)': 'Hotel',
+      'Villa / House (privet room)': 'Вилла, Дом',
+      'Apartment (privet room)': 'Апартаменты'
     } as Record<string, string>,
     roomType: {
       standard: 'Standard',
@@ -1008,11 +1056,11 @@ export default function ListingDetails({
       tropical_shower: 'Тропический душ',
       double_sink: 'Две раковины',
       bathtub: 'Ванна',
-      garden_view: 'Вид на сад',
+      garden_view: 'Видовое окно',
       sauna_hammam: 'Сауна / хаммам'
     } as Record<string, string>,
     amenities: {
-      cold_AC: 'Холодный кондиционер',
+      cold_AC: 'Кондиционер',
       hair_dryer: 'Фен',
       washing_machine: 'Стиральная машина',
       smart_tv: 'Smart TV',
@@ -1334,21 +1382,38 @@ export default function ListingDetails({
     );
   }
 
-  const housingDetailCharacteristics = isHousingListing ? buildHousingCharacteristics(listing, tr) : detailCharacteristics;
+  const housingDetailCharacteristics = isHousingListing
+    ? buildHousingCharacteristics(listing, tr).filter(item => item.key !== 'distanceToSeaMinutes')
+    : detailCharacteristics;
   const housingDetailAmenities = isHousingListing ? buildHousingAmenities(listing, tr) : null;
+  const missingHousingAmenities = isHousingListing ? buildMissingHousingAmenities(listing, tr) : [];
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[400] lg:p-5 p-0 animate-fade-in" id="details-modal">
       <div className="bg-white w-full h-full lg:max-w-5xl lg:max-h-[92vh] rounded-none lg:rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-slide-up lg:animate-scale-up border-0 lg:border border-[#E5E7EB]">
 
-        {/* Header Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-40 p-2 rounded-full bg-black/60 text-white hover:bg-black/95 transition border border-white/20 hover:scale-105 active:scale-95"
-          title={tr('common.close')}
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Header actions */}
+        <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+          {onEditClick && (
+            <button
+              type="button"
+              onClick={() => onEditClick(listing)}
+              className="p-2 rounded-full bg-black/60 text-white hover:bg-black/95 transition border border-white/20 hover:scale-105 active:scale-95"
+              title={tr('myListings.edit')}
+              aria-label={tr('myListings.edit')}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-black/60 text-white hover:bg-black/95 transition border border-white/20 hover:scale-105 active:scale-95"
+            title={tr('common.close')}
+            aria-label={tr('common.close')}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Scroll Body */}
         <div className="flex-1 overflow-y-auto bg-white" id="details-scroll-container">
@@ -1451,7 +1516,7 @@ export default function ListingDetails({
 
               {/* Matched Header block to completely correspond with ListingCard */}
               <div className={`space-y-4 ${THEME.fonts.main}`}>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-2 sm:mb-3.5">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 mb-2 sm:mb-3.5 lg:mb-1.5">
                   <div className="min-w-0">
                     <h3 className={`${THEME.fonts.heading} font-bold text-[21px] sm:text-base lg:text-xl text-text-dark line-clamp-2 leading-tight`}>
                       {displayTitle}
@@ -1466,21 +1531,33 @@ export default function ListingDetails({
                       <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
                       <span className="text-gray-400 font-light">({listing.reviewsCount})</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={toggleFavorite}
-                      className={`h-9 w-9 self-center rounded-full border border-gray-200 flex items-center justify-center transition hover:scale-105 active:scale-95 ${isFavorite ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'}`}
-                      title={tr('listing.toggleFavorite')}
-                      aria-label={tr('listing.toggleFavorite')}
-                      aria-pressed={isFavorite}
-                    >
-                      <Heart className="w-5.5 h-5.5" style={{ fill: isFavorite ? '#F43F5E' : 'none' }} />
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleShareListing}
+                        onPointerDown={handleSharePointerDown}
+                        className="h-9 w-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 transition hover:scale-105 hover:text-[#2F7D69] active:scale-95"
+                        title={tr('listing.shareLink')}
+                        aria-label={tr('listing.shareLink')}
+                      >
+                        <Share2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleFavorite}
+                        className={`h-9 w-9 rounded-full border border-gray-200 flex items-center justify-center transition hover:scale-105 active:scale-95 ${isFavorite ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'}`}
+                        title={tr('listing.toggleFavorite')}
+                        aria-label={tr('listing.toggleFavorite')}
+                        aria-pressed={isFavorite}
+                      >
+                        <Heart className="w-5 h-5" style={{ fill: isFavorite ? '#F43F5E' : 'none' }} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Pricing stack completely corresponding to ListingCard */}
-                <div className="pt-2 sm:pt-2.5 pb-1">
+                <div className="pt-2 sm:pt-2.5 lg:pt-0 pb-1">
                   {stayDays && (
                     <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-[13px] font-bold text-text-dark ${THEME.fonts.heading}`}>
                       {tr('details.totalFor', { count: stayDays, unit: pluralizeDays(stayDays) })}
@@ -1526,6 +1603,29 @@ export default function ListingDetails({
                           {tr('listing.directPrice')}
                         </span>
                       )}
+                    </div>
+
+                    <div className="mt-1 flex min-w-0 items-center gap-2 self-start max-w-full">
+                      {listing.ownerAvatar ? (
+                        <img
+                          src={listing.ownerAvatar}
+                          alt={ownerDisplayName}
+                          className="h-7 w-7 shrink-0 rounded-full border border-[#E5E7EB] object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2F7D69] text-[10px] font-black text-white">
+                          {ownerInitial}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[8.5px] font-bold uppercase tracking-wider text-gray-400 leading-none">
+                          {tr('details.listingAuthor')}
+                        </p>
+                        <p className="truncate text-[11px] sm:text-xs font-bold text-[#1E293B] leading-tight mt-0.5">
+                          {ownerDisplayName}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Line 3: Savings in small red font */}
@@ -1738,6 +1838,24 @@ export default function ListingDetails({
                           })}
                         </div>
 
+                        {isAmenitiesExpanded && missingHousingAmenities.length > 0 && (
+                          <div className="space-y-1.5 pt-1.5">
+                            <div className={`text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8] ${THEME.fonts.heading}`}>
+                              {tr('details.missingAmenitiesTitle')}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {missingHousingAmenities.map(item => (
+                                <span
+                                  key={item.key}
+                                  className={`rounded-full border border-[#CBD5E1] bg-[#F8FAFC] px-2 py-0.5 text-[9px] font-bold leading-tight text-[#94A3B8] line-through decoration-[#64748B]/70 decoration-1 ${THEME.fonts.heading}`}
+                                >
+                                  {item.config.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {combinedAmenities.length > 4 && (
                           <div className={`relative flex items-center py-2 ${isAmenitiesExpanded ? '' : buttonVisibilityClass}`}>
                             <div className="flex-grow border-t border-[#E5E7EB] h-0"></div>
@@ -1846,6 +1964,25 @@ export default function ListingDetails({
                   {tr('details.reviewsTitle')}
                 </h3>
 
+                <div className="flex items-center justify-between">
+                  <a
+                    href={googleMapsReviewsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+                  >
+                    {tr('details.review.all')}
+                  </a>
+                  <a
+                    href={googleMapsWriteReviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+                  >
+                    {tr('details.review.leaveReview')}
+                  </a>
+                </div>
+
                 <div className="space-y-3">
                   {listing.reviews.map(review => (
                     <div key={review.id} className="bg-[#F4F7F6] p-5 rounded-[24px] border border-[#E5E7EB] space-y-3">
@@ -1878,24 +2015,25 @@ export default function ListingDetails({
                     </div>
                   ))}
                 </div>
-              </div>
 
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={openProblemReport}
-                  title={tr('details.problem.tooltip')}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-xs font-bold transition border bg-[#FFF7F2] text-[#FF7A50] border-[#FFD8C9] hover:bg-[#FF7A50]/10 hover:border-[#FF7A50]/40"
-                >
-                  <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>{tr('details.reportProblem')}</span>
-                </button>
+                <div className="pt-1 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={openProblemReport}
+                    title={tr('details.problem.tooltip')}
+                    data-problem-report-native="true"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-2xl text-xs font-normal text-gray-400 transition hover:text-gray-600"
+                  >
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>{tr('details.reportProblem')}</span>
+                  </button>
+                </div>
               </div>
 
             </div>
 
             {/* Right Sticky Reservation & WhatsApp Box (Hidden on Mobile, Sticky on Desktop) */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex min-h-full flex-col">
               <div className="sticky top-6 bg-white p-6 rounded-3xl border border-[#E5E7EB] shadow-xl space-y-4">
                 {/* Total cost and nights details */}
                 <div className="text-center space-y-2">
@@ -2014,41 +2152,56 @@ export default function ListingDetails({
                   *{tr('details.directDealNote')}
                 </p>
               </div>
+
+              <div className="mt-auto flex justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={openProblemReport}
+                  title={tr('details.problem.tooltip')}
+                  data-problem-report-native="true"
+                  className="inline-flex min-w-[180px] items-center justify-center gap-2 px-3 py-2 rounded-2xl text-xs font-normal text-gray-400 transition hover:text-gray-600"
+                >
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{tr('details.reportProblem')}</span>
+                </button>
+              </div>
             </div>
 
           </div>
         </div>
 
         {/* Sticky bottom mobile checkout panel */}
-        <div className="lg:hidden p-4 bg-white border-t border-[#E5E7EB] flex items-center justify-between gap-4 z-40">
-          <div>
-            <span className="text-[9px] text-gray-400 font-bold block leading-none mb-1">{tr('details.totalFor', { count: diffDays, unit: diffDays === 1 ? tr('details.night') : tr('details.nights') })}</span>
-            <div className="flex flex-col">
-              <span className="text-base sm:text-lg font-mono font-black text-[#FF7A50] leading-none">
-                {convertPrice(totalBudget)} {currencySymbol}
-              </span>
-              {listing.bookingComPrice && (
-                <span className="text-[10px] text-gray-400 line-through leading-normal mt-1">
-                  {convertPrice(listing.bookingComPrice * diffDays)} {currencySymbol}
+        <div className="lg:hidden p-4 bg-white border-t border-[#E5E7EB] z-40">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <span className="text-[9px] text-gray-400 font-bold block leading-none mb-1">{tr('details.totalFor', { count: diffDays, unit: diffDays === 1 ? tr('details.night') : tr('details.nights') })}</span>
+              <div className="flex flex-col">
+                <span className="text-base sm:text-lg font-mono font-black text-[#FF7A50] leading-none">
+                  {convertPrice(totalBudget)} {currencySymbol}
                 </span>
-              )}
+                {listing.bookingComPrice && (
+                  <span className="text-[10px] text-gray-400 line-through leading-normal mt-1">
+                    {convertPrice(listing.bookingComPrice * diffDays)} {currencySymbol}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          <button
-            disabled={orderPlaced}
-            onClick={handleWhatsAppClick}
-            className={`flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition ${orderPlaced
-              ? 'bg-emerald-600 text-white'
-              : 'bg-[#2F7D69]/100 text-white hover:bg-emerald-600'
-              }`}
-            id="wa-mobile-btn"
-          >
-            <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-              <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
-            </svg>
-            <span>{orderPlaced ? tr('details.loading') : tr('details.book')}</span>
-          </button>
+            <button
+              disabled={orderPlaced}
+              onClick={handleWhatsAppClick}
+              className={`flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition ${orderPlaced
+                ? 'bg-emerald-600 text-white'
+                : 'bg-[#2F7D69]/100 text-white hover:bg-emerald-600'
+                }`}
+              id="wa-mobile-btn"
+            >
+              <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
+              </svg>
+              <span>{orderPlaced ? tr('details.loading') : tr('details.book')}</span>
+            </button>
+          </div>
         </div>
 
         {showDateCalendar && (

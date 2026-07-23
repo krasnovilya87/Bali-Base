@@ -501,6 +501,7 @@ export function useAdminDashboardController({
   // Rejection modal context
   const [rejectListingId, setRejectListingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [rejectionComment, setRejectionComment] = useState<string>('');
 
   // Notification Toast states
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -772,23 +773,31 @@ export function useAdminDashboardController({
 
   const handleOpenReject = (listingId: string) => {
     setRejectListingId(listingId);
-    setRejectionReason('Photos do not meet quality standards');
+    setRejectionReason('');
+    setRejectionComment('');
   };
 
   const handleRejectConfirm = () => {
     if (!rejectListingId) return;
+    if (!rejectionReason) {
+      showToast('Select a rejection reason.');
+      return;
+    }
     const matched = listings.find(l => l.id === rejectListingId);
     if (matched) {
       const updated: Listing = {
         ...matched,
-        status: 'draft',
+        status: 'rejected',
         isApproved: false,
-        description: `${matched.description}\n\nModerator comment: ${rejectionReason}`
+        rejectionReason,
+        rejectionComment: rejectionComment.trim() || undefined
       };
       onUpdateListing(updated);
       showToast('Listing rejected with a reason.');
     }
     setRejectListingId(null);
+    setRejectionReason('');
+    setRejectionComment('');
   };
 
   const tabProps = {
@@ -905,6 +914,8 @@ export function useAdminDashboardController({
     rejectListingId,
     rejectionReason,
     setRejectionReason,
+    rejectionComment,
+    setRejectionComment,
     setRejectListingId,
     handleRejectConfirm
   };

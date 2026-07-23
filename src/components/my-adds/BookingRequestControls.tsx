@@ -24,20 +24,43 @@ export default function BookingRequestControls({
     request.paymentStatus || 'unpaid'
   );
   const [depositAmount, setDepositAmount] = useState(request.depositAmount || 0);
+  const [isNotesOpen, setIsNotesOpen] = useState(Boolean(request.comment));
+  const [notes, setNotes] = useState(request.comment || '');
+  const [isDeclineConfirmOpen, setIsDeclineConfirmOpen] = useState(false);
   const convertPrice = (amount: number) => Math.round(amount * currencyRate).toLocaleString();
 
   useEffect(() => {
     setPaymentStatus(request.paymentStatus || 'unpaid');
     setDepositAmount(request.depositAmount || 0);
-  }, [request.paymentStatus, request.depositAmount]);
+    setNotes(request.comment || '');
+    setIsNotesOpen(Boolean(request.comment));
+  }, [request.paymentStatus, request.depositAmount, request.comment]);
+
+  const saveNotes = (value = notes) => {
+    onUpdateBooking({
+      ...request,
+      comment: value.trim() || undefined
+    });
+    setIsNotesOpen(Boolean(value.trim()));
+  };
+
+  const declineRequest = () => {
+    setIsDeclineConfirmOpen(true);
+  };
+
+  const confirmDeclineRequest = () => {
+    onUpdateStatus(request.id, 'declined');
+    setIsDeclineConfirmOpen(false);
+  };
 
   return (
-    <div className={`rounded-2xl border bg-white/70 ${compact ? 'p-2.5 space-y-2' : 'p-3 space-y-2.5'} ${
+    <>
+    <div className={`rounded-2xl border ${compact ? 'p-2.5 space-y-2' : 'p-3 space-y-2.5'} ${
       request.status === 'accepted'
-        ? 'border-emerald-200'
+        ? 'bg-white/70 border-emerald-200'
         : request.status === 'declined'
-          ? 'border-rose-200 opacity-65'
-          : 'border-amber-200'
+          ? 'bg-gray-100/80 border-gray-200 opacity-75 grayscale'
+          : 'bg-white/70 border-amber-200'
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -62,6 +85,27 @@ export default function BookingRequestControls({
         <span className="font-mono font-bold text-gray-800">
           {convertPrice(request.totalPrice)} {currencySymbol}
         </span>
+      </div>
+
+      <div className="space-y-1.5">
+        <button
+          type="button"
+          onClick={() => setIsNotesOpen(current => request.comment ? true : !current)}
+          className="px-2 py-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-[9px] font-black uppercase tracking-wide text-gray-500 transition"
+        >
+          {tr('booking.notes')}
+        </button>
+
+        {(isNotesOpen || request.comment) && (
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            onBlur={(event) => saveNotes(event.target.value)}
+            placeholder={tr('booking.notesPlaceholder')}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[10.5px] text-gray-700 outline-none transition focus:border-[#FF7A50]/60 focus:ring-2 focus:ring-[#FF7A50]/15"
+          />
+        )}
       </div>
 
       {request.status !== 'declined' && (
@@ -118,6 +162,7 @@ export default function BookingRequestControls({
               onClick={() => onUpdateBooking({
                 ...request,
                 status: 'accepted',
+                declinedAt: undefined,
                 paymentStatus,
                 depositAmount: paymentStatus === 'deposit' ? depositAmount : undefined
               })}
@@ -127,7 +172,7 @@ export default function BookingRequestControls({
             </button>
             <button
               type="button"
-              onClick={() => onUpdateStatus(request.id, 'declined')}
+              onClick={declineRequest}
               className="py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[10px] transition"
             >
               {tr('booking.decline')}
@@ -136,6 +181,37 @@ export default function BookingRequestControls({
         </div>
       )}
     </div>
+    {isDeclineConfirmOpen && (
+      <div className="fixed inset-0 z-[720] flex items-center justify-center bg-black/45 backdrop-blur-xs p-4">
+        <div className="pu w-full max-w-[320px] rounded-2xl border border-white/70 shadow-2xl p-4 animate-scale-up">
+          <div className="space-y-1.5">
+            <p className="text-xs font-black uppercase tracking-wide text-gray-950">
+              {tr('booking.decline')}
+            </p>
+            <p className="text-[11px] leading-relaxed text-gray-500">
+              {tr('booking.declineConfirm')}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsDeclineConfirmOpen(false)}
+              className="py-2 rounded-xl bg-white/75 hover:bg-white text-gray-600 text-[10px] font-bold transition active:scale-95"
+            >
+              {tr('booking.declineCancel')}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeclineRequest}
+              className="py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition active:scale-95"
+            >
+              {tr('booking.decline')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

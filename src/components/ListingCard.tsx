@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Listing } from '../types';
-import { Heart, Star, BookmarkCheck, Flame, ShieldCheck, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { Heart, Star, BookmarkCheck, Flame, ShieldCheck, ShieldAlert, BadgeInfo, Share2 } from 'lucide-react';
 import { THEME } from '../theme';
 import { isListingFresh } from '../utils/listingFreshness';
 import { motion } from 'motion/react';
@@ -13,6 +13,7 @@ import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
+import { shareListingLink } from '../utils/listingShare';
 
 interface ListingCardProps {
   key?: string;
@@ -24,7 +25,8 @@ interface ListingCardProps {
   checkOutDate?: string;
   onOpenCalendar?: () => void;
   activeLanguage?: LanguageCode;
-  onRequireAuth?: () => boolean;
+  onRequireAuth?: (afterAuth?: () => void) => boolean;
+  actions?: React.ReactNode;
 }
 
 export default function ListingCard({
@@ -36,7 +38,8 @@ export default function ListingCard({
   checkOutDate,
   onOpenCalendar,
   activeLanguage = DEFAULT_LANGUAGE,
-  onRequireAuth
+  onRequireAuth,
+  actions
 }: ListingCardProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
@@ -51,6 +54,7 @@ export default function ListingCard({
   const isHorizontalTouchDragRef = useRef<boolean>(false);
   const hasDraggedRef = useRef<boolean>(false);
   const settleTimerRef = useRef<number | null>(null);
+  const lastShareActionRef = useRef<number>(0);
   const { favoriteIds, toggleFavorite: toggleFavoriteListing } = useFavoriteListings();
   const isFavorite = favoriteIds.has(listing.id);
 
@@ -242,8 +246,31 @@ export default function ListingCard({
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user && onRequireAuth && !onRequireAuth()) return;
+    if (!user && onRequireAuth && !onRequireAuth(() => toggleFavoriteListing(listing.id))) return;
     toggleFavoriteListing(listing.id);
+  };
+
+  const triggerShareListing = async () => {
+    const now = Date.now();
+    if (now - lastShareActionRef.current < 600) return;
+    lastShareActionRef.current = now;
+    await shareListingLink(listing, {
+      copiedMessage: tr('listing.linkCopied'),
+      copyFailedMessage: tr('listing.linkCopyFailed')
+    });
+  };
+
+  const handleShareListing = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await triggerShareListing();
+  };
+
+  const handleSharePointerDown = async (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.pointerType === 'mouse') return;
+    await triggerShareListing();
   };
 
   const handleNextPhoto = (e: React.MouseEvent) => {
@@ -562,20 +589,33 @@ export default function ListingCard({
           )}
         </div>
 
-        {/* Heart Favorite Upper Right */}
-        <button
-          type="button"
-          onClick={toggleFavorite}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 sm:p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md z-30 min-w-[24px] min-h-[24px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center pointer-events-auto"
-          title={tr('listing.toggleFavorite')}
-          aria-label={tr('listing.toggleFavorite')}
-          aria-pressed={isFavorite}
-        >
-          <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
-        </button>
+        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-30 flex items-center gap-1 pointer-events-auto">
+          <button
+            type="button"
+            onClick={handleShareListing}
+            onPointerDown={handleSharePointerDown}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="p-1 sm:p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2F7D69] hover:scale-105 active:scale-95 transition shadow-md min-w-[24px] min-h-[24px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center"
+            title={tr('listing.shareLink')}
+            aria-label={tr('listing.shareLink')}
+          >
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleFavorite}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="p-1 sm:p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 hover:scale-105 active:scale-95 transition shadow-md min-w-[24px] min-h-[24px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center"
+            title={tr('listing.toggleFavorite')}
+            aria-label={tr('listing.toggleFavorite')}
+            aria-pressed={isFavorite}
+          >
+            <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4 color-rose-500" style={{ fill: isFavorite ? '#F43F5E' : 'none', color: isFavorite ? '#F43F5E' : 'currentColor' }} />
+          </button>
+        </div>
 
         <div className={`absolute right-1.5 bottom-1.5 sm:right-2 sm:bottom-2 z-10 flex items-center gap-1 sm:gap-1.5 rounded-full bg-transparent px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs lg:text-sm font-bold text-white drop-shadow-md ${THEME.fonts.mono}`}>
           <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-[15px] lg:h-[15px] fill-current text-amber-500" />
@@ -666,6 +706,12 @@ export default function ListingCard({
             )}
           </div>
         </div>
+
+        {actions && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            {actions}
+          </div>
+        )}
 
       </div>
     </div>

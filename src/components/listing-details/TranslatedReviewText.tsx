@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../../i18n';
 import { Review } from '../../types';
 import { translateReviewText } from '../../utils/aiTranslationClient';
@@ -69,6 +69,9 @@ export default function TranslatedReviewText({
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationAttempted, setTranslationAttempted] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -128,14 +131,67 @@ export default function TranslatedReviewText({
   }, [originalText, review.id, review.originalText, targetLanguage]);
 
   const displayText = showOriginal ? originalText : translatedText;
+  const reviewText = isTranslating && !showOriginal ? tr('details.review.translating') : displayText;
   const originalLanguageLabel = getOriginalLanguageLabel(review, targetLanguage);
   const canToggleOriginal = Boolean(originalText && (isTranslating || translationAttempted || translatedText !== originalText));
 
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [reviewText]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const measureOverflow = () => {
+      const element = textRef.current;
+      if (!element || isExpanded) return;
+
+      setCanExpand(element.scrollHeight > element.clientHeight + 1);
+    };
+
+    const animationFrame = window.requestAnimationFrame(measureOverflow);
+    window.addEventListener('resize', measureOverflow);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener('resize', measureOverflow);
+    };
+  }, [isExpanded, reviewText]);
+
   return (
     <div className="space-y-1.5">
-      <p className="text-[#1E293B] text-xs sm:text-sm leading-relaxed italic">
-        "{isTranslating && !showOriginal ? tr('details.review.translating') : displayText}"
-      </p>
+      <div className="relative">
+        <p
+          ref={textRef}
+          className="text-[#1E293B] text-xs sm:text-sm leading-relaxed italic whitespace-pre-wrap"
+          style={isExpanded ? undefined : {
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 4,
+            overflow: 'hidden',
+          }}
+        >
+          "{reviewText}"
+          {canExpand && isExpanded && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="ml-1 text-[10px] font-bold not-italic text-[#2F7D69] hover:text-[#FF7A50] transition"
+            >
+              {tr('details.review.collapse')}
+            </button>
+          )}
+        </p>
+        {canExpand && !isExpanded && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="absolute bottom-0 right-0 bg-[#F4F7F6] pl-1.5 text-[10px] font-bold not-italic leading-relaxed text-[#2F7D69] hover:text-[#FF7A50] transition"
+          >
+            ... {tr('details.review.readFull')}
+          </button>
+        )}
+      </div>
       {canToggleOriginal && (
         <button
           type="button"

@@ -3,12 +3,13 @@ import { Listing, ListingNearbySpot } from '../../types';
 import { THEME } from '../../theme';
 import { DetailMapPlace } from '../DetailMap';
 import DetailMap from '../DetailMap';
-import { Star, ShieldAlert } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../../utils/pricing';
+import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../../utils/googleMapsReviewLinks';
 import { LanguageCode } from '../../i18n';
 import TranslatedReviewText from './TranslatedReviewText';
 
-type SectionId = 'description' | 'characteristics' | 'amenities' | 'nearby' | 'location' | 'reviews' | 'reportProblem';
+type SectionId = 'description' | 'characteristics' | 'amenities' | 'nearby' | 'location' | 'reviews';
 
 interface SectionItem {
   key: string;
@@ -44,7 +45,6 @@ interface ListingDetailsSectionsProps {
   mapPlaces: DetailMapPlace[];
   activeNearbyRoute: any;
   detailMapSelectedPlaceIndex: number | null;
-  onProblemReportOpen: () => void;
   activeLanguage: LanguageCode;
   sections?: SectionId[];
   tr: (key: string, params?: Record<string, string | number>) => string;
@@ -57,7 +57,6 @@ const DEFAULT_SECTIONS: SectionId[] = [
   'nearby',
   'location',
   'reviews',
-  'reportProblem',
 ];
 
 const SECTION_SET = new Set<SectionId>(DEFAULT_SECTIONS);
@@ -83,7 +82,6 @@ export default function ListingDetailsSections({
   mapPlaces,
   activeNearbyRoute,
   detailMapSelectedPlaceIndex,
-  onProblemReportOpen,
   activeLanguage,
   sections,
   tr,
@@ -98,6 +96,8 @@ export default function ListingDetailsSections({
     competitorPrice: activeCompetitorPrice,
     directPrice: totalBudget,
   });
+  const googleMapsReviewsUrl = buildGoogleMapsReviewsUrl(listing);
+  const googleMapsWriteReviewUrl = buildGoogleMapsWriteReviewUrl(listing);
 
   return (
     <div className="lg:col-span-2 space-y-7">
@@ -203,6 +203,24 @@ export default function ListingDetailsSections({
       {isSectionEnabled(sections, 'reviews') && listing.reviews?.length > 0 && (
         <section className="space-y-4 pt-1">
           <h3 className="font-display text-[#1E293B] text-base font-extrabold">{tr('details.reviewsTitle')}</h3>
+          <div className="flex items-center justify-between">
+            <a
+              href={googleMapsReviewsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+            >
+              {tr('details.review.all')}
+            </a>
+            <a
+              href={googleMapsWriteReviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+            >
+              {tr('details.review.leaveReview')}
+            </a>
+          </div>
           <div className="space-y-3">
             {listing.reviews.map(review => (
               <div key={review.id} className="bg-[#F4F7F6] p-5 rounded-[24px] border border-[#E5E7EB] space-y-3">
@@ -232,20 +250,6 @@ export default function ListingDetailsSections({
               </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {isSectionEnabled(sections, 'reportProblem') && (
-        <section className="space-y-2 pt-2">
-          <button
-            type="button"
-            onClick={onProblemReportOpen}
-            title={tr('details.problem.tooltip')}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-xs font-bold transition border bg-[#FFF7F2] text-[#FF7A50] border-[#FFD8C9] hover:bg-[#FF7A50]/10 hover:border-[#FF7A50]/40"
-          >
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>{tr('details.reportProblem')}</span>
-          </button>
         </section>
       )}
     </div>

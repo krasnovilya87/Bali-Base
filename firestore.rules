@@ -71,6 +71,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /auth_email_providers/{emailKey} {
+      allow read: if true;
+      allow create, update: if isSignedIn()
+        && incoming().uid == request.auth.uid
+        && incoming().email is string
+        && incoming().email.size() <= 254;
+      allow delete: if false;
+    }
+
     match /configs/{configId} {
       allow read, write: if true;
     }

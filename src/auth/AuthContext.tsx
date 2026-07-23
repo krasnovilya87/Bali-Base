@@ -15,11 +15,13 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut
 } from 'firebase/auth';
-import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { getDoc, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const EMAIL_SIGN_IN_KEY = 'bali_base_email_sign_in';
+const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
 const AUTH_TIMEOUT_MS = 15000;
+const EMAIL_PROVIDERS_COLLECTION = 'auth_email_providers';
 
 type AuthContextValue = {
   user: User | null;
@@ -63,7 +65,28 @@ const readRememberedEmail = () => {
   }
 };
 
-const upsertUserProfile = async (user: User, provider: 'google' | 'email_link') => {
+const getEmailProviderKey = (email: string) =>
+  email.trim().toLowerCase();
+
+type EmailAuthProviderId = 'google.com' | 'password';
+type UserProfileProvider = 'google' | 'email_link';
+
+const upsertEmailProviderIndex = async (user: User, provider: EmailAuthProviderId) => {
+  if (!user.email) return;
+
+  await setDoc(doc(db, EMAIL_PROVIDERS_COLLECTION, getEmailProviderKey(user.email)), {
+    email: user.email.toLowerCase(),
+    providers: [provider],
+    primaryProvider: provider,
+    uid: user.uid,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+};
+
+const getEmailProviderId = (provider: UserProfileProvider): EmailAuthProviderId =>
+  provider === 'google' ? 'google.com' : 'password';
+
+const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
     email: user.email || '',
@@ -74,11 +97,19 @@ const upsertUserProfile = async (user: User, provider: 'google' | 'email_link') 
     termsAcceptedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true });
+
+  await upsertEmailProviderIndex(user, getEmailProviderId(provider));
 };
 
-const safeUpsertUserProfile = async (user: User, provider: 'google' | 'email_link' | 'existing_session') => {
+const getExistingSessionProvider = (user: User): UserProfileProvider => {
+  const providerId = user.providerData[0]?.providerId;
+  if (providerId === 'password') return 'email_link';
+  return 'google';
+};
+
+const safeUpsertUserProfile = async (user: User, provider: UserProfileProvider | 'existing_session') => {
   try {
-    await upsertUserProfile(user, provider === 'existing_session' ? 'google' : provider);
+    await upsertUserProfile(user, provider === 'existing_session' ? getExistingSessionProvider(user) : provider);
   } catch (error) {
     console.warn('User signed in, but profile sync failed:', error);
   }
@@ -127,6 +158,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribe = onAuthStateChanged(auth, nextUser => {
         if (!isMounted) return;
         setUser(nextUser);
+        if (nextUser) {
+          window.localStorage.setItem(CURRENT_USER_PROFILE_KEY, JSON.stringify({
+            uid: nextUser.uid,
+            displayName: nextUser.displayName || '',
+            email: nextUser.email || '',
+            phoneNumber: nextUser.phoneNumber || '',
+            photoURL: nextUser.photoURL || ''
+          }));
+        } else {
+          window.localStorage.removeItem(CURRENT_USER_PROFILE_KEY);
+        }
         setLoading(false);
         if (nextUser) {
           setAuthDebug(`Auth state changed. currentUser=${nextUser.email || nextUser.uid}`);
@@ -303,7 +345,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        return await fetchSignInMethodsForEmail(auth, cleanEmail);
+        const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
+        let indexedProviders: string[] = [];
+
+        try {
+          const providerSnapshot = await getDoc(doc(db, EMAIL_PROVIDERS_COLLECTION, getEmailProviderKey(cleanEmail)));
+          indexedProviders = providerSnapshot.exists()
+            ? ((providerSnapshot.data().providers || []) as string[])
+            : [];
+        } catch (indexError: any) {
+          if (indexError?.code === 'permission-denied') {
+            indexedProviders = ['google.com'];
+            setAuthDebug('Email provider index is not readable yet. Deploy firestore.rules to enable exact provider detection.');
+          } else {
+            throw indexError;
+          }
+        }
+
+        return Array.from(new Set([...methods, ...indexedProviders]));
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not check this email address.');
         return [];

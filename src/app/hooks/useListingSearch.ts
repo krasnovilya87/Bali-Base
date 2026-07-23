@@ -35,7 +35,26 @@ interface UseListingSearchParams {
   filters: FilterState;
   sortBy: string;
   favoriteIds: Set<string>;
+  checkInDate?: string;
+  checkOutDate?: string;
 }
+
+const getSelectedDayCount = (checkInDate?: string, checkOutDate?: string) => {
+  if (!checkInDate || !checkOutDate) return 1;
+  const start = new Date(`${checkInDate}T00:00:00`);
+  const end = new Date(`${checkOutDate}T00:00:00`);
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 1;
+};
+
+const getActiveDailyPrice = (item: Listing) => (
+  item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay
+);
+
+const getComparablePrice = (item: Listing, selectedDayCount: number) => {
+  const activeDailyPrice = getActiveDailyPrice(item);
+  return activeDailyPrice * selectedDayCount;
+};
 
 export const useListingSearch = ({
   listings,
@@ -48,8 +67,15 @@ export const useListingSearch = ({
   searchTerm,
   filters,
   sortBy,
-  favoriteIds
+  favoriteIds,
+  checkInDate,
+  checkOutDate
 }: UseListingSearchParams) => {
+  const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
+  const effectivePriceMax = filters.priceMax === 30000000
+    ? Math.max(30000000, selectedDayCount * 1000000)
+    : filters.priceMax;
+
   const filteredListings = useMemo(() => listings.filter(item => {
     if (item.status !== 'active') return false;
     if (item.category !== currentL1) return false;
@@ -78,9 +104,8 @@ export const useListingSearch = ({
       if (!inTitle && !inDesc && !inDistrict) return false;
     }
 
-    const activePrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
-    const activePriceMonthly = item.pricePerMonth || (activePrice * 30);
-    if (activePriceMonthly < filters.priceMin || activePriceMonthly > filters.priceMax) return false;
+    const comparablePrice = getComparablePrice(item, selectedDayCount);
+    if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
 
     if (item.distanceToSeaMinutes !== undefined) {
       if (item.distanceToSeaMinutes < (filters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > filters.distanceToSeaMax) {
@@ -154,23 +179,25 @@ export const useListingSearch = ({
     customPolygon,
     customRadius,
     districtSearch,
+    effectivePriceMax,
     favoriteIds,
     filters,
     listings,
-    searchTerm
+    searchTerm,
+    selectedDayCount
   ]);
 
   const sortedListings = useMemo(() => [...filteredListings].sort((a, b) => {
     if (a.isPromoTurbo && !b.isPromoTurbo) return -1;
     if (!a.isPromoTurbo && b.isPromoTurbo) return 1;
     if (sortBy === 'price_asc') {
-      const pa = a.hasDropPrice && a.dropPricePerDay ? a.dropPricePerDay : a.pricePerDay;
-      const pb = b.hasDropPrice && b.dropPricePerDay ? b.dropPricePerDay : b.pricePerDay;
+      const pa = getComparablePrice(a, selectedDayCount);
+      const pb = getComparablePrice(b, selectedDayCount);
       return pa - pb;
     }
     if (sortBy === 'price_desc') {
-      const pa = a.hasDropPrice && a.dropPricePerDay ? a.dropPricePerDay : a.pricePerDay;
-      const pb = b.hasDropPrice && b.dropPricePerDay ? b.dropPricePerDay : b.pricePerDay;
+      const pa = getComparablePrice(a, selectedDayCount);
+      const pb = getComparablePrice(b, selectedDayCount);
       return pb - pa;
     }
     if (sortBy === 'distance_sea') {
@@ -195,7 +222,7 @@ export const useListingSearch = ({
     if (pushA !== pushB) return pushB - pushA;
 
     return b.viewsCount - a.viewsCount;
-  }), [customPoint, filteredListings, sortBy]);
+  }), [customPoint, filteredListings, selectedDayCount, sortBy]);
 
   const suggestions = useMemo<ListingSearchSuggestions | null>(() => {
     if (searchTerm.length < 2) return null;

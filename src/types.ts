@@ -67,7 +67,9 @@ export interface Listing {
   // Badges & status
   isApproved: boolean; // Approved
   isNew: boolean;
-  status: 'active' | 'paused' | 'draft' | 'moderation';
+  status: 'active' | 'paused' | 'draft' | 'moderation' | 'rejected';
+  rejectionReason?: string;
+  rejectionComment?: string;
   expirationDate?: string;
   
   // Pricing configuration
@@ -144,6 +146,8 @@ export interface BookingRequest {
   status: 'pending' | 'accepted' | 'declined';
   paymentStatus?: 'unpaid' | 'paid' | 'deposit';
   depositAmount?: number;
+  comment?: string;
+  declinedAt?: string;
   createdAt: string;
 }
 

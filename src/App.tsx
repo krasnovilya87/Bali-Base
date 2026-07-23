@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { Listing, SearchState, FilterState } from './types';
 import { MOCK_GUIDES } from './data';
@@ -25,6 +25,7 @@ import { useListingSearch } from './app/hooks/useListingSearch';
 import { useFavoriteListings } from './hooks/useFavoriteListings';
 import { useAuth } from './auth/AuthContext';
 import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
+import { LISTING_SHARE_PARAM } from './utils/listingShare';
 
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
@@ -39,7 +40,7 @@ const DISTRICT_MENU_GROUPS = [
 ];
 
 export default function App() {
-  const { authDebug, authError, user } = useAuth();
+  const { user } = useAuth();
   const [currentView, setCurrentView] = useState<'cover' | 'menu' | 'app'>('cover');
   const {
     bookings,
@@ -122,6 +123,7 @@ export default function App() {
   const [usersModalTab, setUsersModalTab] = useState<'favorites' | 'whatsapp'>('favorites');
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [authModalReason, setAuthModalReason] = useState<string>('');
+  const pendingAuthActionRef = useRef<(() => void) | null>(null);
   const [showListingMap, setShowListingMap] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024; // enabled by default for PC version (tablets & mobile hidden by default)
@@ -132,6 +134,35 @@ export default function App() {
   const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
   const [showFooter, setShowFooter] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || listings.length === 0 || selectedListing) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const listingId = params.get(LISTING_SHARE_PARAM);
+    if (!listingId) return;
+
+    const sharedListing = listings.find(item => item.id === listingId);
+    if (!sharedListing) return;
+
+    setCurrentView('app');
+    setCurrentL1(sharedListing.category);
+    setCurrentL2([sharedListing.subCategory]);
+    setSelectedListing(sharedListing);
+  }, [listings, selectedListing]);
+
+  const closeSelectedListing = () => {
+    const closingListingId = selectedListing?.id;
+    setSelectedListing(null);
+
+    if (typeof window === 'undefined' || !closingListingId) return;
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(LISTING_SHARE_PARAM) !== closingListingId) return;
+
+    url.searchParams.delete(LISTING_SHARE_PARAM);
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  };
 
   // Coordinated Scrolling logic for Desktop/PC
   useEffect(() => {
@@ -231,20 +262,30 @@ export default function App() {
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
 
-  const requestAuth = (reasonKey = 'auth.defaultReason') => {
+  const requestAuth = (reasonKey = 'auth.defaultReason', afterAuth?: () => void) => {
     if (user) return true;
+    pendingAuthActionRef.current = afterAuth || null;
     setAuthModalReason(tr(reasonKey));
     return false;
   };
 
   const requireAuth = (reasonKey: string, action: () => void) => {
     if (!user) {
-      requestAuth(reasonKey);
+      requestAuth(reasonKey, action);
       return;
     }
 
     action();
   };
+
+  useEffect(() => {
+    if (!user || !pendingAuthActionRef.current) return;
+
+    const pendingAction = pendingAuthActionRef.current;
+    pendingAuthActionRef.current = null;
+    setAuthModalReason('');
+    window.setTimeout(pendingAction, 0);
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -338,7 +379,7 @@ export default function App() {
       return;
     }
     if (selectedListing) {
-      setSelectedListing(null);
+      closeSelectedListing();
       return;
     }
     if (showCreateWizard) {
@@ -604,23 +645,23 @@ export default function App() {
         const mod10 = days % 10;
         const mod100 = days % 100;
         if (mod100 >= 11 && mod100 <= 19) {
-          return "РґРЅРµР№";
+          return "\u0434\u043d\u0435\u0439";
         }
         if (mod10 === 1) {
-          return "РґРµРЅСЊ";
+          return "\u0434\u0435\u043d\u044c";
         }
         if (mod10 >= 2 && mod10 <= 4) {
-          return "РґРЅСЏ";
+          return "\u0434\u043d\u044f";
         }
-        return "РґРЅРµР№";
+        return "\u0434\u043d\u0435\u0439";
       };
 
       const daysSuffix = diffDays > 0 ? ` (${diffDays} ${getDaysWord(diffDays)})` : "";
 
       if (m1 === m2) {
-        return `${d1.getDate()}вЂ“${d2.getDate()} ${m1}${daysSuffix}`;
+        return `${d1.getDate()}-${d2.getDate()} ${m1}${daysSuffix}`;
       }
-      return `${getDayMonth(d1)} вЂ“ ${getDayMonth(d2)}${daysSuffix}`;
+      return `${getDayMonth(d1)} - ${getDayMonth(d2)}${daysSuffix}`;
     }
     return `${tr('date.from')} ${getDayMonth(d1)}`;
   };
@@ -691,7 +732,9 @@ export default function App() {
     searchTerm,
     filters: activeFilters,
     sortBy,
-    favoriteIds
+    favoriteIds,
+    checkInDate,
+    checkOutDate
   });
 
   return (
@@ -915,6 +958,10 @@ export default function App() {
                           src={displayImage}
                           alt={displayLabel}
                           className="w-full h-full object-contain filter drop-shadow hover:brightness-105 group-hover:scale-110 transition-all duration-300"
+                          loading="eager"
+                          decoding="async"
+                          width={560}
+                          height={560}
                           referrerPolicy="no-referrer"
                         />
                       </div>
@@ -1038,7 +1085,7 @@ export default function App() {
                         return next;
                       });
                     })}
-                    className="w-8 h-8 sm:w-9 sm:h-9 bg-transparent border border-transparent hover:border-transparent hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-full cursor-pointer flex items-center justify-center active:scale-95 transition-transform shrink-0"
+                    className="w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.favorites')}
                     aria-label={tr('nav.favorites')}
                     aria-pressed={showFavoritesOnly}
@@ -1186,16 +1233,13 @@ export default function App() {
                   {showSortDropdown && (
                     <>
                       <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowSortDropdown(false)} />
-                      <div className="absolute top-12 left-0 min-w-[210px] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl py-2 z-50 text-xs text-left animate-scale-up font-sans">
-                        <div className="px-3.5 py-1.5 font-extrabold text-gray-400 text-[10px] uppercase tracking-wider border-b border-gray-100 mb-1">
-                          {tr('sort.title')}
-                        </div>
+                      <div className="pu absolute top-12 left-0 min-w-[210px] border border-white/50 rounded-2xl shadow-xl py-2 z-50 text-xs text-left animate-scale-up font-sans">
                         {[
-                          { value: 'price_asc', label: tr('sort.priceAsc.label'), desc: tr('sort.priceAsc.desc') },
-                          { value: 'price_desc', label: tr('sort.priceDesc.label'), desc: tr('sort.priceDesc.desc') },
-                          { value: 'popular', label: tr('sort.popular.label'), desc: tr('sort.popular.desc') },
-                          { value: 'distance_sea', label: tr('sort.distanceSea.label'), desc: tr('sort.distanceSea.desc') },
-                          { value: 'distance_point', label: tr('sort.distancePoint.label'), desc: tr('sort.distancePoint.desc') },
+                          { value: 'price_asc', label: tr('sort.priceAsc.label') },
+                          { value: 'price_desc', label: tr('sort.priceDesc.label') },
+                          { value: 'popular', label: tr('sort.popular.label') },
+                          { value: 'distance_sea', label: tr('sort.distanceSea.label') },
+                          { value: 'distance_point', label: tr('sort.distancePoint.label') },
                         ].map((opt) => (
                           <button
                             key={opt.value}
@@ -1208,13 +1252,10 @@ export default function App() {
                                 setIsMapSelectionActive(true);
                               }
                             }}
-                            className={`w-full text-left px-3.5 py-2 hover:bg-[#FF7A50]/10 transition flex flex-col gap-0.5 ${sortBy === opt.value ? 'bg-[#FF7A50]/5 text-[#FF7A50] font-bold' : 'text-[#1E293B]'
+                            className={`w-full text-left px-3.5 py-2 hover:bg-[#FF7A50]/10 transition font-bold ${sortBy === opt.value ? 'bg-[#FF7A50]/5 text-[#FF7A50]' : 'text-[#1E293B]'
                               }`}
                           >
                             <span>{opt.label}</span>
-                            <span className={`text-[10px] font-normal ${sortBy === opt.value ? 'text-[#FF7A50]/85' : 'text-gray-405'}`}>
-                              {opt.desc}
-                            </span>
                           </button>
                         ))}
                       </div>
@@ -1271,7 +1312,7 @@ export default function App() {
                       <>
                         <div className="fixed inset-0 z-40 bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setShowDistrictDropdown(false); }} />
                         <div
-                          className="absolute top-12 left-0 min-w-[210px] max-h-[300px] overflow-y-auto bg-white border border-[#E5E7EB] rounded-2xl shadow-xl py-2 z-50 text-xs text-left animate-scale-up font-sans"
+                          className="pu absolute top-12 left-0 min-w-[210px] max-h-[300px] !overflow-y-auto border border-white/50 rounded-2xl shadow-xl py-2 z-50 text-xs text-left animate-scale-up font-sans"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* Map Picker Selection CTA */}
@@ -1288,10 +1329,6 @@ export default function App() {
                               <Map className="w-3.5 h-3.5 shrink-0" />
                               <span>{tr('location.selectOnMap')}</span>
                             </button>
-                          </div>
-
-                          <div className="px-3.5 py-1 text-gray-400 text-[9px] uppercase font-bold tracking-wider mb-1">
-                            {tr('location.chooseDistrict')}
                           </div>
 
                           <button
@@ -1494,7 +1531,7 @@ export default function App() {
                           checkOutDate={checkOutDate}
                           onOpenCalendar={() => setShowCalendar(true)}
                           activeLanguage={activeLanguage}
-                          onRequireAuth={() => requestAuth('auth.reason.favorites')}
+                          onRequireAuth={(afterAuth) => requestAuth('auth.reason.favorites', afterAuth)}
                         />
                       ))}
                     </div>
@@ -1658,11 +1695,14 @@ export default function App() {
           handleUpdateMenuOverrides={handleUpdateMenuOverrides}
           initialCheckInDate={checkInDate}
           initialCheckOutDate={checkOutDate}
+          checkInDate={checkInDate}
+          checkOutDate={checkOutDate}
           listings={listings}
           menuOverrides={menuOverrides}
           primaryL2={primaryL2}
           selectedListing={selectedListing}
           onRequireAuth={requestAuth}
+          onSelectedListingClose={closeSelectedListing}
           setCheckInDate={setCheckInDate}
           setCheckOutDate={setCheckOutDate}
           setCustomPoint={setCustomPoint}
@@ -1690,21 +1730,15 @@ export default function App() {
 
         <AuthModal
           isOpen={Boolean(authModalReason)}
-          onClose={() => setAuthModalReason('')}
+          onClose={() => {
+            if (!user) {
+              pendingAuthActionRef.current = null;
+            }
+            setAuthModalReason('');
+          }}
           reason={authModalReason}
         />
 
-        {(authError || authDebug) && (
-          <div className={`fixed left-4 right-4 bottom-4 z-[650] mx-auto max-w-2xl rounded-2xl border px-4 py-3 text-xs font-bold shadow-2xl ${authError
-            ? 'border-red-200 bg-red-50 text-red-700'
-            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-            }`}>
-            <div>{authError || authDebug}</div>
-            {authError && authDebug && (
-              <div className="mt-1 text-[11px] opacity-80">{authDebug}</div>
-            )}
-          </div>
-        )}
       </div>
     </I18nProvider>
   );

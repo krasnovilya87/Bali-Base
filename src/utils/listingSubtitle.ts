@@ -26,7 +26,9 @@ const formatHousingType = (listing: Listing, tr: TranslateFn) => {
     'Apartment Complex (privet unit)': tr('listing.subtitle.housingType.apartment'),
     'Guesthouse (privet room, shared property)': tr('listing.subtitle.housingType.guesthouse'),
     'Home stay (Host on-site)': tr('listing.subtitle.housingType.homestay'),
-    'Hotel (privet room)': tr('listing.subtitle.housingType.hotel')
+    'Hotel (privet room)': tr('listing.subtitle.housingType.hotel'),
+    'Villa / House (privet room)': `${tr('listing.subtitle.housingType.villa')} / ${tr('listing.subtitle.housingType.house')}`,
+    'Apartment (privet room)': tr('listing.subtitle.housingType.apartment')
   };
 
   if (map[value]) return map[value];

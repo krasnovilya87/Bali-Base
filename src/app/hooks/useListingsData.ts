@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { BookingRequest, Listing } from '../../types';
 import { filterDeletedListings, getStoredData, rememberDeletedListingId, saveStoredData } from '../../data';
 import {
+  db,
   deleteDocument,
   getDocument,
   LISTINGS_COLLECTION,
@@ -31,8 +33,9 @@ export const useListingsData = () => {
 
   useEffect(() => {
     const loaded = getStoredData();
+    const loadedBookings = loaded.bookings.filter(isBookingStored);
     setListings(loaded.listings);
-    setBookings(loaded.bookings);
+    setBookings(loadedBookings);
 
     const savedOverrides = localStorage.getItem('bali_base_menu_overrides');
     if (savedOverrides) {
@@ -50,9 +53,10 @@ export const useListingsData = () => {
       try {
         const synced = await syncWithFirebase();
         const visibleListings = filterDeletedListings(synced.listings);
+        const visibleBookings = synced.bookings.filter(isBookingStored);
         setListings(visibleListings);
-        setBookings(synced.bookings);
-        saveStoredData(visibleListings, synced.bookings);
+        setBookings(visibleBookings);
+        saveStoredData(visibleListings, visibleBookings);
         console.log('Firebase synced successfully');
         syncPassed = true;
       } catch (err) {
@@ -76,9 +80,10 @@ export const useListingsData = () => {
   }, []);
 
   const saveUpdatedState = (newListings: Listing[], newBookings: BookingRequest[]) => {
+    const newVisibleBookings = newBookings.filter(isBookingStored);
     setListings(newListings);
-    setBookings(newBookings);
-    saveStoredData(newListings, newBookings);
+    setBookings(newVisibleBookings);
+    saveStoredData(newListings, newVisibleBookings);
   };
 
   const handleUpdateMenuOverrides = async (newOverrides: any) => {
@@ -176,7 +181,11 @@ export const useListingsData = () => {
   const handleUpdateBookingStatus = (id: string, status: 'accepted' | 'declined') => {
     const updated = bookings.map(booking => {
       if (booking.id === id) {
-        const nextBooking = { ...booking, status };
+        const nextBooking = {
+          ...booking,
+          status,
+          declinedAt: status === 'declined' ? new Date().toISOString() : undefined
+        };
         setDocument('bookings', booking.id, nextBooking);
         return nextBooking;
       }
@@ -218,6 +227,13 @@ export const useListingsData = () => {
       await deleteDocument(collectionPath, newListing.id);
     }
     await setDocument(collectionPath, listingForSave.id, listingForSave);
+    if (user?.uid) {
+      await setDoc(doc(db, 'users', user.uid), {
+        contactName: listingForSave.ownerName,
+        contactPhone: listingForSave.whatsappNumber,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
 
     const listingWithReviews = await refreshGoogleReviewsForListing(listingForSave, 'listing_create');
     if (listingWithReviews.googleReviewsUpdatedAt) {
@@ -245,3 +261,9 @@ export const useListingsData = () => {
     menuOverrides
   };
 };
+
+function isBookingStored(booking: BookingRequest) {
+  if (booking.status !== 'declined') return true;
+  const declinedAt = booking.declinedAt || booking.createdAt;
+  return Date.now() - new Date(declinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+}

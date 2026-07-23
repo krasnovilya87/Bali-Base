@@ -33,10 +33,10 @@ export default function CurrencyLanguageControls({
             setShowCurrencyDrop(!showCurrencyDrop);
             setShowLanguageDrop(false);
           }}
-          className="px-2.5 py-1.5 sm:px-2.5 sm:py-1.5 bg-white border border-[#E5E7EB] rounded-xl hover:bg-gray-100 cursor-pointer flex items-center gap-0.5 sm:gap-1 text-[#1E293B] font-mono font-semibold text-[11.5px] sm:text-xs"
+          className="h-8 sm:h-9 px-2.5 py-0 bg-white border border-[#E5E7EB] rounded-xl hover:bg-gray-100 cursor-pointer flex items-center gap-0.5 sm:gap-1 text-[#1E293B] font-mono font-semibold text-[12px] sm:text-xs leading-none"
           title={tr('nav.currency.title')}
         >
-          <span className="font-sans text-[10px] sm:text-xs uppercase">{activeCurrency}</span>
+          <span className="font-sans text-[12px] sm:text-xs leading-none uppercase">{activeCurrency}</span>
           <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
 
@@ -65,10 +65,10 @@ export default function CurrencyLanguageControls({
             setShowLanguageDrop(!showLanguageDrop);
             setShowCurrencyDrop(false);
           }}
-          className="px-2.5 py-1.5 sm:px-2.5 sm:py-1.5 bg-white border border-[#E5E7EB] rounded-xl hover:bg-gray-100 cursor-pointer flex items-center gap-0.5 font-bold text-[#1E293B] text-[11.5px] sm:text-xs"
+          className="h-8 sm:h-9 px-2.5 py-0 bg-white border border-[#E5E7EB] rounded-xl hover:bg-gray-100 cursor-pointer flex items-center gap-0.5 font-bold text-[#1E293B] text-[12px] sm:text-xs leading-none"
           title={tr('nav.language.title')}
         >
-          <span>{activeLanguage}</span>
+          <span className="leading-none">{activeLanguage}</span>
           <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-60" />
         </button>
 

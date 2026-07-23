@@ -13,7 +13,7 @@ interface DropPriceModalProps {
 export default function DropPriceModal({ listing, onChange, onClose }: DropPriceModalProps) {
   const { tr } = useI18n();
   const [showDateCalendar, setShowDateCalendar] = useState(false);
-  const update = (changes: Partial<Listing>) => onChange({ ...listing, ...changes });
+  const update = (changes: Partial<Listing>) => onChange({ ...listing, ...changes, dropPricePerMonth: undefined });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[510] p-4 animate-fade-in" id="promote-dropprice-modal">
@@ -40,6 +40,12 @@ export default function DropPriceModal({ listing, onChange, onClose }: DropPrice
                 const enabled = event.target.checked;
                 update({
                   hasDropPrice: enabled,
+                  ...!enabled
+                    ? {
+                      dropPricePerDay: undefined,
+                      dropPriceEndsAt: undefined
+                    }
+                    : {},
                   ...enabled && !listing.dropPricePerDay
                     ? {
                       dropPricePerDay: Math.round(listing.pricePerDay * 0.8),

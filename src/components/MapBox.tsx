@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Listing } from '../types';
 import { getDistrictBounds, getDistrictBoundsSync, getDistrictCoordsSync, getListingCoords as utilGetListingCoords } from '../utils/geo';
 import { Info, Plus, Minus, Locate, CircleDot, Pentagon, Star, Heart, Flame, ShieldCheck } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useI18n } from '../i18nContext';
 import { THEME } from '../theme';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { isListingFresh } from '../utils/listingFreshness';
+import { MapListingVisibilityCandidate, MapViewportSnapshot, selectVisibleMapListings } from '../utils/mapListingVisibility';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
 
 interface MapBoxProps {
@@ -829,6 +830,248 @@ function MapDrawingController({
   );
 }
 
+interface MapPriceMarkersProps {
+  listingsWithCoords: MapListingVisibilityCandidate[];
+  selectedListing: Listing | null;
+  hoveredListing: Listing | null;
+  infoWindowListingId: string | null;
+  popupMode: 'click' | 'hover' | null;
+  favoriteIds: Set<string>;
+  isSelectionEditing: boolean;
+  isMobileMap: boolean;
+  sessionPenalties: Record<string, number>;
+  currencySymbol: string;
+  currencyRate: number;
+  tr: (key: string, params?: Record<string, string | number>) => string;
+  formatPrice: (priceIdr: number) => string;
+  toggleClickListingPopup: (item: Listing) => void;
+  scheduleHoverPopup: (item: Listing) => void;
+  scheduleHoverClose: () => void;
+  toggleFavorite: (event: React.MouseEvent, listingId: string) => void;
+  closeListingPopup: () => void;
+  onListingSelect: (listing: Listing) => void;
+  lastMarkerInteractionRef: React.MutableRefObject<number>;
+  isPopupHoveredRef: React.MutableRefObject<boolean>;
+  clearHoverCloseTimer: () => void;
+}
+
+function MapPriceMarkers({
+  listingsWithCoords,
+  selectedListing,
+  hoveredListing,
+  infoWindowListingId,
+  popupMode,
+  favoriteIds,
+  isSelectionEditing,
+  isMobileMap,
+  sessionPenalties,
+  currencySymbol,
+  currencyRate,
+  tr,
+  formatPrice,
+  toggleClickListingPopup,
+  scheduleHoverPopup,
+  scheduleHoverClose,
+  toggleFavorite,
+  closeListingPopup,
+  onListingSelect,
+  lastMarkerInteractionRef,
+  isPopupHoveredRef,
+  clearHoverCloseTimer
+}: MapPriceMarkersProps) {
+  const map = useMap();
+  const [viewport, setViewport] = useState<MapViewportSnapshot | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const updateViewport = () => {
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+      const div = map.getDiv();
+      if (!bounds || zoom === undefined || !div.clientWidth || !div.clientHeight) return;
+
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      setViewport({
+        width: div.clientWidth,
+        height: div.clientHeight,
+        zoom,
+        bounds: {
+          north: ne.lat(),
+          south: sw.lat(),
+          east: ne.lng(),
+          west: sw.lng()
+        }
+      });
+    };
+
+    updateViewport();
+    const listeners = [
+      map.addListener('idle', updateViewport),
+      map.addListener('zoom_changed', updateViewport),
+      map.addListener('bounds_changed', updateViewport)
+    ];
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateViewport) : null;
+    observer?.observe(map.getDiv());
+
+    return () => {
+      listeners.forEach(listener => google.maps.event.removeListener(listener));
+      observer?.disconnect();
+    };
+  }, [map]);
+
+  const visibleListings = useMemo(() => {
+    const pinnedIds = new Set<string>();
+    if (selectedListing?.id) pinnedIds.add(selectedListing.id);
+    if (hoveredListing?.id) pinnedIds.add(hoveredListing.id);
+    if (infoWindowListingId) pinnedIds.add(infoWindowListingId);
+
+    return selectVisibleMapListings(listingsWithCoords, {
+      viewport,
+      sessionPenalties,
+      pinnedIds,
+      cellWidthPx: 100,
+      cellHeightPx: 70,
+      minCollisionDistancePx: 72
+    });
+  }, [hoveredListing?.id, infoWindowListingId, listingsWithCoords, selectedListing?.id, sessionPenalties, viewport]);
+
+  const compactListings = useMemo(() => {
+    if (!viewport) return [];
+
+    const visibleIds = new Set(visibleListings.map(({ item }) => item.id));
+    const compactCandidates = listingsWithCoords.filter(({ item }) => !visibleIds.has(item.id));
+
+    return selectVisibleMapListings(compactCandidates, {
+      viewport,
+      sessionPenalties,
+      cellWidthPx: 150,
+      cellHeightPx: 105,
+      minCollisionDistancePx: 46
+    });
+  }, [listingsWithCoords, sessionPenalties, viewport, visibleListings]);
+
+  return (
+    <>
+      {compactListings.map(({ item, coords, price }) => (
+        <AdvancedMarker
+          key={`compact-${item.id}`}
+          position={coords}
+          zIndex={5}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isSelectionEditing) {
+                lastMarkerInteractionRef.current = Date.now();
+                toggleClickListingPopup(item);
+              }
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              lastMarkerInteractionRef.current = Date.now();
+            }}
+            onMouseEnter={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+            onMouseMove={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+            onMouseLeave={isSelectionEditing ? undefined : scheduleHoverClose}
+            type="button"
+            className={`group flex h-3.5 min-w-7 items-center justify-center overflow-hidden rounded-md border border-[#FF7A50]/25 bg-white/85 px-1 shadow-sm ring-1 ring-white/70 backdrop-blur-[1px] transition-all duration-150 hover:h-6 hover:min-w-0 hover:px-2 hover:bg-[#FF7A50] hover:text-white hover:shadow-md hover:scale-110 ${isSelectionEditing
+              ? 'pointer-events-none opacity-60'
+              : 'cursor-pointer'
+              }`}
+            style={{
+              whiteSpace: 'nowrap',
+              pointerEvents: isSelectionEditing ? 'none' : 'auto'
+            }}
+            aria-label={formatPrice(price)}
+          >
+            <span className="h-1.5 w-4 rounded-sm bg-[#FF7A50]/70 transition-all duration-150 group-hover:hidden" />
+            <span className="hidden text-[10px] font-mono font-bold group-hover:inline">{formatPrice(price)}</span>
+          </button>
+        </AdvancedMarker>
+      ))}
+
+      {visibleListings.map(({ item, coords, price }) => {
+        const isInfoWindowOpen = infoWindowListingId === item.id;
+        const isSelected = selectedListing?.id === item.id || hoveredListing?.id === item.id || isInfoWindowOpen;
+        const isFavorite = favoriteIds.has(item.id);
+
+        return (
+          <React.Fragment key={item.id}>
+            <AdvancedMarker
+              position={coords}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isSelectionEditing) {
+                    lastMarkerInteractionRef.current = Date.now();
+                    toggleClickListingPopup(item);
+                  }
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  lastMarkerInteractionRef.current = Date.now();
+                }}
+                onMouseEnter={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+                onMouseMove={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
+                onMouseLeave={isSelectionEditing ? undefined : scheduleHoverClose}
+                type="button"
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-mono font-bold shadow-md transition-all ${isSelectionEditing
+                  ? 'pointer-events-none opacity-80'
+                  : 'cursor-pointer hover:bg-[#FF7A50] hover:text-white hover:scale-105'
+                  } ${isSelected
+                    ? 'bg-[#FF7A50] text-white scale-110 z-30 ring-4 ring-[#FF7A50]/30 border border-[#FF7A50]'
+                    : item.hasDropPrice
+                      ? 'bg-amber-500 text-white border border-amber-600 z-20'
+                      : 'bg-white text-[#FF7A50] border border-[#FF7A50]/20 z-10'
+                  }`}
+                style={{
+                  whiteSpace: 'nowrap',
+                  width: 'auto',
+                  pointerEvents: isSelectionEditing ? 'none' : 'auto'
+                }}
+              >
+                <span>{formatPrice(price)}</span>
+                {isFavorite && (
+                  <Heart className="w-3 h-3 fill-current text-rose-500 shrink-0" />
+                )}
+              </button>
+            </AdvancedMarker>
+
+            {isInfoWindowOpen && !isMobileMap && popupMode === 'hover' && (
+              <MapListingPopupMarker
+                coords={coords}
+                item={item}
+                currencySymbol={currencySymbol}
+                currencyRate={currencyRate}
+                tr={tr}
+                isFavorite={isFavorite}
+                onFavoriteToggle={(event) => toggleFavorite(event, item.id)}
+                onSelect={() => {
+                  closeListingPopup();
+                  onListingSelect(item);
+                }}
+                onMouseEnter={() => {
+                  isPopupHoveredRef.current = true;
+                  clearHoverCloseTimer();
+                }}
+                onMouseLeave={() => {
+                  isPopupHoveredRef.current = false;
+                  if (popupMode === 'hover') {
+                    scheduleHoverClose();
+                  }
+                }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export default function MapBox({
   listings,
   selectedListing,
@@ -861,6 +1104,7 @@ export default function MapBox({
   const hoverCloseTimerRef = useRef<number | null>(null);
   const isPopupHoveredRef = useRef<boolean>(false);
   const lastMarkerInteractionRef = useRef<number>(0);
+  const [sessionPenalties, setSessionPenalties] = useState<Record<string, number>>({});
 
   const [selectionMode, setSelectionMode] = useState<'radius' | 'area'>(() => {
     if (initialPolygon && initialPolygon.length > 0) return 'area';
@@ -1090,12 +1334,20 @@ export default function MapBox({
     }
   };
 
+  const lowerListingPriorityForSession = (listingId: string) => {
+    setSessionPenalties(current => ({
+      ...current,
+      [listingId]: Math.min((current[listingId] || 0) + 0.08, 0.32)
+    }));
+  };
+
   const openListingPopup = (item: Listing, mode: 'click' | 'hover') => {
     clearHoverOpenTimer();
     clearHoverCloseTimer();
     isPopupHoveredRef.current = false;
     setInfoWindowListingId(item.id);
     setPopupMode(mode);
+    lowerListingPriorityForSession(item.id);
     if (mode === 'hover') {
       onListingHover(item);
     }
@@ -1153,11 +1405,11 @@ export default function MapBox({
     closeListingPopup();
   };
 
-  const listingsWithCoords = listings.map(item => ({
+  const listingsWithCoords = useMemo(() => listings.map(item => ({
     item,
     coords: utilGetListingCoords(item),
     price: item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay
-  }));
+  })), [listings]);
   const clickedPopupEntry = popupMode === 'click'
     ? listingsWithCoords.find(({ item }) => item.id === infoWindowListingId)
     : undefined;
@@ -1255,82 +1507,30 @@ export default function MapBox({
                   clickableIcons: false
                 }}
               >
-                {listingsWithCoords.map(({ item, coords, price }) => {
-                  const isInfoWindowOpen = infoWindowListingId === item.id;
-                  const isSelected = selectedListing?.id === item.id || hoveredListing?.id === item.id || isInfoWindowOpen;
-                  const isFavorite = favoriteIds.has(item.id);
-
-                  return (
-                    <React.Fragment key={item.id}>
-                      <AdvancedMarker
-                        position={coords}
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isSelectionEditing) {
-                              lastMarkerInteractionRef.current = Date.now();
-                              toggleClickListingPopup(item);
-                            }
-                          }}
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            lastMarkerInteractionRef.current = Date.now();
-                          }}
-                          onMouseEnter={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
-                          onMouseMove={isSelectionEditing ? undefined : () => scheduleHoverPopup(item)}
-                          onMouseLeave={isSelectionEditing ? undefined : scheduleHoverClose}
-                          type="button"
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-bold shadow-md transition-all ${isSelectionEditing
-                            ? 'pointer-events-none opacity-80'
-                            : 'cursor-pointer hover:bg-[#FF7A50] hover:text-white hover:scale-105'
-                            } ${isSelected
-                              ? 'bg-[#FF7A50] text-white scale-110 z-30 ring-4 ring-[#FF7A50]/30 border border-[#FF7A50]'
-                              : item.hasDropPrice
-                                ? 'bg-amber-500 text-white border border-amber-600 z-20'
-                                : 'bg-white text-[#FF7A50] border border-[#FF7A50]/20 z-10'
-                            }`}
-                          style={{
-                            whiteSpace: 'nowrap',
-                            width: 'auto',
-                            pointerEvents: isSelectionEditing ? 'none' : 'auto'
-                          }}
-                        >
-                          <span>{formatPrice(price)}</span>
-                          {isFavorite && (
-                            <Heart className="w-3 h-3 fill-current text-rose-500 shrink-0" />
-                          )}
-                        </button>
-                      </AdvancedMarker>
-
-                      {isInfoWindowOpen && !isMobileMap && popupMode === 'hover' && (
-                        <MapListingPopupMarker
-                          coords={coords}
-                          item={item}
-                          currencySymbol={currencySymbol}
-                          currencyRate={currencyRate}
-                          tr={tr}
-                          isFavorite={isFavorite}
-                          onFavoriteToggle={(event) => toggleFavorite(event, item.id)}
-                          onSelect={() => {
-                            closeListingPopup();
-                            onListingSelect(item);
-                          }}
-                          onMouseEnter={() => {
-                            isPopupHoveredRef.current = true;
-                            clearHoverCloseTimer();
-                          }}
-                          onMouseLeave={() => {
-                            isPopupHoveredRef.current = false;
-                            if (popupMode === 'hover') {
-                              scheduleHoverClose();
-                            }
-                          }}
-                        />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+                <MapPriceMarkers
+                  listingsWithCoords={listingsWithCoords}
+                  selectedListing={selectedListing}
+                  hoveredListing={hoveredListing}
+                  infoWindowListingId={infoWindowListingId}
+                  popupMode={popupMode}
+                  favoriteIds={favoriteIds}
+                  isSelectionEditing={isSelectionEditing}
+                  isMobileMap={isMobileMap}
+                  sessionPenalties={sessionPenalties}
+                  currencySymbol={currencySymbol}
+                  currencyRate={currencyRate}
+                  tr={tr}
+                  formatPrice={formatPrice}
+                  toggleClickListingPopup={toggleClickListingPopup}
+                  scheduleHoverPopup={scheduleHoverPopup}
+                  scheduleHoverClose={scheduleHoverClose}
+                  toggleFavorite={toggleFavorite}
+                  closeListingPopup={closeListingPopup}
+                  onListingSelect={onListingSelect}
+                  lastMarkerInteractionRef={lastMarkerInteractionRef}
+                  isPopupHoveredRef={isPopupHoveredRef}
+                  clearHoverCloseTimer={clearHoverCloseTimer}
+                />
 
                 {myLocation && (
                   <AdvancedMarker position={myLocation} title={tr('map.myLocation')}>

@@ -24,7 +24,11 @@ export default function BookingsModal({
   onClose
 }: BookingsModalProps) {
   const { tr } = useI18n();
-  const filtered = bookings.filter(booking => booking.listingId === listing.id);
+  const filtered = bookings
+    .filter(booking => booking.listingId === listing.id && isBookingVisible(booking))
+    .sort(sortBookingRequests);
+  const activeBookings = filtered.filter(booking => booking.status !== 'declined');
+  const declinedBookings = filtered.filter(booking => booking.status === 'declined');
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[510] p-4 animate-fade-in" id="bookings-solicitudes-modal">
@@ -44,17 +48,35 @@ export default function BookingsModal({
             <p className="text-center text-xs text-gray-450 py-10 leading-relaxed font-medium">
               {tr('booking.empty')}
             </p>
-          ) : filtered.map(request => (
-            <div key={request.id}>
-              <BookingRequestControls
-                request={request}
-                currencySymbol={currencySymbol}
-                currencyRate={currencyRate}
-                onUpdateStatus={onUpdateStatus}
-                onUpdateBooking={onUpdateBooking}
-              />
-            </div>
-          ))}
+          ) : (
+            <>
+              {activeBookings.map(request => (
+                <div key={request.id}>
+                  <BookingRequestControls
+                    request={request}
+                    currencySymbol={currencySymbol}
+                    currencyRate={currencyRate}
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBooking={onUpdateBooking}
+                  />
+                </div>
+              ))}
+              {declinedBookings.length > 0 && (
+                <BookingDivider label={tr('booking.status.declined')} />
+              )}
+              {declinedBookings.map(request => (
+                <div key={request.id}>
+                  <BookingRequestControls
+                    request={request}
+                    currencySymbol={currencySymbol}
+                    currencyRate={currencyRate}
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBooking={onUpdateBooking}
+                  />
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
         <div className="pu-footer -mx-5 -mb-5 px-5 py-4 border-t border-[#D1D5DB]/30 shrink-0">
@@ -63,6 +85,28 @@ export default function BookingsModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function isBookingVisible(booking: BookingRequest) {
+  if (booking.status !== 'declined') return true;
+  const declinedAt = booking.declinedAt || booking.createdAt;
+  return Date.now() - new Date(declinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
+function sortBookingRequests(a: BookingRequest, b: BookingRequest) {
+  if (a.status === 'declined' && b.status !== 'declined') return 1;
+  if (a.status !== 'declined' && b.status === 'declined') return -1;
+  return a.startDate.localeCompare(b.startDate);
+}
+
+function BookingDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 py-1.5">
+      <div className="h-px flex-1 bg-gray-200" />
+      <span className="text-[9px] font-black uppercase tracking-wide text-gray-400">{label}</span>
+      <div className="h-px flex-1 bg-gray-200" />
     </div>
   );
 }

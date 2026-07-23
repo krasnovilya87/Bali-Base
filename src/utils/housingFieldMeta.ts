@@ -30,6 +30,23 @@ export interface ListingDisplayAmenity {
   };
 }
 
+const CORE_AMENITY_KEYS = [
+  'cold_AC',
+  'hair_dryer',
+  'washing_machine',
+  'smart_tv',
+  'workspace',
+  'yoga',
+  'Без плесени и запаха',
+  'Идеальная сантехника',
+  'parking'
+];
+
+const PRIVATE_ROOM_AMENITY_KEYS = [
+  'room_fridge',
+  'water_cooler'
+];
+
 export const HOUSING_LISTING_FIELDS: ListingFieldMeta[] = [
   {
     key: 'housingType',
@@ -259,7 +276,7 @@ const labelMaps = {
     tropical_shower: 'Tropical shower',
     double_sink: 'Double sink',
     bathtub: 'Bathtub',
-    garden_view: 'Garden view',
+    garden_view: 'Scenic window',
     sauna_hammam: 'Sauna / hammam'
   } as Record<string, string>,
   amenities: {
@@ -274,7 +291,9 @@ const labelMaps = {
     water_cooler: 'Water cooler',
     parking: 'Car parking',
     'Без плесени и запаха': 'No mold or smell',
-    'Идеальная сантехника': 'Perfect plumbing'
+    'Идеальная сантехника': 'Perfect plumbing',
+    'No mold or smell': 'No mold or smell',
+    'Perfect plumbing': 'Perfect plumbing'
   } as Record<string, string>,
   extraOptions: {
     airport_transfer_included: 'Airport transfer included',
@@ -318,7 +337,9 @@ const optionIconMaps: Record<string, Record<string, string>> = {
     water_cooler: '💧',
     parking: '🚗',
     'Без плесени и запаха': '🧼',
-    'Идеальная сантехника': '🚿'
+    'Идеальная сантехника': '🚿',
+    'No mold or smell': '🧼',
+    'Perfect plumbing': '🚿'
   },
   extraOptions: {
     airport_transfer_included: '✈️',
@@ -341,6 +362,15 @@ const formatToken = (value: string, map?: Record<string, string>, fieldKey?: str
   return translated && translated !== key ? translated : map?.[value] || value.replace(/_/g, ' ');
 };
 
+const formatPoolBadgeValue = (listing: Listing, tr?: ListingTranslator): string | undefined => {
+  if (!listing.poolType) return undefined;
+  const badgeKey = `details.option.poolTypeBadge.${listing.poolType}`;
+  const translated = tr ? tr(badgeKey) : '';
+  return translated && translated !== badgeKey
+    ? translated
+    : formatToken(listing.poolType, labelMaps.poolType, 'poolType', tr);
+};
+
 const formatList = (values: string[] | undefined, map?: Record<string, string>, fieldKey?: string, tr?: ListingTranslator) =>
   (values || []).map(value => formatToken(value, map, fieldKey, tr)).filter(Boolean).join(', ');
 
@@ -358,6 +388,18 @@ const getListValues = (listing: Listing, key: string): string[] => {
       return [];
   }
 };
+
+const normalizeAmenityKey = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'no mold or smell') return 'Без плесени и запаха';
+  if (normalized === 'perfect plumbing') return 'Идеальная сантехника';
+  return value;
+};
+
+const getExpectedAmenityKeys = (listing: Listing) => [
+  ...CORE_AMENITY_KEYS,
+  ...(listing.subCategory === 'private_room' ? PRIVATE_ROOM_AMENITY_KEYS : [])
+];
 
 const getLabelMap = (key: string): Record<string, string> | undefined =>
   key in labelMaps ? labelMaps[key as keyof typeof labelMaps] : undefined;
@@ -401,7 +443,7 @@ const formatHousingFieldValue = (listing: Listing, field: ListingFieldMeta, tr?:
     case 'territoryType':
       return listing.territoryType ? formatToken(listing.territoryType, labelMaps.territoryType, field.key, tr) : undefined;
     case 'poolType':
-      return listing.poolType ? formatToken(listing.poolType, labelMaps.poolType, field.key, tr) : undefined;
+      return formatPoolBadgeValue(listing, tr);
     case 'viewType':
       return listing.viewType ? formatToken(listing.viewType, labelMaps.viewType, field.key, tr) : undefined;
     case 'cleaningFrequency':
@@ -465,3 +507,18 @@ export const buildHousingAmenities = (listing: Listing, tr?: ListingTranslator):
           }]
         : [];
     });
+
+export const buildMissingHousingAmenities = (listing: Listing, tr?: ListingTranslator): ListingDisplayAmenity[] => {
+  const selectedAmenities = new Set((listing.amenities || []).map(normalizeAmenityKey));
+
+  return getExpectedAmenityKeys(listing)
+    .filter(value => !selectedAmenities.has(value))
+    .map(value => ({
+      key: `missing-amenity-${value}`,
+      name: value,
+      config: {
+        icon: '',
+        label: formatToken(value, labelMaps.amenities, 'amenities', tr)
+      }
+    }));
+};

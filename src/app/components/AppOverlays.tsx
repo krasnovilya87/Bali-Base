@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { BookingRequest, FilterState, Listing } from '../../types';
 import AdminDashboard from '../../components/AdminDashboard';
 import CreateWizard from '../../components/CreateWizard';
@@ -30,7 +30,8 @@ type AppOverlaysProps = {
   handleUpdateMenuOverrides: (newOverrides: any) => Promise<void>;
   listings: Listing[];
   menuOverrides: any;
-  onRequireAuth: (reasonKey?: string) => boolean;
+  onRequireAuth: (reasonKey?: string, afterAuth?: () => void) => boolean;
+  onSelectedListingClose: () => void;
   primaryL2: string;
   selectedListing: Listing | null;
   setCheckInDate: Dispatch<SetStateAction<string>>;
@@ -57,6 +58,8 @@ type AppOverlaysProps = {
   showUsersModal: boolean;
   initialCheckInDate: string;
   initialCheckOutDate: string;
+  checkInDate: string;
+  checkOutDate: string;
   usersModalTab: 'favorites' | 'whatsapp';
 };
 
@@ -81,6 +84,7 @@ export default function AppOverlays({
   listings,
   menuOverrides,
   onRequireAuth,
+  onSelectedListingClose,
   primaryL2,
   selectedListing,
   setCheckInDate,
@@ -107,8 +111,23 @@ export default function AppOverlays({
   showUsersModal,
   initialCheckInDate,
   initialCheckOutDate,
+  checkInDate,
+  checkOutDate,
   usersModalTab
 }: AppOverlaysProps) {
+  const [canEditSelectedListing, setCanEditSelectedListing] = useState(false);
+
+  const openEditWizard = (listing: Listing) => {
+    const startEditing = () => {
+      setShowMyAddsListing(false);
+      setSelectedListing(null);
+      setEditingListing(listing);
+      setShowCreateWizard(true);
+    };
+    if (!onRequireAuth('auth.reason.myListings', startEditing)) return;
+    startEditing();
+  };
+
   return (
     <>
       {showFiltersModal && (
@@ -122,13 +141,18 @@ export default function AppOverlays({
           onClose={() => setShowFiltersModal(false)}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
+          checkInDate={checkInDate}
+          checkOutDate={checkOutDate}
         />
       )}
 
       {selectedListing && (
         <ListingDetails
           listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
+          onClose={() => {
+            setCanEditSelectedListing(false);
+            onSelectedListingClose();
+          }}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           onAddBooking={handleAddBooking}
@@ -144,6 +168,7 @@ export default function AppOverlays({
             setSelectedListing(updatedListing);
             handleUpdateListing(updatedListing);
           }}
+          onEditClick={canEditSelectedListing ? openEditWizard : undefined}
         />
       )}
 
@@ -173,22 +198,28 @@ export default function AppOverlays({
           onToggleStatus={handleToggleListingStatus}
           onUpdateBookingStatus={handleUpdateBookingStatus}
           onUpdateBooking={handleUpdateBooking}
+          onAddBooking={handleAddBooking}
           onUpdateListing={handleUpdateListing}
           onDeleteListing={handleDeleteListing}
           onClose={() => setShowMyAddsListing(false)}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           onCreateClick={() => {
-            if (!onRequireAuth('auth.reason.createListing')) return;
-            setShowMyAddsListing(false);
-            setEditingListing(null);
-            setShowCreateWizard(true);
+            const openCreateWizard = () => {
+              setShowMyAddsListing(false);
+              setEditingListing(null);
+              setShowCreateWizard(true);
+            };
+            if (!onRequireAuth('auth.reason.createListing', openCreateWizard)) return;
+            openCreateWizard();
           }}
           onEditClick={(listing) => {
-            if (!onRequireAuth('auth.reason.myListings')) return;
+            openEditWizard(listing);
+          }}
+          onViewClick={(listing) => {
             setShowMyAddsListing(false);
-            setEditingListing(listing);
-            setShowCreateWizard(true);
+            setCanEditSelectedListing(true);
+            setSelectedListing(listing);
           }}
         />
       )}
@@ -201,6 +232,11 @@ export default function AppOverlays({
           onUpdateBookingStatus={handleUpdateBookingStatus}
           onUpdateListing={handleUpdateListing}
           onDeleteListing={handleDeleteListing}
+          onSelectListing={(listing) => {
+            setCanEditSelectedListing(false);
+            setSelectedListing(listing);
+            setShowAdminDashboard(false);
+          }}
           onClose={() => setShowAdminDashboard(false)}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
@@ -214,6 +250,7 @@ export default function AppOverlays({
           listings={listings}
           onClose={() => setShowUsersModal(false)}
           onViewListing={(listing) => {
+            setCanEditSelectedListing(false);
             setSelectedListing(listing);
           }}
           currencySymbol={currencySymbol}

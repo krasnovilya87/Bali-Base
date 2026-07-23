@@ -70,6 +70,7 @@ export function ListingsTab(props: AdminTabProps) {
                       <option value="active">{tr('admin.listings.status.active')}</option>
                       <option value="paused">{tr('admin.listings.status.paused')}</option>
                       <option value="moderation">{tr('admin.listings.status.moderation')}</option>
+                      <option value="rejected">{tr('admin.listings.status.rejected')}</option>
                       <option value="draft">{tr('admin.listings.status.draft')}</option>
                     </select>
                   </div>
@@ -136,7 +137,8 @@ export function ListingsTab(props: AdminTabProps) {
                               <span className={`px-2 py-0.5 rounded-md text-[9.5px] font-extrabold uppercase ${
                                 l.status === 'active' ? 'bg-emerald-50 text-emerald-600' :
                                 l.status === 'paused' ? 'bg-orange-50 text-orange-655' :
-                                l.status === 'moderation' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400'
+                                l.status === 'moderation' ? 'bg-amber-50 text-amber-600' :
+                                l.status === 'rejected' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'
                               }`}>
                                 {tr(`admin.listings.status.${l.status}`)}
                               </span>

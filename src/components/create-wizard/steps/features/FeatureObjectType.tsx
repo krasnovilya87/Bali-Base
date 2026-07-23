@@ -11,13 +11,15 @@ const FeatureObjectType: React.FC<FeatureSectionProps> = (props) => {
                   {/* 3. Тип объекта */}
                   <div className="space-y-3">
                     <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🏘️ Тип объекта</span>
-                    <div className={`grid gap-3 ${subCategory === 'private_room' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                    <div className={`grid gap-3 ${subCategory === 'private_room' ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'}`}>
                       {subCategory === 'private_room' ? (
                         [
                           { value: 'Guesthouse (privet room, shared property)', label: 'Guesthouse', icon: '🌴' },
                           { value: 'Home stay (Host on-site)', label: 'Homestay', icon: '🏠' },
                           { value: 'Hotel (privet room)', label: 'Hotel', icon: '🏨' },
-                          { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' }
+                          { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' },
+                          { value: 'Villa / House (privet room)', label: 'Вилла, Дом', icon: '🏘️' },
+                          { value: 'Apartment (privet room)', label: 'Апартаменты', icon: '🏢' }
                         ].map(t => {
                           const isActive = housingType === t.value;
                           return (

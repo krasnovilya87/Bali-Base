@@ -1,5 +1,27 @@
 /* Custom site styles and component overrides. */
 
+#navbar-cover-btn,
+#navbar-menu-btn,
+#live-search-input,
+#live-search-input-menu,
+#create-l-btn,
+#create-l-btn-menu {
+  height: 2.25rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+}
+
+@media (max-width: 639px) {
+  #create-l-btn,
+  #create-l-btn-menu {
+    height: 2rem !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1 !important;
+  }
+}
+
 /* Disable forced uppercase across the site. */
 * {
   text-transform: none !important;
@@ -23,6 +45,86 @@
   border-color: #FF7A50 !important;
   color: #FF7A50 !important;
 }
+
+.pl.quick-status-tile {
+  border: 0 !important;
+  font-weight: 600 !important;
+}
+
+.pl.quick-status-tile--approved {
+  background: rgb(255 255 255 / 88%) !important;
+  border-color: transparent !important;
+  color: rgb(6 78 59) !important;
+}
+
+.pl.quick-status-tile--new {
+  background: rgb(255 255 255 / 88%) !important;
+  border-color: transparent !important;
+  color: rgb(12 74 110) !important;
+}
+
+.pl.quick-status-tile--favorites {
+  background: rgb(255 255 255 / 88%) !important;
+  border-color: transparent !important;
+  color: rgb(136 19 55) !important;
+}
+
+.pl.quick-status-tile--approved.selected {
+  background: rgb(219 237 226) !important;
+  border-color: transparent !important;
+  color: rgb(28 76 56) !important;
+  box-shadow: 0 10px 22px rgb(89 129 106 / 12%) !important;
+}
+
+.pl.quick-status-tile--new.selected {
+  background: rgb(219 235 244) !important;
+  border-color: transparent !important;
+  color: rgb(34 72 92) !important;
+  box-shadow: 0 10px 22px rgb(84 119 138 / 12%) !important;
+}
+
+.pl.quick-status-tile--favorites.selected {
+  background: rgb(246 224 229) !important;
+  border-color: transparent !important;
+  color: rgb(103 42 57) !important;
+  box-shadow: 0 10px 22px rgb(143 78 94 / 12%) !important;
+}
+
+.pl.quick-status-tile :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  font-weight: 600 !important;
+}
+
+.pl.quick-status-tile--approved :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: rgb(6 78 59) !important;
+}
+
+.pl.quick-status-tile--new :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: rgb(12 74 110) !important;
+}
+
+.pl.quick-status-tile--favorites :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: rgb(136 19 55) !important;
+}
+
+.pl.quick-status-tile--approved.selected :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a),
+.pl.quick-status-tile--approved.selected svg {
+  color: rgb(28 76 56) !important;
+}
+
+.pl.quick-status-tile--new.selected :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a),
+.pl.quick-status-tile--new.selected svg {
+  color: rgb(34 72 92) !important;
+}
+
+.pl.quick-status-tile--favorites.selected :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a),
+.pl.quick-status-tile--favorites.selected svg {
+  color: rgb(103 42 57) !important;
+}
+
+.pl.quick-status-tile--favorites.selected svg {
+  fill: rgb(103 42 57) !important;
+}
+
 .pl.listing-detail-pill {
   background: rgb(255 255 255 / 80%) !important;
   background-color: rgb(255 255 255 / 80%) !important;

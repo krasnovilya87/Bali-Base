@@ -16,6 +16,10 @@ export const calculateGraphDailyPrice = ({ days, pricePerDay, pricePerMonth }: G
   const basePriceMonth = pricePerMonth || pricePerDay * 0.55 * 30;
   const baseMonthlyDaily = basePriceMonth / 30;
 
+  if (days === 1) {
+    return pricePerDay;
+  }
+
   if (days < 8) {
     return roundToTenThousand(pricePerDay);
   }

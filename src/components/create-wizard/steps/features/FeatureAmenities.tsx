@@ -19,7 +19,7 @@ const FeatureAmenities: React.FC<FeatureSectionProps> = (props) => {
                     <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🛋️ Удобства и Комфорт</span>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {[
-                        { value: 'cold_AC', label: 'Холодный кондиционер', icon: '🥶', type: 'amenity' },
+                        { value: 'cold_AC', label: 'Кондиционер', icon: '🥶', type: 'amenity' },
                         { value: 'hair_dryer', label: 'Фен', icon: '💨', type: 'amenity' },
                         { value: 'washing_machine', label: 'Стиральная машина', icon: '👕', type: 'amenity' },
                         { value: 'smart_tv', label: 'Smart TV', icon: '📺', type: 'amenity' },

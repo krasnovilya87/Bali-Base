@@ -18,7 +18,7 @@ const FeatureBathroom: React.FC<FeatureSectionProps> = (props) => {
                         { value: 'tropical_shower', label: 'Тропический душ', icon: '🌴' },
                         { value: 'double_sink', label: 'Две раковины', icon: '🚰' },
                         { value: 'bathtub', label: 'Ванна', icon: '🛁' },
-                        { value: 'garden_view', label: 'Вид на сад', icon: '🪴' },
+                        { value: 'garden_view', label: 'Видовое окно', icon: '🪴' },
                         { value: 'sauna_hammam', label: 'сауна / хаммам', icon: '🧖' }
                       ].map(opt => {
                         const isActive = bathroomOptions.includes(opt.value);

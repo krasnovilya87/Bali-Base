@@ -1,15 +1,15 @@
 // @ts-ignore
-import menuHousing from '../assets/images/menu_housing_1780404154855.png';
+import menuHousing from '../assets/images/menu_housing_1780404154855_optimized.webp';
 // @ts-ignore
-import menuTransport from '../assets/images/menu_transport_1780404170729.png';
+import menuTransport from '../assets/images/menu_transport_1780404170729_optimized.webp';
 // @ts-ignore
-import menuServices from '../assets/images/menu_services_1780404187685.png';
+import menuServices from '../assets/images/menu_services_1780404187685_optimized.webp';
 // @ts-ignore
-import menuAds from '../assets/images/menu_ads_1780404203502.png';
+import menuAds from '../assets/images/menu_ads_1780404203502_optimized.webp';
 // @ts-ignore
-import menuAfisha from '../assets/images/menu_afisha_1780404226444.png';
+import menuAfisha from '../assets/images/menu_afisha_1780404226444_optimized.webp';
 // @ts-ignore
-import menuLife from '../assets/images/menu_life_1780404239433.png';
+import menuLife from '../assets/images/menu_life_1780404239433_optimized.webp';
 
 export const SUBCATEGORIES_MAP: Record<string, Array<{ id: string; label: string; icon: string }>> = {
   housing: [
