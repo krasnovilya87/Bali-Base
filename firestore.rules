@@ -32,7 +32,7 @@ service cloud.firestore {
         && data.category is string && data.category.size() <= 64
         && data.title is string && data.title.size() <= 200
         && data.district is string && data.district.size() <= 64
-        && data.status is string && (data.status == 'active' || data.status == 'paused' || data.status == 'draft' || data.status == 'moderation')
+        && data.status is string && (data.status == 'active' || data.status == 'paused' || data.status == 'draft' || data.status == 'moderation' || data.status == 'rejected')
         && (data.pricePerDay is int || data.pricePerDay is float) && data.pricePerDay >= 0;
     }
 

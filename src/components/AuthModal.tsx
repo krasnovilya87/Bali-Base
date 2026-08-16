@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, X } from 'lucide-react';
-import { BRAND_LOGO_SRC } from '../app/brand';
+import BrandWordmark from '../app/components/BrandWordmark';
 import { useAuth } from '../auth/AuthContext';
 import { getDailyAuthImageUrl } from '../firebase';
 import { useI18n } from '../i18nContext';
@@ -161,11 +161,9 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,23,20,0.34),rgba(8,23,20,0.08)_50%,rgba(8,23,20,0.42)),linear-gradient(0deg,rgba(8,23,20,0.48),transparent_45%)]" />
           <div className="absolute bottom-6 left-5 max-w-[680px] pr-6 text-white sm:bottom-9 sm:left-8">
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/75">{tr('cover.badge')}</p>
-            <img
-              src={BRAND_LOGO_SRC}
-              alt={tr('brand.name')}
-              className="mt-4 h-auto w-[min(440px,76vw)] max-w-full drop-shadow-[0_18px_38px_rgba(0,0,0,0.34)] lg:w-[520px]"
-            />
+            <div className="mt-4 max-w-full">
+              <BrandWordmark label={tr('brand.name')} variant="auth" />
+            </div>
             <p className="mt-4 max-w-md text-sm font-semibold leading-relaxed text-white/85 sm:text-base">
               {tr('cover.subtitle')}
             </p>

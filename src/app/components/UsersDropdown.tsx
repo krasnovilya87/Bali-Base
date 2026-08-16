@@ -1,10 +1,11 @@
-import { ChevronDown, Heart, List, LogOut, MessageSquare, ShieldAlert, User } from 'lucide-react';
+import { ChevronDown, List, LogOut, MessageSquare, ShieldAlert, User, UserRoundCog } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '../../auth/AuthContext';
 import { auth } from '../../firebase';
-import { Listing } from '../../types';
+import { BookingRequest, Listing } from '../../types';
 
 interface UsersDropdownProps {
+  bookings: BookingRequest[];
   id: string;
   listings: Listing[];
   showUsersDropdown: boolean;
@@ -17,6 +18,7 @@ interface UsersDropdownProps {
   setShowAdminDashboard: (show: boolean) => void;
   setShowCreateWizard: (show: boolean) => void;
   setShowMyAddsListing: (show: boolean) => void;
+  setShowProfileModal: (show: boolean) => void;
   setShowUsersModal: (show: boolean) => void;
   setUsersModalTab: (tab: 'favorites' | 'whatsapp') => void;
 }
@@ -25,6 +27,7 @@ const isOwnListing = (item: Listing) =>
   item.ownerId === 'owner-personal' || item.ownerId === 'owner-1' || item.ownerId === 'owner-direct';
 
 export default function UsersDropdown({
+  bookings,
   id,
   listings,
   showUsersDropdown,
@@ -37,6 +40,7 @@ export default function UsersDropdown({
   setShowAdminDashboard,
   setShowCreateWizard,
   setShowMyAddsListing,
+  setShowProfileModal,
   setShowUsersModal,
   setUsersModalTab
 }: UsersDropdownProps) {
@@ -47,14 +51,19 @@ export default function UsersDropdown({
   };
   const ownListings = getOwnListings();
   const displayLabel = currentUser?.displayName || currentUser?.email || label;
-  const openFavorites = () => {
-    setUsersModalTab('favorites');
-    setShowUsersModal(true);
-    setShowUsersDropdown(false);
-  };
+  const totalContactHistoryCount = getContactHistoryCount();
+  const acceptedBookingCount = getAcceptedContactHistoryBookingCount(bookings);
+  const ownListingIds = new Set(ownListings.map(item => item.id));
+  const newBookingRequestCount = bookings.filter(booking =>
+    booking.status === 'pending' && ownListingIds.has(booking.listingId)
+  ).length;
   const openMessages = () => {
     setUsersModalTab('whatsapp');
     setShowUsersModal(true);
+    setShowUsersDropdown(false);
+  };
+  const openProfile = () => {
+    setShowProfileModal(true);
     setShowUsersDropdown(false);
   };
   const openMyListings = () => {
@@ -80,7 +89,7 @@ export default function UsersDropdown({
       </button>
 
       {showUsersDropdown && (
-        <div className="pu absolute right-0 mt-2 w-52 rounded-2xl shadow-xl border border-white/50 py-2.5 z-40 animate-fade-in text-xs font-sans text-left overflow-hidden">
+        <div className="pu absolute right-0 mt-2 w-60 rounded-2xl shadow-xl border border-white/50 py-2.5 z-40 animate-fade-in text-xs font-sans text-left overflow-hidden">
           <button
             onClick={() => {
               setShowAdminDashboard(true);
@@ -94,16 +103,16 @@ export default function UsersDropdown({
 
           <button
             onClick={() => {
-              if (!onRequireAuth('auth.reason.favorites', openFavorites)) {
+              if (!onRequireAuth('auth.defaultReason', openProfile)) {
                 setShowUsersDropdown(false);
                 return;
               }
-              openFavorites();
+              openProfile();
             }}
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition mt-1"
           >
-            <Heart className="w-4 h-4 text-[#FF7A50]" />
-            <span>{tr('nav.favorites')}</span>
+            <UserRoundCog className="w-4 h-4 text-[#FF7A50]" />
+            <span className="min-w-0 flex-1 truncate">{tr('nav.profile')}</span>
           </button>
 
           <button
@@ -114,10 +123,15 @@ export default function UsersDropdown({
               }
               openMessages();
             }}
-            className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition"
+            className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition mt-1"
           >
             <MessageSquare className="w-4 h-4 text-[#FF7A50]" />
-            <span>{tr('nav.clickHistory')}</span>
+            <span className="min-w-0 flex-1 truncate">{tr('nav.clickHistory')}</span>
+            <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black leading-none">
+              <span className="text-emerald-700">{formatCount(totalContactHistoryCount)}</span>
+              <span className="px-0.5 text-slate-400">/</span>
+              <span className="text-red-600">{formatCount(acceptedBookingCount)}</span>
+            </span>
           </button>
 
           <button
@@ -131,9 +145,14 @@ export default function UsersDropdown({
             className="w-full text-left px-4 py-2 hover:bg-white/70 text-[#1E293B] font-bold flex items-center gap-2 cursor-pointer transition"
           >
             <List className="w-4 h-4 text-[#FF7A50]" />
-            <span>
+            <span className="min-w-0 flex-1 truncate">
               {tr('nav.myListings')}
               {ownListings.length === 0 ? ` (${tr('nav.create')})` : ''}
+            </span>
+            <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-[#2F7D69]/10 px-1.5 py-0.5 text-[10px] font-black leading-none">
+              <span className="text-[#2F7D69]">{formatCount(ownListings.length)}</span>
+              <span className="px-0.5 text-slate-400">/</span>
+              <span className="text-red-600">{formatCount(newBookingRequestCount)}</span>
             </span>
           </button>
 
@@ -157,4 +176,37 @@ export default function UsersDropdown({
       )}
     </div>
   );
+}
+
+function formatCount(count: number) {
+  return count > 99 ? '99+' : String(count);
+}
+
+function getContactHistoryCount() {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]') as Array<{ id?: string }>;
+    return new Set(history.map((item) => item.id).filter(Boolean)).size;
+  } catch {
+    return 0;
+  }
+}
+
+function getAcceptedContactHistoryBookingCount(bookings: BookingRequest[]) {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]') as Array<{ id?: string }>;
+    const historyListingIds = new Set(history.map((item) => item.id).filter(Boolean));
+    if (historyListingIds.size === 0) return 0;
+
+    return Array.from(historyListingIds).filter((listingId) => {
+      const latestBooking = bookings
+        .filter((booking) => booking.listingId === listingId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+      return latestBooking?.status === 'accepted';
+    }).length;
+  } catch {
+    return 0;
+  }
 }

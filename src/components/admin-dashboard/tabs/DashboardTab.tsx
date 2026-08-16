@@ -6,6 +6,7 @@ import {
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
+import { isListingVerified } from '../../../utils/listingVerification';
 
 type AdminTabProps = Record<string, any>;
 export function DashboardTab(props: AdminTabProps) {
@@ -19,7 +20,8 @@ export function DashboardTab(props: AdminTabProps) {
     autoApprove, setAutoApprove, maintenanceMode, setMaintenanceMode, commissionRate, setCommissionRate, siteName, setSiteName, telegramSupportLink, setTelegramSupportLink,
     wizardLevel, setWizardLevel, l1SelectedId, setL1SelectedId, l1Label, setL1Label, l1Desc, setL1Desc, l1Image, setL1Image,
     l2ParentId, setL2ParentId, l2SelectedId, setL2SelectedId, l2Label, setL2Label, l2Icon, setL2Icon, l2CustomImage, setL2CustomImage, l2IconType, setL2IconType,
-    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2
+    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2,
+    openUserInfo
   } = props;
   return (
               <div className="space-y-6 animate-fade-in">
@@ -178,7 +180,7 @@ export function DashboardTab(props: AdminTabProps) {
                           <div className="flex justify-between items-center text-xs font-bold text-gray-800">
                             <span>{tr('admin.dashboard.approved')}</span>
                             <span className="font-mono text-rose-700">
-                              {tr('admin.dashboard.countShort', { count: listings.filter(l => l.isApproved).length })}
+                              {tr('admin.dashboard.countShort', { count: listings.filter(isListingVerified).length })}
                             </span>
                           </div>
                           <span className="text-[10px] text-gray-400 font-semibold block">{tr('admin.dashboard.approvedBody')}</span>
@@ -206,7 +208,13 @@ export function DashboardTab(props: AdminTabProps) {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1.5">
                     {adminUsers.slice(0, 3).map(u => (
-                      <div key={u.id} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100">
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => openUserInfo(u)}
+                        className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100 text-left transition hover:border-[#FF7A50]/30 hover:bg-white"
+                        title={tr('admin.userInfo.title')}
+                      >
                         <img 
                           src={u.avatar} 
                           alt={u.name}
@@ -224,7 +232,7 @@ export function DashboardTab(props: AdminTabProps) {
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

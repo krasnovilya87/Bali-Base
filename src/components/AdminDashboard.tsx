@@ -3,6 +3,7 @@ import { AdminDashboardProps } from './admin-dashboard/types';
 import AdminSidebar from './admin-dashboard/AdminSidebar';
 import AdminHeader from './admin-dashboard/AdminHeader';
 import AddUserModal from './admin-dashboard/AddUserModal';
+import AdminUserInfoModal from './admin-dashboard/AdminUserInfoModal';
 import RejectListingModal from './admin-dashboard/RejectListingModal';
 import { useAdminDashboardController } from './admin-dashboard/useAdminDashboardController';
 import {
@@ -33,6 +34,8 @@ export default function AdminDashboard({
     activeTab,
     setActiveTab,
     adminUsers,
+    selectedAdminUser,
+    setSelectedAdminUser,
     moderationListings,
     toastMessage,
     showToast,
@@ -145,6 +148,16 @@ export default function AdminDashboard({
           onCommentChange={setRejectionComment}
           onClose={() => setRejectListingId(null)}
           onConfirm={handleRejectConfirm}
+        />
+      )}
+      {selectedAdminUser && (
+        <AdminUserInfoModal
+          user={selectedAdminUser}
+          listingsCount={selectedAdminUser.listingsCount || listings.filter(listing =>
+            listing.ownerId === selectedAdminUser.id ||
+            listing.ownerName === selectedAdminUser.name
+          ).length}
+          onClose={() => setSelectedAdminUser(null)}
         />
       )}
 

@@ -13,16 +13,51 @@ import {
   testConnection
 } from '../../firebase';
 import { normalizeHousingListingForImport } from '../../components/admin-dashboard/importListingNormalizer';
+import { moderateListing } from '../../utils/aiModerationClient';
+import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
-import { applyGoogleReviewsCacheToListing, requestListingCreateGoogleReviewsRefresh } from '../../utils/googlePlacesReviewsClient';
+import {
+  applyGoogleReviewsCacheToListing,
+  readGoogleReviewsCacheForListingOrPlace,
+  requestListingCreateGoogleReviewsRefresh
+} from '../../utils/googlePlacesReviewsClient';
 import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
+import { t } from '../../i18n';
 
 const getHousingListingCollection = (listing: Listing) => {
   if (listing.category !== 'housing') {
     throw new Error(`Listings from L1 "${listing.category}" are not stored in ${LISTINGS_COLLECTION}`);
   }
   return LISTINGS_COLLECTION;
+};
+
+const mergeGoogleReviewsCacheIntoListings = async (listings: Listing[]) => {
+  const listingsWithPlaceIds = listings.filter(listing =>
+    listing.category === 'housing' &&
+    !listing.googleReviewsUpdatedAt &&
+    (!Array.isArray(listing.reviews) || listing.reviews.length === 0) &&
+    Boolean(listing.googlePlaceId || listing.placeId)
+  );
+
+  if (listingsWithPlaceIds.length === 0) return listings;
+
+  const cachedListings = await Promise.all(
+    listingsWithPlaceIds.map(async listing => {
+      try {
+        const cachedResponse = await readGoogleReviewsCacheForListingOrPlace(listing);
+        return sanitizeListingForFirestore(
+          applyGoogleReviewsCacheToListing(listing, cachedResponse)
+        ) as Listing;
+      } catch (error) {
+        console.warn('Failed to read Google reviews cache for listing:', listing.id, error);
+        return listing;
+      }
+    })
+  );
+  const cachedById = new Map(cachedListings.map(listing => [listing.id, listing]));
+
+  return listings.map(listing => cachedById.get(listing.id) || listing);
 };
 
 export const useListingsData = () => {
@@ -52,7 +87,9 @@ export const useListingsData = () => {
       let syncPassed = false;
       try {
         const synced = await syncWithFirebase();
-        const visibleListings = filterDeletedListings(synced.listings);
+        const visibleListings = filterDeletedListings(
+          await mergeGoogleReviewsCacheIntoListings(synced.listings)
+        );
         const visibleBookings = synced.bookings.filter(isBookingStored);
         setListings(visibleListings);
         setBookings(visibleBookings);
@@ -138,9 +175,18 @@ export const useListingsData = () => {
       googleReviewsUpdatedAt: listing.googleReviewsUpdatedAt,
       purpose
     });
+    const refreshedListing = sanitizeListingForFirestore(
+      applyGoogleReviewsCacheToListing(listing, reviewsResponse)
+    ) as Listing;
+
+    if (refreshedListing.googleReviewsUpdatedAt || refreshedListing.reviews?.length > 0) {
+      return refreshedListing;
+    }
+
+    const cachedResponse = await readGoogleReviewsCacheForListingOrPlace(listing);
 
     return sanitizeListingForFirestore(
-      applyGoogleReviewsCacheToListing(listing, reviewsResponse)
+      applyGoogleReviewsCacheToListing(listing, cachedResponse)
     ) as Listing;
   };
 
@@ -157,7 +203,16 @@ export const useListingsData = () => {
       await deleteDocument(LISTINGS_COLLECTION, updatedListing.id);
     }
 
+    const optimisticListings = listings.map(item =>
+      item.id === updatedListing.id ? finalListing : item
+    );
+    saveUpdatedState(optimisticListings, bookings);
+
     await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+    if (finalListing.status === 'rejected') {
+      return;
+    }
+
     finalListing = await refreshGoogleReviewsForListing(finalListing, 'listing_update');
     if (finalListing.googleReviewsUpdatedAt) {
       await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
@@ -206,9 +261,25 @@ export const useListingsData = () => {
   };
 
   const handleAddBooking = (newBooking: BookingRequest) => {
+    const bookingCreatedAt = new Date(newBooking.createdAt).getTime();
+    const listingActivityAt = Number.isFinite(bookingCreatedAt)
+      ? newBooking.createdAt
+      : new Date().toISOString();
+    let touchedListing: Listing | undefined;
+    const updatedListings = listings.map(listing => {
+      if (listing.id !== newBooking.listingId) return listing;
+      touchedListing = {
+        ...listing,
+        pushedAt: listingActivityAt
+      };
+      return touchedListing;
+    });
     const updated = [newBooking, ...bookings];
     setDocument('bookings', newBooking.id, newBooking);
-    saveUpdatedState(listings, updated);
+    if (touchedListing) {
+      setDocument(LISTINGS_COLLECTION, touchedListing.id, sanitizeListingForFirestore(touchedListing));
+    }
+    saveUpdatedState(updatedListings, updated);
   };
 
   const handlePublishListing = async (newListing: Listing) => {
@@ -217,10 +288,45 @@ export const useListingsData = () => {
       newListing.title,
       listings.filter(listing => listing.id !== newListing.id).map(listing => listing.id)
     );
+    let moderatedListing = newListing;
+    try {
+      const aiModeration = await moderateListing({ ...newListing, id: listingId });
+      const failedCheck = aiModeration.checks.find(check => !check.passed);
+      const failedRule = failedCheck
+        ? AI_MODERATION_RULES.find(rule => rule.id === failedCheck.id)
+        : undefined;
+      const rejectionReason = failedRule
+        ? t('EN', failedRule.rejectionReasonKey)
+        : t('EN', 'admin.reject.reason.other');
+      moderatedListing = {
+        ...newListing,
+        aiModeration,
+        isApproved: aiModeration.status === 'passed',
+        isVerified: newListing.isVerified ?? false,
+        status: aiModeration.status === 'passed' ? 'active' : 'rejected',
+        rejectionReason: aiModeration.status === 'passed' ? undefined : rejectionReason,
+        rejectionComment: undefined
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      moderatedListing = {
+        ...newListing,
+        aiModeration: {
+          status: 'error',
+          checkedAt: new Date().toISOString(),
+          summary: `AI moderation failed: ${message}`,
+          checks: []
+        },
+        isApproved: false,
+        isVerified: newListing.isVerified ?? false,
+        status: 'moderation'
+      };
+    }
+
     let listingForSave = sanitizeListingForFirestore({
-      ...newListing,
+      ...moderatedListing,
       id: listingId,
-      ownerId: user?.uid || newListing.ownerId
+      ownerId: user?.uid || moderatedListing.ownerId
     }) as Listing;
     const exists = listings.some(listing => listing.id === newListing.id);
     if (exists && listingForSave.id !== newListing.id) {

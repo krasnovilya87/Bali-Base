@@ -1,28 +1,52 @@
-import { initializeApp, getApps } from 'firebase/app';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  getFirestore,
-  increment,
-  limit,
-  orderBy,
-  query,
-  runTransaction,
-  setDoc,
-  updateDoc,
-  where
-} from 'firebase/firestore';
+import fs from 'node:fs';
+import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import firebaseConfig from '../../config/firebaseConfig';
 import type { Listing } from '../../types';
 import { getCurrentMonthKey, GOOGLE_PLACES_REVIEWS_CONFIG } from './config';
 import type { GooglePlaceReviewCacheRecord, GooglePlacesQuotaSnapshot, GooglePlacesRequestPurpose } from './types';
 
-const app = getApps().find(item => item.name === 'google-places-reviews-server') ||
-  initializeApp(firebaseConfig, 'google-places-reviews-server');
+type ServiceAccountConfig = {
+  projectId?: string;
+  clientEmail?: string;
+  privateKey?: string;
+};
 
-const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+const parseServiceAccountJson = (value: string): ServiceAccountConfig => {
+  const parsed = JSON.parse(value) as Record<string, string>;
+  return {
+    projectId: parsed.project_id || parsed.projectId,
+    clientEmail: parsed.client_email || parsed.clientEmail,
+    privateKey: (parsed.private_key || parsed.privateKey || '').replace(/\\n/g, '\n')
+  };
+};
+
+const readServiceAccount = (): ServiceAccountConfig | null => {
+  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (rawJson?.trim()) {
+    return parseServiceAccountJson(rawJson);
+  }
+
+  const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (filePath?.trim()) {
+    return parseServiceAccountJson(fs.readFileSync(filePath, 'utf8'));
+  }
+
+  return null;
+};
+
+const serviceAccount = readServiceAccount();
+
+const adminApp = getApps().find(item => item.name === 'google-places-reviews-admin') ||
+  initializeApp({
+    credential: serviceAccount
+      ? cert(serviceAccount)
+      : applicationDefault(),
+    projectId: firebaseConfig.projectId,
+    storageBucket: firebaseConfig.storageBucket
+  }, 'google-places-reviews-admin');
+
+const db = getFirestore(adminApp, (firebaseConfig as any).firestoreDatabaseId);
 
 export const GOOGLE_PLACES_CACHE_COLLECTION = 'google_places_review_cache';
 export const GOOGLE_PLACES_USAGE_COLLECTION = 'google_places_api_usage';
@@ -30,7 +54,7 @@ export const GOOGLE_PLACES_REQUEST_LOG_COLLECTION = 'google_places_api_request_l
 const LISTINGS_COLLECTION = 'housing_for_rent_listing';
 
 const getUsageDocRef = (monthKey = getCurrentMonthKey()) =>
-  doc(db, GOOGLE_PLACES_USAGE_COLLECTION, monthKey);
+  db.collection(GOOGLE_PLACES_USAGE_COLLECTION).doc(monthKey);
 
 const buildDefaultUsage = (monthKey = getCurrentMonthKey()) => {
   const hardLimit = GOOGLE_PLACES_REVIEWS_CONFIG.maxMonthlyRequests;
@@ -48,8 +72,8 @@ const buildDefaultUsage = (monthKey = getCurrentMonthKey()) => {
 
 export const readQuotaSnapshot = async (monthKey = getCurrentMonthKey()): Promise<GooglePlacesQuotaSnapshot> => {
   const ref = getUsageDocRef(monthKey);
-  const snapshot = await getDoc(ref);
-  const usage = snapshot.exists()
+  const snapshot = await ref.get();
+  const usage = snapshot.exists
     ? { ...buildDefaultUsage(monthKey), ...snapshot.data() }
     : buildDefaultUsage(monthKey);
 
@@ -87,12 +111,12 @@ export const logSuccessfulGooglePlacesRequest = async ({
 }) => {
   const monthKey = getCurrentMonthKey();
   const usageRef = getUsageDocRef(monthKey);
-  const logRef = doc(collection(db, GOOGLE_PLACES_REQUEST_LOG_COLLECTION));
+  const logRef = db.collection(GOOGLE_PLACES_REQUEST_LOG_COLLECTION).doc();
   const now = new Date().toISOString();
 
-  await runTransaction(db, async transaction => {
+  await db.runTransaction(async transaction => {
     const usageSnapshot = await transaction.get(usageRef);
-    if (!usageSnapshot.exists()) {
+    if (!usageSnapshot.exists) {
       transaction.set(usageRef, buildDefaultUsage(monthKey));
     }
 
@@ -106,25 +130,25 @@ export const logSuccessfulGooglePlacesRequest = async ({
     });
     transaction.set(usageRef, {
       ...buildDefaultUsage(monthKey),
-      successfulRequests: increment(1),
+      successfulRequests: FieldValue.increment(1),
       updatedAt: now
     }, { merge: true });
   });
 };
 
 export const readReviewCache = async (listingId: string) => {
-  const snapshot = await getDoc(doc(db, GOOGLE_PLACES_CACHE_COLLECTION, listingId));
-  return snapshot.exists()
+  const snapshot = await db.collection(GOOGLE_PLACES_CACHE_COLLECTION).doc(listingId).get();
+  return snapshot.exists
     ? ({ id: snapshot.id, ...snapshot.data() } as GooglePlaceReviewCacheRecord)
     : null;
 };
 
 export const writeReviewCache = async (record: GooglePlaceReviewCacheRecord) => {
-  await setDoc(doc(db, GOOGLE_PLACES_CACHE_COLLECTION, record.listingId), record, { merge: true });
+  await db.collection(GOOGLE_PLACES_CACHE_COLLECTION).doc(record.listingId).set(record, { merge: true });
 };
 
 export const updateListingWithReviewCache = async (record: GooglePlaceReviewCacheRecord) => {
-  await setDoc(doc(db, LISTINGS_COLLECTION, record.listingId), {
+  await db.collection(LISTINGS_COLLECTION).doc(record.listingId).set({
     googlePlaceId: record.placeId,
     placeId: record.placeId,
     rating: record.rating ?? 0,
@@ -135,12 +159,11 @@ export const updateListingWithReviewCache = async (record: GooglePlaceReviewCach
 };
 
 export const readListingsForReviewsRefresh = async (maxCount: number) => {
-  const listingsSnapshot = await getDocs(query(
-    collection(db, LISTINGS_COLLECTION),
-    where('category', '==', 'housing'),
-    where('status', '==', 'active'),
-    limit(maxCount * 4)
-  ));
+  const listingsSnapshot = await db.collection(LISTINGS_COLLECTION)
+    .where('category', '==', 'housing')
+    .where('status', '==', 'active')
+    .limit(maxCount * 4)
+    .get();
 
   return listingsSnapshot.docs
     .map(item => ({ id: item.id, ...item.data() } as Listing))
@@ -149,11 +172,10 @@ export const readListingsForReviewsRefresh = async (maxCount: number) => {
 };
 
 export const readOldestReviewCaches = async (maxCount: number) => {
-  const snapshot = await getDocs(query(
-    collection(db, GOOGLE_PLACES_CACHE_COLLECTION),
-    orderBy('updatedAt', 'asc'),
-    limit(maxCount)
-  ));
+  const snapshot = await db.collection(GOOGLE_PLACES_CACHE_COLLECTION)
+    .orderBy('updatedAt', 'asc')
+    .limit(maxCount)
+    .get();
 
   return snapshot.docs.map(item => ({ id: item.id, ...item.data() } as GooglePlaceReviewCacheRecord));
 };

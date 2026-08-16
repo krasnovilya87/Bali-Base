@@ -22,6 +22,7 @@ export default function TwoMonthCalendar({
   const { language, tr } = useI18n();
   // Anchored dynamically to current local system date
   const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const initialBaseDate = new Date(today.getFullYear(), today.getMonth(), 1);
   const [baseMonth, setBaseMonth] = useState<Date>(initialBaseDate);
 
@@ -189,7 +190,7 @@ export default function TwoMonthCalendar({
     e.stopPropagation();
     
     // Disable past dates
-    if (fullDate < today) return;
+    if (fullDate < todayStart) return;
 
     if (singleDateMode) {
       setLocalCheckIn(dateStr);
@@ -230,7 +231,7 @@ export default function TwoMonthCalendar({
     dateStr: string,
     fullDate: Date
   ) => {
-    if (singleDateMode || bookingMode === 'monthly' || fullDate < today || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (singleDateMode || bookingMode === 'monthly' || fullDate < todayStart || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragMovedRef.current = false;
@@ -324,7 +325,7 @@ export default function TwoMonthCalendar({
             }
 
             const { day, dateStr, fullDate } = dayData;
-            const isPast = fullDate < today;
+            const isPast = fullDate < todayStart;
             const selected = isSelected(dateStr);
             const between = isBetween(dateStr);
             const isStart = dateStr === localCheckIn;
@@ -529,19 +530,19 @@ export default function TwoMonthCalendar({
                   const diffTime = Math.abs(end.getTime() - start.getTime());
                   const count = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                   
-                  const pluralizeDays = (n: number) => {
-                    if (language !== 'RU') return n === 1 ? tr('listing.day') : tr('listing.days');
+                  const pluralizeNights = (n: number) => {
+                    if (language !== 'RU') return n === 1 ? tr('listing.night') : tr('listing.nights');
                     const mod10 = n % 10;
                     const mod100 = n % 100;
-                    if (mod100 >= 11 && mod100 <= 19) return 'дней';
-                    if (mod10 === 1) return 'день';
-                    if (mod10 >= 2 && mod10 <= 4) return 'дня';
-                    return 'дней';
+                    if (mod100 >= 11 && mod100 <= 19) return 'ночей';
+                    if (mod10 === 1) return 'ночь';
+                    if (mod10 >= 2 && mod10 <= 4) return 'ночи';
+                    return 'ночей';
                   };
                   
                   return (
                     <span className="font-extrabold text-gray-950">
-                      {tr('calendar.total', { count, days: pluralizeDays(count) })}
+                      {tr('calendar.total', { count, days: pluralizeNights(count) })}
                     </span>
                   );
                 })()

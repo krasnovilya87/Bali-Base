@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Listing, SearchState, FilterState } from './types';
+import { BookingRequest, Listing, SearchState, FilterState } from './types';
 import { MOCK_GUIDES } from './data';
 import MapBox from './components/MapBox';
 import ListingCard from './components/ListingCard';
+import SupportContactModal from './components/SupportContactModal';
 import TwoMonthCalendar from './components/TwoMonthCalendar';
 import { ThreeDIcon } from './components/ThreeDIcon';
 import { THEME } from './theme';
@@ -11,11 +12,12 @@ import { DEFAULT_LANGUAGE, LanguageCode, loadTranslations, t } from './i18n';
 import { I18nProvider } from './i18nContext';
 // @ts-ignore
 import baliRiceBg from './assets/images/hero4.jpg';
-import { BRAND_LOGO_SRC, COVER_SWIPE_LOTTIE_SRC, HEADER_LOGO_SRC } from './app/brand';
+import { COVER_SWIPE_LOTTIE_SRC } from './app/brand';
 import { CURRENCIES, CurrencyKey } from './app/currency';
 import { getDeviceLanguage } from './app/language';
-import { L1_CATEGORIES, SUBCATEGORIES_MAP } from './app/menu';
+import { L1_CATEGORIES, preloadMenuImages, SUBCATEGORIES_MAP } from './app/menu';
 import AppOverlays from './app/components/AppOverlays';
+import BrandWordmark from './app/components/BrandWordmark';
 import CurrencyLanguageControls from './app/components/CurrencyLanguageControls';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
@@ -30,7 +32,7 @@ import { LISTING_SHARE_PARAM } from './utils/listingShare';
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart
+  Maximize, Minimize, Heart, MessageSquare, List
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -38,6 +40,92 @@ const DISTRICT_MENU_GROUPS = [
   ['Gili Trawangan', 'Gili Meno', 'Gili Air'],
   ['Nusa Penida']
 ];
+
+const MENU_SELECTION_STORAGE_KEY = 'bali_base_menu_selection';
+const FILTERS_STORAGE_KEY = 'bali_base_filters';
+
+const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
+
+const getDefaultFilters = (): FilterState => ({
+  priceMin: 0,
+  priceMax: 30000000,
+  distanceToSeaMin: 0,
+  distanceToSeaMax: 45,
+  interiorStyle: [],
+  isNewOnly: false,
+  isApprovedOnly: false,
+  hasDropPriceOnly: false,
+  housingType: [],
+  roomsMin: 1,
+  roomsMax: 10,
+  areaMin: 5,
+  wallMaterial: [],
+  territoryType: [],
+  densityType: [],
+  cleanlinessTags: [],
+  bedType: [],
+  kitchenType: [],
+  poolType: [],
+  internetSpeedMin: 0,
+  bathroomType: [],
+  bathroomOptions: [],
+  amenities: [],
+  cleaningFrequency: [],
+  viewType: [],
+  extraOptions: [],
+  engineSize: [],
+  transmission: [],
+  vehicleBrand: [],
+  favoritesOnly: false
+});
+
+const readStoredMenuSelection = () => {
+  const defaultL1 = 'housing';
+  const defaultSelection = {
+    currentL1: defaultL1,
+    currentL2: getL2IdsForL1(defaultL1)
+  };
+
+  if (typeof window === 'undefined') return defaultSelection;
+
+  try {
+    const raw = window.localStorage.getItem(MENU_SELECTION_STORAGE_KEY);
+    if (!raw) return defaultSelection;
+
+    const parsed = JSON.parse(raw) as { currentL1?: unknown; currentL2?: unknown };
+    const currentL1 = typeof parsed.currentL1 === 'string' && parsed.currentL1 in SUBCATEGORIES_MAP
+      ? parsed.currentL1
+      : defaultSelection.currentL1;
+    const validL2Ids = new Set(getL2IdsForL1(currentL1));
+    const currentL2 = Array.isArray(parsed.currentL2)
+      ? parsed.currentL2.filter((id): id is string => typeof id === 'string' && validL2Ids.has(id))
+      : [];
+
+    return {
+      currentL1,
+      currentL2: currentL2.length > 0 ? currentL2 : getL2IdsForL1(currentL1)
+    };
+  } catch {
+    return defaultSelection;
+  }
+};
+
+const readStoredFilters = (): FilterState => {
+  const defaultFilters = getDefaultFilters();
+  if (typeof window === 'undefined') return defaultFilters;
+
+  try {
+    const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return defaultFilters;
+
+    return {
+      ...defaultFilters,
+      ...(JSON.parse(raw) as Partial<FilterState>)
+    };
+  } catch {
+    return defaultFilters;
+  }
+};
 
 export default function App() {
   const { user } = useAuth();
@@ -57,8 +145,9 @@ export default function App() {
   } = useListingsData();
 
   // Search, category & routing states
-  const [currentL1, setCurrentL1] = useState<string>('housing');
-  const [currentL2, setCurrentL2] = useState<string[]>(['entire_place']);
+  const [storedMenuSelection] = useState(readStoredMenuSelection);
+  const [currentL1, setCurrentL1] = useState<string>(storedMenuSelection.currentL1);
+  const [currentL2, setCurrentL2] = useState<string[]>(storedMenuSelection.currentL2);
   const [districtSearch, setDistrictSearch] = useState<string[]>([]);
   const [districtOptions] = useState<string[]>(() => {
     const districtsFromGeoJSON = new Set(getDistrictNamesFromGeoJSONSync());
@@ -78,38 +167,7 @@ export default function App() {
   const [showAutoComplete, setShowAutoComplete] = useState<boolean>(false);
 
   // Filters state
-  const [filters, setFilters] = useState<FilterState>({
-    priceMin: 0,
-    priceMax: 30000000,
-    distanceToSeaMin: 0,
-    distanceToSeaMax: 45,
-    interiorStyle: [],
-    isNewOnly: false,
-    isApprovedOnly: false,
-    hasDropPriceOnly: false,
-    housingType: [],
-    roomsMin: 1,
-    roomsMax: 10,
-    areaMin: 5,
-    wallMaterial: [],
-    territoryType: [],
-    densityType: [],
-    cleanlinessTags: [],
-    bedType: [],
-    kitchenType: [],
-    poolType: [],
-    internetSpeedMin: 0,
-    bathroomType: [],
-    bathroomOptions: [],
-    amenities: [],
-    cleaningFrequency: [],
-    viewType: [],
-    extraOptions: [],
-    engineSize: [],
-    transmission: [],
-    vehicleBrand: [],
-    favoritesOnly: false
-  });
+  const [filters, setFilters] = useState<FilterState>(readStoredFilters);
 
   // Modals / Windows triggers states
   const [showFiltersModal, setShowFiltersModal] = useState<boolean>(false);
@@ -118,10 +176,13 @@ export default function App() {
   const [showCreateWizard, setShowCreateWizard] = useState<boolean>(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [showMyAddsListing, setShowMyAddsListing] = useState<boolean>(false);
+  const [initialBookingsListingId, setInitialBookingsListingId] = useState<string | null>(null);
   const [showUsersDropdown, setShowUsersDropdown] = useState<boolean>(false);
   const [showUsersModal, setShowUsersModal] = useState<boolean>(false);
   const [usersModalTab, setUsersModalTab] = useState<'favorites' | 'whatsapp'>('favorites');
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
+  const [showContactUsModal, setShowContactUsModal] = useState<boolean>(false);
   const [authModalReason, setAuthModalReason] = useState<string>('');
   const pendingAuthActionRef = useRef<(() => void) | null>(null);
   const [showListingMap, setShowListingMap] = useState<boolean>(() => {
@@ -132,8 +193,31 @@ export default function App() {
   });
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
   const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
-  const [showFooter, setShowFooter] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+  const lastPageScrollYRef = useRef(0);
+  const filtersBarRef = useRef<HTMLElement | null>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
+  const mapPanelRef = useRef<HTMLDivElement | null>(null);
+  const mapFrameRef = useRef({ top: 154, height: 420 });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.localStorage.setItem(MENU_SELECTION_STORAGE_KEY, JSON.stringify({
+      currentL1,
+      currentL2
+    }));
+  }, [currentL1, currentL2]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    preloadMenuImages(menuOverrides);
+  }, [menuOverrides]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || listings.length === 0 || selectedListing) return;
@@ -164,79 +248,82 @@ export default function App() {
     window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
   };
 
-  // Coordinated Scrolling logic for Desktop/PC
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handleWheel = (e: WheelEvent) => {
-      // Only apply on desktop (MD screen and up)
-      if (window.innerWidth < 768) return;
+    if (currentView !== 'app') {
+      setIsL2Visible(true);
+      lastPageScrollYRef.current = window.scrollY;
+      return;
+    }
 
-      // Skip when map is fullscreen or modal/view is open that covers screen
-      if (isMapFullscreen || showFiltersModal || selectedListing || showCreateWizard || showMyAddsListing || showUsersModal || showAdminDashboard) {
-        return;
-      }
+    const handlePageScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastPageScrollYRef.current;
 
-      const panel = document.getElementById('listings-scroll-panel');
-      if (!panel) return;
-
-      const isScrollDown = e.deltaY > 0;
-      const isScrollUp = e.deltaY < 0;
-
-      // 1. FIRST SCROLL DOWN - Hides Level 2 menu
-      if (isScrollDown && isL2Visible) {
-        e.preventDefault();
-        setIsL2Visible(false);
-        return;
-      }
-
-      // 2. AT BOTTOM OF LISTING AND SCROLLING DOWN - Show footer & scroll window down
-      const isAtBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 6;
-      if (isScrollDown && isAtBottom && !showFooter) {
-        e.preventDefault();
-        setShowFooter(true);
-        return;
-      }
-
-      // 3. FROM THE BOTTOM SCROLLING UP - Hide footer & scroll window back up
-      if (isScrollUp && showFooter) {
-        e.preventDefault();
-        setShowFooter(false);
-        return;
-      }
-
-      // 4. AT TOP OF LISTING AND SCROLLING UP - Show Level 2 menu
-      const isAtTop = panel.scrollTop <= 2;
-      if (isScrollUp && isAtTop && !isL2Visible) {
-        e.preventDefault();
+      if (currentScrollY <= 2) {
         setIsL2Visible(true);
+      } else if (delta > 6) {
+        setIsL2Visible(false);
+      } else if (delta < -6) {
+        setIsL2Visible(true);
+      }
+
+      lastPageScrollYRef.current = currentScrollY;
+    };
+
+    lastPageScrollYRef.current = window.scrollY;
+    window.addEventListener('scroll', handlePageScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handlePageScroll);
+    };
+  }, [currentView]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || currentView !== 'app') return;
+
+    let frameId = 0;
+    const updateMapFrame = () => {
+      frameId = 0;
+      const mapPanel = mapPanelRef.current;
+      const filtersBar = filtersBarRef.current;
+
+      if (!mapPanel || !filtersBar || window.innerWidth < 768 || isMapFullscreen || !showListingMap || currentL1 === 'useful') {
         return;
       }
+
+      const filtersBottom = filtersBar.getBoundingClientRect().bottom;
+      const top = Math.max(0, filtersBottom + 20);
+      const footerTop = footerRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+      const bottom = Math.min(window.innerHeight - 20, footerTop - 20);
+      const height = Math.max(0, Math.round(bottom - top));
+
+      const previousFrame = mapFrameRef.current;
+      if (Math.abs(previousFrame.top - top) < 0.5 && Math.abs(previousFrame.height - height) < 0.5) {
+        return;
+      }
+
+      mapFrameRef.current = { top, height };
+      mapPanel.style.setProperty('--map-sticky-top', `${top}px`);
+      mapPanel.style.setProperty('--map-sticky-height', `${height}px`);
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
+    const scheduleMapFrameUpdate = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(updateMapFrame);
+    };
+
+    scheduleMapFrameUpdate();
+    window.addEventListener('scroll', scheduleMapFrameUpdate, { passive: true });
+    window.addEventListener('resize', scheduleMapFrameUpdate);
+
     return () => {
-      window.removeEventListener('wheel', handleWheel);
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.removeEventListener('scroll', scheduleMapFrameUpdate);
+      window.removeEventListener('resize', scheduleMapFrameUpdate);
     };
-  }, [isL2Visible, showFooter, isMapFullscreen, showFiltersModal, selectedListing, showCreateWizard, showMyAddsListing, showUsersModal, showAdminDashboard]);
-
-  // Keep the listings pinned to their bottom edge while the footer expands.
-  useEffect(() => {
-    if (!showFooter || typeof ResizeObserver === 'undefined') return;
-
-    const panel = document.getElementById('listings-scroll-panel');
-    if (!panel) return;
-
-    const keepAtBottom = () => {
-      panel.scrollTop = panel.scrollHeight;
-    };
-
-    keepAtBottom();
-    const observer = new ResizeObserver(keepAtBottom);
-    observer.observe(panel);
-
-    return () => observer.disconnect();
-  }, [showFooter]);
+  }, [currentView, currentL1, isMapFullscreen, showListingMap, listings.length]);
 
   useEffect(() => {
     if (isMapFullscreen) {
@@ -261,6 +348,22 @@ export default function App() {
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
+  const ownerListingIds = useMemo(() => new Set(listings
+    .filter(item =>
+      item.ownerId === user?.uid ||
+      item.ownerId === 'owner-1' ||
+      item.ownerId === 'owner-personal' ||
+      item.ownerId === 'owner-direct'
+    )
+    .map(item => item.id)
+  ), [listings, user?.uid]);
+  const newBookingRequests = useMemo(() => bookings.filter(booking =>
+    booking.status === 'pending' && ownerListingIds.has(booking.listingId)
+  ), [bookings, ownerListingIds]);
+  const newBookingRequestListingIds = useMemo(() => (
+    Array.from(new Set(newBookingRequests.map(booking => booking.listingId)))
+  ), [newBookingRequests]);
+  const acceptedBookingHistoryCount = useMemo(() => getAcceptedContactHistoryBookingCount(bookings), [bookings]);
 
   const requestAuth = (reasonKey = 'auth.defaultReason', afterAuth?: () => void) => {
     if (user) return true;
@@ -276,6 +379,28 @@ export default function App() {
     }
 
     action();
+  };
+
+  const openBookingRequests = () => {
+    const openRequests = () => {
+      setShowUsersDropdown(false);
+      setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
+      setShowMyAddsListing(true);
+    };
+
+    if (!requestAuth('auth.reason.myListings', openRequests)) return;
+    openRequests();
+  };
+
+  const openBookingHistory = () => {
+    const openHistory = () => {
+      setShowUsersDropdown(false);
+      setUsersModalTab('whatsapp');
+      setShowUsersModal(true);
+    };
+
+    if (!requestAuth('auth.reason.messages', openHistory)) return;
+    openHistory();
   };
 
   useEffect(() => {
@@ -395,8 +520,16 @@ export default function App() {
       setShowAdminDashboard(false);
       return;
     }
+    if (showContactUsModal) {
+      setShowContactUsModal(false);
+      return;
+    }
     if (showUsersModal) {
       setShowUsersModal(false);
+      return;
+    }
+    if (showProfileModal) {
+      setShowProfileModal(false);
       return;
     }
     if (showCalendar) {
@@ -564,6 +697,7 @@ export default function App() {
     showLanguageDrop,
     showMapSelectModal,
     showMyAddsListing,
+    showProfileModal,
     showSortDropdown,
     showUsersDropdown,
     showUsersModal
@@ -638,50 +772,47 @@ export default function App() {
 
       const diffTime = Math.abs(d2.getTime() - d1.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const getDaysWord = (days: number) => {
+      const getNightsWord = (nights: number) => {
         if (activeLanguage !== 'RU') {
-          return days === 1 ? tr('listing.day') : tr('listing.days');
+          return nights === 1 ? tr('listing.night') : tr('listing.nights');
         }
-        const mod10 = days % 10;
-        const mod100 = days % 100;
+        const mod10 = nights % 10;
+        const mod100 = nights % 100;
         if (mod100 >= 11 && mod100 <= 19) {
-          return "\u0434\u043d\u0435\u0439";
+          return "\u043d\u043e\u0447\u0435\u0439";
         }
         if (mod10 === 1) {
-          return "\u0434\u0435\u043d\u044c";
+          return "\u043d\u043e\u0447\u044c";
         }
         if (mod10 >= 2 && mod10 <= 4) {
-          return "\u0434\u043d\u044f";
+          return "\u043d\u043e\u0447\u0438";
         }
-        return "\u0434\u043d\u0435\u0439";
+        return "\u043d\u043e\u0447\u0435\u0439";
       };
 
-      const daysSuffix = diffDays > 0 ? ` (${diffDays} ${getDaysWord(diffDays)})` : "";
+      const nightsSuffix = diffDays > 0 ? ` (${diffDays} ${getNightsWord(diffDays)})` : "";
 
       if (m1 === m2) {
-        return `${d1.getDate()}-${d2.getDate()} ${m1}${daysSuffix}`;
+        return `${d1.getDate()}-${d2.getDate()} ${m1}${nightsSuffix}`;
       }
-      return `${getDayMonth(d1)} - ${getDayMonth(d2)}${daysSuffix}`;
+      return `${getDayMonth(d1)} - ${getDayMonth(d2)}${nightsSuffix}`;
     }
     return `${tr('date.from')} ${getDayMonth(d1)}`;
   };
 
-  // Switch Category L1 -> automatically adjusts default Level-2 parameters
+  // Switch Category L1 -> automatically enables all matching Level-2 filters
   const selectL1 = (catId: string) => {
-    setCurrentL1(catId);
-    if (catId === 'housing') setCurrentL2(['entire_place']);
-    else if (catId === 'transport') setCurrentL2(['scooters']);
-    else if (catId === 'investments') setCurrentL2(['villas']);
-    else if (catId === 'services') setCurrentL2(['for_leisure']);
-    else if (catId === 'ads') setCurrentL2(['electronics']);
-    else if (catId === 'afisha') setCurrentL2(['festivals']);
-    else if (catId === 'life') setCurrentL2(['meetings']);
-    else setCurrentL2([]);
+    setCurrentL1(prevL1 => {
+      if (prevL1 !== catId) {
+        setCurrentL2(getL2IdsForL1(catId));
+      }
+      return catId;
+    });
   };
 
   const openAppView = () => {
     setIsL2Visible(true);
-    setShowFooter(false);
+    lastPageScrollYRef.current = 0;
     setCurrentView('app');
     resetViewScroll();
   };
@@ -723,6 +854,7 @@ export default function App() {
 
   const { sortedListings, suggestions } = useListingSearch({
     listings,
+    bookings,
     currentL1,
     currentL2,
     districtSearch,
@@ -769,12 +901,9 @@ export default function App() {
             </div>
 
             <div className="z-20 space-y-4 max-w-4xl relative">
-              <img
-                src={BRAND_LOGO_SRC}
-                alt="Bali Base"
-                className="mx-auto h-auto w-[280px] sm:w-[430px] max-w-[78vw] drop-shadow-md pb-2"
-                referrerPolicy="no-referrer"
-              />
+              <div className="mx-auto max-w-[90vw] pb-2">
+                <BrandWordmark label={tr('brand.name')} variant="cover" />
+              </div>
               <p className="font-sans text-lg sm:text-xl text-emerald-50/90 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
                 {tr('cover.subtitle')}
               </p>
@@ -811,12 +940,7 @@ export default function App() {
                     title={tr('nav.backToCover.title')}
                   >
                     <Compass className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#FF7A50] group-hover:rotate-45 transition duration-300" />
-                    <img
-                      src={HEADER_LOGO_SRC}
-                      alt="Bali Base"
-                      className="h-[18px] sm:h-[22px] w-auto max-w-[96px] sm:max-w-[124px] object-contain"
-                      referrerPolicy="no-referrer"
-                    />
+                    <BrandWordmark label={tr('brand.name')} />
                   </div>
 
                   {/* Back to cover next to logo - hidden on mobile */}
@@ -900,6 +1024,42 @@ export default function App() {
                     setShowLanguageDrop={setShowLanguageDrop}
                   />
 
+                  <button
+                    type="button"
+                    onClick={openBookingRequests}
+                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    title={tr('nav.bookingRequests')}
+                    aria-label={tr('nav.bookingRequests')}
+                  >
+                    <List
+                      className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-[#FF7A50] transition-colors"
+                      strokeWidth={1.8}
+                    />
+                    {newBookingRequests.length > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                        {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openBookingHistory}
+                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    title={tr('nav.clickHistory')}
+                    aria-label={tr('nav.clickHistory')}
+                  >
+                    <MessageSquare
+                      className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-[#FF7A50] transition-colors"
+                      strokeWidth={1.8}
+                    />
+                    {acceptedBookingHistoryCount > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                        {acceptedBookingHistoryCount > 99 ? '99+' : acceptedBookingHistoryCount}
+                      </span>
+                    )}
+                  </button>
+
                   {/* Create Listing Wizard trigger button */}
                   <button
                     onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
@@ -911,6 +1071,7 @@ export default function App() {
                   </button>
 
                   <UsersDropdown
+                    bookings={bookings}
                     id="users-dropdown-btn-menu"
                     listings={listings}
                     showUsersDropdown={showUsersDropdown}
@@ -921,6 +1082,7 @@ export default function App() {
                     setShowAdminDashboard={setShowAdminDashboard}
                     setShowCreateWizard={setShowCreateWizard}
                     setShowMyAddsListing={setShowMyAddsListing}
+                    setShowProfileModal={setShowProfileModal}
                     setShowUsersModal={setShowUsersModal}
                     setUsersModalTab={setUsersModalTab}
                   />
@@ -936,15 +1098,11 @@ export default function App() {
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
-                  const displayL2 = menuOverrides?.l1?.[cat.id]?.l2 || cat.l2;
                   return (
                     <div
                       key={cat.id}
                       onClick={() => {
                         selectL1(cat.id);
-                        if (displayL2) {
-                          selectSingleL2(displayL2);
-                        }
                         openAppView();
                       }}
                       className="h-full min-h-0 sm:h-auto sm:aspect-square bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-3.5 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
@@ -982,7 +1140,7 @@ export default function App() {
 
         {/* 3. APP VIEW (SCREEN 3) */}
         {currentView === 'app' && (
-          <div className="flex-1 flex flex-col animate-fade-in md:flex-none md:h-[100dvh] md:min-h-0 md:overflow-hidden">
+          <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
             <header className="sticky top-0 shrink-0 bg-white border-b border-[#E5E7EB] z-[250] select-none">
@@ -996,12 +1154,7 @@ export default function App() {
                     title={tr('nav.backToCover.title')}
                   >
                     <Compass className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#FF7A50] group-hover:rotate-45 transition duration-300" />
-                    <img
-                      src={HEADER_LOGO_SRC}
-                      alt="Bali Base"
-                      className="h-[18px] sm:h-[22px] w-auto max-w-[96px] sm:max-w-[124px] object-contain"
-                      referrerPolicy="no-referrer"
-                    />
+                    <BrandWordmark label={tr('brand.name')} />
                   </div>
 
                   {/* Back to main menu next to logo - hidden on mobile / only visible starting from tablet/desktop (md) */}
@@ -1085,7 +1238,7 @@ export default function App() {
                         return next;
                       });
                     })}
-                    className="w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.favorites')}
                     aria-label={tr('nav.favorites')}
                     aria-pressed={showFavoritesOnly}
@@ -1095,6 +1248,47 @@ export default function App() {
                       strokeWidth={showFavoritesOnly ? 2.2 : 1.6}
                       fill={showFavoritesOnly ? 'currentColor' : 'none'}
                     />
+                    {favoriteIds.size > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                        {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openBookingRequests}
+                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    title={tr('nav.bookingRequests')}
+                    aria-label={tr('nav.bookingRequests')}
+                  >
+                    <List
+                      className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-[#FF7A50] transition-colors"
+                      strokeWidth={1.8}
+                    />
+                    {newBookingRequests.length > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                        {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openBookingHistory}
+                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    title={tr('nav.clickHistory')}
+                    aria-label={tr('nav.clickHistory')}
+                  >
+                    <MessageSquare
+                      className="w-5 h-5 sm:w-[22px] sm:h-[22px] text-[#FF7A50] transition-colors"
+                      strokeWidth={1.8}
+                    />
+                    {acceptedBookingHistoryCount > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                        {acceptedBookingHistoryCount > 99 ? '99+' : acceptedBookingHistoryCount}
+                      </span>
+                    )}
                   </button>
 
                   {/* Create Listing Wizard trigger button */}
@@ -1108,6 +1302,7 @@ export default function App() {
                   </button>
 
                   <UsersDropdown
+                    bookings={bookings}
                     id="users-dropdown-btn"
                     listings={listings}
                     showUsersDropdown={showUsersDropdown}
@@ -1120,6 +1315,7 @@ export default function App() {
                     setShowAdminDashboard={setShowAdminDashboard}
                     setShowCreateWizard={setShowCreateWizard}
                     setShowMyAddsListing={setShowMyAddsListing}
+                    setShowProfileModal={setShowProfileModal}
                     setShowUsersModal={setShowUsersModal}
                     setUsersModalTab={setUsersModalTab}
                   />
@@ -1161,9 +1357,9 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className={`shrink-0 bg-white select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[230] ${isL2Visible
-              ? 'max-h-[140px] opacity-100 py-2.5 sm:py-3.5 border-b border-[#E5E7EB]'
-              : 'max-h-0 opacity-0 py-0 border-b-0 pointer-events-none'
+            <nav className={`shrink-0 bg-white select-none transition-[opacity,transform] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[230] max-h-[140px] py-2.5 sm:py-3.5 border-b border-[#E5E7EB] ${isL2Visible
+              ? 'opacity-100 translate-y-0'
+              : 'opacity-0 -translate-y-3 pointer-events-none'
               }`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-4 flex flex-row justify-around sm:justify-center items-center w-full gap-0.5 sm:gap-10">
 
@@ -1209,7 +1405,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section className="shrink-0 bg-[#F4F7F6] py-3 sticky top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
+            <section ref={filtersBarRef} className="shrink-0 bg-[#F4F7F6] py-3 sticky top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1281,28 +1477,28 @@ export default function App() {
                     <div className="text-left font-sans flex-1 min-w-0">
                       {customPolygon ? (
                         <div>
-                          <span className="text-[#1E293B] font-bold text-[13px] sm:text-xs leading-none block truncate">
+                          <span className="text-[#1E293B] font-bold text-[13px] sm:text-xs leading-[1.2] block truncate">
                             {tr('location.areaOnMap')}
                           </span>
-                          <span className="text-[#FF7A50] font-bold text-[10px] leading-none block mt-0.5 truncate">
+                          <span className="text-[#FF7A50] font-bold text-[10px] leading-[1.15] block mt-0.5 truncate">
                             {tr('location.selectedArea')}
                           </span>
                         </div>
                       ) : customPoint ? (
                         <div>
-                          <span className="text-[#1E293B] font-bold text-[13px] sm:text-xs leading-none block truncate">
+                          <span className="text-[#1E293B] font-bold text-[13px] sm:text-xs leading-[1.2] block truncate">
                             {tr('location.pointOnMap')}
                           </span>
-                          <span className="text-[#FF7A50] font-bold text-[10px] leading-none block mt-0.5 truncate">
+                          <span className="text-[#FF7A50] font-bold text-[10px] leading-[1.15] block mt-0.5 truncate">
                             R ~ {Math.round(customRadius)} km
                           </span>
                         </div>
                       ) : districtSearch.length > 0 ? (
-                        <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
+                        <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-[1.2] block truncate">
                           {selectedDistrictLabel}
                         </span>
                       ) : (
-                        <span className="text-gray-400 font-normal text-[13px] sm:text-xs uppercase tracking-wider leading-none block truncate">
+                        <span className="text-gray-400 font-normal text-[13px] sm:text-xs uppercase tracking-wider leading-[1.2] block truncate">
                           {tr('location.where')}
                         </span>
                       )}
@@ -1446,15 +1642,15 @@ export default function App() {
             </section>
 
             {/* MAIN RESULTS PAGE: COLLAPSIBLE LISTING MAP WITH ADAPTIVE LAYOUTS */}
-            <main className="flex-grow md:flex-1 md:min-h-0 max-w-7xl w-full mx-auto px-1 sm:px-6 py-6 md:pt-6 md:pb-0 relative select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]">
-              <div className="flex flex-col md:flex-row gap-6 items-stretch md:h-full md:min-h-0">
+            <main className="flex-grow max-w-7xl w-full mx-auto px-1 sm:px-6 py-6 relative select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]">
+              <div className="flex flex-col md:flex-row gap-6 items-start">
 
                 {/* COLUMN 1: Listings scroll column (adapts dynamically) */}
                 <div
-                  className={`space-y-4 sm:space-y-6 overflow-y-auto px-0.5 sm:px-[18px] pb-[18px] pt-0 scroll-p-[18px] transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${showListingMap && currentL1 !== 'useful'
-                    ? 'w-full md:w-[calc(50%-12px)] md:h-[calc(100%-15px)] md:min-h-0'
-                    : 'w-full md:h-[calc(100%-15px)] md:min-h-0'
-                    }`}
+                  className={`space-y-4 sm:space-y-6 px-0.5 sm:px-[18px] pb-[18px] pt-0 scroll-p-[18px] transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${showListingMap && currentL1 !== 'useful'
+                    ? 'w-full md:w-[calc(50%-12px)]'
+                    : 'w-full'
+                  }`}
                   id="listings-scroll-panel"
                 >
                   <div className="flex items-center justify-between select-none">
@@ -1563,9 +1759,10 @@ export default function App() {
                 {/* COLUMN 2 (Interactive Floating Map Box / Drawer) */}
                 {showListingMap && currentL1 !== 'useful' && (
                   <div
-                    className={`overflow-hidden flex flex-col transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isMapFullscreen
+                    ref={mapPanelRef}
+                    className={`overflow-hidden flex flex-col ${isMapFullscreen
                       ? 'fixed inset-0 w-full h-full z-[300]'
-                      : 'relative w-full md:w-[calc(50%-12px)] h-[50vh] min-h-[400px] md:h-[calc(100%-15px)] md:min-h-0 md:flex-none z-[100]'
+                      : 'relative w-full md:w-[calc(50%-12px)] h-[50vh] min-h-[400px] md:sticky md:top-[var(--map-sticky-top,154px)] md:h-[var(--map-sticky-height,calc(100dvh-174px))] md:min-h-0 md:flex-none z-[100]'
                       }`}
                     id="map-right-panel"
                   >
@@ -1651,27 +1848,38 @@ export default function App() {
               </div>
             </main>
 
-            {/* ACTIVE FOOTER BAR */}
-            <footer className={`shrink-0 bg-white border-t border-[#E5E7EB] text-center mt-auto font-sans text-xs text-gray-400 select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${showFooter
-              ? 'max-h-[300px] opacity-100 py-8'
-              : 'max-md:max-h-[300px] max-md:opacity-100 max-md:py-8 md:max-h-px md:opacity-100 md:py-0 md:pointer-events-none'
-              }`}>
+            <footer ref={footerRef} className="shrink-0 bg-white border-t border-[#E5E7EB] text-center mt-auto font-sans text-xs text-gray-400 select-none py-8">
               <div className="max-w-7xl mx-auto px-4 space-y-3">
-                <p className="font-display font-bold text-gray-600 tracking-widest text-[10px] uppercase">
-                  {tr('footer.title')}
-                </p>
-                <p className="max-w-md mx-auto leading-relaxed">
+                <p className="max-w-md mx-auto leading-relaxed whitespace-pre-line">
                   {tr('footer.body')}
                 </p>
-                <div className="flex justify-center gap-4 text-gray-500 font-semibold pt-2">
-                  <span className="hover:text-[#FF7A50] cursor-pointer">{tr('footer.entirePlace')}</span>
-                  <span>вЂў</span>
-                  <span className="hover:text-[#FF7A50] cursor-pointer">{tr('footer.transport')}</span>
-                  <span>вЂў</span>
-                  <span className="hover:text-[#FF7A50] cursor-pointer">{tr('footer.usefulArticles')}</span>
+                <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-gray-500 font-semibold sm:gap-x-10">
+                  <a href="/faq.html" className="transition hover:text-[#FF7A50]">
+                    {tr('footer.faq')}
+                  </a>
+                  <a href="/terms.html" className="transition hover:text-[#FF7A50]">
+                    {tr('footer.terms')}
+                  </a>
+                  <a href="/privacy.html" className="transition hover:text-[#FF7A50]">
+                    {tr('footer.privacy')}
+                  </a>
+                  <a href="/listing-content-policy.html" className="transition hover:text-[#FF7A50]">
+                    {tr('footer.listingContentPolicy')}
+                  </a>
                 </div>
+                <div className="text-gray-500">
+                  <button
+                    type="button"
+                    onClick={() => setShowContactUsModal(true)}
+                    className="border-0 bg-transparent p-0 font-normal text-inherit transition hover:text-[#FF7A50]"
+                  >
+                    {tr('footer.contactUs')}
+                  </button>
+                </div>
+                <p>{tr('footer.copyright')}</p>
               </div>
             </footer>
+
           </div>
         )}
 
@@ -1695,6 +1903,7 @@ export default function App() {
           handleUpdateMenuOverrides={handleUpdateMenuOverrides}
           initialCheckInDate={checkInDate}
           initialCheckOutDate={checkOutDate}
+          initialBookingsListingId={initialBookingsListingId}
           checkInDate={checkInDate}
           checkOutDate={checkOutDate}
           listings={listings}
@@ -1717,13 +1926,16 @@ export default function App() {
           setShowFiltersModal={setShowFiltersModal}
           setShowMapSelectModal={setShowMapSelectModal}
           setShowMyAddsListing={setShowMyAddsListing}
+          setShowProfileModal={setShowProfileModal}
           setShowUsersModal={setShowUsersModal}
           setSortBy={setSortBy}
+          onInitialBookingsOpened={() => setInitialBookingsListingId(null)}
           showAdminDashboard={showAdminDashboard}
           showCreateWizard={showCreateWizard}
           showFiltersModal={showFiltersModal}
           showMapSelectModal={showMapSelectModal}
           showMyAddsListing={showMyAddsListing}
+          showProfileModal={showProfileModal}
           showUsersModal={showUsersModal}
           usersModalTab={usersModalTab}
         />
@@ -1739,9 +1951,32 @@ export default function App() {
           reason={authModalReason}
         />
 
+        {showContactUsModal && (
+          <SupportContactModal onClose={() => setShowContactUsModal(false)} />
+        )}
+
       </div>
     </I18nProvider>
   );
+}
+
+function getAcceptedContactHistoryBookingCount(bookings: BookingRequest[]) {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]') as Array<{ id?: string }>;
+    const historyListingIds = new Set(history.map((item) => item.id).filter(Boolean));
+    if (historyListingIds.size === 0) return 0;
+
+    return Array.from(historyListingIds).filter((listingId) => {
+      const latestBooking = bookings
+        .filter((booking) => booking.listingId === listingId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+      return latestBooking?.status === 'accepted';
+    }).length;
+  } catch {
+    return 0;
+  }
 }
 
 

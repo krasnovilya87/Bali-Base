@@ -116,6 +116,47 @@ export const L1_CATEGORIES = [
   }
 ];
 
+const preloadedMenuImageUrls = new Set<string>();
+
+const isCacheableMenuImageUrl = (value: unknown): value is string => {
+  return typeof value === 'string'
+    && value.length > 0
+    && !value.startsWith('data:image/');
+};
+
+export const getMenuImageUrls = (overrides: any = {}) => {
+  const urls = new Set<string>();
+
+  L1_CATEGORIES.forEach(cat => {
+    const image = overrides?.l1?.[cat.id]?.image || cat.image;
+    if (isCacheableMenuImageUrl(image)) {
+      urls.add(image);
+    }
+  });
+
+  Object.values(overrides?.l2 || {}).forEach((item: any) => {
+    if (isCacheableMenuImageUrl(item?.customImage)) {
+      urls.add(item.customImage);
+    }
+  });
+
+  return Array.from(urls);
+};
+
+export const preloadMenuImages = (overrides: any = {}) => {
+  if (typeof window === 'undefined') return;
+
+  getMenuImageUrls(overrides).forEach(url => {
+    if (preloadedMenuImageUrls.has(url)) return;
+    preloadedMenuImageUrls.add(url);
+
+    const image = new window.Image();
+    image.decoding = 'async';
+    image.referrerPolicy = 'no-referrer';
+    image.src = url;
+  });
+};
+
 export const sanitizeMenuOverrides = (overrides: any) => {
   if (!overrides) return overrides;
   const copy = JSON.parse(JSON.stringify(overrides));

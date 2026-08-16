@@ -22,6 +22,16 @@ export default defineConfig(() => {
       'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(process.env.GOOGLE_MAPS_PLATFORM_KEY || ''),
       'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || '')
     },
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          terms: path.resolve(__dirname, 'terms.html'),
+          privacy: path.resolve(__dirname, 'privacy.html'),
+          listingContentPolicy: path.resolve(__dirname, 'listing-content-policy.html'),
+        },
+      },
+    },
     optimizeDeps: {
       noDiscovery: true,
       include: [
@@ -31,7 +41,6 @@ export default defineConfig(() => {
         'firebase/auth',
         'firebase/firestore',
         'firebase/storage',
-        'lucide-react',
         'p-retry',
         'react-dom',
         'react-dom/client',
@@ -44,6 +53,9 @@ export default defineConfig(() => {
       port: 3000,
       strictPort: true,
       hmr: true,
+      fs: {
+        strict: false
+      },
       watch: {
         usePolling: true,
         interval: 250

@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction, useState } from 'react';
+import { AlertTriangle, X, XCircle } from 'lucide-react';
 import { BookingRequest, FilterState, Listing } from '../../types';
 import AdminDashboard from '../../components/AdminDashboard';
 import CreateWizard from '../../components/CreateWizard';
@@ -6,9 +7,13 @@ import HousingFilters from '../../components/HousingFilters';
 import ListingDetails from '../../components/ListingDetails';
 import MapSelectModal from '../../components/MapSelectModal';
 import MyAddsListing from '../../components/MyAddsListing';
+import ProfileModal from '../../components/ProfileModal';
 import UsersModal from '../../components/UsersModal';
 import { LanguageCode } from '../../i18n';
+import { useI18n } from '../../i18nContext';
 import { L1_CATEGORIES, SUBCATEGORIES_MAP } from '../menu';
+import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
+import { auth } from '../../firebase';
 
 type AppOverlaysProps = {
   activeLanguage: LanguageCode;
@@ -26,7 +31,7 @@ type AppOverlaysProps = {
   handleToggleListingStatus: (id: string) => void;
   handleUpdateBooking: (booking: BookingRequest) => void;
   handleUpdateBookingStatus: (id: string, status: 'accepted' | 'declined') => void;
-  handleUpdateListing: (listing: Listing) => void;
+  handleUpdateListing: (listing: Listing) => void | Promise<void>;
   handleUpdateMenuOverrides: (newOverrides: any) => Promise<void>;
   listings: Listing[];
   menuOverrides: any;
@@ -48,6 +53,7 @@ type AppOverlaysProps = {
   setShowFiltersModal: Dispatch<SetStateAction<boolean>>;
   setShowMapSelectModal: Dispatch<SetStateAction<boolean>>;
   setShowMyAddsListing: Dispatch<SetStateAction<boolean>>;
+  setShowProfileModal: Dispatch<SetStateAction<boolean>>;
   setShowUsersModal: Dispatch<SetStateAction<boolean>>;
   setSortBy: Dispatch<SetStateAction<string>>;
   showAdminDashboard: boolean;
@@ -55,11 +61,14 @@ type AppOverlaysProps = {
   showFiltersModal: boolean;
   showMapSelectModal: boolean;
   showMyAddsListing: boolean;
+  showProfileModal: boolean;
   showUsersModal: boolean;
   initialCheckInDate: string;
   initialCheckOutDate: string;
+  initialBookingsListingId: string | null;
   checkInDate: string;
   checkOutDate: string;
+  onInitialBookingsOpened: () => void;
   usersModalTab: 'favorites' | 'whatsapp';
 };
 
@@ -101,6 +110,7 @@ export default function AppOverlays({
   setShowFiltersModal,
   setShowMapSelectModal,
   setShowMyAddsListing,
+  setShowProfileModal,
   setShowUsersModal,
   setSortBy,
   showAdminDashboard,
@@ -108,14 +118,44 @@ export default function AppOverlays({
   showFiltersModal,
   showMapSelectModal,
   showMyAddsListing,
+  showProfileModal,
   showUsersModal,
   initialCheckInDate,
   initialCheckOutDate,
+  initialBookingsListingId,
   checkInDate,
   checkOutDate,
+  onInitialBookingsOpened,
   usersModalTab
 }: AppOverlaysProps) {
+  const { tr } = useI18n();
   const [canEditSelectedListing, setCanEditSelectedListing] = useState(false);
+  const [rejectionPopupListing, setRejectionPopupListing] = useState<Listing | null>(null);
+  const [returnToMyAddsOnListingClose, setReturnToMyAddsOnListingClose] = useState(false);
+  const activeUserId = auth.currentUser?.uid;
+  const ownListingsCount = listings.filter(item =>
+    item.ownerId === activeUserId ||
+    item.ownerId === 'owner-1' ||
+    item.ownerId === 'owner-personal' ||
+    item.ownerId === 'owner-direct'
+  ).length;
+  const selectedListingFresh = selectedListing
+    ? listings.find(listing => listing.id === selectedListing.id) || selectedListing
+    : null;
+  const rejectionPopupListingFresh = rejectionPopupListing
+    ? listings.find(listing => listing.id === rejectionPopupListing.id) || rejectionPopupListing
+    : null;
+  const rejectionDetail = rejectionPopupListingFresh?.rejectionReason
+    ? (() => {
+        const matchedRule = AI_MODERATION_RULES.find(rule =>
+          tr(rule.rejectionReasonKey) === rejectionPopupListingFresh.rejectionReason
+        );
+        const matchedCheck = matchedRule
+          ? rejectionPopupListingFresh.aiModeration?.checks?.find(check => check.id === matchedRule.id && !check.passed)
+          : rejectionPopupListingFresh.aiModeration?.checks?.find(check => !check.passed);
+        return matchedCheck?.reason || '';
+      })()
+    : '';
 
   const openEditWizard = (listing: Listing) => {
     const startEditing = () => {
@@ -146,16 +186,22 @@ export default function AppOverlays({
         />
       )}
 
-      {selectedListing && (
+      {selectedListingFresh && (
         <ListingDetails
-          listing={selectedListing}
+          listing={selectedListingFresh}
           onClose={() => {
             setCanEditSelectedListing(false);
+            setRejectionPopupListing(null);
+            if (returnToMyAddsOnListingClose) {
+              setShowMyAddsListing(true);
+            }
+            setReturnToMyAddsOnListingClose(false);
             onSelectedListingClose();
           }}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           onAddBooking={handleAddBooking}
+          bookings={bookings}
           initialCheckInDate={initialCheckInDate}
           initialCheckOutDate={initialCheckOutDate}
           onDatesChange={(checkIn, checkOut) => {
@@ -172,6 +218,60 @@ export default function AppOverlays({
         />
       )}
 
+      {selectedListingFresh && rejectionPopupListingFresh?.id === selectedListingFresh.id && rejectionPopupListingFresh.status === 'rejected' && (
+        <div className="fixed inset-0 z-[620] flex items-center justify-center bg-[#0F172A]/70 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-rose-100 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    {tr('myListings.status.rejected')}
+                  </h3>
+                  <p className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug text-slate-500">
+                    {rejectionPopupListingFresh.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectionPopupListing(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                title={tr('common.close')}
+                aria-label={tr('common.close')}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[68vh] space-y-3 overflow-y-auto px-5 py-4">
+              {rejectionPopupListingFresh.rejectionReason && (
+                <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                    <div>
+                      <div className="text-[11px] font-black uppercase tracking-wide text-rose-700">
+                        {tr('myListings.rejectionReason')}
+                      </div>
+                      <p className="mt-1 text-sm font-bold leading-relaxed text-rose-900">
+                        {rejectionPopupListingFresh.rejectionReason}
+                      </p>
+                      {rejectionDetail && (
+                        <p className="mt-1.5 text-xs font-semibold leading-relaxed text-rose-700">
+                          {rejectionDetail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCreateWizard && (
         <CreateWizard
           onClose={() => {
@@ -181,8 +281,11 @@ export default function AppOverlays({
             }
             setEditingListing(null);
           }}
-          onPublish={handlePublishListing}
+          onPublish={editingListing ? async listing => {
+            await handleUpdateListing(listing);
+          } : handlePublishListing}
           initialListing={editingListing}
+          existingListings={listings}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           propCategoriesList={L1_CATEGORIES}
@@ -202,6 +305,8 @@ export default function AppOverlays({
           onUpdateListing={handleUpdateListing}
           onDeleteListing={handleDeleteListing}
           onClose={() => setShowMyAddsListing(false)}
+          initialBookingsListingId={initialBookingsListingId}
+          onInitialBookingsOpened={onInitialBookingsOpened}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           onCreateClick={() => {
@@ -219,7 +324,9 @@ export default function AppOverlays({
           onViewClick={(listing) => {
             setShowMyAddsListing(false);
             setCanEditSelectedListing(true);
+            setReturnToMyAddsOnListingClose(true);
             setSelectedListing(listing);
+            setRejectionPopupListing(listing.status === 'rejected' ? listing : null);
           }}
         />
       )}
@@ -234,6 +341,7 @@ export default function AppOverlays({
           onDeleteListing={handleDeleteListing}
           onSelectListing={(listing) => {
             setCanEditSelectedListing(false);
+            setReturnToMyAddsOnListingClose(false);
             setSelectedListing(listing);
             setShowAdminDashboard(false);
           }}
@@ -247,15 +355,24 @@ export default function AppOverlays({
 
       {showUsersModal && (
         <UsersModal
+          bookings={bookings}
           listings={listings}
           onClose={() => setShowUsersModal(false)}
           onViewListing={(listing) => {
             setCanEditSelectedListing(false);
+            setReturnToMyAddsOnListingClose(false);
             setSelectedListing(listing);
           }}
           currencySymbol={currencySymbol}
           currencyRate={currencyRate}
           initialTab={usersModalTab}
+        />
+      )}
+
+      {showProfileModal && (
+        <ProfileModal
+          listingsCount={ownListingsCount}
+          onClose={() => setShowProfileModal(false)}
         />
       )}
 

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BaliBase Frequently Asked Questions</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e293b;
+        --muted: #5f6978;
+        --line: #e5e7eb;
+        --paper: #ffffff;
+        --wash: #f4f7f6;
+        --accent: #ff7a50;
+        --green: #2f7d69;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(135deg, rgba(47, 125, 105, 0.09), transparent 34rem),
+          linear-gradient(315deg, rgba(255, 122, 80, 0.11), transparent 32rem),
+          var(--wash);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.7;
+      }
+
+      a {
+        color: var(--green);
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: var(--accent);
+      }
+
+      .page {
+        width: min(920px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        margin-bottom: 24px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .document {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: clamp(24px, 5vw, 56px);
+        box-shadow: 0 24px 70px rgba(30, 41, 59, 0.08);
+      }
+
+      h1,
+      h2 {
+        line-height: 1.18;
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(32px, 6vw, 56px);
+        letter-spacing: 0;
+      }
+
+      h2 {
+        border-top: 1px solid var(--line);
+        font-size: clamp(20px, 3vw, 28px);
+        margin-top: 40px;
+        padding-top: 32px;
+      }
+
+      p {
+        margin: 16px 0 0;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 18px;
+        margin-top: 28px;
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: min(100% - 20px, 920px);
+          padding-top: 24px;
+        }
+
+        .document {
+          padding: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <a class="back-link" href="/" data-back-to-app>Back to BaliBase</a>
+      <article class="document">
+        <h1>Frequently Asked Questions</h1>
+        <p class="lead">Answers to common questions about Bali Base, direct provider contact, payments, listings, and user safety.</p>
+
+        <h2>What is Bali Base?</h2>
+        <p>Bali Base is a platform for finding accommodation, transport, services, activities, and other offers in Bali directly from local providers and property owners.</p>
+
+        <h2>Does Bali Base charge a commission?</h2>
+        <p>No. Bali Base does not charge users a commission on transactions made with providers.</p>
+
+        <h2>Does Bali Base process payments?</h2>
+        <p>No. Bali Base does not accept or process payments. Prices, payment methods, deposits, and other transaction details are agreed directly between the user and the provider.</p>
+
+        <h2>How do I contact a provider?</h2>
+        <p>Open the listing you are interested in and use the available contact option. Please mention the listing or service when contacting the provider.</p>
+
+        <h2>Can I make a booking through Bali Base?</h2>
+        <p>Bali Base helps you find and contact providers. Availability, booking confirmation, payment, and fulfilment are handled directly by the provider.</p>
+
+        <h2>Who is responsible for cancellations and refunds?</h2>
+        <p>Cancellation and refund conditions are determined by the provider. Before making a payment, ask the provider to confirm these conditions in writing.</p>
+
+        <h2>Does Bali Base verify providers and listings?</h2>
+        <p>Bali Base may review listings for compliance with its rules, but cannot guarantee the identity of every provider or the accuracy of all information. Users should independently verify important details before making a payment or entering into an agreement.</p>
+
+        <h2>How can I stay safe?</h2>
+        <p>Check recent information, request additional photos or documents when appropriate, confirm the full price and conditions in writing, and avoid payments that appear suspicious. Never share passwords, verification codes, or unnecessary personal information.</p>
+
+        <h2>How do I report a listing or provider?</h2>
+        <p>Use the reporting option on the listing page or contact us at <strong><a href="mailto:support@balibase.id">support@balibase.id</a></strong>. Include a link to the listing and a short description of the issue.</p>
+
+        <h2>How can I publish a listing?</h2>
+        <p>Create or sign in to your provider account, select the appropriate category, add accurate information and photos, and submit the listing for publication.</p>
+
+        <h2>Can Bali Base remove a listing?</h2>
+        <p>Yes. Bali Base may reject, restrict, or remove listings that are misleading, illegal, unsafe, duplicated, or otherwise violate the Listing & Content Policy.</p>
+
+        <h2>How can I contact Bali Base?</h2>
+        <p>For support, questions, or complaints, email us at <strong><a href="mailto:support@balibase.id">support@balibase.id</a></strong>.</p>
+      </article>
+    </main>
+    <script>
+      document.querySelector('[data-back-to-app]')?.addEventListener('click', (event) => {
+        if (window.history.length > 1) {
+          event.preventDefault();
+          window.history.back();
+        }
+      });
+    </script>
+  </body>
+</html>

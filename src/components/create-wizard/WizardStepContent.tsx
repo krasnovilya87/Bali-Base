@@ -43,6 +43,8 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           getSeoLengthVerdict={categoryState.getSeoLengthVerdict}
           roomType={categoryState.roomType}
           setRoomType={categoryState.setRoomType}
+          roomCount={categoryState.roomCount}
+          setRoomCount={categoryState.setRoomCount}
           // location helpers for link parsing and suggestions
           mapSuggestions={locationState.mapSuggestions}
           showSuggestionsDropdown={locationState.showSuggestionsDropdown}

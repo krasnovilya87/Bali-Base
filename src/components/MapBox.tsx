@@ -9,6 +9,7 @@ import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/li
 import { isListingFresh } from '../utils/listingFreshness';
 import { MapListingVisibilityCandidate, MapViewportSnapshot, selectVisibleMapListings } from '../utils/mapListingVisibility';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import { isListingVerified } from '../utils/listingVerification';
 
 interface MapBoxProps {
   listings: Listing[];
@@ -358,8 +359,14 @@ function MapListingPopup({
   onMouseLeave
 }: MapListingPopupProps) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const touchStartXRef = useRef<number | null>(null);
-  const activePrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
+  const isDropPriceActive = Boolean(
+    item.hasDropPrice &&
+    item.dropPricePerDay &&
+    (!item.dropPriceEndsAt || new Date(item.dropPriceEndsAt).getTime() > now)
+  );
+  const activePrice = isDropPriceActive && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
   const convertedPrice = Math.round(activePrice * currencyRate).toLocaleString();
   const originalPrice = Math.round(item.pricePerDay * currencyRate).toLocaleString();
   const displayTitle = stripListingRoomTypeFromTitle(item.title);
@@ -369,6 +376,13 @@ function MapListingPopup({
   useEffect(() => {
     setActivePhotoIndex(0);
   }, [item.id]);
+
+  useEffect(() => {
+    if (!item.hasDropPrice || !item.dropPriceEndsAt) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [item.hasDropPrice, item.dropPriceEndsAt]);
 
   const showPrevPhoto = (event: React.MouseEvent | React.TouchEvent) => {
     event.stopPropagation();
@@ -449,7 +463,7 @@ function MapListingPopup({
               <span>{tr('listing.vipPremium')}</span>
             </div>
           )}
-          {item.isApproved && (
+          {isListingVerified(item) && (
             <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[10px] font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 tracking-wide`}>
               <ShieldCheck className="w-[15px] h-[15px] text-[#2F7D69] shrink-0" />
               <span>{tr('listing.approvedBadge')}</span>
@@ -496,7 +510,7 @@ function MapListingPopup({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {item.hasDropPrice && item.dropPricePerDay && (
+          {isDropPriceActive && (
             <span className={`text-xs font-light text-gray-400 line-through leading-none ${THEME.fonts.mono}`}>
               {originalPrice} {currencySymbol}
             </span>
@@ -505,7 +519,7 @@ function MapListingPopup({
             <span className={`text-lg font-bold text-text-dark ${THEME.fonts.mono}`}>
               {convertedPrice} {currencySymbol}
             </span>
-            {item.hasDropPrice ? (
+            {isDropPriceActive ? (
               <span className={`bg-[#FF3B30] text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                 {tr('listing.dropPrice')}
               </span>

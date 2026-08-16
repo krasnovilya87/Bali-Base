@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { MOCK_GUIDES } from '../../data';
-import { FilterState, Listing } from '../../types';
+import { BookingRequest, FilterState, Listing } from '../../types';
 import { findDistrictByCoordsSync, getDefaultDistrictCoordsSync, getListingCoords, isPointInPolygon } from '../../utils/geo';
+import { isListingUnavailableForDates } from '../../utils/bookingAvailability';
 import { isListingFresh } from '../../utils/listingFreshness';
+import { isListingVerified } from '../../utils/listingVerification';
 
 type MapPoint = { x: number; y: number };
 export type SearchGuide = (typeof MOCK_GUIDES)[number];
@@ -25,6 +27,7 @@ export interface ListingSearchSuggestions {
 
 interface UseListingSearchParams {
   listings: Listing[];
+  bookings: BookingRequest[];
   currentL1: string;
   currentL2: string[];
   districtSearch: string[];
@@ -58,6 +61,7 @@ const getComparablePrice = (item: Listing, selectedDayCount: number) => {
 
 export const useListingSearch = ({
   listings,
+  bookings,
   currentL1,
   currentL2,
   districtSearch,
@@ -79,6 +83,7 @@ export const useListingSearch = ({
   const filteredListings = useMemo(() => listings.filter(item => {
     if (item.status !== 'active') return false;
     if (item.category !== currentL1) return false;
+    if (isListingUnavailableForDates(item, bookings, checkInDate, checkOutDate)) return false;
     if (currentL2.length > 0 && !currentL2.includes(item.subCategory)) return false;
     if (filters.favoritesOnly && !favoriteIds.has(item.id)) return false;
 
@@ -117,14 +122,14 @@ export const useListingSearch = ({
 
     if (filters.cleanlinessTags.length > 0) {
       const matchAllClean = filters.cleanlinessTags.every(tag => {
-        if (tag === 'Approved') return item.isApproved;
+        if (tag === 'Approved') return isListingVerified(item);
         const revLabels = item.reviews ? item.reviews.flatMap(r => r.cleanlinessLabels || []) : [];
         return revLabels.includes(tag);
       });
       if (!matchAllClean) return false;
     }
 
-    if (filters.isApprovedOnly && !item.isApproved) return false;
+    if (filters.isApprovedOnly && !isListingVerified(item)) return false;
     if (filters.hasDropPriceOnly && !item.hasDropPrice) return false;
     if (filters.interiorStyle.length > 0 && !filters.interiorStyle.includes(item.interiorStyle)) return false;
     if (filters.housingType.length > 0 && item.housingType && !filters.housingType.includes(item.housingType)) return false;
@@ -175,6 +180,7 @@ export const useListingSearch = ({
   }), [
     currentL1,
     currentL2,
+    bookings,
     customPoint,
     customPolygon,
     customRadius,
@@ -184,7 +190,9 @@ export const useListingSearch = ({
     filters,
     listings,
     searchTerm,
-    selectedDayCount
+    selectedDayCount,
+    checkInDate,
+    checkOutDate
   ]);
 
   const sortedListings = useMemo(() => [...filteredListings].sort((a, b) => {
@@ -214,7 +222,7 @@ export const useListingSearch = ({
       return distSqrA - distSqrB;
     }
     if (sortBy === 'newest') return Number(isListingFresh(b)) - Number(isListingFresh(a));
-    if (sortBy === 'approved') return a.isApproved ? -1 : 1;
+    if (sortBy === 'approved') return Number(isListingVerified(b)) - Number(isListingVerified(a));
     if (sortBy === 'drop_price') return a.hasDropPrice ? -1 : 1;
 
     const pushA = a.pushedAt ? new Date(a.pushedAt).getTime() : 0;

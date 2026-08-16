@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BookingRequest } from '../../types';
+import { MessageCircle } from 'lucide-react';
+import { BookingRequest, Listing } from '../../types';
 import { useI18n } from '../../i18nContext';
 
 interface BookingRequestControlsProps {
   request: BookingRequest;
+  listing: Listing;
   currencySymbol: string;
   currencyRate: number;
   onUpdateStatus: (id: string, status: 'accepted' | 'declined') => void;
@@ -13,6 +15,7 @@ interface BookingRequestControlsProps {
 
 export default function BookingRequestControls({
   request,
+  listing,
   currencySymbol,
   currencyRate,
   onUpdateStatus,
@@ -28,6 +31,9 @@ export default function BookingRequestControls({
   const [notes, setNotes] = useState(request.comment || '');
   const [isDeclineConfirmOpen, setIsDeclineConfirmOpen] = useState(false);
   const convertPrice = (amount: number) => Math.round(amount * currencyRate).toLocaleString();
+  const contactPhone = request.guestPhone.replace(/\D/g, '');
+  const contactUrl = contactPhone ? `https://wa.me/${contactPhone}` : '';
+  const isCompleted = request.status === 'accepted' && isBookingCompleted(request);
 
   useEffect(() => {
     setPaymentStatus(request.paymentStatus || 'unpaid');
@@ -56,8 +62,10 @@ export default function BookingRequestControls({
   return (
     <>
     <div className={`rounded-2xl border ${compact ? 'p-2.5 space-y-2' : 'p-3 space-y-2.5'} ${
-      request.status === 'accepted'
-        ? 'bg-white/70 border-emerald-200'
+      isCompleted
+        ? 'bg-gray-100/85 border-gray-200 opacity-80'
+        : request.status === 'accepted'
+          ? 'bg-white/70 border-emerald-200'
         : request.status === 'declined'
           ? 'bg-gray-100/80 border-gray-200 opacity-75 grayscale'
           : 'bg-white/70 border-amber-200'
@@ -87,6 +95,13 @@ export default function BookingRequestControls({
         </span>
       </div>
 
+      {request.roomNumber && (
+        <div className="flex items-center justify-between gap-2 text-[10px]">
+          <span className="text-gray-500">{tr('calendarListing.roomNumber')}</span>
+          <span className="font-mono font-bold text-gray-800">{request.roomNumber}</span>
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <button
           type="button"
@@ -108,8 +123,9 @@ export default function BookingRequestControls({
         )}
       </div>
 
-      {request.status !== 'declined' && (
-        <div className="pt-2 border-t border-gray-200/70 space-y-2">
+      <div className="pt-2 border-t border-gray-200/70 space-y-2">
+        {request.status !== 'declined' && (
+          <>
           <div className="grid grid-cols-3 gap-1">
             {([
               ['unpaid', tr('booking.payment.unpaid')],
@@ -129,7 +145,7 @@ export default function BookingRequestControls({
                       ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                       : value === 'deposit'
                         ? 'bg-[#FF7A50]/10 text-[#E05A30] ring-1 ring-[#FF7A50]/40'
-                        : 'bg-gray-200 text-gray-700 ring-1 ring-gray-300'
+                        : 'bg-rose-100 text-rose-800 ring-1 ring-rose-300'
                     : 'bg-gray-50 text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -166,7 +182,11 @@ export default function BookingRequestControls({
                 paymentStatus,
                 depositAmount: paymentStatus === 'deposit' ? depositAmount : undefined
               })}
-              className="py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition"
+              className={`py-1.5 font-bold rounded-lg text-[10px] transition ${
+                request.status === 'accepted'
+                  ? 'bg-gray-200 text-gray-500 ring-1 ring-gray-300 hover:bg-gray-200'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
             >
               {tr('booking.accept')}
             </button>
@@ -178,8 +198,24 @@ export default function BookingRequestControls({
               {tr('booking.decline')}
             </button>
           </div>
-        </div>
-      )}
+          </>
+        )}
+
+        <a
+          href={contactUrl || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!contactUrl}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition ${
+            contactUrl
+              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:scale-95'
+              : 'pointer-events-none bg-gray-100 text-gray-400'
+          }`}
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          {tr('booking.contact')}
+        </a>
+      </div>
     </div>
     {isDeclineConfirmOpen && (
       <div className="fixed inset-0 z-[720] flex items-center justify-center bg-black/45 backdrop-blur-xs p-4">
@@ -220,4 +256,10 @@ function formatShortDate(date: string) {
     day: '2-digit',
     month: '2-digit'
   });
+}
+
+function isBookingCompleted(booking: BookingRequest) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(`${booking.endDate}T00:00:00`).getTime() < today.getTime();
 }

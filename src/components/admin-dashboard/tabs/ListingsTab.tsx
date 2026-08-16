@@ -6,6 +6,7 @@ import {
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
+import { isListingVerified } from '../../../utils/listingVerification';
 
 type AdminTabProps = Record<string, any>;
 export function ListingsTab(props: AdminTabProps) {
@@ -19,7 +20,8 @@ export function ListingsTab(props: AdminTabProps) {
     autoApprove, setAutoApprove, maintenanceMode, setMaintenanceMode, commissionRate, setCommissionRate, siteName, setSiteName, telegramSupportLink, setTelegramSupportLink,
     wizardLevel, setWizardLevel, l1SelectedId, setL1SelectedId, l1Label, setL1Label, l1Desc, setL1Desc, l1Image, setL1Image,
     l2ParentId, setL2ParentId, l2SelectedId, setL2SelectedId, l2Label, setL2Label, l2Icon, setL2Icon, l2CustomImage, setL2CustomImage, l2IconType, setL2IconType,
-    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2
+    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2,
+    openUserInfo
   } = props;
   return (
               <div className="space-y-4 animate-fade-in">
@@ -92,7 +94,9 @@ export function ListingsTab(props: AdminTabProps) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
-                        {filteredListingsList.map(l => (
+                        {filteredListingsList.map(l => {
+                          const isVerified = isListingVerified(l);
+                          return (
                           <tr key={l.id} className="hover:bg-slate-50/50">
                             <td className="p-4 pl-6 flex items-center gap-3">
                               <img 
@@ -102,7 +106,20 @@ export function ListingsTab(props: AdminTabProps) {
                               />
                               <div className="max-w-[200px] truncate">
                                 <h4 className="font-bold text-[#1E293B] truncate">{l.title}</h4>
-                                <span className="text-[10px] text-[#FF7A50] block font-mono">{tr('admin.listings.owner', { name: l.ownerName })}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => openUserInfo({
+                                    id: l.ownerId,
+                                    ownerName: l.ownerName,
+                                    whatsappNumber: l.whatsappNumber,
+                                    ownerAvatar: l.ownerAvatar,
+                                    listingsCount: listings.filter(item => item.ownerId === l.ownerId || item.ownerName === l.ownerName).length
+                                  })}
+                                  className="block max-w-full truncate text-left text-[10px] text-[#FF7A50] font-mono transition hover:text-[#E05A30] hover:underline"
+                                  title={tr('admin.userInfo.title')}
+                                >
+                                  {tr('admin.listings.owner', { name: l.ownerName })}
+                                </button>
                               </div>
                             </td>
                             <td className="p-4">
@@ -119,18 +136,18 @@ export function ListingsTab(props: AdminTabProps) {
                             <td className="p-4">
                               <button
                                 onClick={() => {
-                                  const updated = { ...l, isApproved: !l.isApproved };
+                                  const updated = { ...l, isVerified: !isVerified };
                                   onUpdateListing(updated);
-                                  showToast(l.isApproved ? tr('admin.listings.approvedRemoved') : tr('admin.listings.approvedAdded'));
+                                  showToast(isVerified ? tr('admin.listings.approvedRemoved') : tr('admin.listings.approvedAdded'));
                                 }}
                                 className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase flex items-center gap-1 cursor-pointer transition ${
-                                  l.isApproved 
+                                  isVerified 
                                     ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' 
                                     : 'bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500'
                                 }`}
                               >
-                                <Star className={`w-3.5 h-3.5 ${l.isApproved ? 'fill-rose-500' : ''}`} />
-                                <span>{l.isApproved ? tr('admin.listings.approved') : tr('admin.listings.unapproved')}</span>
+                                <Star className={`w-3.5 h-3.5 ${isVerified ? 'fill-rose-500' : ''}`} />
+                                <span>{isVerified ? tr('admin.listings.approved') : tr('admin.listings.unapproved')}</span>
                               </button>
                             </td>
                             <td className="p-4">
@@ -160,7 +177,8 @@ export function ListingsTab(props: AdminTabProps) {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

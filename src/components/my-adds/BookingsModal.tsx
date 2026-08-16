@@ -27,7 +27,9 @@ export default function BookingsModal({
   const filtered = bookings
     .filter(booking => booking.listingId === listing.id && isBookingVisible(booking))
     .sort(sortBookingRequests);
-  const activeBookings = filtered.filter(booking => booking.status !== 'declined');
+  const newBookings = filtered.filter(booking => booking.status === 'pending');
+  const currentBookings = filtered.filter(booking => booking.status === 'accepted' && !isBookingCompleted(booking));
+  const completedBookings = filtered.filter(booking => booking.status === 'accepted' && isBookingCompleted(booking));
   const declinedBookings = filtered.filter(booking => booking.status === 'declined');
 
   return (
@@ -50,10 +52,41 @@ export default function BookingsModal({
             </p>
           ) : (
             <>
-              {activeBookings.map(request => (
+              {newBookings.map(request => (
                 <div key={request.id}>
                   <BookingRequestControls
                     request={request}
+                    listing={listing}
+                    currencySymbol={currencySymbol}
+                    currencyRate={currencyRate}
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBooking={onUpdateBooking}
+                  />
+                </div>
+              ))}
+              {currentBookings.length > 0 && newBookings.length > 0 && (
+                <BookingDivider label={tr('booking.status.current')} />
+              )}
+              {currentBookings.map(request => (
+                <div key={request.id}>
+                  <BookingRequestControls
+                    request={request}
+                    listing={listing}
+                    currencySymbol={currencySymbol}
+                    currencyRate={currencyRate}
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBooking={onUpdateBooking}
+                  />
+                </div>
+              ))}
+              {completedBookings.length > 0 && (
+                <BookingDivider label={tr('booking.status.completed')} />
+              )}
+              {completedBookings.map(request => (
+                <div key={request.id}>
+                  <BookingRequestControls
+                    request={request}
+                    listing={listing}
                     currencySymbol={currencySymbol}
                     currencyRate={currencyRate}
                     onUpdateStatus={onUpdateStatus}
@@ -68,6 +101,7 @@ export default function BookingsModal({
                 <div key={request.id}>
                   <BookingRequestControls
                     request={request}
+                    listing={listing}
                     currencySymbol={currencySymbol}
                     currencyRate={currencyRate}
                     onUpdateStatus={onUpdateStatus}
@@ -90,15 +124,36 @@ export default function BookingsModal({
 }
 
 function isBookingVisible(booking: BookingRequest) {
+  if (booking.status === 'accepted' && isBookingCompleted(booking)) {
+    return Date.now() - new Date(`${booking.endDate}T00:00:00`).getTime() < 30 * 24 * 60 * 60 * 1000;
+  }
   if (booking.status !== 'declined') return true;
   const declinedAt = booking.declinedAt || booking.createdAt;
   return Date.now() - new Date(declinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
 function sortBookingRequests(a: BookingRequest, b: BookingRequest) {
-  if (a.status === 'declined' && b.status !== 'declined') return 1;
-  if (a.status !== 'declined' && b.status === 'declined') return -1;
+  const getSortGroup = (booking: BookingRequest) => (
+    booking.status === 'pending'
+      ? 0
+      : booking.status === 'accepted' && !isBookingCompleted(booking)
+        ? 1
+        : booking.status === 'accepted'
+          ? 2
+          : 3
+  );
+  const groupDelta = getSortGroup(a) - getSortGroup(b);
+  if (groupDelta !== 0) return groupDelta;
+  if (a.status === 'pending') {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }
   return a.startDate.localeCompare(b.startDate);
+}
+
+function isBookingCompleted(booking: BookingRequest) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(`${booking.endDate}T00:00:00`).getTime() < today.getTime();
 }
 
 function BookingDivider({ label }: { label: string }) {

@@ -19,7 +19,8 @@ export function UsersTab(props: AdminTabProps) {
     autoApprove, setAutoApprove, maintenanceMode, setMaintenanceMode, commissionRate, setCommissionRate, siteName, setSiteName, telegramSupportLink, setTelegramSupportLink,
     wizardLevel, setWizardLevel, l1SelectedId, setL1SelectedId, l1Label, setL1Label, l1Desc, setL1Desc, l1Image, setL1Image,
     l2ParentId, setL2ParentId, l2SelectedId, setL2SelectedId, l2Label, setL2Label, l2Icon, setL2Icon, l2CustomImage, setL2CustomImage, l2IconType, setL2IconType,
-    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2
+    uploadMethod, setUploadMethod, isMenuSaving, dragActive, setDragActive, handleUploadFile, handleSaveL1, handleSaveL2,
+    openUserInfo
   } = props;
   return (
               <div className="space-y-4 animate-fade-in">
@@ -89,7 +90,13 @@ export function UsersTab(props: AdminTabProps) {
                       <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
                         {filteredUsersList.map(u => (
                           <tr key={u.id} className="hover:bg-slate-50/50">
-                            <td className="p-4 pl-6 flex items-center gap-3">
+                            <td className="p-4 pl-6">
+                              <button
+                                type="button"
+                                onClick={() => openUserInfo(u)}
+                                className="flex items-center gap-3 text-left transition hover:opacity-80"
+                                title={tr('admin.userInfo.title')}
+                              >
                               <img 
                                 src={u.avatar} 
                                 alt={u.name}
@@ -99,6 +106,7 @@ export function UsersTab(props: AdminTabProps) {
                                 <h4 className="font-bold text-[#1E293B]">{u.name}</h4>
                                 <span className="text-[10px] text-gray-400 block font-mono font-medium">{u.email}</span>
                               </div>
+                              </button>
                             </td>
                             <td className="p-4 font-mono font-medium text-[#1E293B]">{u.phone}</td>
                             <td className="p-4">

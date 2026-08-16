@@ -19,6 +19,7 @@ export const useTitleStep = ({ initialListing }: UseTitleStepParams) => {
   const [title, setTitle] = useState<string>(initialListing?.title || '');
   const [description, setDescription] = useState<string>(initialListing?.description || '');
   const [roomType, setRoomType] = useState<RoomType>(initialListing?.roomType || 'standard');
+  const [roomCount, setRoomCount] = useState<number>(Math.max(1, initialListing?.roomCount || initialListing?.roomNumbers?.length || 1));
 
   return {
     title,
@@ -27,6 +28,8 @@ export const useTitleStep = ({ initialListing }: UseTitleStepParams) => {
     setDescription,
     roomType,
     setRoomType,
+    roomCount,
+    setRoomCount,
     getSeoLengthVerdict
   };
 };

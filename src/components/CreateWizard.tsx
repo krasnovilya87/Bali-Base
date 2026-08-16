@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { Listing } from '../types';
 import { isListingFresh } from '../utils/listingFreshness';
@@ -19,6 +19,7 @@ import { useI18n } from '../i18nContext';
 import { findDistrictByCoordsSync } from '../utils/geo';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../firebase';
+import { formatPhoneInput } from '../utils/phone';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -27,9 +28,18 @@ const API_KEY =
   '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
 
+const normalizeContactPhone = (value: string) => {
+  const formatted = formatPhoneInput(value, 'ID');
+  return {
+    displayValue: formatted.displayValue,
+    savedValue: formatted.whatsappNumber || formatted.e164Number || value
+  };
+};
+
 interface CreateWizardProps {
   onClose: () => void;
   onPublish: (newListing: Listing) => Promise<void>;
+  existingListings?: Listing[];
   initialListing?: Listing | null;
   currencySymbol: string;
   currencyRate: number;
@@ -51,6 +61,13 @@ const stepLabelKeys = [
   'wizard.step.publish'
 ];
 
+const MIN_DESCRIPTION_LENGTH = 20;
+const MIN_LISTING_PHOTO_WIDTH = 640;
+const MIN_LISTING_PHOTO_HEIGHT = 480;
+const CALENDAR_ROOM_SUBCATEGORIES = ['private_room', 'private_suite', 'entire_place'];
+
+type RoomType = keyof typeof ROOM_TYPE_LABELS;
+
 export default function CreateWizard({
   onClose,
   onPublish,
@@ -59,6 +76,7 @@ export default function CreateWizard({
   propCategoriesList,
   propSubcategoriesMap,
   menuOverrides,
+  existingListings = [],
   initialListing
 }: CreateWizardProps) {
   const { tr } = useI18n();
@@ -68,6 +86,7 @@ export default function CreateWizard({
   const wizardBodyRef = useRef<HTMLDivElement | null>(null);
   const wizardOverlayRef = useRef<HTMLDivElement | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [validationPopup, setValidationPopup] = useState<{ title: string; message: string } | null>(null);
   const [confirmedLocationCoords, setConfirmedLocationCoords] = useState<Listing['locationCoords']>(
     initialListing?.locationCoords
   );
@@ -93,6 +112,8 @@ export default function CreateWizard({
     setDescription,
     roomType,
     setRoomType,
+    roomCount,
+    setRoomCount,
     getSeoLengthVerdict
   } = useTitleStep({ initialListing });
 
@@ -177,8 +198,9 @@ export default function CreateWizard({
   const [icalInput, setIcalInput] = useState<string>('');
   const [icalStatus, setIcalStatus] = useState<string>('');
   const [simulatedBlockedCount, setSimulatedBlockedCount] = useState<number>(initialListing?.blockedDates?.length || 0);
-  const [whatsappNumber, setWhatsappNumber] = useState<string>(initialListing?.whatsappNumber || '');
-  const [whatsappInput, setWhatsappInput] = useState<string>(initialListing?.whatsappNumber || '');
+  const [initialPhoneValue] = useState(() => normalizeContactPhone(initialListing?.whatsappNumber || ''));
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(initialPhoneValue.savedValue);
+  const [whatsappInput, setWhatsappInput] = useState<string>(initialPhoneValue.displayValue);
   const [ownerName, setOwnerName] = useState<string>(initialListing?.ownerName || '');
 
   useEffect(() => {
@@ -206,8 +228,9 @@ export default function CreateWizard({
           setOwnerName(current => current || savedName);
         }
         if (savedPhone) {
-          setWhatsappInput(current => current || savedPhone);
-          setWhatsappNumber(current => current || savedPhone);
+          const formattedPhone = normalizeContactPhone(savedPhone);
+          setWhatsappInput(current => current || formattedPhone.displayValue);
+          setWhatsappNumber(current => current || formattedPhone.savedValue);
         }
       } catch (error) {
         console.warn('Failed to load saved listing contact profile:', error);
@@ -279,32 +302,220 @@ export default function CreateWizard({
     setIcalStatus(tr('wizard.icalAccepted'));
   };
 
-  const canProceed = () => {
-    if (step === 3 && !title.trim()) return false;
-    if (step === 4 && (!address.trim() || !pickedCoords)) return false;
-    if (step === 5 && REQUIRED_PHOTO_SLOTS.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) return false;
-    if (step === 6 && category === 'housing' && !yearBuilt) return false;
+  const showValidationPopup = (message: string, targetStep?: number) => {
+    if (targetStep) setStep(targetStep);
+    setValidationPopup({
+      title: tr('wizard.validationPopupTitle'),
+      message
+    });
+  };
+
+  const inspectListingImage = (url: string) => new Promise<{ width: number; height: number } | null>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => resolve(null);
+    image.src = url;
+  });
+
+  const validatePhotoQuality = async () => {
+    for (const photoUrl of photoUrls) {
+      if (photoUrl.startsWith('data:')) {
+        return tr('wizard.validationPhotoLocal');
+      }
+
+      const dimensions = await inspectListingImage(photoUrl);
+      if (!dimensions) {
+        return tr('wizard.validationPhotoBroken');
+      }
+      if (dimensions.width < MIN_LISTING_PHOTO_WIDTH || dimensions.height < MIN_LISTING_PHOTO_HEIGHT) {
+        return tr('wizard.validationPhotoQuality', {
+          width: MIN_LISTING_PHOTO_WIDTH,
+          height: MIN_LISTING_PHOTO_HEIGHT
+        });
+      }
+    }
+
+    return '';
+  };
+
+  const validateMechanicalStep = async (targetStep: number) => {
+    if (targetStep === 3) {
+      if (!title.trim()) return tr('wizard.validationTitle');
+      if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
+        return tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH });
+      }
+      if (category === 'housing' && CALENDAR_ROOM_SUBCATEGORIES.includes(subCategory) && (!Number.isFinite(roomCount) || roomCount < 1 || roomCount > 50)) {
+        return tr('wizard.validationRoomCount');
+      }
+    }
+
+    if (targetStep === 4) {
+      if (!address.trim()) return tr('wizard.validationAddress');
+    }
+
+    if (targetStep === 5) {
+      if (isUploading) return tr('wizard.validationPhotosUploading');
+      if (REQUIRED_PHOTO_SLOTS.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
+        return tr('wizard.validationPhotos');
+      }
+      return await validatePhotoQuality();
+    }
+
+    if (targetStep === 6 && category === 'housing' && !yearBuilt) {
+      return tr('wizard.validationYear');
+    }
+
+    if (targetStep === 7) {
+      if (!Number.isFinite(pricePerDay) || pricePerDay <= 0) return tr('wizard.validationPriceDay');
+      if (pricePerMonth !== undefined && pricePerMonth < 0) return tr('wizard.validationPriceMonth');
+    }
+
+    if (targetStep === 9) {
+      if (ownerName.trim().length < 2) return tr('wizard.validationOwnerName');
+      if (!whatsappNumber || whatsappNumber.replace(/\D/g, '').length < 8) return tr('wizard.validationPhone');
+    }
+
+    return '';
+  };
+
+  const validateMechanicalListing = async () => {
+    const stepsToValidate = [3, 4, 5, 6, 7, 9];
+    for (const stepToValidate of stepsToValidate) {
+      const message = await validateMechanicalStep(stepToValidate);
+      if (message) {
+        showValidationPopup(message, stepToValidate);
+        return false;
+      }
+    }
+
     return true;
   };
 
+  const normalizeGooglePlaceId = (listing: Listing) => (listing.googlePlaceId || listing.placeId || '').trim();
+  const normalizeRoomType = (value?: string) => (value || '').trim().toLowerCase();
+  const normalizeHousingType = (value?: string) => (value || '').trim().toLowerCase();
+  const getListingCalendarRoomCount = (listing?: Listing) =>
+    Math.max(1, Math.min(50, listing?.roomCount || listing?.roomNumbers?.length || 1));
+
+  const findExistingPrivateRoomListing = (googlePlaceId: string, targetRoomType: RoomType = roomType) => {
+    const normalizedPlaceId = googlePlaceId.trim();
+    if (!normalizedPlaceId) return undefined;
+
+    const candidateListings = [
+      ...(initialListing ? [initialListing] : []),
+      ...existingListings.filter(listing => listing.id !== initialListing?.id)
+    ];
+
+    return candidateListings.find(listing =>
+      listing.category === 'housing' &&
+      listing.subCategory === 'private_room' &&
+      normalizeGooglePlaceId(listing) === normalizedPlaceId &&
+      normalizeRoomType(listing.roomType) === normalizeRoomType(targetRoomType)
+    );
+  };
+
+  const findDuplicateListing = (googlePlaceId: string) => {
+    const normalizedPlaceId = googlePlaceId.trim();
+    if (!normalizedPlaceId) return undefined;
+
+    const matchingListings = existingListings.filter(listing =>
+      listing.id !== initialListing?.id &&
+      normalizeGooglePlaceId(listing) === normalizedPlaceId
+    );
+
+    if (matchingListings.length === 0) return undefined;
+
+    if (category !== 'housing') {
+      return matchingListings.find(listing => listing.category === category && listing.subCategory === subCategory);
+    }
+
+    const currentHousingType = normalizeHousingType(housingType);
+    const currentRoomType = normalizeRoomType(roomType);
+    if (subCategory === 'private_room' && currentRoomType && findExistingPrivateRoomListing(normalizedPlaceId)) {
+      return undefined;
+    }
+
+    return matchingListings.find(listing =>
+      listing.category === 'housing' &&
+      listing.subCategory === subCategory &&
+      normalizeHousingType(listing.housingType) === currentHousingType &&
+      (
+        subCategory !== 'private_room' ||
+        !currentRoomType ||
+        normalizeRoomType(listing.roomType) === currentRoomType
+      )
+    );
+  };
+
+  const getGooglePlaceIdForValidation = async () => {
+    const googlePlaceId = selectedGooglePlaceId || await resolveGooglePlaceIdForListing(
+      [title, address, district, 'Bali'].filter(Boolean).join(' ')
+    );
+
+    if (!googlePlaceId) {
+      showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
+      return '';
+    }
+
+    if (findDuplicateListing(googlePlaceId)) {
+      showValidationPopup(tr('wizard.validationDuplicateListing'));
+      return '';
+    }
+
+    return googlePlaceId;
+  };
+
+  useEffect(() => {
+    if (category !== 'housing' || subCategory !== 'private_room') return;
+
+    const activeGooglePlaceId = selectedGooglePlaceId || initialListing?.googlePlaceId || initialListing?.placeId || '';
+    const existingRoomListing = findExistingPrivateRoomListing(activeGooglePlaceId, roomType);
+    const nextRoomCount = existingRoomListing ? getListingCalendarRoomCount(existingRoomListing) : 1;
+
+    setRoomCount(current => current === nextRoomCount ? current : nextRoomCount);
+  }, [category, existingListings, initialListing?.googlePlaceId, initialListing?.placeId, roomType, selectedGooglePlaceId, setRoomCount, subCategory]);
+
   const handleNextStep = async () => {
-    if (!canProceed()) {
-      if (step === 3) alert(tr('wizard.validationTitle'));
-      if (step === 4) alert(tr('wizard.validationAddress'));
-      if (step === 5) alert(tr('wizard.validationPhotos'));
-      if (step === 6) alert(tr('wizard.validationYear'));
+    const mechanicalMessage = await validateMechanicalStep(step);
+    if (mechanicalMessage) {
+      showValidationPopup(mechanicalMessage);
       return;
     }
-    if (step === 4) {
-      const finalCoords = pickedCoords;
 
-      if (!finalCoords) {
-        alert(tr('wizard.validationMapPoint'));
+    if (step === 3 && !title.trim()) {
+      showValidationPopup(tr('wizard.validationTitle'));
+      return;
+    }
+    if (step === 3 && description.trim().length < MIN_DESCRIPTION_LENGTH) {
+      showValidationPopup(tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH }));
+      return;
+    }
+    if (step === 4 && !address.trim()) {
+      showValidationPopup(tr('wizard.validationAddress'));
+      return;
+    }
+    if (step === 4 && !pickedCoords) {
+      const foundCoords = await triggerDirectSearch(address);
+      if (!foundCoords) {
+        showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
         return;
       }
+      setPickedCoords(foundCoords);
+      setConfirmedLocationCoords(foundCoords);
+    } else if (step === 4 && pickedCoords) {
+      setConfirmedLocationCoords(pickedCoords);
+    }
+    if (step === 4 && !(await getGooglePlaceIdForValidation())) {
+      return;
+    }
 
-      setPickedCoords(finalCoords);
-      setConfirmedLocationCoords(finalCoords);
+    if (step === 5 && REQUIRED_PHOTO_SLOTS.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
+      showValidationPopup(tr('wizard.validationPhotos'));
+      return;
+    }
+    if (step === 6 && category === 'housing' && !yearBuilt) {
+      showValidationPopup(tr('wizard.validationYear'));
+      return;
     }
     setStep(prev => Math.min(10, prev + 1));
   };
@@ -341,15 +552,34 @@ export default function CreateWizard({
       ...assignedPhotoUrls,
       ...photoUrls.filter(url => !assignedPhotoUrls.includes(url))
     ];
+    const savedPhotoSlotAssignments = PHOTO_SLOT_CONFIG.reduce<Partial<Record<string, string[]>>>((acc, slot) => {
+      const urls = (photoSlotAssignments[slot.id] || [])
+        .filter(url => photoUrls.includes(url))
+        .slice(0, slot.maxCount);
+      if (urls.length) {
+        acc[slot.id] = urls;
+      }
+      return acc;
+    }, {});
     const locationCoords = confirmedLocationCoords || pickedCoords || initialListing?.locationCoords;
     const canKeepNearbySpots = coordsMatch(initialListing?.locationCoords, locationCoords);
     const resolvedDistrict = locationCoords
       ? findDistrictByCoordsSync(locationCoords.lat, locationCoords.lng) || district
       : district;
+    const existingPrivateRoomListing = category === 'housing' && subCategory === 'private_room'
+      ? findExistingPrivateRoomListing(googlePlaceIdOverride || selectedGooglePlaceId || initialListing?.googlePlaceId || initialListing?.placeId || '')
+      : undefined;
+    const sourceListing = initialListing || existingPrivateRoomListing;
+    const normalizedRoomCount = category === 'housing' && CALENDAR_ROOM_SUBCATEGORIES.includes(subCategory)
+      ? Math.max(1, Math.min(50, roomCount || 1))
+      : undefined;
+    const normalizedRoomNumbers = normalizedRoomCount
+      ? Array.from({ length: normalizedRoomCount }, (_, index) => sourceListing?.roomNumbers?.[index] || (index === 0 ? sourceListing?.roomNumber || '' : ''))
+      : undefined;
 
     return {
       id,
-      ownerId: initialListing?.ownerId || 'owner-personal',
+      ownerId: sourceListing?.ownerId || 'owner-personal',
       category: category as Listing['category'],
       subCategory,
       title: cleanListingTitle,
@@ -359,10 +589,12 @@ export default function CreateWizard({
       locationCoords,
       googlePlaceId: selectedGooglePlaceId || googlePlaceIdOverride || initialListing?.googlePlaceId || initialListing?.placeId,
       images: orderedPhotoUrls,
+      photoSlotAssignments: savedPhotoSlotAssignments,
       rating: initialListing?.rating || 4.9,
       reviewsCount: initialListing?.reviewsCount || 0,
       reviews: initialListing?.reviews || [],
       isApproved: initialListing?.isApproved ?? false,
+      isVerified: initialListing?.isVerified ?? false,
       isNew: isListingFresh({ yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
       status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
       pricePerDay,
@@ -380,6 +612,9 @@ export default function CreateWizard({
       densityType,
       bedType: selectedBedTypes[0],
       bedTypes: selectedBedTypes,
+      roomCount: normalizedRoomCount,
+      roomNumber: normalizedRoomNumbers?.[0]?.trim() || sourceListing?.roomNumber,
+      roomNumbers: normalizedRoomNumbers,
       roomType: subCategory === 'private_room' ? roomType : undefined,
       kitchenType,
       poolType,
@@ -413,14 +648,29 @@ export default function CreateWizard({
     if (isPublishing) return;
     setIsPublishing(true);
 
+    if (!(await validateMechanicalListing())) {
+      setIsPublishing(false);
+      return;
+    }
+
     const resolvedGooglePlaceId = selectedGooglePlaceId || await resolveGooglePlaceIdForListing(
       [title, address, district, 'Bali'].filter(Boolean).join(' ')
     );
     if (!resolvedGooglePlaceId) {
-      console.warn('Google reviews request will be skipped because no Google place_id was found for this listing.');
+      showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
+      setIsPublishing(false);
+      return;
+    }
+    if (findDuplicateListing(resolvedGooglePlaceId)) {
+      showValidationPopup(tr('wizard.validationDuplicateListing'));
+      setIsPublishing(false);
+      return;
     }
 
-    const baseListing = buildListing(initialListing?.id || `house-${Date.now()}`, resolvedGooglePlaceId);
+    const existingPrivateRoomListing = category === 'housing' && subCategory === 'private_room'
+      ? findExistingPrivateRoomListing(resolvedGooglePlaceId)
+      : undefined;
+    const baseListing = buildListing(initialListing?.id || existingPrivateRoomListing?.id || `house-${Date.now()}`, resolvedGooglePlaceId);
     const publishCoords = confirmedLocationCoords || pickedCoords || baseListing.locationCoords;
     let listingForPublish: Listing = {
       ...baseListing,
@@ -458,7 +708,7 @@ export default function CreateWizard({
       onClose();
     } catch (error) {
       console.error('Failed to publish listing:', error);
-      alert('Не удалось сохранить объявление в Firebase. Проверьте подключение и попробуйте еще раз.');
+      showValidationPopup(tr('wizard.validationSaveFailed'));
     } finally {
       setIsPublishing(false);
     }
@@ -480,7 +730,9 @@ export default function CreateWizard({
       setDescription,
       getSeoLengthVerdict,
       roomType,
-      setRoomType
+      setRoomType,
+      roomCount,
+      setRoomCount
     },
     locationState: {
       apiKey: API_KEY,
@@ -530,6 +782,8 @@ export default function CreateWizard({
       setArea,
       roomsTotal,
       setRoomsTotal,
+      roomCount,
+      setRoomCount,
       interiorStyle,
       setInteriorStyle,
       housingType,
@@ -704,6 +958,42 @@ export default function CreateWizard({
           )}
         </div>
       </div>
+
+      {validationPopup && (
+        <div className="fixed inset-0 z-[530] flex items-center justify-center bg-[#0F172A]/55 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="pu w-full max-w-sm rounded-[1.5rem] border border-white/60 p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FF7A50]/10 text-[#E05A30]">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-heading text-sm font-extrabold text-[#1E293B]">
+                  {validationPopup.title}
+                </h4>
+                <p className="mt-1.5 text-xs font-semibold leading-relaxed text-slate-500">
+                  {validationPopup.message}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setValidationPopup(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+                title={tr('common.close')}
+                aria-label={tr('common.close')}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setValidationPopup(null)}
+              className="mt-4 w-full rounded-xl bg-[#FF7A50] px-4 py-2.5 text-xs font-extrabold text-white shadow-md transition hover:bg-[#E05A30] active:scale-95"
+            >
+              {tr('common.understood')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

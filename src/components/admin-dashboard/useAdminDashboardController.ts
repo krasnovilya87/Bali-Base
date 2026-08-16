@@ -4,6 +4,8 @@ import { LISTINGS_COLLECTION, deleteDocument, setDocument, uploadFileToStorage }
 import { DEFAULT_ADMIN_USERS } from './mockData';
 import { normalizeHousingListingForImport } from './importListingNormalizer';
 import { AdminDashboardProps, AdminTab, AdminUser, SupportTicket } from './types';
+import { useI18n } from '../../i18nContext';
+import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
 import { GooglePlacesQuotaAdminStats, loadGooglePlacesQuotaAdminStats } from '../../utils/googlePlacesQuota';
 import {
@@ -26,10 +28,12 @@ export function useAdminDashboardController({
   menuOverrides = { l1: {}, l2: {} },
   onUpdateMenuOverrides,
 }: AdminDashboardControllerParams) {
+  const { tr } = useI18n();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   
   // Admin tables dynamic states
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedAdminUser, setSelectedAdminUser] = useState<AdminUser | null>(null);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [replyText, setReplyText] = useState<string>('');
@@ -152,7 +156,7 @@ export function useAdminDashboardController({
     if (['images', 'photos', 'imageUrls', 'amenities', 'extraOptions', 'bathroomOptions', 'blockedDates'].includes(key)) {
       return value.split(/[;|]/).map(item => item.trim()).filter(Boolean);
     }
-    if (['isApproved', 'isNew', 'hasDropPrice', 'isPromoTop', 'isPromoPremium', 'isPromoTurbo'].includes(key)) {
+    if (['isApproved', 'isVerified', 'isNew', 'hasDropPrice', 'isPromoTop', 'isPromoPremium', 'isPromoTurbo'].includes(key)) {
       return ['true', '1', 'yes', 'да'].includes(value.toLowerCase());
     }
     if ([
@@ -764,7 +768,8 @@ export function useAdminDashboardController({
       const updated: Listing = {
         ...matched,
         status: 'active',
-        isApproved: true
+        isApproved: true,
+        isVerified: matched.isVerified ?? false
       };
       onUpdateListing(updated);
       showToast(`Listing "${matched.title}" approved and published.`);
@@ -772,8 +777,14 @@ export function useAdminDashboardController({
   };
 
   const handleOpenReject = (listingId: string) => {
+    const matched = listings.find(l => l.id === listingId);
+    const failedCheck = matched?.aiModeration?.checks?.find(check => !check.passed);
+    const matchedRule = failedCheck
+      ? AI_MODERATION_RULES.find(rule => rule.id === failedCheck.id)
+      : undefined;
+
     setRejectListingId(listingId);
-    setRejectionReason('');
+    setRejectionReason(matchedRule ? tr(matchedRule.rejectionReasonKey) : '');
     setRejectionComment('');
   };
 
@@ -789,6 +800,7 @@ export function useAdminDashboardController({
         ...matched,
         status: 'rejected',
         isApproved: false,
+        isVerified: false,
         rejectionReason,
         rejectionComment: rejectionComment.trim() || undefined
       };
@@ -798,6 +810,34 @@ export function useAdminDashboardController({
     setRejectListingId(null);
     setRejectionReason('');
     setRejectionComment('');
+  };
+
+  const openUserInfo = (candidate: Partial<AdminUser> & { ownerName?: string; whatsappNumber?: string; ownerAvatar?: string }) => {
+    const candidateId = String(candidate.id || '').trim().toLowerCase();
+    const candidateName = String(candidate.name || candidate.ownerName || '').trim().toLowerCase();
+    const candidateEmail = String(candidate.email || '').trim().toLowerCase();
+    const matched = adminUsers.find(user => {
+      const userId = user.id.trim().toLowerCase();
+      const userName = user.name.trim().toLowerCase();
+      const userEmail = user.email.trim().toLowerCase();
+      return Boolean(
+        (candidateId && userId === candidateId) ||
+        (candidateEmail && userEmail === candidateEmail) ||
+        (candidateName && userName === candidateName)
+      );
+    });
+
+    setSelectedAdminUser(matched || {
+      id: String(candidate.id || candidate.ownerName || candidate.name || 'user'),
+      name: candidate.name || candidate.ownerName || tr('admin.userInfo.unknownUser'),
+      email: candidate.email || '',
+      phone: candidate.phone || candidate.whatsappNumber || '',
+      role: candidate.role || 'guest',
+      status: candidate.status || 'active',
+      listingsCount: candidate.listingsCount || 0,
+      registeredAt: candidate.registeredAt || '',
+      avatar: candidate.avatar || candidate.ownerAvatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80'
+    });
   };
 
   const tabProps = {
@@ -832,6 +872,7 @@ export function useAdminDashboardController({
     setListingStatusFilter,
     onUpdateListing,
     showToast,
+    openUserInfo,
     onToggleStatus,
     onDeleteListing,
     handleActivateAllListings,
@@ -896,6 +937,8 @@ export function useAdminDashboardController({
     activeTab,
     setActiveTab,
     adminUsers,
+    selectedAdminUser,
+    setSelectedAdminUser,
     moderationListings,
     toastMessage,
     showToast,

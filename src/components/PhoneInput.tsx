@@ -10,6 +10,7 @@ type PhoneInputProps = {
   required?: boolean;
   defaultCountry?: CountryCode;
   className?: string;
+  shellClassName?: string;
 };
 
 const PhoneInput: React.FC<PhoneInputProps> = ({
@@ -19,13 +20,14 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
   ariaLabel = 'WhatsApp номер',
   required = false,
   defaultCountry = 'RU',
-  className = ''
+  className = '',
+  shellClassName = ''
 }) => {
   const activeDefaultCountry = defaultCountry as CountryCode;
   const phoneInfo = useMemo(() => formatPhoneInput(value, activeDefaultCountry), [activeDefaultCountry, value]);
 
   return (
-    <div className="phone-input-shell">
+    <div className={`phone-input-shell ${shellClassName}`}>
       <input
         type="tel"
         required={required}

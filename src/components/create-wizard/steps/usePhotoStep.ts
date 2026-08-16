@@ -21,11 +21,14 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     initialListing?.images?.length ? initialListing.images : []
   );
   const [photoSlotAssignments, setPhotoSlotAssignments] = useState<Partial<Record<PhotoSlotId, string[]>>>(() => {
-    if (!initialListing?.images?.length) return {};
+    if (!initialListing?.images?.length || !initialListing.photoSlotAssignments) return {};
     return PHOTO_SLOT_CONFIG.reduce<Partial<Record<PhotoSlotId, string[]>>>((acc, slot) => {
-      const startIndex = PHOTO_SLOT_CONFIG.slice(0, slot.index).reduce((sum, item) => sum + item.maxCount, 0);
-      const assignedImages = initialListing.images.slice(startIndex, startIndex + slot.maxCount);
-      if (assignedImages.length) acc[slot.id] = assignedImages;
+      const assignedImages = (initialListing.photoSlotAssignments?.[slot.id] || [])
+        .filter(url => initialListing.images.includes(url))
+        .slice(0, slot.maxCount);
+      if (assignedImages.length) {
+        acc[slot.id] = assignedImages;
+      }
       return acc;
     }, {});
   });
@@ -39,7 +42,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     setPhotoSlotAssignments(prev => {
       const next: Partial<Record<PhotoSlotId, string[]>> = {};
       PHOTO_SLOT_CONFIG.forEach(slot => {
-        const urls = (prev[slot.id] || []).filter(url => url !== photoUrl && photoUrls.includes(url));
+        const urls = (prev[slot.id] || []).filter(url => url !== photoUrl);
         if (urls.length) next[slot.id] = urls;
       });
 
@@ -47,7 +50,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
         const slot = PHOTO_SLOT_CONFIG.find(item => item.id === slotId);
         if (!slot) return next;
         const currentUrls = next[slotId] || [];
-        next[slotId] = [...currentUrls, photoUrl];
+        next[slotId] = [...currentUrls, photoUrl].slice(-slot.maxCount);
       }
 
       return next;

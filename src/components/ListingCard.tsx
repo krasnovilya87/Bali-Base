@@ -14,6 +14,7 @@ import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { shareListingLink } from '../utils/listingShare';
+import { isListingVerified } from '../utils/listingVerification';
 
 interface ListingCardProps {
   key?: string;
@@ -576,7 +577,7 @@ export default function ListingCard({
               <span>👑 {tr('listing.vipPremium')}</span>
             </div>
           )}
-          {listing.isApproved && (
+          {isListingVerified(listing) && (
             <div className={`bg-[#FFCD29] text-gray-950 ${THEME.fonts.heading} text-[8px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded shadow-md flex items-center gap-1 sm:gap-1.5 tracking-wide`}>
               <ShieldCheck className="w-2.5 h-2.5 sm:w-[15px] sm:h-[15px] text-[#2F7D69] shrink-0" />
               <span>{tr('listing.approvedBadge')}</span>

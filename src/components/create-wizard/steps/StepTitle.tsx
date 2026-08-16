@@ -1,5 +1,7 @@
 import React from 'react';
 import { ROOM_TYPE_LABELS } from '../constants';
+import { useI18n } from '../../../i18nContext';
+import { getGoogleMapsSearchText, isGoogleMapsLink } from './useLocationStep';
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
 
@@ -13,6 +15,8 @@ type StepTitleProps = {
   getSeoLengthVerdict: (length: number) => { color: string };
   roomType: RoomType;
   setRoomType: React.Dispatch<React.SetStateAction<RoomType>>;
+  roomCount: number;
+  setRoomCount: React.Dispatch<React.SetStateAction<number>>;
   // optional location helpers (passed from WizardStepContent)
   mapSuggestions?: any[];
   showSuggestionsDropdown?: boolean;
@@ -34,7 +38,9 @@ const StepTitle: React.FC<StepTitleProps> = ({
   setDescription,
   getSeoLengthVerdict,
   roomType,
-  setRoomType
+  setRoomType,
+  roomCount,
+  setRoomCount
   ,
   mapSuggestions,
   showSuggestionsDropdown,
@@ -45,7 +51,16 @@ const StepTitle: React.FC<StepTitleProps> = ({
   setAddress,
   setPickedCoords,
   isSearchingMap
-}) => (
+}) => {
+  const { tr } = useI18n();
+  const showsCalendarRoomCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
+  const roomCountLabelKey = subCategory === 'entire_place'
+    ? 'wizard.villaCount'
+    : subCategory === 'private_suite'
+      ? 'wizard.apartmentCount'
+      : 'wizard.roomCount';
+
+  return (
   <div className="space-y-4 animate-fade-in">
     <div className="space-y-1.5">
       <div className="flex justify-between items-center text-xs">
@@ -63,6 +78,17 @@ const StepTitle: React.FC<StepTitleProps> = ({
           value={title}
           onPaste={async (e) => {
             const paste = (e.clipboardData || (window as any).clipboardData).getData('text');
+            if (isGoogleMapsLink(paste)) {
+              e.preventDefault();
+              const searchText = getGoogleMapsSearchText(paste);
+              if (searchText && searchText !== paste.trim()) {
+                const titleText = searchText.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toLocaleUpperCase()).slice(0, 60);
+                setTitle(titleText);
+              }
+              triggerDirectSearch?.(paste);
+              setShowSuggestionsDropdown?.(false);
+              return;
+            }
             // try to extract @lat,lng pattern
             const atMatch = paste.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
             const qMatch = paste.match(/[?&]q=([-+\d\.]+),([-+\d\.]+)/);
@@ -114,6 +140,22 @@ const StepTitle: React.FC<StepTitleProps> = ({
       </div>
     </div>
 
+    {showsCalendarRoomCount && (
+      <div className="space-y-1.5">
+        <label className="font-semibold block text-xs text-[#1E293B]">
+          {tr(roomCountLabelKey)}
+        </label>
+        <input
+          type="number"
+          min={1}
+          max={50}
+          value={roomCount}
+          onChange={event => setRoomCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}
+          className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+        />
+      </div>
+    )}
+
     {category === 'housing' && subCategory === 'private_room' && (
       <div className="space-y-2">
         <label className="font-semibold block text-xs text-[#1E293B]">Тип комнаты:</label>
@@ -135,6 +177,19 @@ const StepTitle: React.FC<StepTitleProps> = ({
               </button>
             );
           })}
+        </div>
+        <div className="space-y-1.5">
+          <label className="font-semibold block text-xs text-[#1E293B]">
+            {tr('wizard.roomCountByType', { roomType: ROOM_TYPE_LABELS[roomType] })}
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={roomCount}
+            onChange={event => setRoomCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}
+            className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+          />
         </div>
         <p className="text-[10.5px] leading-relaxed text-gray-400 px-1 py-1">
           Для каждого типа комнаты создается отдельное объявление. Запрещено создавать одинаковые объявления.
@@ -159,6 +214,7 @@ const StepTitle: React.FC<StepTitleProps> = ({
       />
     </div>
   </div>
-);
+  );
+};
 
 export default StepTitle;

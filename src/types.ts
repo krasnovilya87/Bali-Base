@@ -36,6 +36,21 @@ export interface LatLng {
   lng: number;
 }
 
+export interface AiModerationCheck {
+  id: string;
+  passed: boolean;
+  reason?: string;
+  severity?: 'low' | 'medium' | 'high';
+}
+
+export interface AiModerationResult {
+  status: 'passed' | 'manual_review' | 'error';
+  checkedAt: string;
+  model?: string;
+  summary?: string;
+  checks: AiModerationCheck[];
+}
+
 export interface ListingNearbyRoute {
   overviewPath: LatLng[];
   distanceText?: string;
@@ -60,16 +75,19 @@ export interface Listing {
   placeId?: string;
   googleReviewsUpdatedAt?: string;
   images: string[];
+  photoSlotAssignments?: Partial<Record<string, string[]>>;
   rating: number;
   reviewsCount: number;
   reviews: Review[];
   
   // Badges & status
   isApproved: boolean; // Approved
+  isVerified?: boolean;
   isNew: boolean;
   status: 'active' | 'paused' | 'draft' | 'moderation' | 'rejected';
   rejectionReason?: string;
   rejectionComment?: string;
+  aiModeration?: AiModerationResult;
   expirationDate?: string;
   
   // Pricing configuration
@@ -93,6 +111,9 @@ export interface Listing {
   densityType?: 'cozy' | 'medium' | 'large'; // cozy (<=4 rooms), medium (5-10), large (10+)
   bedType?: string;
   bedTypes?: string[];
+  roomCount?: number;
+  roomNumber?: string;
+  roomNumbers?: string[];
   roomType?: 'standard' | 'deluxe' | 'super_deluxe' | 'family';
   kitchenType?: 'basic' | 'equipped' | 'private_basic' | 'private_equipped' | 'none';
   poolType?: 'none' | 'shared' | 'private' | 'infinity';
@@ -146,6 +167,8 @@ export interface BookingRequest {
   status: 'pending' | 'accepted' | 'declined';
   paymentStatus?: 'unpaid' | 'paid' | 'deposit';
   depositAmount?: number;
+  roomIndex?: number;
+  roomNumber?: string;
   comment?: string;
   declinedAt?: string;
   createdAt: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Listing, BookingRequest } from '../types';
 import {
   LayoutGrid, LineChart, Calendar as CalendarIcon, ClipboardList, Check, X,
@@ -13,6 +13,7 @@ import CalendarListingModal from './my-adds/CalendarListingModal';
 import DropPriceModal from './my-adds/DropPriceModal';
 import AnalyticsModal from './my-adds/AnalyticsModal';
 import { useI18n } from '../i18nContext';
+import { isListingVerified } from '../utils/listingVerification';
 
 interface MyAddsListingProps {
   listings: Listing[];
@@ -29,6 +30,8 @@ interface MyAddsListingProps {
   onEditClick?: (listing: Listing) => void;
   onViewClick?: (listing: Listing) => void;
   onDeleteListing?: (id: string) => void;
+  initialBookingsListingId?: string | null;
+  onInitialBookingsOpened?: () => void;
 }
 
 import { THEME } from '../theme';
@@ -47,18 +50,22 @@ export default function MyAddsListing({
   onCreateClick,
   onEditClick,
   onViewClick,
-  onDeleteListing
+  onDeleteListing,
+  initialBookingsListingId,
+  onInitialBookingsOpened
 }: MyAddsListingProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
 
   // Filtration for listings belonging to current user session
-  const ownerListings = listings.filter(item =>
-    item.ownerId === user?.uid ||
-    item.ownerId === 'owner-1' ||
-    item.ownerId === 'owner-personal' ||
-    item.ownerId === 'owner-direct'
-  );
+  const ownerListings = useMemo(() => listings
+    .filter(item =>
+      item.ownerId === user?.uid ||
+      item.ownerId === 'owner-1' ||
+      item.ownerId === 'owner-personal' ||
+      item.ownerId === 'owner-direct'
+    )
+    .sort((a, b) => getListingActivityTime(b) - getListingActivityTime(a)), [listings, user?.uid]);
 
   // Sub-modal overlay states
   const [promoteListing, setPromoteListing] = useState<Listing | null>(null);
@@ -69,6 +76,16 @@ export default function MyAddsListing({
   const [analyticsListing, setAnalyticsListing] = useState<Listing | null>(null);
   const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
   const [adjustListing, setAdjustListing] = useState<Listing | null>(null);
+
+  useEffect(() => {
+    if (!initialBookingsListingId) return;
+
+    const matchedListing = ownerListings.find(item => item.id === initialBookingsListingId);
+    if (matchedListing) {
+      setCalendarListing(matchedListing);
+    }
+    onInitialBookingsOpened?.();
+  }, [initialBookingsListingId, ownerListings, onInitialBookingsOpened]);
 
   // Helper type emoji labeling
   const getExpirationTimer = (item: Listing) => {
@@ -182,6 +199,12 @@ export default function MyAddsListing({
     return { position: positionInSimilar, total: totalSimilar };
   };
 
+  const handleListingCardClick = (event: React.MouseEvent<HTMLDivElement>, item: Listing) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a, input, select, textarea, label')) return;
+    onViewClick?.(item);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[500] p-2 sm:p-5" id="cabinet-modal">
       <div className="bg-[#F4F7F6] w-full max-w-5xl h-full max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-scale-up border border-[#E2E8F0]">
@@ -247,7 +270,8 @@ export default function MyAddsListing({
                 return (
                 <div
                   key={item.id}
-                  className="relative overflow-hidden bg-white rounded-2xl p-3 shadow-[0_6px_18px_rgba(30,41,59,0.06)] hover:shadow-[0_10px_24px_rgba(30,41,59,0.10)] ring-1 ring-slate-200/70 transition-all duration-300"
+                  onClick={(event) => handleListingCardClick(event, item)}
+                  className="relative overflow-hidden bg-white rounded-2xl p-3 shadow-[0_6px_18px_rgba(30,41,59,0.06)] hover:shadow-[0_10px_24px_rgba(30,41,59,0.10)] ring-1 ring-slate-200/70 transition-all duration-300 cursor-pointer"
                 >
                   <div
                     className={`absolute inset-y-0 left-0 w-1 ${item.isPromoTop ? 'bg-gradient-to-b from-amber-400 to-[#FF7A50]' : statusMeta.railClass}`}
@@ -263,7 +287,7 @@ export default function MyAddsListing({
                         <img
                           src={item.images[0]}
                           alt={item.title}
-                          className="h-full w-full object-cover transition duration-200 hover:brightness-95"
+                          className="h-full w-full object-cover"
                           referrerPolicy="no-referrer"
                         />
                       </button>
@@ -272,7 +296,7 @@ export default function MyAddsListing({
                         <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide shadow-sm ${statusMeta.panelClass}`}>
                           {statusMeta.label}
                         </span>
-                        {item.isApproved && (
+                        {isListingVerified(item) && (
                           <span className="flex items-center gap-1 rounded bg-[#FFCD29] px-1.5 py-0.5 text-[8px] font-extrabold text-gray-950 shadow-md">
                             <ShieldCheck className="h-2.5 w-2.5 text-[#2F7D69]" />
                             {tr('listing.approvedBadge')}
@@ -350,7 +374,7 @@ export default function MyAddsListing({
                       <button
                         type="button"
                         onClick={() => onViewClick?.(item)}
-                        className="text-left font-display text-base font-black leading-tight text-[#1E293B] line-clamp-2 transition hover:text-[#2F7D69]"
+                        className="text-left font-display text-base font-black leading-tight text-[#1E293B] line-clamp-2"
                         title={item.title}
                       >
                         {item.title}
@@ -641,21 +665,6 @@ export default function MyAddsListing({
 
                   </div>
 
-                  {item.status === 'rejected' && (item.rejectionReason || item.rejectionComment) && (
-                    <div className={`mt-2 rounded-xl border px-3 py-2 ${statusMeta.panelClass}`}>
-                      {item.rejectionReason && (
-                        <p className="text-xs font-semibold leading-relaxed">
-                          {tr('myListings.rejectionReason')}: {item.rejectionReason}
-                        </p>
-                      )}
-                      {item.rejectionComment && (
-                        <p className="text-[11px] leading-relaxed mt-1 opacity-80">
-                          {tr('myListings.adminComment')}: {item.rejectionComment}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
                   <div className="hidden">
                     <div className="px-2.5 py-1.5 rounded-xl bg-[#F4F7F6]/75 border border-slate-200/70">
                       <span className="text-[8.5px] uppercase tracking-wide text-gray-400 font-bold block">{tr('myListings.perDay')}</span>
@@ -780,7 +789,7 @@ export default function MyAddsListing({
                   </div>
 
                 </div>
-              );
+                );
               })}
             </div>
           )}
@@ -1076,5 +1085,14 @@ export default function MyAddsListing({
 
       </div>
     </div>
+  );
+}
+
+function getListingActivityTime(listing: Listing) {
+  const updatedAt = listing.pushedAt ? new Date(listing.pushedAt).getTime() : 0;
+  const createdAt = listing.createdAt ? new Date(listing.createdAt).getTime() : 0;
+  return Math.max(
+    Number.isFinite(updatedAt) ? updatedAt : 0,
+    Number.isFinite(createdAt) ? createdAt : 0
   );
 }

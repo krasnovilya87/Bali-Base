@@ -3,6 +3,7 @@ import { FilterState, Listing } from '../types';
 import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, ShieldCheck, HelpCircle, Wifi, Compass, Waves, Heart } from 'lucide-react';
 import Polzunok from './Polzunok';
 import { isListingFresh } from '../utils/listingFreshness';
+import { isListingVerified } from '../utils/listingVerification';
 import { snapRangeValue } from '../utils/range';
 import { useI18n } from '../i18nContext';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
@@ -384,7 +385,7 @@ export default function HousingFilters({
       // Cleanliness
       if (localFilters.cleanlinessTags.length > 0) {
         const matchesAllTags = localFilters.cleanlinessTags.every(tag => {
-          if (tag === 'Approved') return item.isApproved;
+          if (tag === 'Approved') return isListingVerified(item);
           const revTags = item.reviews ? item.reviews.flatMap(r => r.cleanlinessLabels || []) : [];
           return revTags.includes(tag);
         });
@@ -392,7 +393,7 @@ export default function HousingFilters({
       }
 
       // Super tags / fast check
-      if (localFilters.isApprovedOnly && !item.isApproved) return false;
+      if (localFilters.isApprovedOnly && !isListingVerified(item)) return false;
       if (localFilters.hasDropPriceOnly && !item.hasDropPrice) return false;
 
       // Type

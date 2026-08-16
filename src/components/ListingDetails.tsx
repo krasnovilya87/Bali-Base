@@ -14,6 +14,7 @@ import { findDistrictByCoordsSync, getHaversineDistance, getListingCoords } from
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
 import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';
+import { isListingUnavailableForDates } from '../utils/bookingAvailability';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
 import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useI18n } from '../i18nContext';
@@ -32,9 +33,12 @@ import {
 import {
   createSupportTicketFromListing,
   readSupportTickets,
+  resolveCurrentSupportUserPhone,
   writeSupportTickets
 } from '../utils/supportTickets';
 import { shareListingLink } from '../utils/listingShare';
+import { isListingVerified } from '../utils/listingVerification';
+import { ROOM_TYPE_LABELS } from './create-wizard/constants';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
@@ -201,6 +205,7 @@ interface ListingDetailsProps {
   currencySymbol: string;
   currencyRate: number;
   onAddBooking: (booking: BookingRequest) => void;
+  bookings?: BookingRequest[];
   initialCheckInDate?: string;
   initialCheckOutDate?: string;
   onDatesChange?: (checkIn: string, checkOut: string) => void;
@@ -216,6 +221,7 @@ export default function ListingDetails({
   currencySymbol,
   currencyRate,
   onAddBooking,
+  bookings = [],
   initialCheckInDate = '',
   initialCheckOutDate = '',
   onDatesChange,
@@ -240,6 +246,7 @@ export default function ListingDetails({
   const [showDateCalendar, setShowDateCalendar] = useState<boolean>(false);
   const [diffDays, setDiffDays] = useState<number>(5);
   const [orderPlaced, setOrderPlaced] = useState<boolean>(false);
+  const [unavailableMessage, setUnavailableMessage] = useState<string>('');
   const [countdownText, setCountdownText] = useState<string>('');
   const [isCharacteristicsExpanded, setIsCharacteristicsExpanded] = useState<boolean>(false);
   const [isAmenitiesExpanded, setIsAmenitiesExpanded] = useState<boolean>(false);
@@ -444,17 +451,19 @@ export default function ListingDetails({
   useEffect(() => {
     if (!listing.hasDropPrice || !listing.dropPriceEndsAt) return;
 
-    const timer = setInterval(() => {
+    const checkExpiration = () => {
       const difference = new Date(listing.dropPriceEndsAt!).getTime() - Date.now();
       if (difference <= 0) {
         setCountdownText(tr('listing.expired'));
-        clearInterval(timer);
       } else {
         const daysVal = difference / (1000 * 60 * 60 * 24);
         const daysText = Math.ceil(daysVal);
         setCountdownText(`${daysText} ${tr('listing.daysShort')}`);
       }
-    }, 1000);
+    };
+
+    checkExpiration();
+    const timer = setInterval(checkExpiration, 1000);
 
     return () => clearInterval(timer);
   }, [listing.hasDropPrice, listing.dropPriceEndsAt, tr]);
@@ -524,11 +533,19 @@ export default function ListingDetails({
     return Math.round(idrAmount * currencyRate).toLocaleString();
   };
 
-  const baseDailyPrice = listing.hasDropPrice && listing.dropPricePerDay
+  const formatBookingTotal = (idrAmount: number) =>
+    Math.round(idrAmount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+  const dropPriceDeadlineMs = listing.dropPriceEndsAt ? new Date(listing.dropPriceEndsAt).getTime() : null;
+  const isDropPricePastDeadline = dropPriceDeadlineMs !== null && Number.isFinite(dropPriceDeadlineMs) && dropPriceDeadlineMs <= Date.now();
+  const isExpired = countdownText === tr('listing.expired') || isDropPricePastDeadline;
+  const isDropPriceActive = listing.hasDropPrice && !isExpired;
+
+  const baseDailyPrice = isDropPriceActive && listing.dropPricePerDay
     ? listing.dropPricePerDay
     : listing.pricePerDay;
 
-  const baseMonthlyPrice = listing.hasDropPrice && listing.dropPricePerMonth
+  const baseMonthlyPrice = isDropPriceActive && listing.dropPricePerMonth
     ? listing.dropPricePerMonth
     : listing.pricePerMonth;
 
@@ -559,7 +576,6 @@ export default function ListingDetails({
       pricePerMonth: baseMonthlyPrice
     });
 
-  const isExpired = countdownText === tr('listing.expired');
   const stayDays = diffDays;
   const activeBasePrice = stayDays ? totalBudget : activeDailyPrice;
   const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice || 0;
@@ -662,14 +678,22 @@ export default function ListingDetails({
       setShowDateCalendar(true);
       return;
     }
+    if (isListingUnavailableForDates(listing, bookings, checkInDate, checkOutDate)) {
+      setUnavailableMessage(tr('details.unavailableForDates', { title: listing.title }));
+      return;
+    }
 
     // Generate prefilled Text inside template
+    const roomTypeLabel = listing.roomType ? ROOM_TYPE_LABELS[listing.roomType] || listing.roomType : '';
+    const bookingTitle = roomTypeLabel
+      ? `${stripListingRoomTypeFromTitle(listing.title)} - ${roomTypeLabel}`
+      : listing.title;
     const templateMessage = tr('details.whatsappBookingMessage', {
-      title: listing.title,
+      bookingTitle,
       checkIn: checkInDate,
       checkOut: checkOutDate,
-      days: diffDays,
-      total: totalBudget.toLocaleString()
+      nights: diffDays,
+      total: formatBookingTotal(totalBudget)
     });
     const encodedMessage = encodeURIComponent(templateMessage);
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
@@ -725,7 +749,11 @@ export default function ListingDetails({
 
     setOrderPlaced(true);
     setTimeout(() => {
-      window.open(waUrl, '_blank');
+      try {
+        window.open(waUrl, '_blank');
+      } finally {
+        setOrderPlaced(false);
+      }
     }, 1500);
   };
 
@@ -750,10 +778,10 @@ export default function ListingDetails({
 
     const nextTicket = createSupportTicketFromListing({
       listingId: listing.id,
-      listingTitle: listing.title,
+      listingTitle: problemListingTitle,
       userId: activeUser?.uid || 'registered-user',
       userName: activeUser?.displayName || activeUser?.email || tr('details.problem.defaultUser'),
-      userPhone: activeUser?.phoneNumber || '',
+      userPhone: resolveCurrentSupportUserPhone(activeUser),
       userAvatar: activeUser?.photoURL || '',
       subject: tr('details.problem.subject', { title: listing.title }),
       message: problemMessage.trim()
@@ -1103,6 +1131,12 @@ export default function ListingDetails({
   const isPrivateSuiteListing = listing.subCategory === 'private_suite';
   const isHousingListing = listing.category === 'housing';
   const isHotelListing = listing.housingType === 'Hotel (privet room)' || (listing.housingType || '').toLowerCase().includes('hotel');
+  const problemRoomTypeLabel = isPrivateRoomListing && listing.roomType
+    ? detailLabelMaps.roomType[listing.roomType] || ROOM_TYPE_LABELS[listing.roomType] || listing.roomType
+    : '';
+  const problemListingTitle = problemRoomTypeLabel
+    ? `${listing.title} · ${problemRoomTypeLabel}`
+    : listing.title;
 
   if (isHousingListing) {
     addDetailCharacteristic(true, {
@@ -1493,14 +1527,14 @@ export default function ListingDetails({
               </div>
 
               <div className="absolute top-4 left-4 flex gap-1.5 flex-col z-10 pointer-events-none">
-                {listing.hasDropPrice && (
+                {isDropPriceActive && countdownText && (
                   <div className="bg-amber-600 border border-amber-500/30 text-white text-[11px] font-mono font-bold px-3 py-1 rounded-xl shadow-md flex items-center gap-1">
                     <Flame className="w-4 h-4 fill-white animate-pulse" />
                     <span>{tr('details.dropPriceEndsIn', { time: countdownText })}</span>
                   </div>
                 )}
-                {listing.isApproved && (
-                  <div className="bg-[#FF7A50] text-white text-[11px] font-semibold px-3 py-1 rounded-xl shadow-md flex items-center gap-1 border border-emerald-500/20">
+                {isListingVerified(listing) && (
+                  <div className="bg-[#FFCD29] text-gray-950 text-[11px] font-semibold px-3 py-1 rounded-xl shadow-md flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4 text-[#2F7D69]" />
                     <span>{tr('details.approved')}</span>
                   </div>
@@ -1594,7 +1628,7 @@ export default function ListingDetails({
                       <span className={`text-[21px] sm:text-base lg:text-xl font-bold text-text-dark ${THEME.fonts.mono}`}>
                         {convertPrice(activeBasePrice)} {currencySymbol}
                       </span>
-                      {listing.hasDropPrice && !isExpired ? (
+                      {isDropPriceActive ? (
                         <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9.5px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                           {tr('listing.dropPrice')} • {countdownText}
                         </span>
@@ -2121,6 +2155,7 @@ export default function ListingDetails({
                       onChange={(inD, outD) => {
                         setCheckInDate(inD);
                         setCheckOutDate(outD);
+                        setUnavailableMessage('');
                         onDatesChange?.(inD, outD);
                       }}
                       onClose={() => setShowDateCalendar(false)}
@@ -2130,6 +2165,20 @@ export default function ListingDetails({
 
                 {/* Call WhatsApp button */}
                 <div className="pt-2">
+                  {unavailableMessage && (
+                    <div className="mb-3 rounded-2xl border border-[#FF7A50]/25 bg-[#FF7A50]/10 px-3 py-3 text-center">
+                      <p className="text-xs font-bold leading-relaxed text-[#1E293B]">
+                        {unavailableMessage}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="mt-2 text-xs font-extrabold text-[#2F7D69] underline decoration-[#2F7D69]/30 underline-offset-4 transition hover:text-[#FF7A50]"
+                      >
+                        {tr('details.viewOtherListings')}
+                      </button>
+                    </div>
+                  )}
                   <button
                     disabled={orderPlaced}
                     onClick={handleWhatsAppClick}
@@ -2172,6 +2221,20 @@ export default function ListingDetails({
 
         {/* Sticky bottom mobile checkout panel */}
         <div className="lg:hidden p-4 bg-white border-t border-[#E5E7EB] z-40">
+          {unavailableMessage && (
+            <div className="mb-3 rounded-2xl border border-[#FF7A50]/25 bg-[#FF7A50]/10 px-3 py-3 text-center">
+              <p className="text-xs font-bold leading-relaxed text-[#1E293B]">
+                {unavailableMessage}
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-2 text-xs font-extrabold text-[#2F7D69] underline decoration-[#2F7D69]/30 underline-offset-4 transition active:scale-95"
+              >
+                {tr('details.viewOtherListings')}
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <span className="text-[9px] text-gray-400 font-bold block leading-none mb-1">{tr('details.totalFor', { count: diffDays, unit: diffDays === 1 ? tr('details.night') : tr('details.nights') })}</span>
@@ -2213,6 +2276,7 @@ export default function ListingDetails({
               onChange={(inD, outD) => {
                 setCheckInDate(inD);
                 setCheckOutDate(outD);
+                setUnavailableMessage('');
                 onDatesChange?.(inD, outD);
               }}
               onClose={() => setShowDateCalendar(false)}
@@ -2221,61 +2285,66 @@ export default function ListingDetails({
         )}
 
         {isProblemModalOpen && (
-          <div className="fixed inset-0 z-[520] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-[#E5E7EB]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#FF7A50]">{tr('details.problem.badge')}</p>
-                  <h3 className="mt-1 text-xl font-black text-[#1E293B]">{tr('details.problem.title')}</h3>
-                  <p className="mt-2 text-xs font-semibold text-[#5F6978]">
-                    {tr('details.problem.subtitle', { title: listing.title })}
-                  </p>
+          <div className="fixed inset-0 z-[520] flex items-center justify-center bg-black/60 p-3 sm:p-5 backdrop-blur-xs">
+            <div className="pu flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl">
+              <div className="pu-header pu-window-header">
+                <div className="flex items-center gap-2.5">
+                  <ShieldAlert className="h-5 w-5 text-[#FF7A50]" />
+                  <h3>{tr('details.problem.title')}</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsProblemModalOpen(false)}
-                  className="h-9 w-9 shrink-0 rounded-full border border-[#E5E7EB] text-[#1E293B] hover:text-[#FF7A50] flex items-center justify-center transition"
+                  className="pu-close"
                   title={tr('common.close')}
                   aria-label={tr('common.close')}
                 >
-                  <X className="h-4 w-4" />
+                  <X />
                 </button>
               </div>
 
-              {problemSent ? (
-                <div className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
-                  {tr('details.problem.sent')}
-                </div>
-              ) : (
-                <div className="mt-5 space-y-3">
-                  <p className="text-sm leading-relaxed text-[#5F6978]">{tr('details.problem.intro')}</p>
-                  <label className="block text-xs font-extrabold text-[#1E293B]">
-                    {tr('details.problem.label')}
-                  </label>
-                  <textarea
-                    value={problemMessage}
-                    onChange={(event) => setProblemMessage(event.target.value)}
-                    placeholder={tr('details.problem.placeholder')}
-                    className="min-h-[120px] w-full rounded-2xl border border-[#E5E7EB] bg-[#F4F7F6] p-3 text-sm font-semibold text-[#1E293B] outline-none transition focus:border-[#FF7A50]"
-                  />
-                  <p className="text-[11px] font-semibold text-[#94A3B8]">{tr('details.problem.helper')}</p>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsProblemModalOpen(false)}
-                      className="flex-1 rounded-2xl border border-[#E5E7EB] px-4 py-3 text-xs font-extrabold text-[#1E293B] transition hover:bg-[#F4F7F6]"
-                    >
-                      {tr('details.problem.cancel')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={submitProblemReport}
-                      disabled={!problemMessage.trim()}
-                      className="flex-1 rounded-2xl bg-[#FF7A50] px-4 py-3 text-xs font-extrabold text-white transition hover:bg-[#E05A30] disabled:opacity-60"
-                    >
-                      {tr('details.problem.submit')}
-                    </button>
+              <div className="pu-body p-5">
+                {problemSent ? (
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-8 text-center text-sm font-bold text-emerald-700">
+                    {tr('details.problem.sent')}
                   </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1 text-xs font-semibold text-[#5F6978]">
+                      <p className="truncate">
+                        {tr('details.problem.subtitle', { title: problemListingTitle })}
+                      </p>
+                    </div>
+                    <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-[#5F6978]">
+                      {tr('details.problem.label')}
+                    </label>
+                    <textarea
+                      value={problemMessage}
+                      onChange={(event) => setProblemMessage(event.target.value)}
+                      rows={5}
+                      className="w-full resize-none rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm font-semibold leading-relaxed text-[#1E293B] outline-none transition focus:border-[#FF7A50] focus:ring-4 focus:ring-[#FF7A50]/10"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {!problemSent && (
+                <div className="pu-footer justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsProblemModalOpen(false)}
+                    className="pu-button-secondary"
+                  >
+                    {tr('details.problem.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitProblemReport}
+                    disabled={!problemMessage.trim()}
+                    className="pu-button-primary"
+                  >
+                    {tr('details.problem.submit')}
+                  </button>
                 </div>
               )}
             </div>

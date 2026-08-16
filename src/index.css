@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Unbounded:wght@800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -8,6 +8,7 @@
   /* Шрифт заголовков и логотипов */
   --font-display: "Manrope", sans-serif;
   --font-heading: "Manrope", sans-serif;
+  --font-logo: "Unbounded", sans-serif;
   
   /* Моноширинный шрифт переопределен на Manrope по запросу для числовых значений */
   --font-mono: "Manrope", sans-serif;
@@ -256,6 +257,17 @@ input[type="text"], input[type="date"] {
   line-height: 1;
   padding: 0.25rem 0.5rem;
   pointer-events: none;
+}
+
+.profile-phone-input .phone-input-country {
+  right: 0.875rem;
+  background: #F4F7F6;
+}
+
+.profile-input-field:focus,
+.profile-phone-input .phone-input-field:focus {
+  border-color: #2F7D69 !important;
+  box-shadow: 0 0 0 3px rgb(47 125 105 / 14%) !important;
 }
 
 /* PL Cards (Product/Listing Cards) Hover Effects */

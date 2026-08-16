@@ -108,9 +108,10 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
-                    const droppedSlotId = (event.dataTransfer.getData('text/plain') || draggedPhotoSlotId) as PhotoSlotId;
-                    if (droppedSlotId) {
-                      assignPhotoToSlot(url, droppedSlotId);
+                    const droppedSlotId = event.dataTransfer.getData('text/plain') || draggedPhotoSlotId;
+                    const matchingSlot = PHOTO_SLOT_CONFIG.find(item => item.id === droppedSlotId);
+                    if (matchingSlot) {
+                      assignPhotoToSlot(url, matchingSlot.id);
                     }
                     setDraggedPhotoSlotId(null);
                   }}

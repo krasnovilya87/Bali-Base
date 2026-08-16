@@ -11,6 +11,81 @@ type UseLocationStepParams = {
   hasValidKey: boolean;
 };
 
+const extractGooglePlaceIdFromText = (value: string) => {
+  const match = value.match(/[?&](?:query_place_id|place_id)=([^&#]+)/i);
+  return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : '';
+};
+
+export const isGoogleMapsLink = (value: string) =>
+  /(?:google\.[^/\s]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(value);
+
+export const getGoogleMapsSearchText = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    const queryValue = url.searchParams.get('query') || url.searchParams.get('q');
+    if (queryValue && !/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(queryValue.trim())) {
+      return queryValue.trim();
+    }
+
+    const placeMatch = url.pathname.match(/\/place\/([^/]+)/i);
+    if (placeMatch) {
+      return decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+    }
+  } catch {
+    // Plain text object names are handled below.
+  }
+
+  return trimmed;
+};
+
+const getGooglePlacesMapsLinkResolveApiUrl = () => {
+  const apiBaseUrl =
+    (import.meta as any).env?.VITE_API_BASE_URL ||
+    (globalThis as any).BALI_BASE_API_URL ||
+    '';
+
+  return `${String(apiBaseUrl).replace(/\/$/, '')}/api/google-places/maps-link/resolve`;
+};
+
+const resolveGoogleMapsLink = async (value: string) => {
+  if (!isGoogleMapsLink(value)) {
+    return {
+      placeId: extractGooglePlaceIdFromText(value),
+      searchText: getGoogleMapsSearchText(value)
+    };
+  }
+
+  const localResult = {
+    placeId: extractGooglePlaceIdFromText(value),
+    searchText: getGoogleMapsSearchText(value)
+  };
+
+  if (localResult.placeId || localResult.searchText !== value.trim()) {
+    return localResult;
+  }
+
+  try {
+    const response = await fetch(getGooglePlacesMapsLinkResolveApiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: value.trim() })
+    });
+    if (!response.ok) return localResult;
+
+    const result = await response.json() as { placeId?: string; searchText?: string };
+    return {
+      placeId: result.placeId || localResult.placeId,
+      searchText: result.searchText || localResult.searchText
+    };
+  } catch (error) {
+    console.warn('Google Maps link resolution failed:', error);
+    return localResult;
+  }
+};
+
 export const useLocationStep = ({
   initialListing,
   step,
@@ -69,7 +144,8 @@ export const useLocationStep = ({
     if (!places?.AutocompleteService) return [];
 
     const service = new places.AutocompleteService();
-    const input = /\bbali\b/i.test(query) ? query : `${query} Bali`;
+    const searchText = getGoogleMapsSearchText(query);
+    const input = /\bbali\b/i.test(searchText) ? searchText : `${searchText} Bali`;
 
     return new Promise<any[]>((resolve) => {
       service.getPlacePredictions(
@@ -133,7 +209,8 @@ export const useLocationStep = ({
   };
 
   const fetchSuggestions = async (query: string) => {
-    if (!query || query.trim().length < 3) {
+    const { searchText } = await resolveGoogleMapsLink(query);
+    if (!searchText || searchText.trim().length < 3) {
       setMapSuggestions([]);
       setShowSuggestionsDropdown(false);
       return;
@@ -141,14 +218,14 @@ export const useLocationStep = ({
 
     setIsSearchingMap(true);
     try {
-      const googleSuggestions = await fetchGoogleSuggestions(query);
+      const googleSuggestions = await fetchGoogleSuggestions(searchText);
       if (googleSuggestions.length > 0) {
         setMapSuggestions(googleSuggestions);
         setShowSuggestionsDropdown(true);
         return;
       }
 
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=114.4,-8.0,115.8,-9.0&bounded=0&addressdetails=1&limit=6&accept-language=ru,en`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}&viewbox=114.4,-8.0,115.8,-9.0&bounded=0&addressdetails=1&limit=6&accept-language=ru,en`;
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
@@ -245,10 +322,17 @@ export const useLocationStep = ({
 
   const resolveGooglePlaceIdForListing = async (query: string) => {
     if (selectedGooglePlaceId) return selectedGooglePlaceId;
-    if (!query.trim()) return '';
+    const resolvedLink = await resolveGoogleMapsLink(query);
+    if (resolvedLink.placeId) {
+      setSelectedGooglePlaceId(resolvedLink.placeId);
+      return resolvedLink.placeId;
+    }
+
+    const searchText = resolvedLink.searchText;
+    if (!searchText.trim()) return '';
 
     try {
-      const googleSuggestions = await fetchGoogleSuggestions(query);
+      const googleSuggestions = await fetchGoogleSuggestions(searchText);
       const placeId = googleSuggestions[0]?.place_id || '';
       if (placeId) {
         setSelectedGooglePlaceId(placeId);
@@ -261,10 +345,16 @@ export const useLocationStep = ({
   };
 
   const triggerDirectSearch = async (query: string) => {
+    const { placeId, searchText } = await resolveGoogleMapsLink(query);
+    if (placeId) {
+      const coords = await handleSelectSuggestion({ source: 'google', place_id: placeId });
+      if (coords) return coords;
+    }
+
     setIsSearchingMap(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=114.4,-8.0,115.8,-9.0&bounded=0&addressdetails=1&limit=1&accept-language=ru,en`;
-      const googleSuggestions = await fetchGoogleSuggestions(query);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}&viewbox=114.4,-8.0,115.8,-9.0&bounded=0&addressdetails=1&limit=1&accept-language=ru,en`;
+      const googleSuggestions = await fetchGoogleSuggestions(searchText);
       if (googleSuggestions.length > 0) {
         return await handleSelectSuggestion(googleSuggestions[0]);
       }

@@ -1,5 +1,6 @@
 import { Listing } from '../types';
 import { isListingFresh } from './listingFreshness';
+import { isListingVerified } from './listingVerification';
 
 export type MapListingVisibilityCandidate = {
   item: Listing;
@@ -57,7 +58,7 @@ const getQualityScore = (listing: Listing) => {
   const ratingScore = clamp01(((listing.rating || 0) - 3) / 2);
   const reviewsScore = clamp01(Math.log1p(listing.reviewsCount || 0) / Math.log1p(60));
   const photosScore = clamp01((listing.images?.length || 0) / 8);
-  const approvedScore = listing.isApproved ? 1 : 0.55;
+  const approvedScore = isListingVerified(listing) ? 1 : 0.55;
   const completenessScore = getCompletenessScore(listing);
 
   return (
