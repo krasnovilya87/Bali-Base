@@ -1,6 +1,282 @@
 error when starting dev server:
 Error: Port 3000 is already in use
-    at Server.onError (file:///C:/Users/User/Yandex.Disk/bali%20direct/Code/Bali-Base-main/Bali-Base-main/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:25119:18)
-    at Server.emit (node:events:509:28)
-    at emitErrorNT (node:net:2044:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Server.onError (file:///C:/Users/User/Yandex.Disk/bali%20direct/Code/Bali-Base-main/Bali-Base-main/node_modules/vfailed to load config from C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\vite.config.ts
+16:49:06 [vite] Transform failed with 1 error:
+C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/vite.config.ts:19:10: ERROR: Expected ";" but found ":"
+16:49:06 [vite] server restart failed
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "./lib/retry"
+
+    node_modules/retry/index.js:1:25:
+      1 │ module.exports = require('./lib/retry');
+        ╵                          ~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+
+    node_modules/react/jsx-dev-runtime.js:6:27:
+      6 │ ...le.exports = require('./cjs/react-jsx-dev-runtime.development.js');
+        ╵                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react.development.js"
+
+    node_modules/react/index.js:6:27:
+      6 │   module.exports = require('./cjs/react.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom-client.development.js"
+
+    node_modules/react-dom/client.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom-client.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom.development.js"
+
+    node_modules/react-dom/index.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-runtime.development.js"
+
+    node_modules/react/jsx-runtime.js:6:27:
+      6 │   module.exports = require('./cjs/react-jsx-runtime.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./index-9d184c40.js"
+
+    node_modules/@firebase/auth/dist/esm/index.js:1:2147:
+      1 │ ...eEmail, aa as verifyPasswordResetCode } from './index-9d184c40.js';
+        ╵                                                 ~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./common-b3e8012f.esm.js"
+
+    node_modules/@firebase/firestore/dist/index.esm.js:3:2692:
+      3 │ ...MultiTabOfflineComponentProvider } from './common-b3e8012f.esm.js';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./postinstall.mjs"
+
+    node_modules/@firebase/util/dist/index.esm.js:1:43:
+      1 │ import { getDefaultsFromPostinstall } from './postinstall.mjs';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./wrap-idb-value.js"
+
+    node_modules/idb/build/index.js:1:45:
+      1 │ import { w as wrap, r as replaceTraps } from './wrap-idb-value.js';
+        ╵                                              ~~~~~~~~~~~~~~~~~~~~~
+
+Error: Build failed with 11 errors:
+error: Cannot read directory "../../../../..": Access is denied.
+node_modules/react-dom/client.js:37:27: ERROR: Could not resolve "./cjs/react-dom-client.development.js"
+node_modules/react-dom/index.js:37:27: ERROR: Could not resolve "./cjs/react-dom.development.js"
+node_modules/react/index.js:6:27: ERROR: Could not resolve "./cjs/react.development.js"
+node_modules/react/jsx-dev-runtime.js:6:27: ERROR: Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+...
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "./cjs/react-jsx-runtime.development.js"
+
+    node_modules/react/jsx-runtime.js:6:27:
+      6 │   module.exports = require('./cjs/react-jsx-runtime.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom.development.js"
+
+    node_modules/react-dom/index.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react.development.js"
+
+    node_modules/react/index.js:6:27:
+      6 │   module.exports = require('./cjs/react.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom-client.development.js"
+
+    node_modules/react-dom/client.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom-client.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+
+    node_modules/react/jsx-dev-runtime.js:6:27:
+      6 │ ...le.exports = require('./cjs/react-jsx-dev-runtime.development.js');
+        ╵                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./lib/retry"
+
+    node_modules/retry/index.js:1:25:
+      1 │ module.exports = require('./lib/retry');
+        ╵                          ~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./index-9d184c40.js"
+
+    node_modules/@firebase/auth/dist/esm/index.js:1:2147:
+      1 │ ...eEmail, aa as verifyPasswordResetCode } from './index-9d184c40.js';
+        ╵                                                 ~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./common-b3e8012f.esm.js"
+
+    node_modules/@firebase/firestore/dist/index.esm.js:3:2692:
+      3 │ ...MultiTabOfflineComponentProvider } from './common-b3e8012f.esm.js';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./postinstall.mjs"
+
+    node_modules/@firebase/util/dist/index.esm.js:1:43:
+      1 │ import { getDefaultsFromPostinstall } from './postinstall.mjs';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./wrap-idb-value.js"
+
+    node_modules/idb/build/index.js:1:45:
+      1 │ import { w as wrap, r as replaceTraps } from './wrap-idb-value.js';
+        ╵                                              ~~~~~~~~~~~~~~~~~~~~~
+
+Error: Build failed with 11 errors:
+error: Cannot read directory "../../../../..": Access is denied.
+node_modules/react-dom/client.js:37:27: ERROR: Could not resolve "./cjs/react-dom-client.development.js"
+node_modules/react-dom/index.js:37:27: ERROR: Could not resolve "./cjs/react-dom.development.js"
+node_modules/react/index.js:6:27: ERROR: Could not resolve "./cjs/react.development.js"
+node_modules/react/jsx-dev-runtime.js:6:27: ERROR: Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+...
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+
+    node_modules/react/jsx-dev-runtime.js:6:27:
+      6 │ ...le.exports = require('./cjs/react-jsx-dev-runtime.development.js');
+        ╵                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react.development.js"
+
+    node_modules/react/index.js:6:27:
+      6 │   module.exports = require('./cjs/react.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-runtime.development.js"
+
+    node_modules/react/jsx-runtime.js:6:27:
+      6 │   module.exports = require('./cjs/react-jsx-runtime.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./lib/retry"
+
+    node_modules/retry/index.js:1:25:
+      1 │ module.exports = require('./lib/retry');
+        ╵                          ~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom-client.development.js"
+
+    node_modules/react-dom/client.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom-client.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom.development.js"
+
+    node_modules/react-dom/index.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./index-9d184c40.js"
+
+    node_modules/@firebase/auth/dist/esm/index.js:1:2147:
+      1 │ ...eEmail, aa as verifyPasswordResetCode } from './index-9d184c40.js';
+        ╵                                                 ~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./common-b3e8012f.esm.js"
+
+    node_modules/@firebase/firestore/dist/index.esm.js:3:2692:
+      3 │ ...MultiTabOfflineComponentProvider } from './common-b3e8012f.esm.js';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./wrap-idb-value.js"
+
+    node_modules/idb/build/index.js:1:45:
+      1 │ import { w as wrap, r as replaceTraps } from './wrap-idb-value.js';
+        ╵                                              ~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./postinstall.mjs"
+
+    node_modules/@firebase/util/dist/index.esm.js:1:43:
+      1 │ import { getDefaultsFromPostinstall } from './postinstall.mjs';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~
+
+Error: Build failed with 11 errors:
+error: Cannot read directory "../../../../..": Access is denied.
+node_modules/react-dom/client.js:37:27: ERROR: Could not resolve "./cjs/react-dom-client.development.js"
+node_modules/react-dom/index.js:37:27: ERROR: Could not resolve "./cjs/react-dom.development.js"
+node_modules/react/index.js:6:27: ERROR: Could not resolve "./cjs/react.development.js"
+node_modules/react/jsx-dev-runtime.js:6:27: ERROR: Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+...
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "./lib/retry"
+
+    node_modules/retry/index.js:1:25:
+      1 │ module.exports = require('./lib/retry');
+        ╵                          ~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react.development.js"
+
+    node_modules/react/index.js:6:27:
+      6 │   module.exports = require('./cjs/react.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-runtime.development.js"
+
+    node_modules/react/jsx-runtime.js:6:27:
+      6 │   module.exports = require('./cjs/react-jsx-runtime.development.js');
+        ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom.development.js"
+
+    node_modules/react-dom/index.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-dom-client.development.js"
+
+    node_modules/react-dom/client.js:37:27:
+      37 │   module.exports = require('./cjs/react-dom-client.development.js');
+         ╵                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+
+    node_modules/react/jsx-dev-runtime.js:6:27:
+      6 │ ...le.exports = require('./cjs/react-jsx-dev-runtime.development.js');
+        ╵                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./index-9d184c40.js"
+
+    node_modules/@firebase/auth/dist/esm/index.js:1:2147:
+      1 │ ...eEmail, aa as verifyPasswordResetCode } from './index-9d184c40.js';
+        ╵                                                 ~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./common-b3e8012f.esm.js"
+
+    node_modules/@firebase/firestore/dist/index.esm.js:3:2692:
+      3 │ ...MultiTabOfflineComponentProvider } from './common-b3e8012f.esm.js';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./postinstall.mjs"
+
+    node_modules/@firebase/util/dist/index.esm.js:1:43:
+      1 │ import { getDefaultsFromPostinstall } from './postinstall.mjs';
+        ╵                                            ~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./wrap-idb-value.js"
+
+    node_modules/idb/build/index.js:1:45:
+      1 │ import { w as wrap, r as replaceTraps } from './wrap-idb-value.js';
+        ╵                                              ~~~~~~~~~~~~~~~~~~~~~
+
+Error: Build failed with 11 errors:
+error: Cannot read directory "../../../../..": Access is denied.
+node_modules/react-dom/client.js:37:27: ERROR: Could not resolve "./cjs/react-dom-client.development.js"
+node_modules/react-dom/index.js:37:27: ERROR: Could not resolve "./cjs/react-dom.development.js"
+node_modules/react/index.js:6:27: ERROR: Could not resolve "./cjs/react.development.js"
+node_modules/react/jsx-dev-runtime.js:6:27: ERROR: Could not resolve "./cjs/react-jsx-dev-runtime.development.js"
+...

@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,9 +13,6 @@ export default defineConfig(() => {
     resolve: {
       alias: [
         { find: '@', replacement: path.resolve(__dirname, '.') },
-        { find: 'react/jsx-dev-runtime', replacement: path.resolve(__dirname, 'node_modules/react/cjs/react-jsx-dev-runtime.development.js') },
-        { find: 'react/jsx-runtime', replacement: path.resolve(__dirname, 'node_modules/react/cjs/react-jsx-runtime.development.js') },
-        { find: 'react', replacement: path.resolve(__dirname, 'node_modules/react/cjs/react.development.js') },
       ],
     },
     define: {
@@ -46,7 +43,6 @@ export default defineConfig(() => {
         'react-dom/client',
         'retry',
       ],
-      exclude: ['react/jsx-dev-runtime', 'react/jsx-runtime']
     },
     server: {
       host: '0.0.0.0',
