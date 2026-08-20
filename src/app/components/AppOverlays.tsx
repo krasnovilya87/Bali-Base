@@ -281,9 +281,7 @@ export default function AppOverlays({
             }
             setEditingListing(null);
           }}
-          onPublish={editingListing ? async listing => {
-            await handleUpdateListing(listing);
-          } : handlePublishListing}
+          onPublish={handlePublishListing}
           initialListing={editingListing}
           existingListings={listings}
           currencySymbol={currencySymbol}

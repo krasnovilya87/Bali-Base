@@ -6,6 +6,7 @@ import {
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
 } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
+import Del from '../../Del';
 
 type AdminTabProps = Record<string, any>;
 export function UsersTab(props: AdminTabProps) {
@@ -163,13 +164,17 @@ export function UsersTab(props: AdminTabProps) {
                               >
                                 <MessageCircle className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteUser(u.id)}
+                              <Del
+                                title={tr('admin.users.deleteTitle')}
+                                message={tr('admin.users.deleteBody', { name: u.name })}
+                                confirmLabel={tr('admin.users.deleteConfirm')}
+                                cancelLabel={tr('common.cancel')}
+                                onConfirm={() => handleDeleteUser(u.id)}
                                 className="p-1.5 bg-gray-100 text-gray-500 hover:bg-red-105 hover:text-red-600 rounded-xl text-xs cursor-pointer"
-                                title={tr('myListings.delete')}
+                                titleAttr={tr('myListings.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
+                              </Del>
                             </td>
                           </tr>
                         ))}

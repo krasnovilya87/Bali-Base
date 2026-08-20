@@ -1,21 +1,23 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
   const sliderValue =
     poolType === 'none' ? 0 :
       (poolType === 'shared' || (poolType === 'infinity' && (territoryType === 'shared' || territoryType === 'resort'))) ? 1 : 2;
-  const sliderBadgeText = sliderValue === 0 ? 'Любой / Нет' : sliderValue === 1 ? 'Общий' : 'Частный';
+  const sliderBadgeText = sliderValue === 0 ? tr('wizard.features.pool.any') : sliderValue === 1 ? tr('wizard.features.pool.shared') : tr('wizard.features.pool.private');
 
   return (
     <>
                   {/* 8. Бассейн */}
                   <div className="pl p-5 rounded-3xl space-y-4 font-sans">
                     <div className="flex justify-between items-center text-left">
-                      <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 Бассейн</span>
+                      <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 {tr('wizard.features.pool')}</span>
                       <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full animate-fade-in">
                         {sliderBadgeText}
                       </span>
@@ -41,9 +43,9 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                         }}
                       />
                       <div className="grid grid-cols-3 text-[10.5px] text-[#1E293B] font-semibold mt-1.5 px-0.5">
-                        <span className="text-left">Любой / Нет</span>
-                        <span className="text-center">Общий</span>
-                        <span className="text-right">Частный</span>
+                        <span className="text-left">{tr('wizard.features.pool.any')}</span>
+                        <span className="text-center">{tr('wizard.features.pool.shared')}</span>
+                        <span className="text-right">{tr('wizard.features.pool.private')}</span>
                       </div>
                     </div>
 
@@ -69,7 +71,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="text-xl">🌅</span>
-                          <span className="text-xs font-semibold text-[#1E293B]">Бассейн инфинити</span>
+                          <span className="text-xs font-semibold text-[#1E293B]">{tr('wizard.features.pool.infinity')}</span>
                         </div>
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${poolType === 'infinity'
                           ? 'border-[#FF7A50] bg-[#FF7A50] text-white'

@@ -36,7 +36,7 @@ export const useCategorySteps = ({
   const subcategoriesMapToUse = propSubcategoriesMap || defaultSubcategoriesMap;
 
   const [category, setCategory] = useState<any>(initialListing?.category || 'housing');
-  const [subCategory, setSubCategory] = useState<string>(initialListing?.subCategory || 'entire_place');
+  const [subCategory, setSubCategory] = useState<string>(initialListing?.subCategory || '');
 
   const categoriesList = useMemo(() => {
     return categoriesToUse.map(cat => {
@@ -71,8 +71,7 @@ export const useCategorySteps = ({
 
   const handleSelectCategory = (catId: any) => {
     setCategory(catId);
-    const subList = subcategoriesMapToUse[catId] || [];
-    setSubCategory(subList.length > 0 ? subList[0].id : '');
+    setSubCategory('');
   };
 
   return {

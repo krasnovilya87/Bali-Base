@@ -9,6 +9,7 @@ import {
   savePlaceLibrary
 } from '../../../utils/placeLibrary';
 import { useI18n } from '../../../i18nContext';
+import Del from '../../Del';
 
 type PlacesTabProps = {
   showToast?: (message: string) => void;
@@ -173,14 +174,17 @@ export function PlacesTab({ showToast }: PlacesTabProps) {
                     <Star className="w-3 h-3 fill-current" />
                     {item.rating?.toFixed(1) || '-'}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePlace(item.id)}
+                  <Del
+                    title={tr('admin.places.deleteTitle')}
+                    message={tr('admin.places.deleteBody', { name: item.name })}
+                    confirmLabel={tr('admin.places.deleteConfirm')}
+                    cancelLabel={tr('common.cancel')}
+                    onConfirm={() => handleDeletePlace(item.id)}
                     className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition"
-                    title={tr('myListings.delete')}
+                    titleAttr={tr('myListings.delete')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </Del>
                 </div>
               ))}
             </div>

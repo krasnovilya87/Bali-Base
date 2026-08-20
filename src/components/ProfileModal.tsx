@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Loader2, Mail, Phone, Save, User, X } from 'lucide-react';
 import { updateEmail, updateProfile } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db, uploadFileToStorage } from '../firebase';
+import { auth, db } from '../firebase';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
+import { uploadImageToFreeImageHost } from '../utils/imageUpload';
 import { formatPhoneInput } from '../utils/phone';
 import PhoneInput from './PhoneInput';
 
@@ -122,8 +123,7 @@ export default function ProfileModal({ listingsCount, onClose }: ProfileModalPro
     try {
       let nextPhotoURL = photoURL;
       if (photoFile) {
-        const extension = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-        nextPhotoURL = await uploadFileToStorage(photoFile, `profiles/${activeUser.uid}/avatar-${Date.now()}.${extension}`);
+        nextPhotoURL = await uploadImageToFreeImageHost(photoFile);
       }
 
       const cleanEmail = email.trim();

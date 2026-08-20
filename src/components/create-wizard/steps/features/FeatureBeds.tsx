@@ -1,23 +1,25 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureBeds: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 6. Конфигурация кроватей */}
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🛌 Конфигурация кроватей</span>
+                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🛌 {tr('wizard.features.beds')}</span>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { value: 'queen_size', label: 'Queen size', icon: '🛏️', section: 'Спальня' },
-                        { value: 'king_size', label: 'King size', icon: '👑', section: 'Спальня' },
+                        { value: 'queen_size', label: 'Queen size', icon: '🛏️', section: tr('wizard.features.beds.bedroom') },
+                        { value: 'king_size', label: 'King size', icon: '👑', section: tr('wizard.features.beds.bedroom') },
                         ...(subCategory === 'private_room' ? [] : [
-                          { value: 'single_1', label: '1 односпальная', icon: '🧸', section: 'Детская' },
-                          { value: 'single_2', label: '2 односпальные', icon: '🛌', section: 'Детская' }
+                          { value: 'single_1', label: tr('wizard.features.beds.single1'), icon: '🧸', section: tr('wizard.features.beds.kids') },
+                          { value: 'single_2', label: tr('wizard.features.beds.single2'), icon: '🛌', section: tr('wizard.features.beds.kids') }
                         ])
                       ].map(bed => {
                         const isActive = selectedBedTypes.includes(bed.value);
@@ -34,7 +36,7 @@ const FeatureBeds: React.FC<FeatureSectionProps> = (props) => {
                                 setSelectedBedTypes(current => [...current, bed.value]);
                               }
                             }}
-                            title={isLimitReached ? `Можно выбрать не больше ${maxBeds}` : undefined}
+                            title={isLimitReached ? tr('wizard.features.beds.max', { count: maxBeds }) : undefined}
                             className={`pl pl-interactive p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer min-h-[120px] relative ${isActive
                               ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm scale-102'
                               : isLimitReached

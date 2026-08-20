@@ -1,5 +1,4 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { BookingRequest, Listing, SearchState, FilterState } from './types';
 import { MOCK_GUIDES } from './data';
 import MapBox from './components/MapBox';
@@ -12,7 +11,6 @@ import { DEFAULT_LANGUAGE, LanguageCode, loadTranslations, t } from './i18n';
 import { I18nProvider } from './i18nContext';
 // @ts-ignore
 import baliRiceBg from './assets/images/hero4.jpg';
-import { COVER_SWIPE_LOTTIE_SRC } from './app/brand';
 import { CURRENCIES, CurrencyKey } from './app/currency';
 import { getDeviceLanguage } from './app/language';
 import { L1_CATEGORIES, preloadMenuImages, SUBCATEGORIES_MAP } from './app/menu';
@@ -709,10 +707,23 @@ export default function App() {
     let touchStartY = 0;
     let isCoverSwipeCandidate = false;
 
+    const goToMenuFromCover = () => {
+      resetViewScroll();
+      setCurrentView('menu');
+    };
+
     const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY > 15) {
-        setCurrentView('menu');
+      if (Math.abs(e.deltaY) > 6 || Math.abs(e.deltaX) > 6) {
+        goToMenuFromCover();
       }
+    };
+
+    const handleKeyDown = () => {
+      goToMenuFromCover();
+    };
+
+    const handleMouseDown = () => {
+      goToMenuFromCover();
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -732,19 +743,22 @@ export default function App() {
       const touchEndY = e.changedTouches[0].clientY;
       // Scroll down translates to swipe UP (where start Y is larger than end Y)
       if (touchStartY - touchEndY > 40) {
-        resetViewScroll();
-        setCurrentView('menu');
+        goToMenuFromCover();
       }
       isCoverSwipeCandidate = false;
     };
 
     window.addEventListener('wheel', handleWheel, { passive: true });
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
@@ -882,7 +896,7 @@ export default function App() {
 
         {/* 1. COVER SCREEN (SCREEN 1) */}
         {currentView === 'cover' && (
-          <div className="relative h-screen w-full overflow-hidden flex flex-col items-center justify-center text-center px-4 select-none">
+          <div className="relative min-h-[100svh] h-[100dvh] w-full overflow-hidden px-4 text-center select-none">
             {/* Ambient Video styled Background overlay */}
             <div className="absolute inset-0 bg-black/55 z-10" />
             <img
@@ -892,34 +906,39 @@ export default function App() {
               referrerPolicy="no-referrer"
             />
 
-            {/* Glowing badges upper area */}
-            <div className="z-20 mb-4 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 inline-flex items-center gap-2 animate-bounce-slow">
-              <Compass className="w-4 h-4 text-[#FF7A50]" />
-              <span className="text-white text-xs font-mono font-bold tracking-wider uppercase">
-                {tr('cover.badge')}
-              </span>
-            </div>
+            <div className="relative z-20 mx-auto flex min-h-full w-full max-w-5xl flex-col items-center justify-center pb-[22svh] pt-[10svh] sm:pb-[20svh] sm:pt-[8svh]">
+              <div className="flex translate-y-[-2svh] flex-col items-center sm:translate-y-[-3svh]">
+                {/* Glowing badges upper area */}
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 backdrop-blur-md sm:mb-5 sm:px-4 animate-bounce-slow">
+                  <Compass className="w-4 h-4 text-[#FF7A50]" />
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-white sm:text-xs">
+                    {tr('cover.badge')}
+                  </span>
+                </div>
 
-            <div className="z-20 space-y-4 max-w-4xl relative">
-              <div className="mx-auto max-w-[90vw] pb-2">
-                <BrandWordmark label={tr('brand.name')} variant="cover" />
+                <div className="mx-auto max-w-[92vw] pb-2">
+                  <BrandWordmark label={tr('brand.name')} variant="cover" />
+                </div>
+
+                <p className="mx-auto mt-3 max-w-[min(38rem,86vw)] text-balance font-sans text-base font-medium leading-relaxed text-emerald-50/90 drop-shadow-sm sm:mt-4 sm:text-xl">
+                  {tr('cover.subtitle')}
+                </p>
               </div>
-              <p className="font-sans text-lg sm:text-xl text-emerald-50/90 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
-                {tr('cover.subtitle')}
-              </p>
             </div>
 
             {/* Scroll directive indicator */}
-            <div className="z-20 mt-24 flex items-center justify-center text-white/90">
+            <div className="absolute inset-x-0 bottom-[6svh] z-20 flex items-center justify-center text-white/90 sm:bottom-[7svh]">
+              <div className="cover-scroll-mouse" aria-hidden="true">
+                <div className="cover-scroll-mouse-shell">
+                  <div className="cover-scroll-wheel" />
+                </div>
+              </div>
               <div className="flex cover-swipe-hand" aria-hidden="true">
-                {COVER_SWIPE_LOTTIE_SRC && (
-                  <DotLottieReact
-                    src={COVER_SWIPE_LOTTIE_SRC}
-                    loop
-                    autoplay
-                    className="cover-swipe-lottie"
-                  />
-                )}
+                <div className="cover-swipe-up">
+                  <span className="cover-swipe-up-arrow" />
+                  <span className="cover-swipe-up-track" />
+                  <span className="cover-swipe-up-dot" />
+                </div>
               </div>
             </div>
           </div>
@@ -1105,13 +1124,13 @@ export default function App() {
                         selectL1(cat.id);
                         openAppView();
                       }}
-                      className="h-full min-h-0 sm:h-auto sm:aspect-square bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-3.5 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
+                      className="h-full min-h-0 sm:h-auto sm:aspect-square bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-4 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
                     >
                       {/* Decorative faint glow */}
                       <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-[#FF7A50]/5 rounded-full filter blur-xl group-hover:scale-125 transition duration-300 pointer-events-none" />
 
                       {/* 3D Clay Illustration Image perfectly filling the card space */}
-                      <div className="absolute inset-x-2 sm:inset-x-3 top-2 sm:top-3 bottom-7 sm:bottom-10 flex items-center justify-center">
+                      <div className="absolute inset-x-2 sm:inset-x-3 top-2 sm:top-3 bottom-9 sm:bottom-10 flex items-center justify-center">
                         <img
                           src={displayImage}
                           alt={displayLabel}
@@ -1126,7 +1145,7 @@ export default function App() {
 
                       {/* Title label at the bottom */}
                       <div className="absolute bottom-2 sm:bottom-2.5 left-1 right-1 flex justify-center text-center">
-                        <h3 className="font-display font-extrabold text-center text-xs xs:text-sm sm:text-base lg:text-lg text-[#1E293B] group-hover:text-[#FF7A50] transition-colors leading-none sm:leading-tight tracking-tight px-1 truncate">
+                        <h3 className="font-display font-extrabold text-center text-[13px] xs:text-[15px] sm:text-base lg:text-lg text-[#1E293B] group-hover:text-[#FF7A50] transition-colors leading-[1.2] sm:leading-tight tracking-tight px-1 py-0.5 truncate">
                           {displayLabel}
                         </h3>
                       </div>
@@ -1433,6 +1452,7 @@ export default function App() {
                         {[
                           { value: 'price_asc', label: tr('sort.priceAsc.label') },
                           { value: 'price_desc', label: tr('sort.priceDesc.label') },
+                          { value: 'rating_desc', label: tr('sort.ratingAsc.label') },
                           { value: 'popular', label: tr('sort.popular.label') },
                           { value: 'distance_sea', label: tr('sort.distanceSea.label') },
                           { value: 'distance_point', label: tr('sort.distancePoint.label') },

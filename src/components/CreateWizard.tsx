@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ClipboardPlus, X } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { Listing } from '../types';
 import { isListingFresh } from '../utils/listingFreshness';
@@ -7,6 +7,7 @@ import {
   PHOTO_SLOT_CONFIG,
   REQUIRED_PHOTO_SLOTS,
   ROOM_TYPE_LABELS,
+  UNIT_TYPE_OPTIONS,
   stripRoomTypeFromTitle
 } from './create-wizard/constants';
 import WizardStepContent from './create-wizard/WizardStepContent';
@@ -65,8 +66,10 @@ const MIN_DESCRIPTION_LENGTH = 20;
 const MIN_LISTING_PHOTO_WIDTH = 640;
 const MIN_LISTING_PHOTO_HEIGHT = 480;
 const CALENDAR_ROOM_SUBCATEGORIES = ['private_room', 'private_suite', 'entire_place'];
+const UNIT_TYPE_SUBCATEGORIES = ['private_suite', 'entire_place'];
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
+type UnitType = typeof UNIT_TYPE_OPTIONS[number];
 
 export default function CreateWizard({
   onClose,
@@ -112,6 +115,8 @@ export default function CreateWizard({
     setDescription,
     roomType,
     setRoomType,
+    unitType,
+    setUnitType,
     roomCount,
     setRoomCount,
     getSeoLengthVerdict
@@ -344,7 +349,10 @@ export default function CreateWizard({
       if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
         return tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH });
       }
-      if (category === 'housing' && CALENDAR_ROOM_SUBCATEGORIES.includes(subCategory) && (!Number.isFinite(roomCount) || roomCount < 1 || roomCount > 50)) {
+      if (category === 'housing' && subCategory === 'private_room' && (!Number.isFinite(roomCount) || !roomCount || roomCount < 1 || roomCount > 50)) {
+        return tr('wizard.validationRoomCount');
+      }
+      if (category === 'housing' && UNIT_TYPE_SUBCATEGORIES.includes(subCategory) && roomCount !== undefined && (!Number.isFinite(roomCount) || roomCount < 1 || roomCount > 50)) {
         return tr('wizard.validationRoomCount');
       }
     }
@@ -386,16 +394,57 @@ export default function CreateWizard({
         showValidationPopup(message, stepToValidate);
         return false;
       }
+      if (stepToValidate === 3 && findDuplicateListingByTitleAndType()) {
+        showValidationPopup(tr('wizard.validationDuplicateTitleType'), 3);
+        return false;
+      }
     }
 
     return true;
   };
 
   const normalizeGooglePlaceId = (listing: Listing) => (listing.googlePlaceId || listing.placeId || '').trim();
+  const normalizeListingTitle = (value?: string) =>
+    stripRoomTypeFromTitle(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   const normalizeRoomType = (value?: string) => (value || '').trim().toLowerCase();
   const normalizeHousingType = (value?: string) => (value || '').trim().toLowerCase();
+  const getListingObjectTypeKey = (listing: Pick<Listing, 'category' | 'subCategory' | 'housingType' | 'roomType' | 'unitType'>) => [
+    listing.category,
+    listing.subCategory,
+    listing.category === 'housing' && listing.subCategory === 'private_room'
+      ? normalizeRoomType(listing.roomType)
+      : listing.category === 'housing' && UNIT_TYPE_SUBCATEGORIES.includes(listing.subCategory)
+        ? normalizeRoomType(listing.unitType)
+      : listing.category === 'housing'
+        ? normalizeHousingType(listing.housingType)
+        : ''
+  ].join('|');
   const getListingCalendarRoomCount = (listing?: Listing) =>
     Math.max(1, Math.min(50, listing?.roomCount || listing?.roomNumbers?.length || 1));
+
+  const findDuplicateListingByTitleAndType = () => {
+    const currentTitle = normalizeListingTitle(title);
+    if (!currentTitle) return undefined;
+
+    const currentTypeKey = getListingObjectTypeKey({
+      category: category as Listing['category'],
+      subCategory,
+      housingType,
+      roomType,
+      unitType
+    });
+
+    return existingListings.find(listing =>
+      listing.id !== initialListing?.id &&
+      normalizeListingTitle(listing.title) === currentTitle &&
+      getListingObjectTypeKey(listing) === currentTypeKey
+    );
+  };
 
   const findExistingPrivateRoomListing = (googlePlaceId: string, targetRoomType: RoomType = roomType) => {
     const normalizedPlaceId = googlePlaceId.trim();
@@ -431,6 +480,7 @@ export default function CreateWizard({
 
     const currentHousingType = normalizeHousingType(housingType);
     const currentRoomType = normalizeRoomType(roomType);
+    const currentUnitType = normalizeRoomType(unitType);
     if (subCategory === 'private_room' && currentRoomType && findExistingPrivateRoomListing(normalizedPlaceId)) {
       return undefined;
     }
@@ -443,14 +493,17 @@ export default function CreateWizard({
         subCategory !== 'private_room' ||
         !currentRoomType ||
         normalizeRoomType(listing.roomType) === currentRoomType
+      ) &&
+      (
+        !UNIT_TYPE_SUBCATEGORIES.includes(subCategory) ||
+        !currentUnitType ||
+        normalizeRoomType(listing.unitType) === currentUnitType
       )
     );
   };
 
   const getGooglePlaceIdForValidation = async () => {
-    const googlePlaceId = selectedGooglePlaceId || await resolveGooglePlaceIdForListing(
-      [title, address, district, 'Bali'].filter(Boolean).join(' ')
-    );
+    const googlePlaceId = selectedGooglePlaceId;
 
     if (!googlePlaceId) {
       showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
@@ -490,8 +543,16 @@ export default function CreateWizard({
       showValidationPopup(tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH }));
       return;
     }
+    if (step === 3 && findDuplicateListingByTitleAndType()) {
+      showValidationPopup(tr('wizard.validationDuplicateTitleType'));
+      return;
+    }
     if (step === 4 && !address.trim()) {
       showValidationPopup(tr('wizard.validationAddress'));
+      return;
+    }
+    if (step === 4 && !selectedGooglePlaceId) {
+      showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
       return;
     }
     if (step === 4 && !pickedCoords) {
@@ -570,8 +631,10 @@ export default function CreateWizard({
       ? findExistingPrivateRoomListing(googlePlaceIdOverride || selectedGooglePlaceId || initialListing?.googlePlaceId || initialListing?.placeId || '')
       : undefined;
     const sourceListing = initialListing || existingPrivateRoomListing;
-    const normalizedRoomCount = category === 'housing' && CALENDAR_ROOM_SUBCATEGORIES.includes(subCategory)
+    const normalizedRoomCount = category === 'housing' && subCategory === 'private_room'
       ? Math.max(1, Math.min(50, roomCount || 1))
+      : category === 'housing' && UNIT_TYPE_SUBCATEGORIES.includes(subCategory) && roomCount !== undefined
+        ? Math.max(1, Math.min(50, roomCount))
       : undefined;
     const normalizedRoomNumbers = normalizedRoomCount
       ? Array.from({ length: normalizedRoomCount }, (_, index) => sourceListing?.roomNumbers?.[index] || (index === 0 ? sourceListing?.roomNumber || '' : ''))
@@ -616,6 +679,7 @@ export default function CreateWizard({
       roomNumber: normalizedRoomNumbers?.[0]?.trim() || sourceListing?.roomNumber,
       roomNumbers: normalizedRoomNumbers,
       roomType: subCategory === 'private_room' ? roomType : undefined,
+      unitType: UNIT_TYPE_SUBCATEGORIES.includes(subCategory) && unitType ? unitType : undefined,
       kitchenType,
       poolType,
       internetSpeed,
@@ -653,9 +717,7 @@ export default function CreateWizard({
       return;
     }
 
-    const resolvedGooglePlaceId = selectedGooglePlaceId || await resolveGooglePlaceIdForListing(
-      [title, address, district, 'Bali'].filter(Boolean).join(' ')
-    );
+    const resolvedGooglePlaceId = selectedGooglePlaceId;
     if (!resolvedGooglePlaceId) {
       showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
       setIsPublishing(false);
@@ -731,6 +793,8 @@ export default function CreateWizard({
       getSeoLengthVerdict,
       roomType,
       setRoomType,
+      unitType,
+      setUnitType,
       roomCount,
       setRoomCount
     },
@@ -874,7 +938,10 @@ export default function CreateWizard({
     >
       <div className={`pu w-full max-w-3xl rounded-[2rem] shadow-2xl flex flex-col relative border border-white/50 ${isMapExpanded ? 'h-screen max-w-none rounded-none' : 'max-h-[92vh]'}`}>
         <div className="pu-header px-5 py-4 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
-          <div>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#FF7A50]/10 text-[#E05A30]">
+              <ClipboardPlus className="h-5 w-5" />
+            </span>
             <h3 className="font-heading text-[#1E293B] text-base font-extrabold">
               {tr('wizard.title')}
             </h3>
@@ -889,13 +956,13 @@ export default function CreateWizard({
         </div>
 
         <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
-          <div className="relative overflow-x-auto pt-1 pb-1">
-            <div className="absolute left-8 right-8 top-4 h-px rounded-full bg-[#CBD5E1]" />
+          <div className="relative pt-1 pb-1">
+            <div className="absolute left-[5%] right-[5%] top-4 h-px rounded-full bg-[#CBD5E1]" />
             <div
-              className="absolute left-8 top-4 h-px rounded-full bg-[#FF7A50] transition-all duration-300"
-              style={{ width: `calc((100% - 4rem) * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
+              className="absolute left-[5%] top-4 h-px rounded-full bg-[#FF7A50] transition-all duration-300"
+              style={{ width: `calc(90% * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
             />
-            <div className="relative grid min-w-[620px] grid-cols-10 gap-2 sm:min-w-0 sm:gap-3">
+            <div className="relative grid w-full grid-cols-10 gap-0 sm:gap-3">
               {stepLabels.map((label, index) => {
                 const itemStep = index + 1;
                 const isReached = step >= itemStep;
@@ -911,7 +978,7 @@ export default function CreateWizard({
                     <span className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-medium shadow-[0_0_0_3px_#EAEAEC] transition ${isActive ? 'border-[#FF7A50] bg-white text-[#FF7A50] ring-2 ring-[#FF7A50]/25' : isReached ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#CBD5E1] bg-[#E5E7EB] text-[#64748B]'}`}>
                       {itemStep}
                     </span>
-                    <span className={`w-full truncate text-[9px] font-normal leading-tight transition ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
+                    <span className={`hidden w-full truncate text-[9px] font-normal leading-tight transition sm:block ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
                       {label}
                     </span>
                   </button>

@@ -4,6 +4,7 @@ type TranslateFn = (key: string, params?: Record<string, string | number>) => st
 
 const featurePriority = [
   'housingType',
+  'unitType',
   'roomType',
   'view',
   'pool',
@@ -56,6 +57,17 @@ const formatRoomType = (listing: Listing, tr: TranslateFn) => {
   return map[listing.roomType];
 };
 
+const formatUnitType = (listing: Listing, tr: TranslateFn) => {
+  if (!['private_suite', 'entire_place'].includes(listing.subCategory) || !listing.unitType) return undefined;
+  const map: Record<NonNullable<Listing['unitType']>, string> = {
+    type_1: tr('listing.subtitle.unitType.type_1'),
+    type_2: tr('listing.subtitle.unitType.type_2'),
+    type_3: tr('listing.subtitle.unitType.type_3'),
+    type_4: tr('listing.subtitle.unitType.type_4')
+  };
+  return map[listing.unitType];
+};
+
 const formatView = (listing: Listing, tr: TranslateFn) => {
   const map: Partial<Record<NonNullable<Listing['viewType']>, string>> = {
     rice_fields: tr('listing.subtitle.view.rice_fields'),
@@ -97,6 +109,8 @@ const getFeatureValue = (listing: Listing, feature: SubtitleFeatureKey, tr: Tran
   switch (feature) {
     case 'housingType':
       return formatHousingType(listing, tr);
+    case 'unitType':
+      return formatUnitType(listing, tr);
     case 'roomType':
       return formatRoomType(listing, tr);
     case 'view':

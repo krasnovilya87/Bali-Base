@@ -2,6 +2,7 @@ import React from 'react';
 import { RefreshCw, Upload } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
 import PhotoCategoryPanel from '../PhotoCategoryPanel';
+import Del from '../../Del';
 import {
   OPTIONAL_PHOTO_SLOTS,
   PHOTO_SLOT_CONFIG,
@@ -118,17 +119,17 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                 >
                   <img src={url} alt="Uploaded file preview" className="w-full h-full object-cover !opacity-100" referrerPolicy="no-referrer" />
 
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleRemovePhoto(index);
-                    }}
+                  <Del
+                    title={tr('wizard.photoDeleteTitle')}
+                    message={tr('wizard.photoDeleteBody')}
+                    confirmLabel={tr('wizard.photoDeleteConfirm')}
+                    cancelLabel={tr('common.cancel')}
+                    onConfirm={() => handleRemovePhoto(index)}
                     className="absolute top-1.5 right-1.5 z-10 p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition cursor-pointer"
-                    title={tr('wizard.photoDelete')}
+                    titleAttr={tr('wizard.photoDelete')}
                   >
                     <span className="text-xs font-bold leading-none">x</span>
-                  </button>
+                  </Del>
 
                   <span className={`${slot ? 'bg-[#FF7A50] text-white' : 'bg-black/55 text-white'} absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] text-[8px] font-black px-1.5 py-0.5 rounded tracking-wider truncate`}>
                     {slot ? `${slot.index + 1}. ${tr(slot.shortLabelKey)}` : tr('wizard.extraPhoto')}

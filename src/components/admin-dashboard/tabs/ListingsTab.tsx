@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
 import { isListingVerified } from '../../../utils/listingVerification';
+import Del from '../../Del';
 
 type AdminTabProps = Record<string, any>;
 export function ListingsTab(props: AdminTabProps) {
@@ -168,13 +169,17 @@ export function ListingsTab(props: AdminTabProps) {
                               >
                                 {l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
                               </button>
-                              <button
-                                onClick={() => onDeleteListing(l.id)}
+                              <Del
+                                title={tr('myListings.deleteTitle')}
+                                message={tr('myListings.deleteBody', { title: l.title })}
+                                confirmLabel={tr('myListings.deleteConfirm')}
+                                cancelLabel={tr('common.cancel')}
+                                onConfirm={() => onDeleteListing(l.id)}
                                 className="p-1.5 bg-red-50 text-red-655 hover:bg-red-100 rounded-xl text-xs cursor-pointer"
-                                title={tr('admin.listings.delete')}
+                                titleAttr={tr('admin.listings.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
+                              </Del>
                             </td>
                           </tr>
                           );

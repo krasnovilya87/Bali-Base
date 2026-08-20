@@ -1,25 +1,27 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeaturePreferences: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 14. Особые преференции */}
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🐾 Особые преференции</span>
+                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🐾 {tr('wizard.features.preferences')}</span>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                       {[
-                        { value: 'pets_allowed', label: 'С питомцами', icon: '🐾' },
-                        { value: 'quiet_location', label: 'Тишина', icon: '🔕' },
-                        { value: 'all_bills_included', label: 'Bills включены', icon: '⚡' },
-                        { value: 'airport_transfer_included', label: 'Трансфер включен', icon: '✈️' },
-                        { value: 'airport_transfer_paid', label: 'Трансфер за доп плату', icon: '🚕' },
-                        { value: 'breakfast_included', label: 'Завтрак включен', icon: '☕' },
-                        { value: 'breakfast_paid', label: 'Завтрак за доп плату', icon: '🥐' },
+                        { value: 'pets_allowed', label: tr('wizard.features.preferences.pets'), icon: '🐾' },
+                        { value: 'quiet_location', label: tr('wizard.features.preferences.quiet'), icon: '🔕' },
+                        { value: 'all_bills_included', label: tr('wizard.features.preferences.bills'), icon: '⚡' },
+                        { value: 'airport_transfer_included', label: tr('wizard.features.preferences.transferIncluded'), icon: '✈️' },
+                        { value: 'airport_transfer_paid', label: tr('wizard.features.preferences.transferPaid'), icon: '🚕' },
+                        { value: 'breakfast_included', label: tr('wizard.features.preferences.breakfastIncluded'), icon: '☕' },
+                        { value: 'breakfast_paid', label: tr('wizard.features.preferences.breakfastPaid'), icon: '🥐' },
                       ].map(opt => {
                         const isActive = extraOptions.includes(opt.value);
                         return (

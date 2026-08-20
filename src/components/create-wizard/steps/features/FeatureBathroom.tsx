@@ -1,25 +1,27 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureBathroom: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 11. Ванная комната */}
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🚿 Ванная комната</span>
+                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🚿 {tr('wizard.features.bathroom')}</span>
 
                     <div className="grid grid-cols-3 gap-2.5">
                       {[
-                        { value: 'hot_water', label: 'Горячая вода', icon: '🔥' },
-                        { value: 'tropical_shower', label: 'Тропический душ', icon: '🌴' },
-                        { value: 'double_sink', label: 'Две раковины', icon: '🚰' },
-                        { value: 'bathtub', label: 'Ванна', icon: '🛁' },
-                        { value: 'garden_view', label: 'Видовое окно', icon: '🪴' },
-                        { value: 'sauna_hammam', label: 'сауна / хаммам', icon: '🧖' }
+                        { value: 'hot_water', label: tr('wizard.features.bathroom.hotWater'), icon: '🔥' },
+                        { value: 'tropical_shower', label: tr('wizard.features.bathroom.tropicalShower'), icon: '🌴' },
+                        { value: 'double_sink', label: tr('wizard.features.bathroom.doubleSink'), icon: '🚰' },
+                        { value: 'bathtub', label: tr('wizard.features.bathroom.bathtub'), icon: '🛁' },
+                        { value: 'garden_view', label: tr('wizard.features.bathroom.gardenView'), icon: '🪴' },
+                        { value: 'sauna_hammam', label: tr('wizard.features.bathroom.saunaHammam'), icon: '🧖' }
                       ].map(opt => {
                         const isActive = bathroomOptions.includes(opt.value);
                         return (

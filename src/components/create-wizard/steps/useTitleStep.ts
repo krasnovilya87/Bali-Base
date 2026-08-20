@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Listing } from '../../../types';
-import { ROOM_TYPE_LABELS } from '../constants';
+import { ROOM_TYPE_LABELS, UNIT_TYPE_OPTIONS } from '../constants';
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
+type UnitType = typeof UNIT_TYPE_OPTIONS[number];
 
 type UseTitleStepParams = {
   initialListing?: Listing | null;
@@ -19,7 +20,8 @@ export const useTitleStep = ({ initialListing }: UseTitleStepParams) => {
   const [title, setTitle] = useState<string>(initialListing?.title || '');
   const [description, setDescription] = useState<string>(initialListing?.description || '');
   const [roomType, setRoomType] = useState<RoomType>(initialListing?.roomType || 'standard');
-  const [roomCount, setRoomCount] = useState<number>(Math.max(1, initialListing?.roomCount || initialListing?.roomNumbers?.length || 1));
+  const [unitType, setUnitType] = useState<UnitType | ''>(initialListing?.unitType || '');
+  const [roomCount, setRoomCount] = useState<number | undefined>(initialListing?.roomCount || initialListing?.roomNumbers?.length);
 
   return {
     title,
@@ -28,6 +30,8 @@ export const useTitleStep = ({ initialListing }: UseTitleStepParams) => {
     setDescription,
     roomType,
     setRoomType,
+    unitType,
+    setUnitType,
     roomCount,
     setRoomCount,
     getSeoLengthVerdict

@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureTerritory: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
   const [showResortInfo, setShowResortInfo] = useState(false);
 
   return (
     <>
       {/* 5. Тип территории */}
       <div className="space-y-3">
-        <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🏡 Тип территории</span>
+        <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🏡 {tr('wizard.features.territory')}</span>
         <div className="grid grid-cols-3 gap-2.5">
           {[
-            { value: 'private', label: 'Приватная', icon: '🔒', desc: 'Свой двор' },
-            { value: 'shared', label: 'Общая', icon: '👥', desc: 'Общий двор' },
-            { value: 'resort', label: 'Резорт', icon: '✨', desc: 'Закрытый сад' }
+            { value: 'private', label: tr('wizard.features.territory.private'), icon: '🔒', desc: tr('wizard.features.territory.privateDesc') },
+            { value: 'shared', label: tr('wizard.features.territory.shared'), icon: '👥', desc: tr('wizard.features.territory.sharedDesc') },
+            { value: 'resort', label: tr('wizard.features.territory.resort'), icon: '✨', desc: tr('wizard.features.territory.resortDesc') }
           ].map(t => {
             const isActive = territoryType === t.value;
             return (
@@ -52,17 +54,17 @@ const FeatureTerritory: React.FC<FeatureSectionProps> = (props) => {
               <div className="w-10 h-10 rounded-2xl bg-[#FF7A50]/10 flex items-center justify-center text-xl">
                 ✨
               </div>
-              <h3 className="text-base font-extrabold text-[#1E293B]">Резорт</h3>
+              <h3 className="text-base font-extrabold text-[#1E293B]">{tr('wizard.features.territory.resort')}</h3>
             </div>
             <p className="text-xs leading-relaxed text-[#1E293B]/80 mb-5">
-              Резорт это крупный гостиничный комплекс с бассейнами, ресторанами, развлечениями и зонами отдыха
+              {tr('wizard.features.territory.resortInfo')}
             </p>
             <button
               type="button"
               onClick={() => setShowResortInfo(false)}
               className="w-full py-3 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-2xl text-xs font-extrabold transition active:scale-95 cursor-pointer"
             >
-              Понятно
+              {tr('common.ok')}
             </button>
           </div>
         </div>

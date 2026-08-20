@@ -3,6 +3,18 @@ import express from 'express';
 import type { Listing } from '../../types';
 import { moderateListingWithGemini } from './service';
 
+const getModerationErrorStatus = (message: string) => {
+  if (message.includes('GEMINI_API_KEY')) return 503;
+  if (message.includes('Gemini') || message.includes('Google')) return 502;
+  return 500;
+};
+
+const getModerationErrorMessage = (status: number) => {
+  if (status === 503) return 'AI moderation is not configured on the server.';
+  if (status === 502) return 'AI moderation provider is temporarily unavailable.';
+  return 'AI moderation could not complete.';
+};
+
 export const createAiModerationRouter = (): Router => {
   const router = express.Router();
 
@@ -24,8 +36,9 @@ export const createAiModerationRouter = (): Router => {
       res.json({ ok: true, result });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const status = message.includes('GEMINI_API_KEY') ? 503 : 500;
-      res.status(status).json({ ok: false, error: message });
+      const status = getModerationErrorStatus(message);
+      console.error('[AI moderation] request failed:', error);
+      res.status(status).json({ ok: false, error: getModerationErrorMessage(status) });
     }
   });
 

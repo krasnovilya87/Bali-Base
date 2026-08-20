@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
@@ -8,6 +9,7 @@ const FeatureObjectType: React.FC<FeatureSectionProps> = (props) => {
     housingType,
     setHousingType
   } = props;
+  const { tr } = useI18n();
 
   const renderTypeButton = (type: { value: string; label: string; icon: string }) => {
     const isActive = housingType === type.value;
@@ -36,22 +38,22 @@ const FeatureObjectType: React.FC<FeatureSectionProps> = (props) => {
       { value: 'Home stay (Host on-site)', label: 'Homestay', icon: '🏠' },
       { value: 'Hotel (privet room)', label: 'Hotel', icon: '🏨' },
       { value: 'Bungalow (standalone unit)', label: 'Bungalow', icon: '🛖' },
-      { value: 'Villa / House (privet room)', label: 'Вилла, Дом', icon: '🏘️' },
-      { value: 'Apartment (privet room)', label: 'Апартаменты', icon: '🏢' }
+      { value: 'Villa / House (privet room)', label: tr('wizard.features.objectType.villaHouse'), icon: '🏘️' },
+      { value: 'Apartment (privet room)', label: tr('wizard.features.objectType.apartments'), icon: '🏢' }
     ]
     : subCategory === 'private_suite'
       ? [
-        { value: 'Apartment Complex (privet unit)', label: 'Апартаменты', icon: '🏢' }
+        { value: 'Apartment Complex (privet unit)', label: tr('wizard.features.objectType.apartments'), icon: '🏢' }
       ]
       : [
-        { value: 'Privet Villa (must pool)', label: 'Вилла', icon: '🏘️' },
-        { value: 'House (no pool)', label: 'Дом', icon: '🏡' },
-        { value: 'Bungalow (standalone unit)', label: 'Бунгало', icon: '🛖' }
+        { value: 'Privet Villa (must pool)', label: tr('wizard.features.objectType.villa'), icon: '🏘️' },
+        { value: 'House (no pool)', label: tr('wizard.features.objectType.house'), icon: '🏡' },
+        { value: 'Bungalow (standalone unit)', label: tr('wizard.features.objectType.bungalow'), icon: '🛖' }
       ];
 
   return (
     <div className="space-y-3">
-      <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🏘️ Тип объекта</span>
+      <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🏘️ {tr('wizard.features.objectType')}</span>
       <div className={`grid gap-3 ${subCategory === 'private_room' ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'}`}>
         {typeOptions.map(renderTypeButton)}
       </div>

@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ShieldCheck, Trash2, XCircle } from 'lucid
 import { useI18n } from '../../../i18nContext';
 import { AI_MODERATION_RULES } from '../../../utils/aiModerationRules';
 import ListingCard from '../../ListingCard';
+import Del from '../../Del';
 
 type AdminTabProps = Record<string, any>;
 
@@ -129,13 +130,17 @@ export function ModerationTab(props: AdminTabProps) {
                 {tr('admin.moderation.found', { count: moderationItems.length })}
               </p>
             </div>
-            <button
-              onClick={handleDeleteAllModeration}
+            <Del
+              title={tr('admin.moderation.deleteAllTitle')}
+              message={tr('admin.moderation.deleteAllBody', { count: moderationItems.length })}
+              confirmLabel={tr('admin.moderation.deleteAllConfirm')}
+              cancelLabel={tr('common.cancel')}
+              onConfirm={handleDeleteAllModeration}
               className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
               <span>{tr('admin.moderation.deleteAll')}</span>
-            </button>
+            </Del>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

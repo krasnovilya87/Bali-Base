@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPriceWithSpaces } from '../constants';
 import PricingGraph from './PricingGraph';
+import { useI18n } from '../../../i18nContext';
 
 type StepPricingProps = {
   pricePerDay: number;
@@ -53,6 +54,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
   interactiveDays,
   setInteractiveDays
 }) => {
+  const { tr } = useI18n();
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const platformDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +76,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
       <div className="grid grid-cols-2 gap-4 pt-2">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
-            Ваша цена за сутки (IDR)
+            {tr('wizard.priceDay')}
           </label>
           <input
             type="text"
@@ -90,7 +92,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
 
         <div className="space-y-1.5">
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
-            Ваша цена за месяц (IDR)
+            {tr('wizard.priceMonth')}
           </label>
           <input
             type="text"
@@ -110,7 +112,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
           <div className="flex-1 space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#1E293B] block tracking-wider font-sans">
-                На каком ресурсе размещено сейчас ваше объявление?
+                {tr('wizard.competitorQuestion')}
               </label>
               <div ref={platformDropdownRef} className="relative z-[3000]">
                 <button
@@ -155,7 +157,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
             <div className="flex-1 space-y-3 p-4 bg-[#F4F7F6]/40 rounded-2xl border-0">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-[#1E293B] block tracking-wider">
-                  Введите сумму на {getPlatformLabel(competitorPlatform)} (IDR/сутки)
+                  {tr('wizard.competitorPrice', { platform: getPlatformLabel(competitorPlatform) })}
                 </label>
                 <input
                   type="text"
@@ -171,7 +173,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
 
               <div className="space-y-1.5 pt-1">
                 <label className="text-[10px] font-bold text-[#1E293B] block tracking-wider">
-                  Ссылка на объявление
+                  {tr('wizard.listingUrl')}
                 </label>
                 <input
                   type="url"
@@ -186,7 +188,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E5E7EB]/40 animate-fade-in">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-[#5F6978] block">
-                      Скидка за неделю
+                      {tr('wizard.weekDiscount')}
                     </label>
                     <select
                       value={airbnbWeeklyDiscount}
@@ -202,7 +204,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-[#5F6978] block">
-                      Скидка за месяц
+                      {tr('wizard.monthDiscount')}
                     </label>
                     <select
                       value={airbnbMonthlyDiscount}

@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent } from 'react';
 import { MessageSquare, Pin, Trash2, X } from 'lucide-react';
 import { BookingRequest, Listing } from '../types';
 import { useI18n } from '../i18nContext';
+import Del from './Del';
 
 const HISTORY_ACTIONS_WIDTH = 104;
 const HISTORY_SWIPE_OPEN_THRESHOLD = 42;
@@ -50,7 +51,6 @@ export default function ContactHistoryTab({
   const { tr } = useI18n();
   const [openActionsId, setOpenActionsId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ itemId: string; value: number } | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const swipeGestureRef = useRef<{
     itemId: string;
     pointerId: number;
@@ -70,7 +70,6 @@ export default function ContactHistoryTab({
       month: '2-digit'
     });
   const closeSwipeActions = () => setOpenActionsId(null);
-  const closeDeleteConfirm = () => setPendingDeleteId(null);
   const buildWhatsAppUrl = (phone?: string) => {
     const cleanNumber = phone?.replace(/[^0-9]/g, '') || '';
     return cleanNumber ? `https://wa.me/${cleanNumber}` : '';
@@ -79,12 +78,6 @@ export default function ContactHistoryTab({
     const url = buildWhatsAppUrl(phone);
     if (!url) return;
     window.open(url, '_blank', 'noopener,noreferrer');
-  };
-  const confirmDeleteItem = () => {
-    if (!pendingDeleteId) return;
-    onDeleteItem(pendingDeleteId);
-    setPendingDeleteId(null);
-    closeSwipeActions();
   };
   const clampSwipeOffset = (value: number) => Math.max(-HISTORY_ACTIONS_WIDTH, Math.min(0, value));
   const getCardOffset = (itemId: string) => {
@@ -232,18 +225,20 @@ export default function ContactHistoryTab({
                   >
                     <Pin className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setPendingDeleteId(item.id);
+                  <Del
+                    title={tr('history.confirmDeleteTitle')}
+                    confirmLabel={tr('history.deleteItem')}
+                    cancelLabel={tr('history.cancelDelete')}
+                    onConfirm={() => {
+                      onDeleteItem(item.id);
+                      closeSwipeActions();
                     }}
                     className="flex w-13 items-center justify-center bg-rose-500 text-white focus:outline-none cursor-pointer"
-                    aria-label={tr('history.deleteItem')}
-                    title={tr('history.deleteItem')}
+                    ariaLabel={tr('history.deleteItem')}
+                    titleAttr={tr('history.deleteItem')}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Del>
                 </div>
 
                 <div
@@ -387,42 +382,6 @@ export default function ContactHistoryTab({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#F4F7F6]">
           {successMsg ? <p className="h-full flex items-center justify-center text-sm font-bold text-gray-700">{successMsg}</p> : content}
         </div>
-
-        {pendingDeleteId && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#1E293B]/35 px-5 backdrop-blur-xs">
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="contact-history-delete-title"
-              className="pu flex w-full max-w-xs flex-col overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl animate-scale-up"
-            >
-              <div className="pu-head flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500">
-                  <Trash2 className="h-4 w-4" />
-                </span>
-                <h3 id="contact-history-delete-title">
-                  {tr('history.confirmDeleteTitle')}
-                </h3>
-              </div>
-              <div className="pu-footer">
-                <button
-                  type="button"
-                  onClick={closeDeleteConfirm}
-                  className="pu-button-secondary flex-1 focus:outline-none"
-                >
-                  {tr('history.cancelDelete')}
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteItem}
-                  className="pu-button-primary flex-1 !bg-rose-500 hover:!bg-rose-600 focus:outline-none"
-                >
-                  {tr('history.deleteItem')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

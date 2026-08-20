@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
 
 type StepIcalProps = {
   icalInput: string;
@@ -15,10 +16,13 @@ const StepIcal: React.FC<StepIcalProps> = ({
   testIcalSync,
   icalStatus,
   simulatedBlockedCount
-}) => (
-  <div className="space-y-4 animate-fade-in">
-    <div className="pl space-y-2 pt-2 p-4 rounded-3xl">
-      <label className="text-xs font-semibold block text-[#1E293B]">Ссылка на iCal Поток (Airbnb / Booking feed):</label>
+}) => {
+  const { tr } = useI18n();
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="pl space-y-2 pt-2 p-4 rounded-3xl">
+        <label className="text-xs font-semibold block text-[#1E293B]">{tr('wizard.icalUrl')}</label>
       <div className="flex gap-2">
         <input
           type="url"
@@ -32,7 +36,7 @@ const StepIcal: React.FC<StepIcalProps> = ({
           className="px-4 py-2 bg-[#2F7D69] hover:bg-[#205749] text-white text-xs font-bold rounded-xl transition cursor-pointer active:scale-95 flex items-center gap-1"
         >
           <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
-          <span>Проверить</span>
+          <span>{tr('wizard.check')}</span>
         </button>
       </div>
 
@@ -45,9 +49,10 @@ const StepIcal: React.FC<StepIcalProps> = ({
     </div>
 
     <p className="text-[10.5px] text-gray-450 leading-relaxed max-w-xl text-center mx-auto">
-      * Связанный iCal URL блокирует зарезервированные слоты автоматически каждые 15 минут в фоновом режиме. Безопасность 100%.
+      * {tr('wizard.icalNote')}
     </p>
   </div>
-);
+  );
+};
 
 export default StepIcal;

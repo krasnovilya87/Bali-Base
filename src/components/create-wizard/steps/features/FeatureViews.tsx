@@ -1,23 +1,25 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureViews: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 9. Вид */}
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🌅 Вид</span>
+                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🌅 {tr('wizard.features.view')}</span>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       {[
-                        { value: 'rice_fields', label: 'Рис. поля', icon: '🌾' },
-                        { value: 'garden', label: 'Сад', icon: '🌴' },
-                        { value: 'pool', label: 'Бассейн', icon: '💦' },
-                        { value: 'ocean', label: 'Океан', icon: '🌊' },
-                        { value: 'jungle', label: 'Джунгли', icon: '🌿' }
+                        { value: 'rice_fields', label: tr('wizard.features.view.riceFields'), icon: '🌾' },
+                        { value: 'garden', label: tr('wizard.features.view.garden'), icon: '🌴' },
+                        { value: 'pool', label: tr('wizard.features.view.pool'), icon: '💦' },
+                        { value: 'ocean', label: tr('wizard.features.view.ocean'), icon: '🌊' },
+                        { value: 'jungle', label: tr('wizard.features.view.jungle'), icon: '🌿' }
                       ].map(v => {
                         const isActive = selectedViews.includes(v.value);
                         return (

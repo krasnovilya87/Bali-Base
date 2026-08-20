@@ -1,23 +1,25 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureInterior: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 2. Дизайн и интерьер */}
                   {subCategory !== 'private_room' && (
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🎨 Интерьер & дизайн</span>
+                    <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🎨 {tr('wizard.features.interior')}</span>
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { value: 'basic', label: 'Базовый', icon: '🪑' },
-                        { value: 'bali_style', label: 'Бали Стайл', icon: '🎋' },
-                        { value: 'modern', label: 'Современный', icon: '🛋️' },
-                        { value: 'luxury', label: 'Роскошный', icon: '👑' }
+                        { value: 'basic', label: tr('wizard.features.interior.basic'), icon: '🪑' },
+                        { value: 'bali_style', label: tr('wizard.features.interior.baliStyle'), icon: '🎋' },
+                        { value: 'modern', label: tr('wizard.features.interior.modern'), icon: '🛋️' },
+                        { value: 'luxury', label: tr('wizard.features.interior.luxury'), icon: '👑' }
                       ].map(style => {
                         const isActive = interiorStyle === style.value;
                         return (

@@ -257,15 +257,15 @@ export function SettingsTab(props: AdminTabProps) {
                         {tr('admin.settings.base64InFirestore')}
                       </button>
                       <button
-                        onClick={() => setUploadMethod('storage')}
+                        onClick={() => setUploadMethod('freeimage')}
                         className={`px-4 py-1.5 rounded-xl border font-bold transition flex items-center gap-1 cursor-pointer ${
-                          uploadMethod === 'storage'
+                          uploadMethod === 'freeimage'
                             ? 'bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50]'
                             : 'border-gray-200 text-gray-500 hover:text-black hover:border-gray-300 bg-slate-50'
                         }`}
                       >
                         <Database className="w-3.5 h-3.5" />
-                        <span>{tr('admin.settings.firebaseStorageRecommended')}</span>
+                        <span>{tr('admin.settings.freeimageHostRecommended')}</span>
                       </button>
                     </div>
                   </div>

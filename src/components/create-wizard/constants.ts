@@ -5,6 +5,8 @@ export const ROOM_TYPE_LABELS = {
   family: 'Family room'
 } as const;
 
+export const UNIT_TYPE_OPTIONS = ['type_1', 'type_2', 'type_3', 'type_4'] as const;
+
 export const stripRoomTypeFromTitle = (value: string) =>
   value.replace(/\s+(?:·|В·|Р’В·)\s+(Standard room|Stundart room|Deluxe room|Delux room|Superior room|Family room)$/i, '').trim();
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
@@ -11,15 +12,21 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
     roomsTotal,
     setRoomsTotal
   } = props;
+  const { tr } = useI18n();
+  const roomsLabel = roomsTotal >= 9
+    ? tr('wizard.features.rooms.9plus')
+    : roomsTotal === 1
+      ? tr('wizard.features.rooms.one')
+      : tr('wizard.features.rooms.short', { count: roomsTotal });
 
   return (
     <>
       {subCategory === 'private_room' ? null : subCategory === 'private_suite' ? (
         <div className="pl p-5 rounded-3xl space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">📐 Площадь</span>
+            <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">📐 {tr('wizard.features.area')}</span>
             <span className="text-xs font-bold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg font-sans">
-              {area} м²
+              {tr('wizard.features.areaValue', { count: area })}
             </span>
           </div>
 
@@ -32,18 +39,18 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
               onChange={setArea}
             />
             <div className="grid grid-cols-3 text-[10px] text-gray-400 font-sans font-bold mt-1.5 px-0.5">
-              <span className="text-left">5 м²</span>
-              <span className="text-center">30 м²</span>
-              <span className="text-right">55 м²+</span>
+              <span className="text-left">{tr('wizard.features.areaValue', { count: 5 })}</span>
+              <span className="text-center">{tr('wizard.features.areaValue', { count: 30 })}</span>
+              <span className="text-right">{tr('wizard.features.areaValuePlus', { count: 55 })}</span>
             </div>
           </div>
         </div>
       ) : (
         <div className="pl p-5 rounded-3xl space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">🏢 Количество комнат</span>
+            <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">🏢 {tr('wizard.features.roomsTotal')}</span>
             <span className="text-xs font-bold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg font-sans">
-              {roomsTotal >= 9 ? '9+ комнат' : roomsTotal === 1 ? '1 комната' : `${roomsTotal} ком.`}
+              {roomsLabel}
             </span>
           </div>
 
@@ -56,8 +63,8 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
               onChange={setRoomsTotal}
             />
             <div className="grid grid-cols-3 text-[10px] text-gray-400 font-sans font-bold mt-1.5 px-0.5">
-              <span className="text-left">1 комната</span>
-              <span className="text-center">5 комнат</span>
+              <span className="text-left">{tr('wizard.features.rooms.one')}</span>
+              <span className="text-center">{tr('wizard.features.rooms.count', { count: 5 })}</span>
               <span className="text-right">9+</span>
             </div>
           </div>

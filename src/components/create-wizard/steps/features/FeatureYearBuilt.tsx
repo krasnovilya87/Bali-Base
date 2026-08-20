@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureYearBuilt: React.FC<FeatureSectionProps> = (props) => {
   const { yearBuilt, recentYears, setYearBuilt } = props;
+  const { tr } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectValue = yearBuilt === 'other' || (!recentYears.map(String).includes(yearBuilt) && yearBuilt !== '') ? 'other' : yearBuilt;
   const yearOptions = [
-    { value: '', label: 'Выберите год' },
+    { value: '', label: tr('wizard.features.year.select') },
     ...recentYears.map((year: number) => ({ value: String(year), label: String(year) })),
-    { value: 'other', label: 'Другой' }
+    { value: 'other', label: tr('wizard.features.year.other') }
   ];
-  const selectedLabel = yearOptions.find(option => option.value === selectValue)?.label || 'Выберите год';
+  const selectedLabel = yearOptions.find(option => option.value === selectValue)?.label || tr('wizard.features.year.select');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,7 +33,7 @@ const FeatureYearBuilt: React.FC<FeatureSectionProps> = (props) => {
     <div className="pl p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs relative z-[2000]">
       <div className="flex items-center gap-2">
         <span className="text-xl">📅</span>
-        <span className="text-xs font-semibold font-sans text-[#1E293B] block font-bold">Год постройки / реновации *</span>
+        <span className="text-xs font-semibold font-sans text-[#1E293B] block font-bold">{tr('wizard.features.year')}</span>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">

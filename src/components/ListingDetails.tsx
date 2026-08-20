@@ -484,6 +484,7 @@ export default function ListingDetails({
       const selectedMapPlace = selectedSpot?.position
         ? [{
           id: selectedSpot.placeId || `${listing.id}-nearby-${selectedNearbyIndex}`,
+          placeId: selectedSpot.placeId,
           name: selectedSpot.desc,
           title: selectedSpot.title,
           position: selectedSpot.position,
@@ -504,6 +505,7 @@ export default function ListingDetails({
       .slice(0, 12)
       .map(item => ({
         id: item.placeId || item.id,
+        placeId: item.placeId,
         name: item.name,
         position: item.position,
         rating: item.rating

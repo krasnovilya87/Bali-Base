@@ -4,6 +4,7 @@ import { Check, Locate, MapPin, Maximize, Minimize, Minus, Plus, RefreshCw, Sear
 import { fetchAddressFromCoords } from '../geo';
 import { DEFAULT_BALI_CENTER, getDefaultDistrictNameSync, getDistrictCoords } from '../../../utils/geo';
 import { LeafletFallbackMap, MapViewControllerHelper } from '../WizardMapHelpers';
+import { useI18n } from '../../../i18nContext';
 
 type LatLng = { lat: number; lng: number };
 
@@ -52,6 +53,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
   isSearchingMap,
   handleSelectSuggestion
 }) => {
+  const { tr } = useI18n();
   const [districtCenter, setDistrictCenter] = useState<LatLng>(DEFAULT_BALI_CENTER);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
                     lng: event.detail.latLng.lng
                   };
                   setPickedCoords(latLng);
-                  setAddress('РћРїСЂРµРґРµР»РµРЅРёРµ Р°РґСЂРµСЃР°...');
+                  setAddress(tr('wizard.detectingAddress'));
                   const result = await fetchAddressFromCoords(latLng.lat, latLng.lng);
                   setAddress(result.address);
                   setDistrict(result.district);
@@ -106,7 +108,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
               className="w-full h-full animate-fade-in"
             >
               {pickedCoords && (
-                <AdvancedMarker position={pickedCoords} title="Р›РѕРєР°С†РёСЏ РѕР±СЉРµРєС‚Р°" />
+                <AdvancedMarker position={pickedCoords} title={tr('wizard.objectLocation')} />
               )}
 
               <MapViewControllerHelper
@@ -133,7 +135,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
           <div className="relative">
             <input
               type="text"
-              placeholder="РџРѕРёСЃРє Р°РґСЂРµСЃР° РёР»Рё РѕР±СЉРµРєС‚Р° РЅР° Р‘Р°Р»Рё..."
+              placeholder={tr('wizard.locationSearch')}
               value={address}
               onChange={event => handleAddressChange(event.target.value)}
               onKeyDown={handleInputKeyDown}
@@ -166,7 +168,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
                 <div className="py-1">
                   {mapSuggestions.map((suggestion, index) => {
                     const addressObj = suggestion.address || {};
-                    const placeName = suggestion.name || addressObj.amenity || addressObj.shop || addressObj.tourism || addressObj.historic || addressObj.building || 'РљСЂР°СЃРёРІР°СЏ Р»РѕРєР°С†РёСЏ';
+                    const placeName = suggestion.name || addressObj.amenity || addressObj.shop || addressObj.tourism || addressObj.historic || addressObj.building || tr('wizard.locationFallback');
                     const secondLine = suggestion.display_name.split(',').slice(1, 4).map((part: string) => part.trim()).join(', ');
                     return (
                       <button
@@ -212,21 +214,21 @@ const StepLocation: React.FC<StepLocationProps> = ({
                       lng: position.coords.longitude
                     };
                     setPickedCoords(pos);
-                    setAddress('РћРїСЂРµРґРµР»РµРЅРёРµ Р°РґСЂРµСЃР°...');
+                    setAddress(tr('wizard.detectingAddress'));
                     const result = await fetchAddressFromCoords(pos.lat, pos.lng);
                     setAddress(result.address);
                     setDistrict(result.district);
                   },
                   () => {
-                    alert('РџРѕР¶Р°Р»СѓР№СЃС‚Р°, СЂР°Р·СЂРµС€РёС‚Рµ РґРѕСЃС‚СѓРї Рє РјРµСЃС‚РѕРїРѕР»РѕР¶РµРЅРёСЋ РІ Р±СЂР°СѓР·РµСЂРµ.');
+                    alert(tr('wizard.geoPermission'));
                   }
                 );
               } else {
-                alert('Р‘СЂР°СѓР·РµСЂ РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚ РіРµРѕР»РѕРєР°С†РёСЋ.');
+                alert(tr('wizard.geoUnsupported'));
               }
             }}
             className="w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50] select-none shadow-md flex items-center justify-center transition cursor-pointer active:scale-95 group"
-            title="Р“РґРµ СЏ"
+            title={tr('wizard.myLocation')}
           >
             <Locate className="w-5 h-5 transition-transform group-hover:scale-110" />
           </button>
@@ -235,7 +237,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
             type="button"
             onClick={() => setIsMapExpanded(!isMapExpanded)}
             className="w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50] select-none shadow-md flex items-center justify-center transition cursor-pointer active:scale-95 group"
-            title={isMapExpanded ? 'РЎРІРµСЂРЅСѓС‚СЊ' : 'Р’Рѕ РІРµСЃСЊ СЌРєСЂР°РЅ'}
+            title={isMapExpanded ? tr('wizard.collapseMap') : tr('wizard.expandMap')}
           >
             {isMapExpanded ? (
               <Minimize className="w-5 h-5 transition-transform group-hover:scale-110" />
@@ -248,7 +250,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
             type="button"
             onClick={() => setIframeZoom(prev => Math.min(20, prev + 1))}
             className="w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50] select-none shadow-md flex items-center justify-center transition cursor-pointer active:scale-95 group"
-            title="РџСЂРёР±Р»РёР·РёС‚СЊ"
+            title={tr('wizard.zoomIn')}
           >
             <Plus className="w-5 h-5 transition-transform group-hover:scale-110" />
           </button>
@@ -257,7 +259,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
             type="button"
             onClick={() => setIframeZoom(prev => Math.max(8, prev - 1))}
             className="w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50] select-none shadow-md flex items-center justify-center transition cursor-pointer active:scale-95 group"
-            title="РћС‚РґР°Р»РёС‚СЊ"
+            title={tr('wizard.zoomOut')}
           >
             <Minus className="w-5 h-5 transition-transform group-hover:scale-110" />
           </button>
@@ -270,7 +272,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
             className="absolute bottom-4 right-4 z-[105] px-5 py-2.5 bg-[#FF7A50] hover:bg-[#FF7A50]/95 text-[#F4F7F6] font-sans font-black text-xs rounded-xl shadow-lg transition-transform duration-150 active:scale-95 cursor-pointer flex items-center gap-1.5 select-none animate-scale-up"
           >
             <Check className="w-4 h-4" />
-            РЎРѕС…СЂР°РЅРёС‚СЊ Рё СЃРІРµСЂРЅСѓС‚СЊ
+            {tr('wizard.saveAndCollapse')}
           </button>
         )}
       </div>

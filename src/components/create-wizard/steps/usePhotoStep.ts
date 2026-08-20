@@ -1,7 +1,7 @@
 ﻿import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
-import { uploadFileToStorage } from '../../../firebase';
 import { useI18n } from '../../../i18nContext';
+import { uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
   PhotoSlotConfig,
@@ -16,7 +16,7 @@ type UsePhotoStepParams = {
 export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
   const { tr } = useI18n();
 
-  // STEP 6: Dropzone & ImgBB upload library replica with previews
+  // STEP 6: Dropzone upload library with previews
   const [photoUrls, setPhotoUrls] = useState<string[]>(
     initialListing?.images?.length ? initialListing.images : []
   );
@@ -122,112 +122,12 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     setIsUploading(true);
     setUploadError('');
     try {
-      const envKey = (import.meta as any).env?.VITE_FREEIMAGE_API_KEY;
-      const apiKey = (envKey && envKey !== 'YOUR_FREEIMAGE_API_KEY' && envKey.trim() !== '')
-        ? envKey
-        : '6d207e02198a847aa98d0a2a901485a5';
-
-      console.log('Attempting upload to freeimage.host in binary mode...');
-
-      // Attempt 1: Upload via binary FormData (preferred)
-      try {
-        const formData = new FormData();
-        formData.append('source', file);
-
-        const response = await fetch(`https://freeimage.host/api/1/upload?key=${apiKey}&action=upload`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData && resData.image && (resData.image.url || resData.image.display_url)) {
-            let uploadedUrl = resData.image.url || resData.image.display_url;
-            if (uploadedUrl.startsWith('http://')) {
-              uploadedUrl = uploadedUrl.replace('http://', 'https://');
-            }
-            console.log('freeimage.host binary upload successful:', uploadedUrl);
-            setPhotoUrls(prev => [...prev, uploadedUrl]);
-            return;
-          }
-        }
-        console.warn('freeimage.host binary upload returned response, but did not match success schema.');
-      } catch (binErr) {
-        console.warn('freeimage.host binary upload failed, trying base64 fallback...', binErr);
-      }
-
-      // Attempt 2: Upload via Base64 string parameter (alternative)
-      try {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const resultStr = reader.result as string;
-            const commaIndex = resultStr.indexOf(',');
-            if (commaIndex !== -1) {
-              resolve(resultStr.substring(commaIndex + 1));
-            } else {
-              resolve(resultStr);
-            }
-          };
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
-        });
-
-        const formData = new FormData();
-        formData.append('source', base64Data);
-
-        const response = await fetch(`https://freeimage.host/api/1/upload?key=${apiKey}&action=upload`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData && resData.image && (resData.image.url || resData.image.display_url)) {
-            let uploadedUrl = resData.image.url || resData.image.display_url;
-            if (uploadedUrl.startsWith('http://')) {
-              uploadedUrl = uploadedUrl.replace('http://', 'https://');
-            }
-            console.log('freeimage.host base64 upload successful:', uploadedUrl);
-            setPhotoUrls(prev => [...prev, uploadedUrl]);
-            return;
-          }
-        }
-      } catch (b64Err) {
-        console.warn('freeimage.host base64 upload failed, trying Firebase Storage fallback...', b64Err);
-      }
-
-      // Attempt 3: Firebase Storage fallback (confirmed working, ultra-reliable fallback)
-      console.log('Attempting Firebase Storage fallback upload...');
-      try {
-        const randomToken = Math.random().toString(36).substring(2, 9);
-        const cleanName = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : 'photo.jpg';
-        const filePath = `listings/${Date.now()}_${randomToken}_${cleanName}`;
-
-        const downloadUrl = await uploadFileToStorage(file, filePath);
-        if (downloadUrl) {
-          console.log('Firebase Storage fallback upload successful:', downloadUrl);
-          setPhotoUrls(prev => [...prev, downloadUrl]);
-          return;
-        }
-      } catch (fbErr: any) {
-        console.error('Firebase Storage fallback upload failed:', fbErr);
-      }
-
-      // Attempt 4: Local base64 string fallback (no remote server, last resort)
-      try {
-        const reader = new FileReader();
-        const loadPromise = new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-        });
-        reader.readAsDataURL(file);
-        const base64Url = await loadPromise;
-        setPhotoUrls(prev => [...prev, base64Url]);
-      } catch (readerErr) {
-        console.error('Local Base64 fallback failed', readerErr);
-        setUploadError(tr('wizard.photos.loadImageError'));
-      }
+      const uploadableImage = await resizeAndCompressListingImage(file);
+      const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage);
+      setPhotoUrls(prev => [...prev, uploadedUrl]);
+    } catch (error) {
+      console.error('freeimage.host upload failed', error);
+      setUploadError(tr('wizard.photos.loadImageError'));
     } finally {
       setIsUploading(false);
     }

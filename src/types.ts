@@ -115,6 +115,7 @@ export interface Listing {
   roomNumber?: string;
   roomNumbers?: string[];
   roomType?: 'standard' | 'deluxe' | 'super_deluxe' | 'family';
+  unitType?: 'type_1' | 'type_2' | 'type_3' | 'type_4';
   kitchenType?: 'basic' | 'equipped' | 'private_basic' | 'private_equipped' | 'none';
   poolType?: 'none' | 'shared' | 'private' | 'infinity';
   internetSpeed?: number; // Mb/s, 0 for none

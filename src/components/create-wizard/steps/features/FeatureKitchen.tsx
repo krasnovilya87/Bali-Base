@@ -1,21 +1,22 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
-const kitchenOptions = [
-  { value: 'none', label: 'Нет плиты / Без кухни', tick: 'Любая / Нет' },
-  { value: 'basic', label: 'Базовая кухня', tick: 'Базовая' },
-  { value: 'equipped', label: 'Оснащенная кухня', tick: 'Оснащенная' }
-] as const;
-
 const FeatureKitchen: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
+  const kitchenOptions = [
+    { value: 'none', label: tr('wizard.features.kitchen.none'), tick: tr('wizard.features.kitchen.any') },
+    { value: 'basic', label: tr('wizard.features.kitchen.basic'), tick: tr('wizard.features.kitchen.basicShort') },
+    { value: 'equipped', label: tr('wizard.features.kitchen.equipped'), tick: tr('wizard.features.kitchen.equippedShort') }
+  ] as const;
   const hasPrivateKitchen = kitchenType === 'private_basic' || kitchenType === 'private_equipped';
   const baseKitchenType = kitchenType === 'private_basic' ? 'basic' : kitchenType === 'private_equipped' ? 'equipped' : kitchenType;
   const selectedKitchenIndex = Math.max(0, kitchenOptions.findIndex(option => option.value === baseKitchenType));
   const selectedKitchenLabel = hasPrivateKitchen && baseKitchenType !== 'none'
-    ? `${kitchenOptions[selectedKitchenIndex].label} · отдельная`
+    ? tr('wizard.features.kitchen.privateLabel', { label: kitchenOptions[selectedKitchenIndex].label })
     : kitchenOptions[selectedKitchenIndex].label;
 
   return (
@@ -23,7 +24,7 @@ const FeatureKitchen: React.FC<FeatureSectionProps> = (props) => {
       {/* 7. Оснащение кухни */}
       <div className="pl p-5 rounded-3xl space-y-4">
         <div className="flex justify-between items-center">
-          <span className="text-xs font-bold text-gray-500 tracking-wider block">🍳 Оснащение кухни</span>
+          <span className="text-xs font-bold text-gray-500 tracking-wider block">🍳 {tr('wizard.features.kitchen')}</span>
           <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full animate-fade-in">
             {selectedKitchenLabel}
           </span>
@@ -71,13 +72,13 @@ const FeatureKitchen: React.FC<FeatureSectionProps> = (props) => {
                     {showKitchenTooltip && (
                       <span className="absolute bottom-full mb-2 right-0 w-[300px] p-3.5 bg-[#FFF1EB] text-gray-700 text-[10px] font-medium leading-relaxed rounded-xl border border-[#FF7A50]/20 shadow-xl z-50 text-left block">
                         <span className="block mb-2">
-                          Кухня должна содержать всё необходимое оборудование для комфортного приготовления. Помимо базовых принадлежностей как минимум должно быть:
+                          {tr('wizard.features.kitchen.tooltip')}
                         </span>
-                        <span className="block">• Микроволновка</span>
-                        <span className="block">• Блендер</span>
-                        <span className="block">• Сковородка с антипригарным покрытием</span>
-                        <span className="block">• Керамическая посуда</span>
-                        <span className="block">• Морозилка</span>
+                        <span className="block">• {tr('wizard.features.kitchen.microwave')}</span>
+                        <span className="block">• {tr('wizard.features.kitchen.blender')}</span>
+                        <span className="block">• {tr('wizard.features.kitchen.nonstickPan')}</span>
+                        <span className="block">• {tr('wizard.features.kitchen.ceramicDishes')}</span>
+                        <span className="block">• {tr('wizard.features.kitchen.freezer')}</span>
                       </span>
                     )}
                   </span>
@@ -101,7 +102,7 @@ const FeatureKitchen: React.FC<FeatureSectionProps> = (props) => {
             >
               <div className="flex items-center gap-2.5">
                 <span className="text-xl">🍽️</span>
-                <span className="text-xs font-semibold text-[#1E293B]">Своя кухня</span>
+                <span className="text-xs font-semibold text-[#1E293B]">{tr('wizard.features.kitchen.private')}</span>
               </div>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${hasPrivateKitchen
                 ? 'border-[#FF7A50] bg-[#FF7A50] text-white'

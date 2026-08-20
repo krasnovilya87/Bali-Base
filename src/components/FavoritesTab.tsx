@@ -95,7 +95,7 @@ export default function FavoritesTab({
     { value: 'popular' as const, label: tr('sort.popular.label'), desc: tr('sort.popular.desc') },
     { value: 'price_asc' as const, label: tr('sort.priceAsc.label'), desc: tr('sort.priceAsc.desc') },
     { value: 'price_desc' as const, label: tr('sort.priceDesc.label'), desc: tr('sort.priceDesc.desc') },
-    { value: 'rating_desc' as const, label: tr('sort.rating.label'), desc: tr('sort.rating.desc') },
+    { value: 'rating_desc' as const, label: tr('sort.ratingAsc.label'), desc: tr('sort.rating.desc') },
     { value: 'distance_sea' as const, label: tr('sort.distanceSea.label'), desc: tr('sort.distanceSea.desc') },
     { value: 'newest' as const, label: tr('sort.newest.label'), desc: tr('sort.newest.desc') }
   ];

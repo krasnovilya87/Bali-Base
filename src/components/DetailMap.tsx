@@ -6,6 +6,7 @@ import { getListingCoords } from '../utils/geo';
 
 export type DetailMapPlace = {
   id: string;
+  placeId?: string;
   name: string;
   position: google.maps.LatLngLiteral;
   rating?: number;
@@ -146,6 +147,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [visibleLngRange, setVisibleLngRange] = useState<{ west: number; east: number } | null>(null);
   const [showOpenMapsPrompt, setShowOpenMapsPrompt] = useState(false);
+  const [pendingGoogleMapsUrl, setPendingGoogleMapsUrl] = useState<string | null>(null);
 
   const coords = useMemo(
     () => getListingCoords(listing),
@@ -225,9 +227,28 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
   const googleMapsUrl = googlePlaceId
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(googleMapsQuery)}&query_place_id=${encodeURIComponent(googlePlaceId)}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(googleMapsQuery)}`;
+
+  const buildPlaceGoogleMapsUrl = (place: DetailMapPlace) => {
+    const query = place.name?.trim()
+      ? `${place.name.trim()} ${place.position.lat},${place.position.lng}`
+      : `${place.position.lat},${place.position.lng}`;
+    const baseUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    const placeId = place.placeId || (place.id.startsWith('Ch') ? place.id : '');
+
+    return placeId
+      ? `${baseUrl}&query_place_id=${encodeURIComponent(placeId)}`
+      : baseUrl;
+  };
+
+  const openGoogleMapsPrompt = (url: string = googleMapsUrl) => {
+    setPendingGoogleMapsUrl(url);
+    setShowOpenMapsPrompt(true);
+  };
+
   const handleOpenGoogleMaps = () => {
-    window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
+    window.open(pendingGoogleMapsUrl || googleMapsUrl, '_blank', 'noopener,noreferrer');
     setShowOpenMapsPrompt(false);
+    setPendingGoogleMapsUrl(null);
   };
   const nearbyLeftCount = mapPlaces.filter(place => place.position.lng < coords.lng).length;
   const nearbyRightCount = mapPlaces.filter(place => place.position.lng >= coords.lng).length;
@@ -293,7 +314,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
           {/* Central location pin matching main map aesthetics */}
           <button
             type="button"
-            onClick={() => setShowOpenMapsPrompt(true)}
+            onClick={() => openGoogleMapsPrompt()}
             className="absolute top-1/2 left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 cursor-pointer flex-col items-center outline-none"
             title="Open in Google Maps"
           >
@@ -376,7 +397,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    setShowOpenMapsPrompt(true);
+                    openGoogleMapsPrompt();
                   }}
                   className="relative z-[30000] h-9 w-9 cursor-pointer outline-none"
                   title="Open in Google Maps"
@@ -400,7 +421,15 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
                     anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM_CENTER}
                     zIndex={isSelectedPlace ? 20000 : 100}
                   >
-                    <div className={`relative h-7 w-7 ${isSelectedPlace ? 'z-[20000]' : 'z-[100]'}`}>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openGoogleMapsPrompt(buildPlaceGoogleMapsUrl(place));
+                      }}
+                      className={`relative h-7 w-7 cursor-pointer overflow-visible bg-transparent p-0 text-left outline-none ${isSelectedPlace ? 'z-[20000]' : 'z-[100]'}`}
+                      title="Open in Google Maps"
+                    >
                       <div className={`relative flex h-7 w-7 -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] bg-[#2F7D69] text-white shadow-[0_8px_18px_rgba(15,23,42,0.22)] ring-2 ring-white ${isSelectedPlace ? 'scale-110 ring-[#F4F7F6]' : ''}`}>
                         <div className="absolute inset-[6px] rounded-full bg-white/20" />
                         <MapPin className="w-3.5 h-3.5 rotate-45 fill-current" />
@@ -414,7 +443,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
                           <span className="block text-[9px] font-bold text-[#FF7A50] mt-0.5">★ {place.rating.toFixed(1)}</span>
                         )}
                       </div>
-                    </div>
+                    </button>
                   </AdvancedMarker>
                 );
               })}
@@ -469,7 +498,10 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
       {showOpenMapsPrompt && (
         <div
           className="absolute inset-0 z-[40000] flex items-center justify-center bg-black/20 px-4 backdrop-blur-[1px]"
-          onClick={() => setShowOpenMapsPrompt(false)}
+          onClick={() => {
+            setShowOpenMapsPrompt(false);
+            setPendingGoogleMapsUrl(null);
+          }}
         >
           <div
             className="w-full max-w-[280px] rounded-2xl border border-white/70 bg-white p-4 text-center shadow-2xl"
@@ -484,7 +516,10 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
             <div className="mt-4 flex items-center justify-center gap-2">
               <button
                 type="button"
-                onClick={() => setShowOpenMapsPrompt(false)}
+                onClick={() => {
+                  setShowOpenMapsPrompt(false);
+                  setPendingGoogleMapsUrl(null);
+                }}
                 className="rounded-xl border border-[#94A3B8]/30 bg-[#F4F7F6] px-4 py-2 text-xs font-bold text-[#1E293B] transition hover:bg-white active:scale-95"
               >
                 Отмена

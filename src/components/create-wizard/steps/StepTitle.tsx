@@ -1,9 +1,10 @@
 import React from 'react';
-import { ROOM_TYPE_LABELS } from '../constants';
+import { ROOM_TYPE_LABELS, UNIT_TYPE_OPTIONS } from '../constants';
 import { useI18n } from '../../../i18nContext';
 import { getGoogleMapsSearchText, isGoogleMapsLink } from './useLocationStep';
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
+type UnitType = typeof UNIT_TYPE_OPTIONS[number];
 
 type StepTitleProps = {
   category: string;
@@ -15,8 +16,10 @@ type StepTitleProps = {
   getSeoLengthVerdict: (length: number) => { color: string };
   roomType: RoomType;
   setRoomType: React.Dispatch<React.SetStateAction<RoomType>>;
-  roomCount: number;
-  setRoomCount: React.Dispatch<React.SetStateAction<number>>;
+  unitType: UnitType | '';
+  setUnitType: React.Dispatch<React.SetStateAction<UnitType | ''>>;
+  roomCount: number | undefined;
+  setRoomCount: React.Dispatch<React.SetStateAction<number | undefined>>;
   // optional location helpers (passed from WizardStepContent)
   mapSuggestions?: any[];
   showSuggestionsDropdown?: boolean;
@@ -39,6 +42,8 @@ const StepTitle: React.FC<StepTitleProps> = ({
   getSeoLengthVerdict,
   roomType,
   setRoomType,
+  unitType,
+  setUnitType,
   roomCount,
   setRoomCount
   ,
@@ -53,19 +58,40 @@ const StepTitle: React.FC<StepTitleProps> = ({
   isSearchingMap
 }) => {
   const { tr } = useI18n();
-  const showsCalendarRoomCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
-  const roomCountLabelKey = subCategory === 'entire_place'
-    ? 'wizard.villaCount'
-    : subCategory === 'private_suite'
-      ? 'wizard.apartmentCount'
-      : 'wizard.roomCount';
+  const showsUnitTypeAndCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
+  const [roomCountInput, setRoomCountInput] = React.useState(roomCount === undefined ? '' : String(roomCount));
+
+  React.useEffect(() => {
+    setRoomCountInput(roomCount === undefined ? '' : String(roomCount));
+  }, [roomCount]);
+
+  React.useEffect(() => {
+    if (category === 'housing' && subCategory === 'private_room' && roomCount === undefined) {
+      setRoomCount(1);
+    }
+  }, [category, roomCount, setRoomCount, subCategory]);
+
+  const handleRoomCountInputChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    setRoomCountInput(digitsOnly);
+    if (!digitsOnly) {
+      setRoomCount(undefined);
+      return;
+    }
+
+    setRoomCount(Math.max(1, Math.min(50, Number(digitsOnly))));
+  };
+
+  const normalizeRoomCountInput = () => {
+    setRoomCountInput(roomCount === undefined ? '' : String(Math.max(1, Math.min(50, roomCount))));
+  };
 
   return (
   <div className="space-y-4 animate-fade-in">
     <div className="space-y-1.5">
       <div className="flex justify-between items-center text-xs">
         <label className="font-semibold block text-[#1E293B]">
-          Наименование объекта (как на Google Maps или ссылку на Google Maps)
+          {tr('wizard.objectName')}
         </label>
         <span className={`font-mono font-bold ${getSeoLengthVerdict(title.length).color}`}>
           {title.length} / 60
@@ -134,31 +160,57 @@ const StepTitle: React.FC<StepTitleProps> = ({
                 <div className="truncate">{sug.name || sug.structured_formatting?.main_text || sug.display_name}</div>
               </button>
             ))}
-            {isSearchingMap && <div className="px-3 py-2 text-xs text-gray-500">Поиск...</div>}
+            {isSearchingMap && <div className="px-3 py-2 text-xs text-gray-500">{tr('wizard.searching')}</div>}
           </div>
         )}
       </div>
     </div>
 
-    {showsCalendarRoomCount && (
-      <div className="space-y-1.5">
-        <label className="font-semibold block text-xs text-[#1E293B]">
-          {tr(roomCountLabelKey)}
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={50}
-          value={roomCount}
-          onChange={event => setRoomCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}
-          className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
-        />
+    {showsUnitTypeAndCount && (
+      <div className="space-y-2">
+        <label className="font-semibold block text-xs text-[#1E293B]">{tr('wizard.unitTypeLabel')}</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {UNIT_TYPE_OPTIONS.map(value => {
+            const isSelected = unitType === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setUnitType(current => current === value ? '' : value)}
+                className={`pl pl-interactive px-3 py-3 rounded-xl border-0 text-xs font-bold transition active:scale-95 ${
+                  isSelected
+                    ? 'selected text-[#1E293B] ring-0'
+                    : 'text-gray-600'
+                }`}
+              >
+                {tr(`wizard.unitType.${value}`)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="space-y-1.5">
+          <label className="font-semibold block text-xs text-[#1E293B]">
+            {unitType
+              ? tr('wizard.unitCountByType', { unitType: tr(`wizard.unitType.${unitType}`) })
+              : tr('wizard.unitCount')}
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            inputMode="numeric"
+            value={roomCountInput}
+            onChange={event => handleRoomCountInputChange(event.target.value)}
+            onBlur={normalizeRoomCountInput}
+            className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+          />
+        </div>
       </div>
     )}
 
     {category === 'housing' && subCategory === 'private_room' && (
       <div className="space-y-2">
-        <label className="font-semibold block text-xs text-[#1E293B]">Тип комнаты:</label>
+        <label className="font-semibold block text-xs text-[#1E293B]">{tr('wizard.roomType')}</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {(Object.entries(ROOM_TYPE_LABELS) as Array<[RoomType, string]>).map(([value, label]) => {
             const isSelected = roomType === value;
@@ -186,26 +238,28 @@ const StepTitle: React.FC<StepTitleProps> = ({
             type="number"
             min={1}
             max={50}
-            value={roomCount}
-            onChange={event => setRoomCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}
+            inputMode="numeric"
+            value={roomCountInput}
+            onChange={event => handleRoomCountInputChange(event.target.value)}
+            onBlur={normalizeRoomCountInput}
             className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
           />
         </div>
         <p className="text-[10.5px] leading-relaxed text-gray-400 px-1 py-1">
-          Для каждого типа комнаты создается отдельное объявление. Запрещено создавать одинаковые объявления.
+          {tr('wizard.roomTypeNotice')}
         </p>
       </div>
     )}
 
     <div className="space-y-1.5">
       <div className="flex justify-between items-center text-xs">
-        <label className="font-semibold block text-[#1E293B]">Описание объекта:</label>
+        <label className="font-semibold block text-[#1E293B]">{tr('wizard.description')}</label>
         <span className={`font-mono font-bold ${description.length > 240 ? 'text-rose-500' : 'text-gray-400'}`}>
           {description.length} / 250
         </span>
       </div>
       <textarea
-        placeholder="Опишите главные фичи: близость к морю, оптоволоконный интернет, тишина или близость к инфраструктуре..."
+        placeholder={tr('wizard.descriptionPlaceholder')}
         value={description}
         onChange={event => setDescription(event.target.value)}
         maxLength={250}

@@ -298,23 +298,23 @@ export const useListingsData = () => {
       const rejectionReason = failedRule
         ? t('EN', failedRule.rejectionReasonKey)
         : t('EN', 'admin.reject.reason.other');
+      const shouldPublish = aiModeration.status === 'passed';
       moderatedListing = {
         ...newListing,
         aiModeration,
-        isApproved: aiModeration.status === 'passed',
+        isApproved: shouldPublish,
         isVerified: newListing.isVerified ?? false,
-        status: aiModeration.status === 'passed' ? 'active' : 'rejected',
-        rejectionReason: aiModeration.status === 'passed' ? undefined : rejectionReason,
+        status: shouldPublish ? 'active' : 'moderation',
+        rejectionReason: shouldPublish ? undefined : rejectionReason,
         rejectionComment: undefined
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      console.warn('AI moderation failed; listing was sent to manual review.', error);
       moderatedListing = {
         ...newListing,
         aiModeration: {
           status: 'error',
           checkedAt: new Date().toISOString(),
-          summary: `AI moderation failed: ${message}`,
           checks: []
         },
         isApproved: false,

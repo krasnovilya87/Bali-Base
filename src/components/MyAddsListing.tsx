@@ -14,6 +14,7 @@ import DropPriceModal from './my-adds/DropPriceModal';
 import AnalyticsModal from './my-adds/AnalyticsModal';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
+import Del from './Del';
 
 interface MyAddsListingProps {
   listings: Listing[];
@@ -74,7 +75,6 @@ export default function MyAddsListing({
 
   // Overall statistics and Booking overlay state for specific listings
   const [analyticsListing, setAnalyticsListing] = useState<Listing | null>(null);
-  const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
   const [adjustListing, setAdjustListing] = useState<Listing | null>(null);
 
   useEffect(() => {
@@ -350,15 +350,18 @@ export default function MyAddsListing({
                         >
                           {item.status === 'active' ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current" />}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setListingToDelete(item)}
+                        <Del
+                          title={tr('myListings.deleteTitle')}
+                          message={tr('myListings.deleteBody', { title: item.title })}
+                          confirmLabel={tr('myListings.deleteConfirm')}
+                          cancelLabel={tr('common.cancel')}
+                          onConfirm={() => onDeleteListing?.(item.id)}
                           className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-red-600 shadow-md transition hover:scale-105 hover:bg-red-50 active:scale-95"
-                          title={tr('myListings.delete')}
-                          aria-label={tr('myListings.delete')}
+                          titleAttr={tr('myListings.delete')}
+                          ariaLabel={tr('myListings.delete')}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </Del>
                       </div>
 
                       {item.reviewsCount > 0 && (
@@ -654,13 +657,17 @@ export default function MyAddsListing({
                         {item.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                       </button>
 
-                      <button
-                        onClick={() => setListingToDelete(item)}
+                      <Del
+                        title={tr('myListings.deleteTitle')}
+                        message={tr('myListings.deleteBody', { title: item.title })}
+                        confirmLabel={tr('myListings.deleteConfirm')}
+                        cancelLabel={tr('common.cancel')}
+                        onConfirm={() => onDeleteListing?.(item.id)}
                         className="p-2 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition active:scale-95 flex items-center justify-center cursor-pointer"
-                        title={tr('myListings.delete')}
+                        titleAttr={tr('myListings.delete')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      </Del>
                     </div>
 
                   </div>
@@ -840,44 +847,6 @@ export default function MyAddsListing({
             listings={listings}
             onClose={() => setAnalyticsListing(null)}
           />
-        )}
-
-
-        {/* ==================== SUB-MODAL: ⚠️ DELETE CONFIRMATION MODAL ==================== */}
-        {listingToDelete && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[510] p-4 animate-fade-in" id="delete-confirmation-modal">
-            <div className="bg-white max-w-sm w-full rounded-2xl p-5 border border-red-50 shadow-2xl space-y-4 animate-scale-up text-[#1E293B]">
-              <div className="flex gap-3 items-start">
-                <div className="p-3 bg-red-50 rounded-full text-red-600 shrink-0">
-                  <Trash2 className="w-6 h-6 animate-pulse" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-display font-black text-sm uppercase text-red-700">{tr('myListings.deleteTitle')}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {tr('myListings.deleteBody', { title: listingToDelete.title })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5 pt-2">
-                <button
-                  onClick={() => setListingToDelete(null)}
-                  className="py-2.5 bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center"
-                >
-                  {tr('common.cancel')}
-                </button>
-                <button
-                  onClick={() => {
-                    onDeleteListing?.(listingToDelete.id);
-                    setListingToDelete(null);
-                  }}
-                  className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 text-center shadow-xs"
-                >
-                  {tr('myListings.deleteConfirm')}
-                </button>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* ==================== SUB-MODAL: 🎛️ DISPLAY DETAILS & POSITION ADJUSTMENT MODAL ==================== */}

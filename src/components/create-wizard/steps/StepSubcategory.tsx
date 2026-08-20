@@ -41,21 +41,21 @@ const StepSubcategory: React.FC<StepSubcategoryProps> = ({
             >
               <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-[#FF7A50]/5 rounded-full filter blur-xl group-hover:scale-125 transition duration-300 pointer-events-none" />
 
-              <div className="absolute inset-x-2 sm:inset-x-3 top-2 sm:top-2.5 bottom-6 sm:bottom-7 flex items-center justify-center">
+              <div className="absolute inset-x-2 sm:inset-x-3 top-2 sm:top-2.5 bottom-7 sm:bottom-8 flex items-center justify-center">
                 {sub.customImage ? (
                   <img
                     src={sub.customImage}
                     alt={sub.label}
-                    className="w-full h-full object-contain filter drop-shadow hover:brightness-105 group-hover:scale-110 transition-all duration-300"
+                    className="w-full h-full max-w-[78%] max-h-[78%] sm:max-w-[74%] sm:max-h-[74%] object-contain filter drop-shadow hover:brightness-105 group-hover:scale-105 transition-all duration-300"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <ThreeDIcon emoji={sub.icon} size={38} className="w-10 h-10 transition-all duration-200" />
+                  <ThreeDIcon emoji={sub.icon} size={80} className="transition-all duration-200" />
                 )}
               </div>
 
-              <div className="absolute bottom-1.5 sm:bottom-2 left-1 right-1 flex justify-center text-center">
-                <h3 className={`font-sans font-black text-center text-xs xs:text-sm sm:text-lg text-[#1E293B] group-hover:text-[#FF7A50] transition-colors leading-none tracking-tight px-1 truncate ${isSelected ? 'text-[#FF7A50]' : ''}`}>
+              <div className="absolute bottom-2.5 sm:bottom-3 left-1 right-1 flex justify-center text-center">
+                <h3 className={`font-sans font-black text-center text-xs xs:text-sm sm:text-lg text-[#1E293B] group-hover:text-[#FF7A50] transition-colors leading-[1.2] tracking-tight px-1 py-0.5 truncate ${isSelected ? 'text-[#FF7A50]' : ''}`}>
                   {sub.label}
                 </h3>
               </div>

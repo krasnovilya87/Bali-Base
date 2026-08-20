@@ -208,6 +208,11 @@ export const useListingSearch = ({
       const pb = getComparablePrice(b, selectedDayCount);
       return pb - pa;
     }
+    if (sortBy === 'rating_desc') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+      return b.viewsCount - a.viewsCount;
+    }
     if (sortBy === 'distance_sea') {
       const distA = a.distanceToSeaMinutes ?? 15;
       const distB = b.distanceToSeaMinutes ?? 15;

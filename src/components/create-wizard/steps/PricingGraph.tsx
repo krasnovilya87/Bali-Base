@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice } from '../../../utils/pricing';
+import { useI18n } from '../../../i18nContext';
 
 type PricingGraphProps = {
   pricePerDay: number;
@@ -11,17 +12,6 @@ type PricingGraphProps = {
 
 const formatValue = (value: number) => value.toLocaleString('ru-RU');
 
-const formatDaysRussian = (dayNum: number) => {
-  if (dayNum >= 30) return '30+ дней';
-  const lastDigit = dayNum % 10;
-  const lastTwoDigits = dayNum % 100;
-
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) return `${dayNum} дней`;
-  if (lastDigit === 1) return `${dayNum} день`;
-  if (lastDigit >= 2 && lastDigit <= 4) return `${dayNum} дня`;
-  return `${dayNum} дней`;
-};
-
 const PricingGraph: React.FC<PricingGraphProps> = ({
   pricePerDay,
   pricePerMonth,
@@ -29,6 +19,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
   interactiveDays,
   setInteractiveDays
 }) => {
+  const { tr } = useI18n();
   const priceChartSvgRef = useRef<SVGSVGElement | null>(null);
 
   const getPriceForDayNum = (day: number, percent = 0) => {
@@ -111,7 +102,9 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
   const graphDiscountPercent = activeBaseTotalPrice > activeTotalPrice
     ? Math.round((1 - activeTotalPrice / activeBaseTotalPrice) * 100)
     : 0;
-  const tooltipDaysLabel = `${interactiveDays} ${interactiveDays === 1 ? '\u0434\u0435\u043d\u044c' : '\u0434\u043d\u0435\u0439'}`;
+  const tooltipDaysLabel = interactiveDays === 1
+    ? tr('wizard.pricingGraph.dayOne', { count: interactiveDays })
+    : tr('wizard.pricingGraph.days', { count: interactiveDays });
 
   const priceTickStep = 100000;
   const startTick = Math.ceil(minPrice / priceTickStep) * priceTickStep;
@@ -144,12 +137,12 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start gap-1 border-b border-gray-100/60 pb-3">
         <div>
           <h4 className="text-xs font-bold font-sans text-[#1E293B] tracking-wider">
-            График цен
+            {tr('wizard.pricingGraph.title')}
           </h4>
         </div>
         {selectedDiscountPercent > 0 && (
           <span className="text-[9px] font-black bg-[#FF7A50]/10 text-[#FF7A50] px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 mt-1 sm:mt-0">
-            Скидка -{selectedDiscountPercent}%
+            {tr('wizard.pricingGraph.discount', { count: selectedDiscountPercent })}
           </span>
         )}
       </div>
@@ -169,7 +162,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
           </div>
 
           <div className="flex items-center justify-between text-[9px] font-normal text-[#1E293B]/70">
-            <span>{'\u0446\u0435\u043d\u0430 \u0437\u0430 \u0434\u0435\u043d\u044c:'}</span>
+            <span>{tr('wizard.pricingGraph.pricePerDay')}</span>
             <span className="font-mono text-[9px] font-bold text-[#1E293B]">
               {formatValue(activeDailyPrice)}
             </span>
@@ -177,7 +170,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
 
           {graphDiscountPercent > 0 && (
             <div className="flex items-center justify-between text-[9px] font-normal text-[#1E293B]/70">
-              <span>{'\u0441\u043a\u0438\u0434\u043a\u0430:'}</span>
+              <span>{tr('wizard.pricingGraph.tooltipDiscount')}</span>
               <span className="font-mono text-[9px] font-bold text-[#2F7D69]">-{graphDiscountPercent}%</span>
             </div>
           )}
@@ -185,7 +178,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
           <div className="border-t border-gray-100 my-0.5" />
 
           <div className="flex items-center justify-between text-[10px] font-bold text-[#1E293B]">
-            <span className="text-[#FF7A50]">{'\u0438\u0442\u043e\u0433\u043e \u0446\u0435\u043d\u0430:'}</span>
+            <span className="text-[#FF7A50]">{tr('wizard.pricingGraph.total')}</span>
             <span className="font-mono text-[#FF7A50]">
               {formatValue(activeTotalPrice)}
             </span>
@@ -238,13 +231,13 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
           <path d={pathGreen} fill="none" stroke="#2F7D69" strokeWidth="1.5" strokeLinecap="round" />
 
           <text x={getXCoords(4)} y={getYCoords(getPriceForDayNum(4, selectedDiscountPercent)) - 14} textAnchor="middle" className="fill-[#1E293B]/70 font-sans text-[8.5px] font-medium">
-            дневной тариф
+            {tr('wizard.pricingGraph.dailyRate')}
           </text>
           <text x={getXCoords(19)} y={getYCoords(getPriceForDayNum(19, selectedDiscountPercent)) - 14} textAnchor="middle" className="fill-[#1E293B]/70 font-sans text-[8.5px] font-medium">
-            недельный тариф
+            {tr('wizard.pricingGraph.weeklyRate')}
           </text>
           <text x={getXCoords(32)} y={getYCoords(getPriceForDayNum(32, selectedDiscountPercent)) - 14} textAnchor="middle" className="fill-[#1E293B]/70 font-sans text-[8.5px] font-medium">
-            месячный тариф
+            {tr('wizard.pricingGraph.monthlyRate')}
           </text>
 
           <line x1={getXCoords(interactiveDays)} y1={zeroY} x2={getXCoords(interactiveDays)} y2={getYCoords(activeDailyPrice)} stroke={activeColor} strokeWidth="0.5" />
@@ -258,7 +251,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
               textAnchor="middle"
               className="fill-[#1E293B]/60 font-sans text-[8px] font-normal tracking-wide"
             >
-              {day === 30 ? '30+' : `${day}д`}
+              {day === 30 ? '30+' : tr('wizard.pricingGraph.dayTick', { count: day })}
             </text>
           ))}
 

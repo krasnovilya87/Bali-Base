@@ -1,22 +1,24 @@
 ﻿import React from 'react';
 import Polzunok from '../../../Polzunok';
+import { useI18n } from '../../../../i18nContext';
 
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureDensity: React.FC<FeatureSectionProps> = (props) => {
   const { category, subCategory, yearBuilt, recentYears, setYearBuilt, area, setArea, roomsTotal, setRoomsTotal, interiorStyle, setInteriorStyle, housingType, setHousingType, densityType, setDensityType, territoryType, setTerritoryType, selectedBedTypes, setSelectedBedTypes, kitchenType, setKitchenType, showKitchenTooltip, setShowKitchenTooltip, poolType, setPoolType, selectedViews, toggleViewType, internetSpeed, setInternetSpeed, bathroomOptions, toggleBathroomOption, cleanlinessTags, amenities, toggleCleanlinessTag, toggleAmenity, cleaningFrequency, setCleaningFrequency, extraOptions, toggleExtraOption } = props;
+  const { tr } = useI18n();
 
   return (
     <>
                   {/* 4. Плотность комплекса (только для апартаментов / комнат) */}
                   {(subCategory === 'private_suite' || subCategory === 'private_room') && (
                     <div className="space-y-3">
-                      <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🍀 Плотность комплекса</span>
+                      <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🍀 {tr('wizard.features.density')}</span>
                       <div className="grid grid-cols-3 gap-3">
                         {[
-                          { value: 'cozy', label: 'Уютный', desc: 'до 4 комнат', icon: '🍃' },
-                          { value: 'medium', label: 'Средний', desc: '5-10 комнат', icon: '🍀' },
-                          { value: 'large', label: 'Большой', desc: '10+ комнат', icon: '🌿' }
+                          { value: 'cozy', label: tr('wizard.features.density.cozy'), desc: tr('wizard.features.density.cozyDesc'), icon: '🍃' },
+                          { value: 'medium', label: tr('wizard.features.density.medium'), desc: tr('wizard.features.density.mediumDesc'), icon: '🍀' },
+                          { value: 'large', label: tr('wizard.features.density.large'), desc: tr('wizard.features.density.largeDesc'), icon: '🌿' }
                         ].map(density => {
                           const isActive = densityType === density.value;
                           return (

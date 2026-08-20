@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Listing } from '../../types';
-import { LISTINGS_COLLECTION, deleteDocument, setDocument, uploadFileToStorage } from '../../firebase';
+import { LISTINGS_COLLECTION, deleteDocument, setDocument } from '../../firebase';
 import { DEFAULT_ADMIN_USERS } from './mockData';
 import { normalizeHousingListingForImport } from './importListingNormalizer';
 import { AdminDashboardProps, AdminTab, AdminUser, SupportTicket } from './types';
@@ -14,6 +14,7 @@ import {
   writeSupportTickets
 } from '../../utils/supportTickets';
 import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
+import { uploadImageToFreeImageHost } from '../../utils/imageUpload';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -59,7 +60,7 @@ export function useAdminDashboardController({
   const [l2CustomImage, setL2CustomImage] = useState<string>('');
   const [l2IconType, setL2IconType] = useState<'emoji' | 'image'>('emoji');
   
-  const [uploadMethod, setUploadMethod] = useState<'storage' | 'base64'>('storage');
+  const [uploadMethod, setUploadMethod] = useState<'freeimage' | 'base64'>('freeimage');
   const [isMenuSaving, setIsMenuSaving] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [jsonImportCollection, setJsonImportCollection] = useState<string>(LISTINGS_COLLECTION);
@@ -393,26 +394,12 @@ export function useAdminDashboardController({
       showToast('Optimizing image...');
       const { blob, dataUrl } = await resizeAndCompressImage(file, type);
       
-      if (uploadMethod === 'storage') {
+      if (uploadMethod === 'freeimage') {
         try {
-          const randomToken = Math.random().toString(36).substring(2, 9);
-          const originalBaseName = file.name ? file.name.substring(0, file.name.lastIndexOf('.')) : 'photo';
-          const cleanBaseName = originalBaseName.replace(/[^a-zA-Z0-9_-]/g, '_');
-          
-          // Get correct extension from the blob's actual MIME type
-          let ext = 'jpg';
-          if (blob.type === 'image/png') ext = 'png';
-          else if (blob.type === 'image/webp') ext = 'webp';
-          else if (blob.type === 'image/gif') ext = 'gif';
-
-          const filePath = `menu_images/${type}_${Date.now()}_${randomToken}_${cleanBaseName}_compressed.${ext}`;
-          // Convert blob back to a File object for consistent firebase upload
-          const compressedFile = new File([blob], `${type}_compressed.${ext}`, { type: blob.type });
-          const downloadUrl = await uploadFileToStorage(compressedFile, filePath);
-          return downloadUrl;
+          return await uploadImageToFreeImageHost(blob);
         } catch (e: any) {
-          console.error('Firebase Storage upload failed, falling back to Base64', e);
-          showToast('Storage error. Saved as Base64 in Firestore.');
+          console.error('freeimage.host upload failed, falling back to Base64', e);
+          showToast(tr('admin.settings.freeimageUploadFallback'));
         }
       }
       
