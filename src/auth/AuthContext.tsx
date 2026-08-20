@@ -20,7 +20,6 @@ import { auth, db } from '../firebase';
 
 const EMAIL_SIGN_IN_KEY = 'bali_base_email_sign_in';
 const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
-const AUTH_TIMEOUT_MS = 15000;
 const EMAIL_PROVIDERS_COLLECTION = 'auth_email_providers';
 
 type AuthContextValue = {
@@ -112,21 +111,6 @@ const safeUpsertUserProfile = async (user: User, provider: UserProfileProvider |
     await upsertUserProfile(user, provider === 'existing_session' ? getExistingSessionProvider(user) : provider);
   } catch (error) {
     console.warn('User signed in, but profile sync failed:', error);
-  }
-};
-
-const withTimeout = async <T,>(promise: Promise<T>, message: string) => {
-  let timeoutId: number | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error(message)), AUTH_TIMEOUT_MS);
-  });
-
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId);
-    }
   }
 };
 
@@ -232,10 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         setAuthDebug(`Starting Google popup. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
-        const credential = await withTimeout(
-          signInWithPopup(auth, provider),
-          'Google popup did not finish. Please check browser pop-up settings and extensions, then try again.'
-        );
+        const credential = await signInWithPopup(auth, provider);
         setUser(credential.user);
         setAuthError('');
         setAuthDebug(`Google popup user: ${credential.user.email || credential.user.uid}`);
@@ -259,10 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        await withTimeout(
-          sendSignInLinkToEmail(auth, email.trim(), actionCodeSettings()),
-          'Email sign-in link request timed out. Please check Firebase Email link settings and try again.'
-        );
+        await sendSignInLinkToEmail(auth, email.trim(), actionCodeSettings());
         rememberTerms(email.trim());
         setEmailLinkSent(true);
       } catch (error) {
