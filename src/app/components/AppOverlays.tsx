@@ -11,11 +11,13 @@ import ProfileModal from '../../components/ProfileModal';
 import UsersModal from '../../components/UsersModal';
 import { LanguageCode } from '../../i18n';
 import { useI18n } from '../../i18nContext';
+import { CurrencyKey } from '../currency';
 import { L1_CATEGORIES, SUBCATEGORIES_MAP } from '../menu';
 import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { auth } from '../../firebase';
 
 type AppOverlaysProps = {
+  activeCurrency: CurrencyKey;
   activeLanguage: LanguageCode;
   bookings: BookingRequest[];
   currencyRate: number;
@@ -39,6 +41,8 @@ type AppOverlaysProps = {
   onSelectedListingClose: () => void;
   primaryL2: string;
   selectedListing: Listing | null;
+  setActiveCurrency: Dispatch<SetStateAction<CurrencyKey>>;
+  setActiveLanguage: Dispatch<SetStateAction<LanguageCode>>;
   setCheckInDate: Dispatch<SetStateAction<string>>;
   setCheckOutDate: Dispatch<SetStateAction<string>>;
   setCustomPoint: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
@@ -73,6 +77,7 @@ type AppOverlaysProps = {
 };
 
 export default function AppOverlays({
+  activeCurrency,
   activeLanguage,
   bookings,
   currencyRate,
@@ -96,6 +101,8 @@ export default function AppOverlays({
   onSelectedListingClose,
   primaryL2,
   selectedListing,
+  setActiveCurrency,
+  setActiveLanguage,
   setCheckInDate,
   setCheckOutDate,
   setCustomPoint,
@@ -369,8 +376,12 @@ export default function AppOverlays({
 
       {showProfileModal && (
         <ProfileModal
+          activeCurrency={activeCurrency}
+          activeLanguage={activeLanguage}
           listingsCount={ownListingsCount}
           onClose={() => setShowProfileModal(false)}
+          setActiveCurrency={setActiveCurrency}
+          setActiveLanguage={setActiveLanguage}
         />
       )}
 

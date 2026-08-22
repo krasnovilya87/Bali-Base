@@ -16,7 +16,6 @@ import { getDeviceLanguage } from './app/language';
 import { L1_CATEGORIES, preloadMenuImages, SUBCATEGORIES_MAP } from './app/menu';
 import AppOverlays from './app/components/AppOverlays';
 import BrandWordmark from './app/components/BrandWordmark';
-import CurrencyLanguageControls from './app/components/CurrencyLanguageControls';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
 import AuthModal from './components/AuthModal';
@@ -191,7 +190,7 @@ export default function App() {
     return true;
   });
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
-  const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
+  const [isL2Visible, setIsL2Visible] = useState<boolean>(false);
   const [isTopHeaderHidden, setIsTopHeaderHidden] = useState<boolean>(false);
   const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
@@ -253,7 +252,7 @@ export default function App() {
     if (typeof window === 'undefined') return;
 
     if (currentView !== 'app') {
-      setIsL2Visible(true);
+      setIsL2Visible(false);
       setIsTopHeaderHidden(false);
       setIsMobileNavHidden(false);
       lastPageScrollYRef.current = window.scrollY;
@@ -265,12 +264,12 @@ export default function App() {
       const delta = currentScrollY - lastPageScrollYRef.current;
 
       if (currentScrollY <= 2) {
-        setIsL2Visible(true);
+        setIsL2Visible(false);
         setIsTopHeaderHidden(false);
         setIsMobileNavHidden(false);
       } else if (delta > 6) {
         setIsL2Visible(false);
-        setIsTopHeaderHidden(true);
+        setIsTopHeaderHidden(false);
         setIsMobileNavHidden(true);
       } else if (delta < -6) {
         setIsL2Visible(true);
@@ -351,8 +350,6 @@ export default function App() {
   // Localization and Pricing currencies multipliers
   const [activeCurrency, setActiveCurrency] = useState<CurrencyKey>('IDR');
   const [activeLanguage, setActiveLanguage] = useState<LanguageCode>(() => getDeviceLanguage());
-  const [showCurrencyDrop, setShowCurrencyDrop] = useState<boolean>(false);
-  const [showLanguageDrop, setShowLanguageDrop] = useState<boolean>(false);
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
@@ -523,8 +520,6 @@ export default function App() {
       const target = event.target as HTMLElement | null;
       if (target?.closest('.header-popover-root')) return;
 
-      setShowCurrencyDrop(false);
-      setShowLanguageDrop(false);
       setShowUsersDropdown(false);
       setShowAutoComplete(false);
     };
@@ -581,11 +576,9 @@ export default function App() {
       setShowCalendar(false);
       return;
     }
-    if (showSortDropdown || showDistrictDropdown || showCurrencyDrop || showLanguageDrop || showUsersDropdown || showAutoComplete) {
+    if (showSortDropdown || showDistrictDropdown || showUsersDropdown || showAutoComplete) {
       setShowSortDropdown(false);
       setShowDistrictDropdown(false);
-      setShowCurrencyDrop(false);
-      setShowLanguageDrop(false);
       setShowUsersDropdown(false);
       setShowAutoComplete(false);
       return;
@@ -736,10 +729,8 @@ export default function App() {
     showAutoComplete,
     showCalendar,
     showCreateWizard,
-    showCurrencyDrop,
     showDistrictDropdown,
     showFiltersModal,
-    showLanguageDrop,
     showMapSelectModal,
     showMyAddsListing,
     showProfileModal,
@@ -1022,7 +1013,7 @@ export default function App() {
                 </div>
 
                 {/* LIVE AUTOCAMP SUGGEST SEARCH BAR */}
-                <div className="header-popover-root flex-1 max-w-md relative hidden md:block">
+                <div className="header-popover-root relative mx-1 block min-w-0 flex-1 sm:mx-0 md:max-w-md">
                   <div className="header-popover-root relative">
                     <input
                       type="text"
@@ -1033,15 +1024,15 @@ export default function App() {
                       }}
                       onFocus={() => setShowAutoComplete(true)}
                       placeholder={tr('search.placeholder')}
-                      className="w-full bg-[#F4F7F6] border border-[#E5E7EB] rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] font-sans"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
                       id="live-search-input-menu"
                     />
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
 
                     {searchTerm && (
                       <button
                         onClick={() => setSearchTerm('')}
-                        className="text-gray-400 hover:text-gray-600 text-xs font-bold absolute right-3 top-1/2 -translate-y-1/2"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
                       >
                         Г—
                       </button>
@@ -1075,20 +1066,8 @@ export default function App() {
                   )}
                 </div>
 
-                {/* CONTROLS AREA (CURRENCY / PLACE LISTING / PERSONAL CABINET) */}
+                {/* CONTROLS AREA (PLACE LISTING / PERSONAL CABINET) */}
                 <div className="flex items-center gap-1 sm:gap-3 shrink-0 font-sans text-xs">
-
-                  <CurrencyLanguageControls
-                    activeCurrency={activeCurrency}
-                    activeLanguage={activeLanguage}
-                    showCurrencyDrop={showCurrencyDrop}
-                    showLanguageDrop={showLanguageDrop}
-                    tr={tr}
-                    setActiveCurrency={setActiveCurrency}
-                    setActiveLanguage={setActiveLanguage}
-                    setShowCurrencyDrop={setShowCurrencyDrop}
-                    setShowLanguageDrop={setShowLanguageDrop}
-                  />
 
                   <button
                     type="button"
@@ -1211,7 +1190,7 @@ export default function App() {
           <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
-            <header className={`sticky top-0 shrink-0 bg-white z-[250] select-none overflow-hidden transition-[opacity,transform,max-height,border-color] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] md:max-h-none md:translate-y-0 md:opacity-100 md:border-b md:border-[#E5E7EB] ${isTopHeaderHidden ? 'max-h-0 -translate-y-3 border-transparent opacity-0' : 'max-h-16 translate-y-0 border-b border-[#E5E7EB] opacity-100'}`}>
+            <header className="shrink-0 bg-white border-b border-[#E5E7EB] select-none">
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4">
 
                 {/* BRAND EMBLEM & MENU BUTTON */}
@@ -1238,7 +1217,7 @@ export default function App() {
                 </div>
 
                 {/* LIVE AUTOCAMP SUGGEST SEARCH BAR */}
-                <div className="header-popover-root flex-1 max-w-md relative hidden md:block">
+                <div className="header-popover-root relative mx-1 block min-w-0 flex-1 sm:mx-0 md:max-w-md">
                   <div className="header-popover-root relative">
                     <input
                       type="text"
@@ -1249,15 +1228,15 @@ export default function App() {
                       }}
                       onFocus={() => setShowAutoComplete(true)}
                       placeholder={tr('search.placeholder')}
-                      className="w-full bg-[#F4F7F6] border border-[#E5E7EB] rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] font-sans"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
                       id="live-search-input"
                     />
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
 
                     {searchTerm && (
                       <button
                         onClick={() => setSearchTerm('')}
-                        className="text-gray-400 hover:text-gray-600 text-xs font-bold absolute right-3 top-1/2 -translate-y-1/2"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
                       >
                         Г—
                       </button>
@@ -1282,20 +1261,8 @@ export default function App() {
                   )}
                 </div>
 
-                {/* CONTROLS AREA (CURRENCY / PLACE LISTING / PERSONAL CABINET) */}
+                {/* CONTROLS AREA (PLACE LISTING / PERSONAL CABINET) */}
                 <div className="flex items-center gap-1 sm:gap-3 shrink-0 font-sans text-xs">
-
-                  <CurrencyLanguageControls
-                    activeCurrency={activeCurrency}
-                    activeLanguage={activeLanguage}
-                    showCurrencyDrop={showCurrencyDrop}
-                    showLanguageDrop={showLanguageDrop}
-                    tr={tr}
-                    setActiveCurrency={setActiveCurrency}
-                    setActiveLanguage={setActiveLanguage}
-                    setShowCurrencyDrop={setShowCurrencyDrop}
-                    setShowLanguageDrop={setShowLanguageDrop}
-                  />
 
                   <button
                     type="button"
@@ -1376,8 +1343,6 @@ export default function App() {
                       listings={listings}
                       showUsersDropdown={showUsersDropdown}
                       tr={tr}
-                      label="Users"
-                      chevronClassName="w-3 h-3 text-gray-400"
                       currentUser={user}
                       onRequireAuth={requestAuth}
                       setShowUsersDropdown={setShowUsersDropdown}
@@ -1395,7 +1360,7 @@ export default function App() {
             </header>
 
             {/* LEVEL 1: CATEGORY SELECTIONS ROW */}
-            <nav className="hidden bg-white border-b border-[#E5E7EB] py-3 z-30 select-none animate-fade-in">
+            <nav className="hidden bg-white py-3 z-30 select-none animate-fade-in">
               <div className="max-w-7xl mx-auto px-4 overflow-x-auto flex gap-6 sm:gap-10 justify-start sm:justify-center items-center shrink-0 w-full scrollbar-none">
                 {[
                   { id: 'housing', label: tr('category.housing.label'), icon: 'рџЏЎ' },
@@ -1427,11 +1392,8 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className={`sticky top-0 md:static shrink-0 bg-white select-none transition-[opacity,transform,max-height,padding] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[245] border-b ${isL2Visible
-              ? 'max-h-[140px] py-2.5 sm:py-3.5 border-[#E5E7EB] opacity-100 translate-y-0'
-              : 'max-h-0 py-0 border-transparent opacity-0 -translate-y-3 pointer-events-none'
-                }`}>
-              <div className="max-w-7xl mx-auto px-1.5 sm:px-4 flex flex-row justify-around sm:justify-center items-center w-full gap-0.5 sm:gap-10">
+            <nav className={`shrink-0 bg-white select-none overflow-x-auto py-2.5 sm:overflow-hidden sm:py-2 ${isL2Visible ? 'sticky top-0 z-[245]' : 'relative z-[230]'}`}>
+              <div className="max-w-7xl mx-auto px-4 sm:px-4 flex flex-row justify-center items-center w-max min-w-full gap-3 sm:gap-4">
 
                 {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
                   const displayLabel = tr(`subcategory.${sub.id}`);
@@ -1443,30 +1405,44 @@ export default function App() {
                     <button
                       key={sub.id}
                       onClick={() => toggleL2(sub.id)}
-                      className={`pb-1.5 pt-1 sm:pb-2 px-1 sm:px-3.5 flex-1 sm:flex-initial flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 cursor-pointer border-b-2 select-none focus:outline-none ${isSelected
-                        ? 'border-[#FF7A50] text-[#FF7A50] font-bold scale-102 font-sans'
-                        : 'border-transparent text-[#1E293B] hover:text-[#FF7A50] font-normal font-sans'
+                      className={`relative h-[38px] px-5 sm:min-h-[54px] sm:h-auto sm:px-3 sm:py-2 flex-none sm:flex-initial sm:min-w-[104px] flex flex-row sm:flex-col items-center justify-center text-left sm:text-center gap-2 sm:gap-1 rounded-full sm:rounded-none border border-[#CBD5E1]/80 sm:border-transparent select-none cursor-pointer bg-white sm:bg-transparent text-[#1E293B] font-sans font-bold transition-[transform,box-shadow,border-color] duration-[180ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E293B]/35 active:translate-y-[1px] sm:active:translate-y-0 ${isSelected
+                        ? 'border-[#B8C2CF] bg-[#f7f8fa] font-extrabold shadow-[inset_0_4px_8px_rgba(15,23,42,0.18),inset_0_-1px_1px_rgba(255,255,255,0.96),0_2px_4px_rgba(15,23,42,0.14)] sm:border-transparent sm:bg-transparent sm:shadow-none'
+                        : 'shadow-[0_4px_7px_rgba(15,23,42,0.22),0_1px_2px_rgba(15,23,42,0.18),inset_0_1px_1px_rgba(255,255,255,0.98),inset_0_-1px_2px_rgba(15,23,42,0.06)] hover:-translate-y-px hover:border-[#AEB8C5] hover:shadow-[0_5px_9px_rgba(15,23,42,0.26),0_1px_3px_rgba(15,23,42,0.2),inset_0_1px_1px_rgba(255,255,255,0.98),inset_0_-1px_2px_rgba(15,23,42,0.07)] active:shadow-[inset_0_3px_6px_rgba(15,23,42,0.18),0_1px_2px_rgba(15,23,42,0.12)] sm:shadow-none sm:hover:translate-y-0 sm:hover:border-transparent sm:hover:shadow-none sm:active:shadow-none'
                         }`}
                     >
                       {displayCustomImage ? (
-                        <div className="w-7 h-7 sm:w-[38px] sm:h-[38px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 mb-0.5 shadow-2xs">
+                        <div className="w-3.5 h-3.5 sm:w-[30px] sm:h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] sm:rounded-lg">
                           <img
                             src={displayCustomImage}
                             alt={displayLabel}
-                            className="w-full h-full object-cover rounded-lg"
+                            className="w-full h-full object-cover rounded sm:rounded-lg"
                             referrerPolicy="no-referrer"
                           />
                         </div>
                       ) : (
-                        <ThreeDIcon
-                          emoji={displayIcon}
-                          size={38}
-                          className="!w-7 !h-7 sm:!w-[38px] sm:!h-[38px] transition-transform duration-200 hover:scale-[1.08] mb-0.5"
-                        />
+                        <>
+                          <span className="inline-flex sm:hidden">
+                            <ThreeDIcon
+                              emoji={displayIcon}
+                              size={30}
+                              className="transition-transform duration-200 hover:scale-[1.04]"
+                            />
+                          </span>
+                          <span className="hidden sm:inline-flex">
+                            <ThreeDIcon
+                              emoji={displayIcon}
+                              size={38}
+                              className="transition-transform duration-200 hover:scale-[1.04]"
+                            />
+                          </span>
+                        </>
                       )}
-                      <span className="text-[12px] sm:text-xs md:text-sm font-sans tracking-tight leading-tight block w-full">
+                      <span className="min-w-0 text-xs sm:text-[11px] md:text-xs font-sans leading-tight block flex-1 sm:flex-none sm:w-full">
                         {displayLabel}
                       </span>
+                      {isSelected && (
+                        <span className="pointer-events-none absolute bottom-0 left-3 right-3 hidden h-1 rounded-full bg-[#1E293B] sm:block" />
+                      )}
                     </button>
                   );
                 })}
@@ -1475,11 +1451,11 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className={`shrink-0 bg-[#F4F7F6] py-3 sticky z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4 transition-[top] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isL2Visible ? 'top-[74px] md:top-[64px]' : 'top-0 md:top-[64px]'}`}>
+            <section ref={filtersBarRef} className={`shrink-0 bg-[#F4F7F6] py-3 sticky z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4 transition-[top] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isL2Visible ? 'top-[58px] md:top-[91px]' : 'top-0'}`}>
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
-                <div className="relative">
+                <div className="relative ml-6 sm:ml-0">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1701,7 +1677,7 @@ export default function App() {
                 {currentL1 === 'housing' && (
                   <button
                     onClick={() => setShowFiltersModal(true)}
-                    className="w-10 h-10 flex items-center justify-center bg-white border-[0.5px] border-[#94A3B8]/30 text-[#FF7A50] hover:text-[#E05A30] hover:bg-[#FF7A50]/10 rounded-full transition active:scale-95 cursor-pointer shadow-xs shrink-0"
+                    className="w-10 h-10 flex items-center justify-center bg-white border-[0.5px] border-[#94A3B8]/30 text-[#FF7A50] hover:text-[#E05A30] hover:bg-[#FF7A50]/10 rounded-full transition active:scale-95 cursor-pointer shadow-xs shrink-0 mr-6 sm:mr-0"
                     id="advanced-filters-btn"
                     title={tr('filters.title')}
                   >
@@ -1959,8 +1935,51 @@ export default function App() {
             className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
             aria-label={tr('nav.mobile.label')}
           >
-            <div className="relative border-t border-[#E5E7EB] bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-14px_36px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-              <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1">
+            <div className="relative px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2">
+              <div className="pointer-events-none absolute inset-0">
+                <svg
+                  className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_-14px_36px_rgba(15,23,42,0.10)]"
+                  viewBox="0 0 400 72"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <filter id="mobile-nav-topline-glow" x="-5%" y="-80%" width="110%" height="220%">
+                      <feGaussianBlur stdDeviation="3.5" result="blur" />
+                      <feColorMatrix
+                        in="blur"
+                        type="matrix"
+                        values="0 0 0 0 0.58 0 0 0 0 0.64 0 0 0 0 0.72 0 0 0 0.5 0"
+                      />
+                    </filter>
+                  </defs>
+                  <path
+                    d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400 V72 H0 Z"
+                    fill="rgba(255,255,255,0.95)"
+                  />
+                  <path
+                    d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400"
+                    fill="none"
+                    stroke="#AAB4C2"
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    filter="url(#mobile-nav-topline-glow)"
+                    opacity="0.9"
+                  />
+                  <path
+                    d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400"
+                    fill="none"
+                    stroke="#E5E7EB"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              </div>
+              <div className="relative mx-auto grid max-w-md grid-cols-5 items-end gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -1982,23 +2001,25 @@ export default function App() {
                   aria-pressed={showFavoritesOnly}
                   title={tr('nav.favorites')}
                 >
-                  <Heart className="h-[22px] w-[22px] text-[#FF4D5D]" strokeWidth={showFavoritesOnly ? 2.1 : 1.65} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-                  {favoriteIds.size > 0 && (
-                    <span className="absolute right-[2.375rem] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
-                      {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
-                    </span>
-                  )}
+                  <span className="relative flex h-[22px] w-[22px] items-center justify-center">
+                    <Heart className="h-[22px] w-[22px] text-[#FF4D5D]" strokeWidth={showFavoritesOnly ? 2.1 : 1.65} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                    {favoriteIds.size > 0 && (
+                      <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                        {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
+                      </span>
+                    )}
+                  </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
-                  className="relative -mt-6 flex h-[62px] w-[62px] place-self-center items-center justify-center rounded-full bg-[#FF7A50] text-white shadow-[0_14px_28px_rgba(255,122,80,0.34)] transition active:scale-95"
+                  className="relative -mt-4 flex h-[54px] w-[54px] place-self-center items-center justify-center rounded-full bg-[#FF7A50] text-white shadow-[0_14px_28px_rgba(255,122,80,0.34)] transition active:scale-95"
                   aria-label={tr('nav.createListing')}
                   title={tr('nav.createListing')}
                   id="mobile-create-l-btn"
                 >
-                  <PlusCircle className="h-8 w-8" strokeWidth={1.45} />
+                  <PlusCircle className="h-7 w-7" strokeWidth={1.45} />
                 </button>
 
                 <button
@@ -2009,12 +2030,14 @@ export default function App() {
                   aria-expanded={showMobileMessagesSheet}
                   title={tr('nav.messages')}
                 >
-                  <MessageSquare className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
-                  {newBookingRequests.length + contactHistoryCount > 0 && (
-                    <span className="absolute right-[2.375rem] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
-                      {newBookingRequests.length + contactHistoryCount > 99 ? '99+' : newBookingRequests.length + contactHistoryCount}
-                    </span>
-                  )}
+                  <span className="relative flex h-[22px] w-[22px] items-center justify-center">
+                    <MessageSquare className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                    {newBookingRequests.length + contactHistoryCount > 0 && (
+                      <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                        {newBookingRequests.length + contactHistoryCount > 99 ? '99+' : newBookingRequests.length + contactHistoryCount}
+                      </span>
+                    )}
+                  </span>
                 </button>
 
                 <button
@@ -2024,7 +2047,16 @@ export default function App() {
                   aria-label={tr('nav.profile')}
                   title={tr('nav.profile')}
                 >
-                  <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                  {user?.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt=""
+                      className="h-7 w-7 rounded-full border border-white object-cover shadow-sm"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                  )}
                 </button>
               </div>
             </div>
@@ -2032,42 +2064,43 @@ export default function App() {
         )}
 
         {showMobileMessagesSheet && (
-          <div className="fixed inset-0 z-[520] flex items-end bg-[#0F172A]/35 p-3 pb-[calc(env(safe-area-inset-bottom)+96px)] backdrop-blur-[2px] md:hidden" onClick={() => setShowMobileMessagesSheet(false)}>
-            <div className="w-full rounded-3xl border border-white/70 bg-white p-3 shadow-2xl animate-slide-up" onClick={(event) => event.stopPropagation()}>
-              <div className="mb-2 flex items-center justify-between px-1">
-                <h3 className="text-sm font-black text-[#1E293B]">{tr('nav.messages')}</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileMessagesSheet(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F7F6] text-slate-500 transition active:scale-95"
-                  aria-label={tr('common.close')}
-                  title={tr('common.close')}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2" role="tablist" aria-label={tr('nav.messages')}>
+          <div
+            className="fixed inset-0 z-[520] md:hidden"
+            onClick={() => setShowMobileMessagesSheet(false)}
+          >
+            <div
+              className="absolute bottom-[calc(env(safe-area-inset-bottom)+74px)] left-1/2 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_50px_rgba(15,23,42,0.20)] backdrop-blur-xl animate-slide-up"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="grid grid-cols-2 gap-2" role="menu" aria-label={tr('nav.messages')}>
                 <button
                   type="button"
                   onClick={openBookingRequests}
-                  role="tab"
-                  className="flex min-h-20 flex-col items-start justify-between rounded-2xl border border-[#FF7A50]/15 bg-[#FF7A50]/10 p-3 text-left transition active:scale-[0.98]"
+                  role="menuitem"
+                  className="relative flex min-h-16 flex-col items-start justify-between rounded-xl border border-[#FF7A50]/15 bg-[#FFF1EB] p-3 text-left transition active:scale-[0.98]"
                 >
                   <List className="h-5 w-5 text-[#FF7A50]" strokeWidth={1.9} />
-                  <span className="text-sm font-black leading-tight text-[#1E293B]">{tr('nav.incomingRequests')}</span>
-                  <span className="text-[11px] font-extrabold text-[#FF7A50]">{newBookingRequests.length}</span>
+                  <span className="mt-2 text-sm font-black leading-tight text-[#1E293B]">{tr('nav.inbox')}</span>
+                  {newBookingRequests.length > 0 && (
+                    <span className="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF7A50] px-1.5 text-[10px] font-black leading-none text-white">
+                      {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
+                    </span>
+                  )}
                 </button>
 
                 <button
                   type="button"
                   onClick={openBookingHistory}
-                  role="tab"
-                  className="flex min-h-20 flex-col items-start justify-between rounded-2xl border border-[#2F7D69]/15 bg-[#2F7D69]/10 p-3 text-left transition active:scale-[0.98]"
+                  role="menuitem"
+                  className="relative flex min-h-16 flex-col items-start justify-between rounded-xl border border-[#2F7D69]/15 bg-[#E8F5EF] p-3 text-left transition active:scale-[0.98]"
                 >
                   <Send className="h-5 w-5 text-[#2F7D69]" strokeWidth={1.9} />
-                  <span className="text-sm font-black leading-tight text-[#1E293B]">{tr('nav.outgoingMessages')}</span>
-                  <span className="text-[11px] font-extrabold text-[#2F7D69]">{contactHistoryCount}</span>
+                  <span className="mt-2 text-sm font-black leading-tight text-[#1E293B]">{tr('nav.outbox')}</span>
+                  {contactHistoryCount > 0 && (
+                    <span className="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2F7D69] px-1.5 text-[10px] font-black leading-none text-white">
+                      {contactHistoryCount > 99 ? '99+' : contactHistoryCount}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -2075,6 +2108,7 @@ export default function App() {
         )}
 
         <AppOverlays
+          activeCurrency={activeCurrency}
           activeLanguage={activeLanguage}
           bookings={bookings}
           currencyRate={CURRENCIES[activeCurrency].rate}
@@ -2101,6 +2135,8 @@ export default function App() {
           menuOverrides={menuOverrides}
           primaryL2={primaryL2}
           selectedListing={selectedListing}
+          setActiveCurrency={setActiveCurrency}
+          setActiveLanguage={setActiveLanguage}
           onRequireAuth={requestAuth}
           onSelectedListingClose={closeSelectedListing}
           setCheckInDate={setCheckInDate}

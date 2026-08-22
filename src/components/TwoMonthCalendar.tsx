@@ -295,6 +295,9 @@ export default function TwoMonthCalendar({
     return dateStr === localCheckIn || dateStr === localCheckOut;
   };
 
+  const rangeStartBackground = "[background:linear-gradient(to_right,transparent_0_50%,rgb(255_122_80_/_0.15)_50%_100%)]";
+  const rangeEndBackground = "[background:linear-gradient(to_right,rgb(255_122_80_/_0.15)_0_50%,transparent_50%_100%)]";
+
   const renderMonthGrid = (targetMonth: Date) => {
     const days = generateMonthDays(targetMonth);
     const title = targetMonth.toLocaleDateString(localeByLanguage[language], {
@@ -357,15 +360,15 @@ export default function TwoMonthCalendar({
             if (previewBetween) {
               wrapperClass += "bg-[#FF7A50]/15";
             } else if (dateStr === previewStart && previewEnd && previewStart !== previewEnd) {
-              wrapperClass += "bg-[#FF7A50]/15 rounded-l-full";
+              wrapperClass += rangeStartBackground;
             } else if (dateStr === previewEnd && previewStart && previewStart !== previewEnd) {
-              wrapperClass += "bg-[#FF7A50]/15 rounded-r-full";
+              wrapperClass += rangeEndBackground;
             } else if (between) {
               wrapperClass += "bg-[#FF7A50]/15";
             } else if (isStart && localCheckOut) {
-              wrapperClass += "bg-[#FF7A50]/15 rounded-l-full";
+              wrapperClass += rangeStartBackground;
             } else if (isEnd && localCheckIn) {
-              wrapperClass += "bg-[#FF7A50]/15 rounded-r-full";
+              wrapperClass += rangeEndBackground;
             }
 
             return (

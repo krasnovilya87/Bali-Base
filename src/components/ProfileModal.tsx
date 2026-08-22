@@ -4,6 +4,9 @@ import { updateEmail, updateProfile } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../auth/AuthContext';
+import { CURRENCIES, CurrencyKey } from '../app/currency';
+import { LANGUAGE_STORAGE_KEY } from '../app/language';
+import { LANGUAGES, LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
 import { uploadImageToFreeImageHost } from '../utils/imageUpload';
 import { formatPhoneInput } from '../utils/phone';
@@ -21,11 +24,22 @@ const normalizeProfilePhone = (value: string) => {
 };
 
 type ProfileModalProps = {
+  activeCurrency: CurrencyKey;
+  activeLanguage: LanguageCode;
   listingsCount: number;
   onClose: () => void;
+  setActiveCurrency: (currency: CurrencyKey) => void;
+  setActiveLanguage: (language: LanguageCode) => void;
 };
 
-export default function ProfileModal({ listingsCount, onClose }: ProfileModalProps) {
+export default function ProfileModal({
+  activeCurrency,
+  activeLanguage,
+  listingsCount,
+  onClose,
+  setActiveCurrency,
+  setActiveLanguage
+}: ProfileModalProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -36,6 +50,8 @@ export default function ProfileModal({ listingsCount, onClose }: ProfileModalPro
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [previewURL, setPreviewURL] = useState('');
+  const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
+  const [showLanguageDrop, setShowLanguageDrop] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -108,6 +124,21 @@ export default function ProfileModal({ listingsCount, onClose }: ProfileModalPro
     const source = displayName || user?.displayName || email || user?.uid || 'B';
     return source.trim().slice(0, 1).toUpperCase() || 'B';
   }, [displayName, email, user?.displayName, user?.uid]);
+
+  const updateLanguage = (language: LanguageCode) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+      document.documentElement.lang = language.toLowerCase();
+      window.dispatchEvent(new CustomEvent('bali-base-language-updated', { detail: { language } }));
+    }
+    setActiveLanguage(language);
+    setShowLanguageDrop(false);
+  };
+
+  const updateCurrency = (currency: CurrencyKey) => {
+    setActiveCurrency(currency);
+    setShowCurrencyDrop(false);
+  };
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -224,6 +255,73 @@ export default function ProfileModal({ listingsCount, onClose }: ProfileModalPro
                   <span>{tr('profile.totalListings', { count: listingsCount })}</span>
                 </div>
               </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCurrencyDrop(value => !value);
+                      setShowLanguageDrop(false);
+                    }}
+                    className="flex h-9 items-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold uppercase leading-none text-[#1E293B] transition hover:bg-gray-100"
+                    title={tr('nav.currency.title')}
+                    aria-label={tr('nav.currency.title')}
+                    aria-expanded={showCurrencyDrop}
+                  >
+                    <span>{activeCurrency}</span>
+                  </button>
+
+                  {showCurrencyDrop && (
+                    <div className="pu absolute right-0 top-11 z-50 w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in">
+                      {Object.keys(CURRENCIES).map(currency => (
+                        <button
+                          key={currency}
+                          type="button"
+                          onClick={() => updateCurrency(currency as CurrencyKey)}
+                          className={`block w-full py-2 font-bold text-[#1E293B] transition hover:bg-white/70 ${
+                            activeCurrency === currency ? 'bg-white/70 text-[#FF7A50]' : ''
+                          }`}
+                        >
+                          {CURRENCIES[currency as CurrencyKey].symbol} {currency}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLanguageDrop(value => !value);
+                      setShowCurrencyDrop(false);
+                    }}
+                    className="flex h-9 items-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold leading-none text-[#1E293B] transition hover:bg-gray-100"
+                    title={tr('nav.language.title')}
+                    aria-label={tr('nav.language.title')}
+                    aria-expanded={showLanguageDrop}
+                  >
+                    <span>{activeLanguage}</span>
+                  </button>
+
+                  {showLanguageDrop && (
+                    <div className="pu absolute right-0 top-11 z-50 w-32 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-xs shadow-xl animate-fade-in">
+                      {LANGUAGES.map(lang => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          onClick={() => updateLanguage(lang.code)}
+                          className={`block w-full px-3.5 py-2 text-left font-semibold text-[#1E293B] transition hover:bg-white/70 ${
+                            activeLanguage === lang.code ? 'bg-white/70 text-[#FF7A50]' : ''
+                          }`}
+                        >
+                          {lang.nativeName} ({lang.code})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -280,6 +378,7 @@ export default function ProfileModal({ listingsCount, onClose }: ProfileModalPro
                   className={`${profileInputClass} !h-12 !min-h-12 !rounded-2xl !border-[#E5E7EB] !bg-white !py-0 !pl-4 !pr-14 !text-sm !font-bold !text-[#17231F] focus:!border-[#2F7D69]`}
                 />
               </label>
+
             </div>
 
             {(isLoadingProfile || error) && (

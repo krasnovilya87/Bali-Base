@@ -1,4 +1,4 @@
-import { ChevronDown, List, LogOut, MessageSquare, ShieldAlert, User, UserRoundCog } from 'lucide-react';
+import { List, LogOut, MessageSquare, ShieldAlert, User, UserRoundCog } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '../../auth/AuthContext';
 import { auth } from '../../firebase';
@@ -10,8 +10,6 @@ interface UsersDropdownProps {
   listings: Listing[];
   showUsersDropdown: boolean;
   tr: (key: string) => string;
-  label?: string;
-  chevronClassName?: string;
   currentUser: FirebaseUser | null;
   onRequireAuth: (reasonKey?: string, afterAuth?: () => void) => boolean;
   setShowUsersDropdown: (show: boolean) => void;
@@ -32,8 +30,6 @@ export default function UsersDropdown({
   listings,
   showUsersDropdown,
   tr,
-  label = '',
-  chevronClassName = 'w-3.5 h-3.5 text-gray-400',
   currentUser,
   onRequireAuth,
   setShowUsersDropdown,
@@ -50,7 +46,7 @@ export default function UsersDropdown({
     return listings.filter(item => item.ownerId === activeUserId || isOwnListing(item));
   };
   const ownListings = getOwnListings();
-  const displayLabel = currentUser?.displayName || currentUser?.email || label;
+  const userPhotoURL = currentUser?.photoURL || '';
   const totalContactHistoryCount = getContactHistoryCount();
   const acceptedBookingCount = getAcceptedContactHistoryBookingCount(bookings);
   const ownListingIds = new Set(ownListings.map(item => item.id));
@@ -76,20 +72,27 @@ export default function UsersDropdown({
   };
 
   return (
-    <div className="header-popover-root relative">
+    <div className={`header-popover-root relative ${showUsersDropdown ? 'z-[520]' : 'z-0'}`}>
       <button
         onClick={() => setShowUsersDropdown(!showUsersDropdown)}
-        className="h-8 sm:h-9 px-2.5 sm:px-3 py-0 bg-[#F4F7F6] border border-[#E5E7EB] hover:bg-gray-200 text-[#1E293B] rounded-xl font-bold font-sans transition active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 text-[12px] sm:text-xs leading-none text-text-dark"
+        className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent p-0 text-[#1E293B] transition hover:scale-105 active:scale-95"
         id={id}
         title="Users Menu"
       >
-        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF7A50]" />
-        <span className="hidden sm:inline">{displayLabel}</span>
-        <ChevronDown className={chevronClassName} />
+        {userPhotoURL ? (
+          <img
+            src={userPhotoURL}
+            alt=""
+            className="h-11 w-11 rounded-full object-cover shadow-sm"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <User className="h-7 w-7 text-[#FF7A50]" />
+        )}
       </button>
 
       {showUsersDropdown && (
-        <div className="pu absolute right-0 mt-2 w-60 rounded-2xl shadow-xl border border-white/50 py-2.5 z-40 animate-fade-in text-xs font-sans text-left overflow-hidden">
+        <div className="pu absolute right-0 mt-2 w-60 rounded-2xl shadow-xl border border-white/50 py-2.5 z-[520] animate-fade-in text-xs font-sans text-left overflow-hidden">
           <button
             onClick={() => {
               setShowAdminDashboard(true);

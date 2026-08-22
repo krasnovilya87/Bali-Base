@@ -11,9 +11,9 @@ export const defaultCategoriesList = [
 
 export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: string; icon: string }>> = {
   housing: [
-    { id: 'entire_place', label: 'Частная Вилла / Дом', icon: '🏡' },
+    { id: 'entire_place', label: 'Вилла / Дом', icon: '🏡' },
     { id: 'private_suite', label: 'Апартаменты', icon: '🏢' },
-    { id: 'private_room', label: 'Частная комната', icon: '🛌' }
+    { id: 'private_room', label: 'Комната', icon: '🛌' }
   ],
   transport: [
     { id: 'scooters', label: 'Скутеры', icon: '🛵' },
