@@ -192,6 +192,7 @@ export default function App() {
   });
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
   const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
+  const [isTopHeaderHidden, setIsTopHeaderHidden] = useState<boolean>(false);
   const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const lastPageScrollYRef = useRef(0);
@@ -253,6 +254,7 @@ export default function App() {
 
     if (currentView !== 'app') {
       setIsL2Visible(true);
+      setIsTopHeaderHidden(false);
       setIsMobileNavHidden(false);
       lastPageScrollYRef.current = window.scrollY;
       return;
@@ -264,9 +266,11 @@ export default function App() {
 
       if (currentScrollY <= 2) {
         setIsL2Visible(true);
+        setIsTopHeaderHidden(false);
         setIsMobileNavHidden(false);
       } else if (delta > 6) {
         setIsL2Visible(false);
+        setIsTopHeaderHidden(true);
         setIsMobileNavHidden(true);
       } else if (delta < -6) {
         setIsL2Visible(true);
@@ -991,7 +995,7 @@ export default function App() {
         {currentView === 'menu' && (
           <div className="h-[100dvh] sm:min-h-screen w-full flex flex-col animate-fade-in bg-[#F4F7F6] overflow-hidden sm:overflow-visible">
             {/* HEADER BAR ROW */}
-            <header className={`sticky top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isMobileNavHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+            <header className={`sticky top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4 font-sans">
 
                 {/* BRAND EMBLEM & COVER BUTTON */}
@@ -1207,7 +1211,7 @@ export default function App() {
           <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
-            <header className={`sticky top-0 shrink-0 bg-white border-b border-[#E5E7EB] z-[250] select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isMobileNavHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+            <header className={`sticky top-0 shrink-0 bg-white border-b border-[#E5E7EB] z-[250] select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4">
 
                 {/* BRAND EMBLEM & MENU BUTTON */}
@@ -1423,9 +1427,9 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className={`shrink-0 bg-white select-none transition-[opacity,transform] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[230] max-h-[140px] py-2.5 sm:py-3.5 border-b border-[#E5E7EB] ${isL2Visible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 -translate-y-3 pointer-events-none'
+            <nav className={`sticky top-0 md:static shrink-0 bg-white select-none transition-[opacity,transform,max-height,padding] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[245] border-b ${isL2Visible
+              ? 'max-h-[140px] py-2.5 sm:py-3.5 border-[#E5E7EB] opacity-100 translate-y-0'
+              : 'max-h-0 py-0 border-transparent opacity-0 -translate-y-3 pointer-events-none'
               }`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-4 flex flex-row justify-around sm:justify-center items-center w-full gap-0.5 sm:gap-10">
 
@@ -1471,7 +1475,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className="shrink-0 bg-[#F4F7F6] py-3 sticky top-0 md:top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
+            <section ref={filtersBarRef} className={`shrink-0 bg-[#F4F7F6] py-3 sticky z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4 transition-[top] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isL2Visible ? 'top-[74px] md:top-[64px]' : 'top-0 md:top-[64px]'}`}>
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1952,8 +1956,9 @@ export default function App() {
 
         {currentView !== 'cover' && (
           <nav
-            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
+            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-[opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%] opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
             aria-label={tr('nav.mobile.label')}
+            aria-hidden={isMobileNavHidden}
           >
             <div className="relative border-t border-[#E5E7EB] bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-14px_36px_rgba(15,23,42,0.10)] backdrop-blur-xl">
               <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1">
@@ -1980,7 +1985,7 @@ export default function App() {
                 >
                   <Heart className="h-[22px] w-[22px] text-[#FF4D5D]" strokeWidth={showFavoritesOnly ? 2.1 : 1.65} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
                   {favoriteIds.size > 0 && (
-                    <span className="absolute right-5.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                    <span className="absolute right-[2.375rem] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
                       {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
                     </span>
                   )}
@@ -2007,7 +2012,7 @@ export default function App() {
                 >
                   <MessageSquare className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
                   {newBookingRequests.length + contactHistoryCount > 0 && (
-                    <span className="absolute right-5.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                    <span className="absolute right-[2.375rem] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
                       {newBookingRequests.length + contactHistoryCount > 99 ? '99+' : newBookingRequests.length + contactHistoryCount}
                     </span>
                   )}
@@ -2175,7 +2180,3 @@ function getContactHistoryCount() {
     return 0;
   }
 }
-
-
-
-
