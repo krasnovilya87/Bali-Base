@@ -196,6 +196,7 @@ export default function App() {
   const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const lastPageScrollYRef = useRef(0);
+  const scrollIntentRef = useRef(0);
   const filtersBarRef = useRef<HTMLElement | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
@@ -257,30 +258,42 @@ export default function App() {
       setIsTopHeaderHidden(false);
       setIsMobileNavHidden(false);
       lastPageScrollYRef.current = window.scrollY;
+      scrollIntentRef.current = 0;
       return;
     }
 
     const handlePageScroll = () => {
       const currentScrollY = window.scrollY;
       const delta = currentScrollY - lastPageScrollYRef.current;
+      const directionChanged = Math.sign(delta) !== Math.sign(scrollIntentRef.current);
 
       if (currentScrollY <= 2) {
         setIsL2Visible(true);
         setIsTopHeaderHidden(false);
         setIsMobileNavHidden(false);
+        scrollIntentRef.current = 0;
       } else if (delta > 6) {
-        setIsL2Visible(false);
-        setIsTopHeaderHidden(true);
-        setIsMobileNavHidden(true);
+        scrollIntentRef.current = directionChanged ? delta : scrollIntentRef.current + delta;
+        if (scrollIntentRef.current > 32) {
+          setIsL2Visible(false);
+          setIsTopHeaderHidden(true);
+          setIsMobileNavHidden(true);
+          scrollIntentRef.current = 0;
+        }
       } else if (delta < -6) {
-        setIsL2Visible(true);
-        setIsMobileNavHidden(false);
+        scrollIntentRef.current = directionChanged ? delta : scrollIntentRef.current + delta;
+        if (scrollIntentRef.current < -22) {
+          setIsL2Visible(true);
+          setIsMobileNavHidden(false);
+          scrollIntentRef.current = 0;
+        }
       }
 
       lastPageScrollYRef.current = currentScrollY;
     };
 
     lastPageScrollYRef.current = window.scrollY;
+    scrollIntentRef.current = 0;
     window.addEventListener('scroll', handlePageScroll, { passive: true });
 
     return () => {
@@ -1426,56 +1439,57 @@ export default function App() {
               </div>
             </nav>
 
-            {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className={`sticky top-0 md:static shrink-0 bg-white select-none transition-[opacity,transform,max-height,padding] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] overflow-hidden z-[245] border-b ${isL2Visible
-              ? 'max-h-[140px] py-2.5 sm:py-3.5 border-[#E5E7EB] opacity-100 translate-y-0'
-              : 'max-h-0 py-0 border-transparent opacity-0 -translate-y-3 pointer-events-none'
-              }`}>
-              <div className="max-w-7xl mx-auto px-1.5 sm:px-4 flex flex-row justify-around sm:justify-center items-center w-full gap-0.5 sm:gap-10">
+            <div className="sticky top-0 z-[245] shrink-0 md:contents">
+              {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
+              <nav className={`shrink-0 bg-white select-none transition-[opacity,transform,max-height,padding] duration-450 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] overflow-hidden z-[245] border-b ${isL2Visible
+                ? 'max-h-[140px] py-2.5 sm:py-3.5 border-[#E5E7EB] opacity-100 translate-y-0'
+                : 'max-h-0 py-0 border-transparent opacity-0 -translate-y-2 pointer-events-none'
+                }`}>
+                <div className="max-w-7xl mx-auto px-1.5 sm:px-4 flex flex-row justify-around sm:justify-center items-center w-full gap-0.5 sm:gap-10">
 
-                {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
-                  const displayLabel = tr(`subcategory.${sub.id}`);
-                  const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon;
-                  const displayCustomImage = menuOverrides?.l2?.[sub.id]?.customImage;
-                  const isSelected = currentL2.includes(sub.id);
+                  {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
+                    const displayLabel = tr(`subcategory.${sub.id}`);
+                    const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon;
+                    const displayCustomImage = menuOverrides?.l2?.[sub.id]?.customImage;
+                    const isSelected = currentL2.includes(sub.id);
 
-                  return (
-                    <button
-                      key={sub.id}
-                      onClick={() => toggleL2(sub.id)}
-                      className={`pb-1.5 pt-1 sm:pb-2 px-1 sm:px-3.5 flex-1 sm:flex-initial flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 cursor-pointer border-b-2 select-none focus:outline-none ${isSelected
-                        ? 'border-[#FF7A50] text-[#FF7A50] font-bold scale-102 font-sans'
-                        : 'border-transparent text-[#1E293B] hover:text-[#FF7A50] font-normal font-sans'
-                        }`}
-                    >
-                      {displayCustomImage ? (
-                        <div className="w-7 h-7 sm:w-[38px] sm:h-[38px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 mb-0.5 shadow-2xs">
-                          <img
-                            src={displayCustomImage}
-                            alt={displayLabel}
-                            className="w-full h-full object-cover rounded-lg"
-                            referrerPolicy="no-referrer"
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => toggleL2(sub.id)}
+                        className={`pb-1.5 pt-1 sm:pb-2 px-1 sm:px-3.5 flex-1 sm:flex-initial flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 cursor-pointer border-b-2 select-none focus:outline-none ${isSelected
+                          ? 'border-[#FF7A50] text-[#FF7A50] font-bold scale-102 font-sans'
+                          : 'border-transparent text-[#1E293B] hover:text-[#FF7A50] font-normal font-sans'
+                          }`}
+                      >
+                        {displayCustomImage ? (
+                          <div className="w-7 h-7 sm:w-[38px] sm:h-[38px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 mb-0.5 shadow-2xs">
+                            <img
+                              src={displayCustomImage}
+                              alt={displayLabel}
+                              className="w-full h-full object-cover rounded-lg"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                        ) : (
+                          <ThreeDIcon
+                            emoji={displayIcon}
+                            size={38}
+                            className="!w-7 !h-7 sm:!w-[38px] sm:!h-[38px] transition-transform duration-200 hover:scale-[1.08] mb-0.5"
                           />
-                        </div>
-                      ) : (
-                        <ThreeDIcon
-                          emoji={displayIcon}
-                          size={38}
-                          className="!w-7 !h-7 sm:!w-[38px] sm:!h-[38px] transition-transform duration-200 hover:scale-[1.08] mb-0.5"
-                        />
-                      )}
-                      <span className="text-[12px] sm:text-xs md:text-sm font-sans tracking-tight leading-tight block w-full">
-                        {displayLabel}
-                      </span>
-                    </button>
-                  );
-                })}
+                        )}
+                        <span className="text-[12px] sm:text-xs md:text-sm font-sans tracking-tight leading-tight block w-full">
+                          {displayLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-              </div>
-            </nav>
+                </div>
+              </nav>
 
-            {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className={`shrink-0 bg-[#F4F7F6] py-3 sticky z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4 transition-[top] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isL2Visible ? 'top-[74px] md:top-[64px]' : 'top-0 md:top-[64px]'}`}>
+              {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
+              <section ref={filtersBarRef} className="shrink-0 bg-[#F4F7F6] py-3 static md:sticky md:top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1711,6 +1725,7 @@ export default function App() {
 
               </div>
             </section>
+            </div>
 
             {/* MAIN RESULTS PAGE: COLLAPSIBLE LISTING MAP WITH ADAPTIVE LAYOUTS */}
             <main className="flex-grow max-w-7xl w-full mx-auto px-1 sm:px-6 py-6 relative select-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]">
