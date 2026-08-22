@@ -1956,9 +1956,8 @@ export default function App() {
 
         {currentView !== 'cover' && (
           <nav
-            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-[opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%] opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
+            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
             aria-label={tr('nav.mobile.label')}
-            aria-hidden={isMobileNavHidden}
           >
             <div className="relative border-t border-[#E5E7EB] bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-14px_36px_rgba(15,23,42,0.10)] backdrop-blur-xl">
               <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1">
