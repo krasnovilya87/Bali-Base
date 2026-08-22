@@ -2,7 +2,7 @@
   "projectId": "bali-base-90ca8",
   "appId": "1:516937970438:web:0e3fd968cceb55eebd6487",
   "apiKey": "YOUR_FIREBASE_API_KEY",
-  "authDomain": "balibase.id",
+  "authDomain": "auth.balibase.id",
   "storageBucket": "bali-base-90ca8.firebasestorage.app",
   "messagingSenderId": "516937970438",
   "measurementId": ""
