@@ -30,7 +30,7 @@ import { LISTING_SHARE_PARAM } from './utils/listingShare';
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart, MessageSquare, List
+  Maximize, Minimize, Heart, MessageSquare, List, Send, UserRound
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -178,6 +178,7 @@ export default function App() {
   const [showUsersDropdown, setShowUsersDropdown] = useState<boolean>(false);
   const [showUsersModal, setShowUsersModal] = useState<boolean>(false);
   const [usersModalTab, setUsersModalTab] = useState<'favorites' | 'whatsapp'>('favorites');
+  const [showMobileMessagesSheet, setShowMobileMessagesSheet] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [showContactUsModal, setShowContactUsModal] = useState<boolean>(false);
@@ -191,6 +192,7 @@ export default function App() {
   });
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
   const [isL2Visible, setIsL2Visible] = useState<boolean>(true);
+  const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const lastPageScrollYRef = useRef(0);
   const filtersBarRef = useRef<HTMLElement | null>(null);
@@ -251,6 +253,7 @@ export default function App() {
 
     if (currentView !== 'app') {
       setIsL2Visible(true);
+      setIsMobileNavHidden(false);
       lastPageScrollYRef.current = window.scrollY;
       return;
     }
@@ -261,10 +264,13 @@ export default function App() {
 
       if (currentScrollY <= 2) {
         setIsL2Visible(true);
+        setIsMobileNavHidden(false);
       } else if (delta > 6) {
         setIsL2Visible(false);
+        setIsMobileNavHidden(true);
       } else if (delta < -6) {
         setIsL2Visible(true);
+        setIsMobileNavHidden(false);
       }
 
       lastPageScrollYRef.current = currentScrollY;
@@ -346,6 +352,10 @@ export default function App() {
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
+  const contactHistoryCount = useMemo(
+    () => getContactHistoryCount(),
+    [showMobileMessagesSheet, showUsersModal, selectedListing]
+  );
   const ownerListingIds = useMemo(() => new Set(listings
     .filter(item =>
       item.ownerId === user?.uid ||
@@ -382,6 +392,7 @@ export default function App() {
   const openBookingRequests = () => {
     const openRequests = () => {
       setShowUsersDropdown(false);
+      setShowMobileMessagesSheet(false);
       setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
       setShowMyAddsListing(true);
     };
@@ -393,12 +404,44 @@ export default function App() {
   const openBookingHistory = () => {
     const openHistory = () => {
       setShowUsersDropdown(false);
+      setShowMobileMessagesSheet(false);
       setUsersModalTab('whatsapp');
       setShowUsersModal(true);
     };
 
     if (!requestAuth('auth.reason.messages', openHistory)) return;
     openHistory();
+  };
+
+  const openMobileMessages = () => {
+    const openSheet = () => {
+      setShowUsersDropdown(false);
+      setShowMobileMessagesSheet(true);
+      setIsMobileNavHidden(false);
+    };
+
+    if (!requestAuth('auth.reason.messages', openSheet)) return;
+    openSheet();
+  };
+
+  const toggleFavoritesOnly = () => {
+    requireAuth('auth.reason.favorites', () => {
+      setShowFavoritesOnly(prev => {
+        const next = !prev;
+        setFilters(currentFilters => ({ ...currentFilters, favoritesOnly: next }));
+        return next;
+      });
+      if (currentView !== 'app') {
+        openAppView();
+      }
+    });
+  };
+
+  const openProfile = () => {
+    requireAuth('auth.defaultReason', () => {
+      setShowUsersDropdown(false);
+      setShowProfileModal(true);
+    });
   };
 
   useEffect(() => {
@@ -948,7 +991,7 @@ export default function App() {
         {currentView === 'menu' && (
           <div className="h-[100dvh] sm:min-h-screen w-full flex flex-col animate-fade-in bg-[#F4F7F6] overflow-hidden sm:overflow-visible">
             {/* HEADER BAR ROW */}
-            <header className="sticky top-0 bg-white border-b border-[#E5E7EB] z-40 select-none">
+            <header className={`sticky top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isMobileNavHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4 font-sans">
 
                 {/* BRAND EMBLEM & COVER BUTTON */}
@@ -1046,7 +1089,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={openBookingRequests}
-                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative hidden w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer md:flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.bookingRequests')}
                     aria-label={tr('nav.bookingRequests')}
                   >
@@ -1064,7 +1107,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={openBookingHistory}
-                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative hidden w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer md:flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.clickHistory')}
                     aria-label={tr('nav.clickHistory')}
                   >
@@ -1082,29 +1125,31 @@ export default function App() {
                   {/* Create Listing Wizard trigger button */}
                   <button
                     onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
-                    className="px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
+                    className="hidden px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer md:flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn-menu"
                   >
                     <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{tr('nav.createListing')}</span>
                   </button>
 
-                  <UsersDropdown
-                    bookings={bookings}
-                    id="users-dropdown-btn-menu"
-                    listings={listings}
-                    showUsersDropdown={showUsersDropdown}
-                    tr={tr}
-                    currentUser={user}
-                    onRequireAuth={requestAuth}
-                    setShowUsersDropdown={setShowUsersDropdown}
-                    setShowAdminDashboard={setShowAdminDashboard}
-                    setShowCreateWizard={setShowCreateWizard}
-                    setShowMyAddsListing={setShowMyAddsListing}
-                    setShowProfileModal={setShowProfileModal}
-                    setShowUsersModal={setShowUsersModal}
-                    setUsersModalTab={setUsersModalTab}
-                  />
+                  <div className="hidden md:block">
+                    <UsersDropdown
+                      bookings={bookings}
+                      id="users-dropdown-btn-menu"
+                      listings={listings}
+                      showUsersDropdown={showUsersDropdown}
+                      tr={tr}
+                      currentUser={user}
+                      onRequireAuth={requestAuth}
+                      setShowUsersDropdown={setShowUsersDropdown}
+                      setShowAdminDashboard={setShowAdminDashboard}
+                      setShowCreateWizard={setShowCreateWizard}
+                      setShowMyAddsListing={setShowMyAddsListing}
+                      setShowProfileModal={setShowProfileModal}
+                      setShowUsersModal={setShowUsersModal}
+                      setUsersModalTab={setUsersModalTab}
+                    />
+                  </div>
 
                 </div>
 
@@ -1162,7 +1207,7 @@ export default function App() {
           <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
-            <header className="sticky top-0 shrink-0 bg-white border-b border-[#E5E7EB] z-[250] select-none">
+            <header className={`sticky top-0 shrink-0 bg-white border-b border-[#E5E7EB] z-[250] select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isMobileNavHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4">
 
                 {/* BRAND EMBLEM & MENU BUTTON */}
@@ -1257,7 +1302,7 @@ export default function App() {
                         return next;
                       });
                     })}
-                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative hidden w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D5D]/30 rounded-xl cursor-pointer md:flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.favorites')}
                     aria-label={tr('nav.favorites')}
                     aria-pressed={showFavoritesOnly}
@@ -1277,7 +1322,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={openBookingRequests}
-                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative hidden w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer md:flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.bookingRequests')}
                     aria-label={tr('nav.bookingRequests')}
                   >
@@ -1295,7 +1340,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={openBookingHistory}
-                    className="relative w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer flex items-center justify-center active:scale-95 transition shrink-0"
+                    className="relative hidden w-8 h-8 sm:w-9 sm:h-9 bg-white border border-[#E5E7EB] hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7A50]/30 rounded-xl cursor-pointer md:flex items-center justify-center active:scale-95 transition shrink-0"
                     title={tr('nav.clickHistory')}
                     aria-label={tr('nav.clickHistory')}
                   >
@@ -1313,31 +1358,33 @@ export default function App() {
                   {/* Create Listing Wizard trigger button */}
                   <button
                     onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
-                    className="px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
+                    className="hidden px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer md:flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn"
                   >
                     <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{tr('nav.createListing')}</span>
                   </button>
 
-                  <UsersDropdown
-                    bookings={bookings}
-                    id="users-dropdown-btn"
-                    listings={listings}
-                    showUsersDropdown={showUsersDropdown}
-                    tr={tr}
-                    label="Users"
-                    chevronClassName="w-3 h-3 text-gray-400"
-                    currentUser={user}
-                    onRequireAuth={requestAuth}
-                    setShowUsersDropdown={setShowUsersDropdown}
-                    setShowAdminDashboard={setShowAdminDashboard}
-                    setShowCreateWizard={setShowCreateWizard}
-                    setShowMyAddsListing={setShowMyAddsListing}
-                    setShowProfileModal={setShowProfileModal}
-                    setShowUsersModal={setShowUsersModal}
-                    setUsersModalTab={setUsersModalTab}
-                  />
+                  <div className="hidden md:block">
+                    <UsersDropdown
+                      bookings={bookings}
+                      id="users-dropdown-btn"
+                      listings={listings}
+                      showUsersDropdown={showUsersDropdown}
+                      tr={tr}
+                      label="Users"
+                      chevronClassName="w-3 h-3 text-gray-400"
+                      currentUser={user}
+                      onRequireAuth={requestAuth}
+                      setShowUsersDropdown={setShowUsersDropdown}
+                      setShowAdminDashboard={setShowAdminDashboard}
+                      setShowCreateWizard={setShowCreateWizard}
+                      setShowMyAddsListing={setShowMyAddsListing}
+                      setShowProfileModal={setShowProfileModal}
+                      setShowUsersModal={setShowUsersModal}
+                      setUsersModalTab={setUsersModalTab}
+                    />
+                  </div>
 
                 </div>
               </div>
@@ -1424,7 +1471,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className="shrink-0 bg-[#F4F7F6] py-3 sticky top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
+            <section ref={filtersBarRef} className="shrink-0 bg-[#F4F7F6] py-3 sticky top-0 md:top-[64px] z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1670,7 +1717,7 @@ export default function App() {
                   className={`space-y-4 sm:space-y-6 px-0.5 sm:px-[18px] pb-[18px] pt-0 scroll-p-[18px] transition-all duration-500 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${showListingMap && currentL1 !== 'useful'
                     ? 'w-full md:w-[calc(50%-12px)]'
                     : 'w-full'
-                  }`}
+                    }`}
                   id="listings-scroll-panel"
                 >
                   <div className="flex items-center justify-between select-none">
@@ -1903,6 +1950,126 @@ export default function App() {
           </div>
         )}
 
+        {currentView !== 'cover' && (
+          <nav
+            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
+            aria-label={tr('nav.mobile.label')}
+          >
+            <div className="relative border-t border-[#E5E7EB] bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-14px_36px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+              <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMobileMessagesSheet(false);
+                    setCurrentView('menu');
+                  }}
+                  className="flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  aria-label={tr('nav.backToCover')}
+                  title={tr('nav.backToCover')}
+                >
+                  <Menu className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleFavoritesOnly}
+                  className={`relative flex h-11 min-w-0 items-center justify-center rounded-xl transition active:scale-95 ${showFavoritesOnly ? 'text-[#FF4D5D]' : 'text-[#1E293B]'}`}
+                  aria-label={tr('nav.favorites')}
+                  aria-pressed={showFavoritesOnly}
+                  title={tr('nav.favorites')}
+                >
+                  <Heart className="h-[22px] w-[22px] text-[#FF4D5D]" strokeWidth={showFavoritesOnly ? 2.1 : 1.65} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                  {favoriteIds.size > 0 && (
+                    <span className="absolute right-5.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                      {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
+                  className="relative -mt-6 flex h-[62px] w-[62px] place-self-center items-center justify-center rounded-full bg-[#FF7A50] text-white shadow-[0_14px_28px_rgba(255,122,80,0.34)] transition active:scale-95"
+                  aria-label={tr('nav.createListing')}
+                  title={tr('nav.createListing')}
+                  id="mobile-create-l-btn"
+                >
+                  <PlusCircle className="h-8 w-8" strokeWidth={1.45} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openMobileMessages}
+                  className="relative flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  aria-label={tr('nav.messages')}
+                  aria-expanded={showMobileMessagesSheet}
+                  title={tr('nav.messages')}
+                >
+                  <MessageSquare className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                  {newBookingRequests.length + contactHistoryCount > 0 && (
+                    <span className="absolute right-5.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
+                      {newBookingRequests.length + contactHistoryCount > 99 ? '99+' : newBookingRequests.length + contactHistoryCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openProfile}
+                  className="flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  aria-label={tr('nav.profile')}
+                  title={tr('nav.profile')}
+                >
+                  <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                </button>
+              </div>
+            </div>
+          </nav>
+        )}
+
+        {showMobileMessagesSheet && (
+          <div className="fixed inset-0 z-[520] flex items-end bg-[#0F172A]/35 p-3 pb-[calc(env(safe-area-inset-bottom)+96px)] backdrop-blur-[2px] md:hidden" onClick={() => setShowMobileMessagesSheet(false)}>
+            <div className="w-full rounded-3xl border border-white/70 bg-white p-3 shadow-2xl animate-slide-up" onClick={(event) => event.stopPropagation()}>
+              <div className="mb-2 flex items-center justify-between px-1">
+                <h3 className="text-sm font-black text-[#1E293B]">{tr('nav.messages')}</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileMessagesSheet(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F7F6] text-slate-500 transition active:scale-95"
+                  aria-label={tr('common.close')}
+                  title={tr('common.close')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2" role="tablist" aria-label={tr('nav.messages')}>
+                <button
+                  type="button"
+                  onClick={openBookingRequests}
+                  role="tab"
+                  className="flex min-h-20 flex-col items-start justify-between rounded-2xl border border-[#FF7A50]/15 bg-[#FF7A50]/10 p-3 text-left transition active:scale-[0.98]"
+                >
+                  <List className="h-5 w-5 text-[#FF7A50]" strokeWidth={1.9} />
+                  <span className="text-sm font-black leading-tight text-[#1E293B]">{tr('nav.incomingRequests')}</span>
+                  <span className="text-[11px] font-extrabold text-[#FF7A50]">{newBookingRequests.length}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openBookingHistory}
+                  role="tab"
+                  className="flex min-h-20 flex-col items-start justify-between rounded-2xl border border-[#2F7D69]/15 bg-[#2F7D69]/10 p-3 text-left transition active:scale-[0.98]"
+                >
+                  <Send className="h-5 w-5 text-[#2F7D69]" strokeWidth={1.9} />
+                  <span className="text-sm font-black leading-tight text-[#1E293B]">{tr('nav.outgoingMessages')}</span>
+                  <span className="text-[11px] font-extrabold text-[#2F7D69]">{contactHistoryCount}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <AppOverlays
           activeLanguage={activeLanguage}
           bookings={bookings}
@@ -1994,6 +2161,16 @@ function getAcceptedContactHistoryBookingCount(bookings: BookingRequest[]) {
 
       return latestBooking?.status === 'accepted';
     }).length;
+  } catch {
+    return 0;
+  }
+}
+
+function getContactHistoryCount() {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]') as Array<{ id?: string }>;
+    return new Set(history.map((item) => item.id).filter(Boolean)).size;
   } catch {
     return 0;
   }
