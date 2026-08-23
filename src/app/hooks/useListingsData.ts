@@ -239,7 +239,8 @@ export const useListingsData = () => {
         const nextBooking = {
           ...booking,
           status,
-          declinedAt: status === 'declined' ? new Date().toISOString() : undefined
+          declinedAt: status === 'declined' ? new Date().toISOString() : undefined,
+          statusChangedAt: new Date().toISOString()
         };
         setDocument('bookings', booking.id, nextBooking);
         return nextBooking;

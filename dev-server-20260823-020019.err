@@ -1,0 +1,352 @@
+18:05:07 [vite] Internal server error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+      at constructor (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4754:18)
+      at TypeScriptParserMixin.jsxParseElement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:18)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10801:23)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+18:05:08 [vite] (client) Pre-transform error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+18:05:13 [vite] Internal server error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+      at constructor (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4754:18)
+      at TypeScriptParserMixin.jsxParseElement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:18)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10801:23)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+18:05:16 [vite] Internal server error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+      at constructor (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4754:18)
+      at TypeScriptParserMixin.jsxParseElement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:18)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10801:23)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+18:05:17 [vite] Internal server error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+      at constructor (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4754:18)
+      at TypeScriptParserMixin.jsxParseElement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:18)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10801:23)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+18:05:18 [vite] Internal server error: C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\src\components\ContactHistoryTab.tsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (411:18)
+
+  409 |                     </div>
+  410 |                   </div>
+> 411 |                   <button
+      |                   ^
+  412 |                     type="button"
+  413 |                     onClick={(event) => {
+  414 |                       event.stopPropagation();
+  Plugin: vite:react-babel
+  File: C:/Users/User/Yandex.Disk/bali direct/Code/Bali-Base-main/Bali-Base-main/src/components/ContactHistoryTab.tsx:411:18
+  409|                      </div>
+  410|                    </div>
+  411|                    <button
+     |                    ^
+  412|                      type="button"
+  413|                      onClick={(event) => {
+      at constructor (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4754:18)
+      at TypeScriptParserMixin.jsxParseElement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:39
+      at TypeScriptParserMixin.tryParse (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9792:18)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9803:20)
+      at TypeScriptParserMixin.parseExpressionBase (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10801:23)
+      at C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:39
+      at TypeScriptParserMixin.allowInAnd (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12438:16)
+      at TypeScriptParserMixin.parseExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:10797:17)
+      at TypeScriptParserMixin.parseReturnStatement (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13159:28)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12815:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseArrowExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (C:\Users\User\Yandex.Disk\bali direct\Code\Bali-Base-main\Bali-Base-main\node_modules\@babel\parser\lib\index.js:11098:23)

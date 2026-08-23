@@ -223,6 +223,7 @@ export default function CalendarListingModal({
       setBlockedDates(nextBlockedDates);
       onChange({ ...listing, blockedDates: nextBlockedDates } as Listing);
     }
+    const now = new Date().toISOString();
     const acceptedBooking: BookingRequest = {
       id: `reserve-${listing.id}-${Date.now()}`,
       listingId: listing.id,
@@ -239,7 +240,8 @@ export default function CalendarListingModal({
       paymentStatus: 'unpaid',
       roomIndex: reserveDraft.roomIndex,
       roomNumber: reserveDraft.roomNumber,
-      createdAt: new Date().toISOString()
+      statusChangedAt: now,
+      createdAt: now
     };
     setLocalAcceptedBookings(current => [acceptedBooking, ...current]);
     onAddBooking(acceptedBooking);
@@ -387,7 +389,8 @@ export default function CalendarListingModal({
         ? {
           ...item,
           status,
-          declinedAt: status === 'declined' ? new Date().toISOString() : undefined
+          declinedAt: status === 'declined' ? new Date().toISOString() : undefined,
+          statusChangedAt: new Date().toISOString()
         }
         : item
     )));

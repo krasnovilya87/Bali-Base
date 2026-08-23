@@ -172,6 +172,7 @@ export interface BookingRequest {
   roomNumber?: string;
   comment?: string;
   declinedAt?: string;
+  statusChangedAt?: string;
   createdAt: string;
 }
 

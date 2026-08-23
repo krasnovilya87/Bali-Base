@@ -29,7 +29,7 @@ import { LISTING_SHARE_PARAM } from './utils/listingShare';
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart, MessageSquare, List, Send, UserRound
+  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -177,7 +177,6 @@ export default function App() {
   const [showUsersDropdown, setShowUsersDropdown] = useState<boolean>(false);
   const [showUsersModal, setShowUsersModal] = useState<boolean>(false);
   const [usersModalTab, setUsersModalTab] = useState<'favorites' | 'whatsapp'>('favorites');
-  const [showMobileMessagesSheet, setShowMobileMessagesSheet] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [showContactUsModal, setShowContactUsModal] = useState<boolean>(false);
@@ -353,10 +352,6 @@ export default function App() {
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
-  const contactHistoryCount = useMemo(
-    () => getContactHistoryCount(),
-    [showMobileMessagesSheet, showUsersModal, selectedListing]
-  );
   const ownerListingIds = useMemo(() => new Set(listings
     .filter(item =>
       item.ownerId === user?.uid ||
@@ -372,7 +367,10 @@ export default function App() {
   const newBookingRequestListingIds = useMemo(() => (
     Array.from(new Set(newBookingRequests.map(booking => booking.listingId)))
   ), [newBookingRequests]);
-  const acceptedBookingHistoryCount = useMemo(() => getAcceptedContactHistoryBookingCount(bookings), [bookings]);
+  const acceptedBookingHistoryCount = useMemo(
+    () => getAcceptedContactHistoryBookingCount(bookings),
+    [bookings, showUsersModal, selectedListing]
+  );
 
   const requestAuth = (reasonKey = 'auth.defaultReason', afterAuth?: () => void) => {
     if (user) return true;
@@ -393,7 +391,6 @@ export default function App() {
   const openBookingRequests = () => {
     const openRequests = () => {
       setShowUsersDropdown(false);
-      setShowMobileMessagesSheet(false);
       setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
       setShowMyAddsListing(true);
     };
@@ -405,7 +402,6 @@ export default function App() {
   const openBookingHistory = () => {
     const openHistory = () => {
       setShowUsersDropdown(false);
-      setShowMobileMessagesSheet(false);
       setUsersModalTab('whatsapp');
       setShowUsersModal(true);
     };
@@ -415,14 +411,7 @@ export default function App() {
   };
 
   const openMobileMessages = () => {
-    const openSheet = () => {
-      setShowUsersDropdown(false);
-      setShowMobileMessagesSheet(true);
-      setIsMobileNavHidden(false);
-    };
-
-    if (!requestAuth('auth.reason.messages', openSheet)) return;
-    openSheet();
+    openBookingHistory();
   };
 
   const toggleFavoritesOnly = () => {
@@ -1140,8 +1129,8 @@ export default function App() {
             </header>
 
             {/* Main Menu body */}
-            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3.5 pb-4 xs:pb-6 sm:py-8 flex flex-col justify-center overflow-hidden h-[calc(100dvh-64px)] sm:h-auto select-none">
-              <div className="grid grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-3.5 sm:gap-4 md:gap-6 flex-1 sm:flex-initial min-h-0">
+            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
+              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.14_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
@@ -1152,7 +1141,7 @@ export default function App() {
                         selectL1(cat.id);
                         openAppView();
                       }}
-                      className="h-full min-h-0 sm:h-auto sm:aspect-square bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-4 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
+                      className="aspect-[1.14/1] min-h-0 bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-4 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
                     >
                       {/* Decorative faint glow */}
                       <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-[#FF7A50]/5 rounded-full filter blur-xl group-hover:scale-125 transition duration-300 pointer-events-none" />
@@ -1930,7 +1919,7 @@ export default function App() {
           </div>
         )}
 
-        {currentView !== 'cover' && (
+        {currentView !== 'cover' && !isMapFullscreen && (
           <nav
             className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
             aria-label={tr('nav.mobile.label')}
@@ -1983,7 +1972,6 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowMobileMessagesSheet(false);
                     setCurrentView('menu');
                   }}
                   className="flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
@@ -2013,13 +2001,22 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
+                  onClick={() => requireAuth('auth.reason.myListings', () => {
+                    setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
+                    setShowMyAddsListing(true);
+                  })}
                   className="relative -mt-4 flex h-[54px] w-[54px] place-self-center items-center justify-center rounded-full bg-[#FF7A50] text-white shadow-[0_14px_28px_rgba(255,122,80,0.34)] transition active:scale-95"
-                  aria-label={tr('nav.createListing')}
-                  title={tr('nav.createListing')}
+                  aria-label={tr('nav.myListings')}
+                  title={tr('nav.myListings')}
                   id="mobile-create-l-btn"
                 >
-                  <PlusCircle className="h-7 w-7" strokeWidth={1.45} />
+                  {newBookingRequests.length > 0 ? (
+                    <span className="text-[18px] font-black leading-none">
+                      {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
+                    </span>
+                  ) : (
+                    <LayoutGrid className="h-7 w-7" strokeWidth={1.75} />
+                  )}
                 </button>
 
                 <button
@@ -2027,14 +2024,13 @@ export default function App() {
                   onClick={openMobileMessages}
                   className="relative flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
                   aria-label={tr('nav.messages')}
-                  aria-expanded={showMobileMessagesSheet}
                   title={tr('nav.messages')}
                 >
                   <span className="relative flex h-[22px] w-[22px] items-center justify-center">
                     <MessageSquare className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
-                    {newBookingRequests.length + contactHistoryCount > 0 && (
+                    {newBookingRequests.length + acceptedBookingHistoryCount > 0 && (
                       <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
-                        {newBookingRequests.length + contactHistoryCount > 99 ? '99+' : newBookingRequests.length + contactHistoryCount}
+                        {newBookingRequests.length + acceptedBookingHistoryCount > 99 ? '99+' : newBookingRequests.length + acceptedBookingHistoryCount}
                       </span>
                     )}
                   </span>
@@ -2061,50 +2057,6 @@ export default function App() {
               </div>
             </div>
           </nav>
-        )}
-
-        {showMobileMessagesSheet && (
-          <div
-            className="fixed inset-0 z-[520] md:hidden"
-            onClick={() => setShowMobileMessagesSheet(false)}
-          >
-            <div
-              className="absolute bottom-[calc(env(safe-area-inset-bottom)+74px)] left-1/2 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_18px_50px_rgba(15,23,42,0.20)] backdrop-blur-xl animate-slide-up"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="grid grid-cols-2 gap-2" role="menu" aria-label={tr('nav.messages')}>
-                <button
-                  type="button"
-                  onClick={openBookingRequests}
-                  role="menuitem"
-                  className="relative flex min-h-16 flex-col items-start justify-between rounded-xl border border-[#FF7A50]/15 bg-[#FFF1EB] p-3 text-left transition active:scale-[0.98]"
-                >
-                  <List className="h-5 w-5 text-[#FF7A50]" strokeWidth={1.9} />
-                  <span className="mt-2 text-sm font-black leading-tight text-[#1E293B]">{tr('nav.inbox')}</span>
-                  {newBookingRequests.length > 0 && (
-                    <span className="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF7A50] px-1.5 text-[10px] font-black leading-none text-white">
-                      {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={openBookingHistory}
-                  role="menuitem"
-                  className="relative flex min-h-16 flex-col items-start justify-between rounded-xl border border-[#2F7D69]/15 bg-[#E8F5EF] p-3 text-left transition active:scale-[0.98]"
-                >
-                  <Send className="h-5 w-5 text-[#2F7D69]" strokeWidth={1.9} />
-                  <span className="mt-2 text-sm font-black leading-tight text-[#1E293B]">{tr('nav.outbox')}</span>
-                  {contactHistoryCount > 0 && (
-                    <span className="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2F7D69] px-1.5 text-[10px] font-black leading-none text-white">
-                      {contactHistoryCount > 99 ? '99+' : contactHistoryCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
         )}
 
         <AppOverlays
@@ -2201,16 +2153,6 @@ function getAcceptedContactHistoryBookingCount(bookings: BookingRequest[]) {
 
       return latestBooking?.status === 'accepted';
     }).length;
-  } catch {
-    return 0;
-  }
-}
-
-function getContactHistoryCount() {
-  if (typeof window === 'undefined') return 0;
-  try {
-    const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]') as Array<{ id?: string }>;
-    return new Set(history.map((item) => item.id).filter(Boolean)).size;
   } catch {
     return 0;
   }

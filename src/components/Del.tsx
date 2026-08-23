@@ -1,4 +1,5 @@
 import { useId, useState, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2 } from 'lucide-react';
 
 type DelProps = {
@@ -27,7 +28,7 @@ export default function Del({
   titleAttr,
   ariaLabel,
   disabled = false,
-  overlayClassName = 'fixed inset-0 z-[510] flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs animate-fade-in',
+  overlayClassName = 'fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs animate-fade-in',
   stopPropagation = true
 }: DelProps) {
   const titleId = useId();
@@ -69,7 +70,7 @@ export default function Del({
         {children || <Trash2 className="h-4 w-4" />}
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal((
         <div className={overlayClassName} onClick={(event) => stopPropagation && event.stopPropagation()}>
           <div
             role="dialog"
@@ -110,7 +111,7 @@ export default function Del({
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }

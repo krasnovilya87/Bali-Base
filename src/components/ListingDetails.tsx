@@ -717,6 +717,7 @@ export default function ListingDetails({
       } else {
         historyList.unshift({
           id: listing.id,
+          category: listing.category,
           title: listing.title,
           district: listing.district,
           pricePerDay: activeDailyPrice,

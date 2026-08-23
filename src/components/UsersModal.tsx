@@ -59,6 +59,7 @@ export default function UsersModal({
 
         return {
           ...historyItem,
+          category: listing.category,
           title: listing.title,
           pricePerDay: listing.hasDropPrice && listing.dropPricePerDay
             ? listing.dropPricePerDay

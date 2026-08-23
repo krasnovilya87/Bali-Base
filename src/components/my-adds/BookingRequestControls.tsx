@@ -179,6 +179,7 @@ export default function BookingRequestControls({
                 ...request,
                 status: 'accepted',
                 declinedAt: undefined,
+                statusChangedAt: new Date().toISOString(),
                 paymentStatus,
                 depositAmount: paymentStatus === 'deposit' ? depositAmount : undefined
               })}
