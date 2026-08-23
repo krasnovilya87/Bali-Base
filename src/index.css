@@ -46,6 +46,20 @@
   }
 }
 
+@keyframes coverMobileScalePan {
+  0% {
+    transform: scale(1.22) translate(0px, 0px);
+  }
+
+  50% {
+    transform: scale(1.32) translate(-8px, -6px);
+  }
+
+  100% {
+    transform: scale(1.22) translate(0px, 0px);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -103,6 +117,17 @@
 
 .animate-scale-slow-pan {
   animation: var(--animate-scale-slow-pan);
+}
+
+.cover-hero-image {
+  transform-origin: center 42%;
+}
+
+@media (max-width: 640px) {
+  .cover-hero-image {
+    object-position: center 44%;
+    animation: coverMobileScalePan 20s ease-in-out infinite alternate;
+  }
 }
 
 .animate-fade-in {

@@ -929,7 +929,7 @@ export default function App() {
             <img
               src={baliRiceBg}
               alt="Rice Terraces Background"
-              className="absolute inset-0 w-full h-full object-cover object-[center_38%] scale-105 animate-scale-slow-pan"
+              className="cover-hero-image absolute inset-0 h-full w-full object-cover object-[center_38%] scale-105 animate-scale-slow-pan"
               referrerPolicy="no-referrer"
             />
 
@@ -1130,7 +1130,7 @@ export default function App() {
 
             {/* Main Menu body */}
             <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
-              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.14_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
+              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
@@ -1141,7 +1141,7 @@ export default function App() {
                         selectL1(cat.id);
                         openAppView();
                       }}
-                      className="aspect-[1.14/1] min-h-0 bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-4 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
+                      className="aspect-[1.18/1] min-h-0 bg-white border border-[#E5E7EB] hover:border-[#FF7A50] hover:shadow-lg rounded-xl xs:rounded-2xl sm:rounded-3xl p-1 sm:p-3 pb-4 sm:pb-4.5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 active:scale-95 shadow-2xs relative overflow-hidden"
                     >
                       {/* Decorative faint glow */}
                       <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-[#FF7A50]/5 rounded-full filter blur-xl group-hover:scale-125 transition duration-300 pointer-events-none" />
