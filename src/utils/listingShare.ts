@@ -100,13 +100,18 @@ export const shareListingLink = async (
   const url = buildListingShareUrl(listing.id);
   if (!url || typeof navigator === 'undefined') return;
 
-  if (!isMobileLikeDevice() && navigator.share) {
+  const shareData = {
+    title: listing.title,
+    text: listing.title,
+    url
+  };
+  const canUseNativeShare = isMobileLikeDevice()
+    && typeof navigator.share === 'function'
+    && (!navigator.canShare || navigator.canShare(shareData));
+
+  if (canUseNativeShare) {
     try {
-      await navigator.share({
-        title: listing.title,
-        text: listing.title,
-        url
-      });
+      await navigator.share(shareData);
       return;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;

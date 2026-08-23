@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Listing } from '../types';
-import { Heart, Star, BookmarkCheck, Flame, ShieldCheck, ShieldAlert, BadgeInfo, Share2 } from 'lucide-react';
+import { Heart, Star, BookmarkCheck, Flame, ShieldCheck, ShieldAlert, BadgeInfo } from 'lucide-react';
 import { THEME } from '../theme';
 import { isListingFresh } from '../utils/listingFreshness';
 import { motion } from 'motion/react';
@@ -13,7 +13,6 @@ import { useTranslatedDescription } from '../hooks/useTranslatedDescription';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
-import { shareListingLink } from '../utils/listingShare';
 import { isListingVerified } from '../utils/listingVerification';
 
 interface ListingCardProps {
@@ -55,7 +54,6 @@ export default function ListingCard({
   const isHorizontalTouchDragRef = useRef<boolean>(false);
   const hasDraggedRef = useRef<boolean>(false);
   const settleTimerRef = useRef<number | null>(null);
-  const lastShareActionRef = useRef<number>(0);
   const { favoriteIds, toggleFavorite: toggleFavoriteListing } = useFavoriteListings();
   const isFavorite = favoriteIds.has(listing.id);
 
@@ -249,29 +247,6 @@ export default function ListingCard({
     e.stopPropagation();
     if (!user && onRequireAuth && !onRequireAuth(() => toggleFavoriteListing(listing.id))) return;
     toggleFavoriteListing(listing.id);
-  };
-
-  const triggerShareListing = async () => {
-    const now = Date.now();
-    if (now - lastShareActionRef.current < 600) return;
-    lastShareActionRef.current = now;
-    await shareListingLink(listing, {
-      copiedMessage: tr('listing.linkCopied'),
-      copyFailedMessage: tr('listing.linkCopyFailed')
-    });
-  };
-
-  const handleShareListing = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await triggerShareListing();
-  };
-
-  const handleSharePointerDown = async (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.pointerType === 'mouse') return;
-    await triggerShareListing();
   };
 
   const handleNextPhoto = (e: React.MouseEvent) => {
@@ -591,18 +566,6 @@ export default function ListingCard({
         </div>
 
         <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-30 flex items-center gap-1 pointer-events-auto">
-          <button
-            type="button"
-            onClick={handleShareListing}
-            onPointerDown={handleSharePointerDown}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="p-1 sm:p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2F7D69] hover:scale-105 active:scale-95 transition shadow-md min-w-[24px] min-h-[24px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center"
-            title={tr('listing.shareLink')}
-            aria-label={tr('listing.shareLink')}
-          >
-            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4" />
-          </button>
           <button
             type="button"
             onClick={toggleFavorite}

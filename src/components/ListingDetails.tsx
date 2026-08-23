@@ -380,13 +380,6 @@ export default function ListingDetails({
     await triggerShareListing();
   };
 
-  const handleSharePointerDown = async (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.pointerType === 'mouse') return;
-    await triggerShareListing();
-  };
-
   useEffect(() => {
     // Scroll to top inside container
     const elem = document.getElementById('details-scroll-container');
@@ -1572,7 +1565,6 @@ export default function ListingDetails({
                       <button
                         type="button"
                         onClick={handleShareListing}
-                        onPointerDown={handleSharePointerDown}
                         className="h-9 w-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 transition hover:scale-105 hover:text-[#2F7D69] active:scale-95"
                         title={tr('listing.shareLink')}
                         aria-label={tr('listing.shareLink')}

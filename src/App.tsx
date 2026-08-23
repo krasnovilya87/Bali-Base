@@ -189,7 +189,6 @@ export default function App() {
     return true;
   });
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
-  const [isL2Visible, setIsL2Visible] = useState<boolean>(false);
   const [isTopHeaderHidden, setIsTopHeaderHidden] = useState<boolean>(false);
   const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
@@ -251,7 +250,6 @@ export default function App() {
     if (typeof window === 'undefined') return;
 
     if (currentView !== 'app') {
-      setIsL2Visible(false);
       setIsTopHeaderHidden(false);
       setIsMobileNavHidden(false);
       lastPageScrollYRef.current = window.scrollY;
@@ -263,15 +261,12 @@ export default function App() {
       const delta = currentScrollY - lastPageScrollYRef.current;
 
       if (currentScrollY <= 2) {
-        setIsL2Visible(false);
         setIsTopHeaderHidden(false);
         setIsMobileNavHidden(false);
       } else if (delta > 6) {
-        setIsL2Visible(false);
         setIsTopHeaderHidden(false);
         setIsMobileNavHidden(true);
       } else if (delta < -6) {
-        setIsL2Visible(true);
         setIsMobileNavHidden(false);
       }
 
@@ -852,7 +847,6 @@ export default function App() {
   };
 
   const openAppView = () => {
-    setIsL2Visible(true);
     lastPageScrollYRef.current = 0;
     setCurrentView('app');
     resetViewScroll();
@@ -1179,7 +1173,7 @@ export default function App() {
           <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
-            <header className="shrink-0 bg-white border-b border-[#E5E7EB] select-none">
+            <header className="hidden shrink-0 bg-white border-b border-[#E5E7EB] select-none md:block">
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4">
 
                 {/* BRAND EMBLEM & MENU BUTTON */}
@@ -1381,8 +1375,8 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className={`shrink-0 bg-white select-none overflow-x-auto py-2.5 sm:overflow-hidden sm:py-2 ${isL2Visible ? 'sticky top-0 z-[245]' : 'relative z-[230]'}`}>
-              <div className="max-w-7xl mx-auto px-4 sm:px-4 flex flex-row justify-center items-center w-max min-w-full gap-3 sm:gap-4">
+            <nav className="relative z-[230] shrink-0 select-none overflow-x-auto bg-white py-1.5 sm:overflow-hidden md:py-2">
+              <div className="max-w-7xl mx-auto px-3 sm:px-4 flex flex-row justify-center items-center w-max min-w-full gap-3 sm:gap-4">
 
                 {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
                   const displayLabel = tr(`subcategory.${sub.id}`);
@@ -1394,43 +1388,32 @@ export default function App() {
                     <button
                       key={sub.id}
                       onClick={() => toggleL2(sub.id)}
-                      className={`relative h-[38px] px-5 sm:min-h-[54px] sm:h-auto sm:px-3 sm:py-2 flex-none sm:flex-initial sm:min-w-[104px] flex flex-row sm:flex-col items-center justify-center text-left sm:text-center gap-2 sm:gap-1 rounded-full sm:rounded-none border border-[#CBD5E1]/80 sm:border-transparent select-none cursor-pointer bg-white sm:bg-transparent text-[#1E293B] font-sans font-bold transition-[transform,box-shadow,border-color] duration-[180ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E293B]/35 active:translate-y-[1px] sm:active:translate-y-0 ${isSelected
-                        ? 'border-[#B8C2CF] bg-[#f7f8fa] font-extrabold shadow-[inset_0_4px_8px_rgba(15,23,42,0.18),inset_0_-1px_1px_rgba(255,255,255,0.96),0_2px_4px_rgba(15,23,42,0.14)] sm:border-transparent sm:bg-transparent sm:shadow-none'
-                        : 'shadow-[0_4px_7px_rgba(15,23,42,0.22),0_1px_2px_rgba(15,23,42,0.18),inset_0_1px_1px_rgba(255,255,255,0.98),inset_0_-1px_2px_rgba(15,23,42,0.06)] hover:-translate-y-px hover:border-[#AEB8C5] hover:shadow-[0_5px_9px_rgba(15,23,42,0.26),0_1px_3px_rgba(15,23,42,0.2),inset_0_1px_1px_rgba(255,255,255,0.98),inset_0_-1px_2px_rgba(15,23,42,0.07)] active:shadow-[inset_0_3px_6px_rgba(15,23,42,0.18),0_1px_2px_rgba(15,23,42,0.12)] sm:shadow-none sm:hover:translate-y-0 sm:hover:border-transparent sm:hover:shadow-none sm:active:shadow-none'
+                      className={`relative min-h-[58px] w-[104px] px-3 py-2 md:min-h-[54px] md:w-auto md:min-w-[104px] md:px-3 md:py-2 flex-none md:flex-initial flex flex-col items-center justify-center text-center gap-1 rounded-none border border-transparent select-none cursor-pointer bg-transparent font-sans transition-[transform,box-shadow,border-color,color] duration-[180ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E293B]/35 active:translate-y-0 ${isSelected
+                        ? 'font-semibold text-[#1E293B]'
+                        : 'font-light text-gray-400 hover:text-gray-500'
                         }`}
                     >
                       {displayCustomImage ? (
-                        <div className="w-3.5 h-3.5 sm:w-[30px] sm:h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] sm:rounded-lg">
+                        <div className={`w-[36px] h-[36px] md:w-[30px] md:h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
                           <img
                             src={displayCustomImage}
                             alt={displayLabel}
-                            className="w-full h-full object-cover rounded sm:rounded-lg"
+                            className="w-full h-full object-cover rounded-lg"
                             referrerPolicy="no-referrer"
                           />
                         </div>
                       ) : (
-                        <>
-                          <span className="inline-flex sm:hidden">
-                            <ThreeDIcon
-                              emoji={displayIcon}
-                              size={30}
-                              className="transition-transform duration-200 hover:scale-[1.04]"
-                            />
-                          </span>
-                          <span className="hidden sm:inline-flex">
-                            <ThreeDIcon
-                              emoji={displayIcon}
-                              size={38}
-                              className="transition-transform duration-200 hover:scale-[1.04]"
-                            />
-                          </span>
-                        </>
+                        <ThreeDIcon
+                          emoji={displayIcon}
+                          size={38}
+                          className={`transition duration-200 hover:scale-[1.04] ${isSelected ? '' : 'grayscale opacity-45'}`}
+                        />
                       )}
-                      <span className="min-w-0 text-xs sm:text-[11px] md:text-xs font-sans leading-tight block flex-1 sm:flex-none sm:w-full">
+                      <span className="min-w-0 w-full text-xs font-sans leading-tight block">
                         {displayLabel}
                       </span>
                       {isSelected && (
-                        <span className="pointer-events-none absolute bottom-0 left-3 right-3 hidden h-1 rounded-full bg-[#1E293B] sm:block" />
+                        <span className="pointer-events-none absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-[#1E293B]" />
                       )}
                     </button>
                   );
@@ -1440,7 +1423,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className={`shrink-0 bg-[#F4F7F6] py-3 sticky z-[240] select-none border-b-[0.5px] border-[#94A3B8]/20 px-2 sm:px-4 transition-[top] duration-300 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${isL2Visible ? 'top-[58px] md:top-[91px]' : 'top-0'}`}>
+            <section ref={filtersBarRef} className="sticky top-0 z-[240] shrink-0 select-none border-b-[0.5px] border-[#94A3B8]/20 bg-[#F4F7F6] px-2 py-2.5 sm:px-4 sm:py-3 md:top-[91px]">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
