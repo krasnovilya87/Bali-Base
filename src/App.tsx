@@ -1145,7 +1145,7 @@ export default function App() {
                         <img
                           src={displayImage}
                           alt={displayLabel}
-                          className="w-full h-full object-contain filter drop-shadow hover:brightness-105 group-hover:scale-110 transition-all duration-300"
+                          className="main-menu-card-image w-full h-full object-contain filter drop-shadow hover:brightness-105 group-hover:scale-110 transition-all duration-300"
                           loading="eager"
                           decoding="async"
                           width={560}
@@ -1375,7 +1375,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className="relative z-[230] shrink-0 select-none overflow-x-auto bg-white py-1.5 sm:overflow-hidden md:py-2">
+            <nav className="relative z-[230] shrink-0 select-none overflow-x-auto bg-[#F4F7F6] py-1.5 sm:overflow-hidden md:py-2">
               <div className="max-w-7xl mx-auto px-3 sm:px-4 flex flex-row justify-center items-center w-max min-w-full gap-3 sm:gap-4">
 
                 {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
@@ -1388,13 +1388,13 @@ export default function App() {
                     <button
                       key={sub.id}
                       onClick={() => toggleL2(sub.id)}
-                      className={`relative min-h-[58px] w-[104px] px-3 py-2 md:min-h-[54px] md:w-auto md:min-w-[104px] md:px-3 md:py-2 flex-none md:flex-initial flex flex-col items-center justify-center text-center gap-1 rounded-none border border-transparent select-none cursor-pointer bg-transparent font-sans transition-[transform,box-shadow,border-color,color] duration-[180ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E293B]/35 active:translate-y-0 ${isSelected
+                      className={`relative min-h-[54px] w-auto min-w-[104px] px-3 py-2 flex-none md:flex-initial flex flex-col items-center justify-center text-center gap-1 rounded-none border border-transparent select-none cursor-pointer bg-transparent font-sans transition-[transform,box-shadow,border-color,color] duration-[180ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E293B]/35 active:translate-y-0 ${isSelected
                         ? 'font-semibold text-[#1E293B]'
                         : 'font-light text-gray-400 hover:text-gray-500'
                         }`}
                     >
                       {displayCustomImage ? (
-                        <div className={`w-[36px] h-[36px] md:w-[30px] md:h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
+                        <div className={`w-[30px] h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
                           <img
                             src={displayCustomImage}
                             alt={displayLabel}
@@ -1423,7 +1423,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className="sticky top-0 z-[240] shrink-0 select-none border-b-[0.5px] border-[#94A3B8]/20 bg-[#F4F7F6] px-2 py-2.5 sm:px-4 sm:py-3 md:top-[91px]">
+            <section ref={filtersBarRef} className="sticky top-0 z-[240] shrink-0 select-none border-b-[0.5px] border-[#94A3B8]/20 bg-[#F4F7F6] px-2 py-2.5 sm:px-4 sm:py-3">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
