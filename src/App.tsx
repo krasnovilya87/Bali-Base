@@ -903,9 +903,8 @@ export default function App() {
     checkInDate,
     checkOutDate
   });
-  const mobileNavVisibleBottom = 'max(0px, calc(100lvh - 100dvh - 12px))';
-  const mobileNavButtonClass = 'flex h-10 w-10 min-w-0 items-center justify-center justify-self-center rounded-full border border-white/35 bg-white/18 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
-  const mobileNavActiveButtonClass = 'relative flex h-10 w-10 min-w-0 items-center justify-center justify-self-center rounded-full border border-white/35 bg-white/24 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
+  const mobileNavButtonClass = 'flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/32 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
+  const mobileNavActiveButtonClass = 'relative flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/38 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
 
   return (
     <I18nProvider language={activeLanguage}>
@@ -1129,8 +1128,8 @@ export default function App() {
             </header>
 
             {/* Main Menu body */}
-            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_7.75rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
-              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_7.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
+            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
+              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
@@ -1429,7 +1428,7 @@ export default function App() {
             </nav>
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className="sticky top-0 z-[240] shrink-0 select-none border-b-[0.5px] border-[#94A3B8]/20 bg-[#F4F7F6] px-2 py-2.5 sm:px-4 sm:py-3">
+            <section ref={filtersBarRef} className="sticky top-0 z-[240] shrink-0 select-none border-b-[0.5px] border-white/45 bg-[#F4F7F6]/20 px-2 py-2.5 backdrop-blur-[2px] sm:px-4 sm:py-3">
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1441,9 +1440,9 @@ export default function App() {
                       setShowDistrictDropdown(false);
                       setShowCalendar(false);
                     }}
-                    className={`w-10 h-10 flex items-center justify-center rounded-full border-[0.5px] border-[#94A3B8]/30 transition active:scale-95 cursor-pointer shadow-xs shrink-0 ${showSortDropdown
+                    className={`w-10 h-10 flex items-center justify-center rounded-full border-[0.5px] border-white/60 transition active:scale-95 cursor-pointer shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] shrink-0 ${showSortDropdown
                       ? 'bg-[#FF7A50] border-[#FF7A50] text-white shadow-md'
-                      : 'bg-white text-[#FF7A50] hover:text-[#E05A30] hover:bg-[#FF7A50]/10'
+                      : 'bg-white/32 text-[#FF7A50] hover:text-[#E05A30] hover:bg-white/42'
                       }`}
                     title={tr('sort.title')}
                   >
@@ -1485,7 +1484,7 @@ export default function App() {
                 </div>
 
                 {/* UNIFIED SEARCH BLOCK: Р“РґРµ? | РљРѕРіРґР°? (Centered in the middle block) */}
-                <div className="flex flex-row items-center border-[0.5px] border-[#94A3B8]/30 bg-white p-1 rounded-full shadow-xs hover:shadow-sm transition relative min-w-0 flex-1 sm:flex-none">
+                <div className="flex flex-row items-center border-[0.5px] border-white/60 bg-white/32 p-1 rounded-full shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] hover:shadow-sm transition relative min-w-0 flex-1 sm:flex-none">
 
                   {/* 1. Р“Р”Р•? */}
                   <div
@@ -1655,7 +1654,7 @@ export default function App() {
                 {currentL1 === 'housing' && (
                   <button
                     onClick={() => setShowFiltersModal(true)}
-                    className="w-10 h-10 flex items-center justify-center bg-white border-[0.5px] border-[#94A3B8]/30 text-[#FF7A50] hover:text-[#E05A30] hover:bg-[#FF7A50]/10 rounded-full transition active:scale-95 cursor-pointer shadow-xs shrink-0 mr-6 sm:mr-0"
+                    className="w-10 h-10 flex items-center justify-center bg-white/32 border-[0.5px] border-white/60 text-[#FF7A50] hover:text-[#E05A30] hover:bg-white/42 rounded-full transition active:scale-95 cursor-pointer shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] shrink-0 mr-6 sm:mr-0"
                     id="advanced-filters-btn"
                     title={tr('filters.title')}
                   >
@@ -1910,14 +1909,13 @@ export default function App() {
 
         {currentView !== 'cover' && !isMapFullscreen && (
           <nav
-            className={`fixed inset-x-0 z-[260] md:hidden transition-[bottom,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'bottom-0 translate-y-[115%]' : 'translate-y-0'}`}
-            style={isMobileNavHidden ? undefined : { bottom: mobileNavVisibleBottom }}
+            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
             aria-label={tr('nav.mobile.label')}
           >
             <div className="relative px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2">
               <div className="pointer-events-none absolute inset-0">
                 <svg
-                    className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_-10px_24px_rgba(15,23,42,0.06)]"
+                  className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_-10px_24px_rgba(15,23,42,0.06)]"
                   viewBox="0 0 400 72"
                   preserveAspectRatio="none"
                   aria-hidden="true"
@@ -1995,7 +1993,7 @@ export default function App() {
                     setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
                     setShowMyAddsListing(true);
                   })}
-                  className="relative -mt-4 flex h-[54px] w-[54px] place-self-center items-center justify-center rounded-full border border-white/55 bg-[#FF7A50]/95 text-white shadow-[0_6px_14px_rgba(255,122,80,0.26)] backdrop-blur-[2px] transition active:scale-95"
+                  className="relative -mt-4 flex h-[58px] w-[58px] place-self-center items-center justify-center rounded-full border border-white/55 bg-[#FF7A50]/95 text-white shadow-[0_6px_14px_rgba(255,122,80,0.26)] backdrop-blur-[2px] transition active:scale-95"
                   aria-label={tr('nav.myListings')}
                   title={tr('nav.myListings')}
                   id="mobile-create-l-btn"

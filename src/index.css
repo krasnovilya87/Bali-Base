@@ -441,14 +441,14 @@ input[type="range"]::-moz-range-thumb:hover {
 
 html,
 #root {
-  background-color: var(--color-bg-light);
+  background-color: transparent;
 }
 
 /* Base body reset styled with clean light background to match the screenshot */
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--color-bg-light);
+  background-color: transparent;
   color: var(--color-text-dark);
   font-family: var(--font-sans);
 }
