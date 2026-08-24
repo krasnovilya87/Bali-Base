@@ -221,10 +221,10 @@ export default function ProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[610] flex items-center justify-center bg-[#0B1714]/70 px-3 py-5 backdrop-blur-md sm:px-5">
+    <div className="fixed inset-0 z-[610] flex items-end justify-center overflow-y-auto bg-[#0B1714]/70 px-3 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-[calc(env(safe-area-inset-top)+16px)] backdrop-blur-md sm:items-center sm:px-5 sm:py-5">
       <form
         onSubmit={saveProfile}
-        className="relative w-full max-w-[520px] overflow-hidden rounded-[1.75rem] border border-white/40 bg-[#FFFDF8] shadow-[0_30px_100px_rgba(11,23,20,0.36)]"
+        className="relative max-h-[calc(100dvh-32px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-[520px] overflow-y-auto overscroll-contain rounded-[1.75rem] border border-white/40 bg-[#FFFDF8] shadow-[0_30px_100px_rgba(11,23,20,0.36)] sm:max-h-[calc(100dvh-40px)]"
       >
         <div className="bg-[#17231F] px-5 pb-20 pt-5 text-white sm:px-7">
           <div className="flex items-start justify-between gap-4">
@@ -249,7 +249,7 @@ export default function ProfileModal({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E0D6] bg-[#E8F5EF] text-3xl font-black text-[#2F7D69] transition hover:border-[#FF7A50] sm:h-24 sm:w-24"
+                className="group relative flex h-[130px] w-[130px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E0D6] bg-[#E8F5EF] text-3xl font-black text-[#2F7D69] transition hover:border-[#FF7A50] sm:h-24 sm:w-24"
                 title={tr('profile.changePhoto')}
                 aria-label={tr('profile.changePhoto')}
               >
@@ -263,80 +263,72 @@ export default function ProfileModal({
                   {tr('profile.changePhoto')}
                 </span>
               </button>
-              <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 sm:flex-row sm:items-center">
-                <div className="flex min-w-0 justify-start sm:flex-1">
-                  <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#2F7D69]/10 px-3 py-1.5 text-[11px] font-black text-[#2F7D69] sm:py-1 sm:text-xs">
-                    <User className="h-3.5 w-3.5 shrink-0" />
-                    <span className="min-w-0 truncate">{tr('profile.totalListings', { count: listingsCount })}</span>
+              <div className="flex min-w-0 flex-1 items-center justify-end">
+                <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:items-center">
+                  <div className="relative min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCurrencyDrop(value => !value);
+                        setShowLanguageDrop(false);
+                      }}
+                      className="flex h-8 w-14 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-1.5 text-[11px] font-bold uppercase leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9 sm:w-auto sm:px-2 sm:text-[12px]"
+                      title={tr('nav.currency.title')}
+                      aria-label={tr('nav.currency.title')}
+                      aria-expanded={showCurrencyDrop}
+                    >
+                      <span>{activeCurrency}</span>
+                    </button>
+
+                    {showCurrencyDrop && (
+                      <div className="pu absolute right-0 top-10 z-50 w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in sm:top-11">
+                        {Object.keys(CURRENCIES).map(currency => (
+                          <button
+                            key={currency}
+                            type="button"
+                            onClick={() => updateCurrency(currency as CurrencyKey)}
+                            className={`block w-full py-2 font-bold text-[#1E293B] transition hover:bg-white/70 ${activeCurrency === currency ? 'bg-white/70 text-[#FF7A50]' : ''
+                              }`}
+                          >
+                            {CURRENCIES[currency as CurrencyKey].symbol} {currency}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative min-w-0 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLanguageDrop(value => !value);
+                        setShowCurrencyDrop(false);
+                      }}
+                      className="flex h-8 w-12 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-1.5 text-[11px] font-bold leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9 sm:w-auto sm:px-2 sm:text-[12px]"
+                      title={tr('nav.language.title')}
+                      aria-label={tr('nav.language.title')}
+                      aria-expanded={showLanguageDrop}
+                    >
+                      <span>{activeLanguage}</span>
+                    </button>
+
+                    {showLanguageDrop && (
+                      <div className="pu absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-xs shadow-xl animate-fade-in sm:top-11 sm:w-32">
+                        {LANGUAGES.map(lang => (
+                          <button
+                            key={lang.code}
+                            type="button"
+                            onClick={() => updateLanguage(lang.code)}
+                            className={`block w-full px-3.5 py-2 text-left font-semibold text-[#1E293B] transition hover:bg-white/70 ${activeLanguage === lang.code ? 'bg-white/70 text-[#FF7A50]' : ''
+                              }`}
+                          >
+                            {lang.nativeName} ({lang.code})
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="grid w-full shrink-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1.5">
-                  <div className="relative min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCurrencyDrop(value => !value);
-                      setShowLanguageDrop(false);
-                    }}
-                    className="flex h-10 w-full items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold uppercase leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9"
-                    title={tr('nav.currency.title')}
-                    aria-label={tr('nav.currency.title')}
-                    aria-expanded={showCurrencyDrop}
-                  >
-                    <span>{activeCurrency}</span>
-                  </button>
-
-                  {showCurrencyDrop && (
-                    <div className="pu absolute left-0 top-12 z-50 w-full min-w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in sm:left-auto sm:right-0 sm:top-11 sm:w-28">
-                      {Object.keys(CURRENCIES).map(currency => (
-                        <button
-                          key={currency}
-                          type="button"
-                          onClick={() => updateCurrency(currency as CurrencyKey)}
-                          className={`block w-full py-2 font-bold text-[#1E293B] transition hover:bg-white/70 ${
-                            activeCurrency === currency ? 'bg-white/70 text-[#FF7A50]' : ''
-                          }`}
-                        >
-                          {CURRENCIES[currency as CurrencyKey].symbol} {currency}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative min-w-0 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLanguageDrop(value => !value);
-                      setShowCurrencyDrop(false);
-                    }}
-                    className="flex h-10 w-full items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9"
-                    title={tr('nav.language.title')}
-                    aria-label={tr('nav.language.title')}
-                    aria-expanded={showLanguageDrop}
-                  >
-                    <span>{activeLanguage}</span>
-                  </button>
-
-                  {showLanguageDrop && (
-                    <div className="pu absolute right-0 top-12 z-50 w-40 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-xs shadow-xl animate-fade-in sm:top-11 sm:w-32">
-                      {LANGUAGES.map(lang => (
-                        <button
-                          key={lang.code}
-                          type="button"
-                          onClick={() => updateLanguage(lang.code)}
-                          className={`block w-full px-3.5 py-2 text-left font-semibold text-[#1E293B] transition hover:bg-white/70 ${
-                            activeLanguage === lang.code ? 'bg-white/70 text-[#FF7A50]' : ''
-                          }`}
-                        >
-                          {lang.nativeName} ({lang.code})
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
               </div>
               <input
                 ref={fileInputRef}
@@ -398,9 +390,8 @@ export default function ProfileModal({
             </div>
 
             {(isLoadingProfile || error) && (
-              <div className={`mt-4 rounded-2xl px-4 py-3 text-xs font-bold ${
-                error ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-500'
-              }`}>
+              <div className={`mt-4 rounded-2xl px-4 py-3 text-xs font-bold ${error ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-500'
+                }`}>
                 {isLoadingProfile ? tr('profile.loading') : error}
               </div>
             )}

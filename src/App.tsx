@@ -2098,20 +2098,11 @@ export default function App() {
                 <button
                   type="button"
                   onClick={openProfile}
-                  className={`${mobileNavButtonClass} overflow-hidden p-0`}
+                  className={mobileNavButtonClass}
                   aria-label={tr('nav.profile')}
                   title={tr('nav.profile')}
                 >
-                  {user?.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt=""
-                      className="h-full w-full rounded-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
-                  )}
+                  <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
                 </button>
               </div>
             </div>
