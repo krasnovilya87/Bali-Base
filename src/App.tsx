@@ -903,6 +903,9 @@ export default function App() {
     checkInDate,
     checkOutDate
   });
+  const mobileNavVisibleBottom = 'max(0px, calc(100lvh - 100dvh - 12px))';
+  const mobileNavButtonClass = 'flex h-10 w-10 min-w-0 items-center justify-center justify-self-center rounded-full border border-white/35 bg-white/18 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
+  const mobileNavActiveButtonClass = 'relative flex h-10 w-10 min-w-0 items-center justify-center justify-self-center rounded-full border border-white/35 bg-white/24 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
 
   return (
     <I18nProvider language={activeLanguage}>
@@ -917,17 +920,19 @@ export default function App() {
 
         {/* 1. COVER SCREEN (SCREEN 1) */}
         {currentView === 'cover' && (
-          <div className="relative min-h-[100svh] h-[100dvh] w-full overflow-hidden px-4 text-center select-none">
+          <div className="relative min-h-[100lvh] w-full px-4 text-center select-none">
             {/* Ambient Video styled Background overlay */}
-            <div className="absolute inset-0 bg-black/55 z-10" />
-            <img
-              src={baliRiceBg}
-              alt="Rice Terraces Background"
-              className="cover-hero-image absolute inset-0 h-full w-full object-cover object-[center_38%] scale-105 animate-scale-slow-pan"
-              referrerPolicy="no-referrer"
-            />
+            <div className="absolute inset-x-0 top-[calc(-1*env(safe-area-inset-top))] bottom-[-18svh] overflow-hidden">
+              <img
+                src={baliRiceBg}
+                alt="Rice Terraces Background"
+                className="cover-hero-image absolute inset-0 h-full w-full object-cover object-[center_38%] scale-105 animate-scale-slow-pan"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-black/55 z-10" />
+            </div>
 
-            <div className="relative z-20 mx-auto flex min-h-full w-full max-w-5xl flex-col items-center justify-center pb-[22svh] pt-[10svh] sm:pb-[20svh] sm:pt-[8svh]">
+            <div className="relative z-20 mx-auto flex min-h-[100lvh] w-full max-w-5xl flex-col items-center justify-center pb-[calc(22svh+env(safe-area-inset-bottom))] pt-[calc(10svh+env(safe-area-inset-top))] sm:pb-[20svh] sm:pt-[8svh]">
               <div className="flex translate-y-[-2svh] flex-col items-center sm:translate-y-[-3svh]">
                 {/* Glowing badges upper area */}
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 backdrop-blur-md sm:mb-5 sm:px-4 animate-bounce-slow">
@@ -948,7 +953,7 @@ export default function App() {
             </div>
 
             {/* Scroll directive indicator */}
-            <div className="absolute inset-x-0 bottom-[6svh] z-20 flex items-center justify-center text-white/90 sm:bottom-[7svh]">
+            <div className="absolute inset-x-0 bottom-[calc(6svh+env(safe-area-inset-bottom))] z-20 flex items-center justify-center text-white/90 sm:bottom-[7svh]">
               <div className="cover-scroll-mouse" aria-hidden="true">
                 <div className="cover-scroll-mouse-shell">
                   <div className="cover-scroll-wheel" />
@@ -962,6 +967,7 @@ export default function App() {
                 </div>
               </div>
             </div>
+            <div className="relative h-[18svh]" aria-hidden="true" />
           </div>
         )}
 
@@ -1123,8 +1129,8 @@ export default function App() {
             </header>
 
             {/* Main Menu body */}
-            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
-              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_5.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
+            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_7.75rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
+              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_7.75rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
@@ -1904,13 +1910,14 @@ export default function App() {
 
         {currentView !== 'cover' && !isMapFullscreen && (
           <nav
-            className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
+            className={`fixed inset-x-0 z-[260] md:hidden transition-[bottom,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'bottom-0 translate-y-[115%]' : 'translate-y-0'}`}
+            style={isMobileNavHidden ? undefined : { bottom: mobileNavVisibleBottom }}
             aria-label={tr('nav.mobile.label')}
           >
             <div className="relative px-2 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2">
               <div className="pointer-events-none absolute inset-0">
                 <svg
-                  className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_-14px_36px_rgba(15,23,42,0.10)]"
+                    className="absolute inset-0 h-full w-full overflow-visible drop-shadow-[0_-10px_24px_rgba(15,23,42,0.06)]"
                   viewBox="0 0 400 72"
                   preserveAspectRatio="none"
                   aria-hidden="true"
@@ -1927,23 +1934,23 @@ export default function App() {
                   </defs>
                   <path
                     d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400 V72 H0 Z"
-                    fill="rgba(255,255,255,0.95)"
+                    fill="rgba(255,255,255,0.16)"
                   />
                   <path
                     d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400"
                     fill="none"
-                    stroke="#AAB4C2"
+                    stroke="rgba(148,163,184,0.22)"
                     strokeWidth="7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     vectorEffect="non-scaling-stroke"
                     filter="url(#mobile-nav-topline-glow)"
-                    opacity="0.9"
+                    opacity="0.34"
                   />
                   <path
                     d="M0 1 H164 C182 1 182 38 200 38 C218 38 218 1 236 1 H400"
                     fill="none"
-                    stroke="#E5E7EB"
+                    stroke="rgba(255,255,255,0.24)"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -1957,7 +1964,7 @@ export default function App() {
                   onClick={() => {
                     setCurrentView('menu');
                   }}
-                  className="flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  className={mobileNavButtonClass}
                   aria-label={tr('nav.backToCover')}
                   title={tr('nav.backToCover')}
                 >
@@ -1967,7 +1974,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={toggleFavoritesOnly}
-                  className={`relative flex h-11 min-w-0 items-center justify-center rounded-xl transition active:scale-95 ${showFavoritesOnly ? 'text-[#FF4D5D]' : 'text-[#1E293B]'}`}
+                  className={`${mobileNavActiveButtonClass} ${showFavoritesOnly ? 'text-[#FF4D5D]' : 'text-[#1E293B]'}`}
                   aria-label={tr('nav.favorites')}
                   aria-pressed={showFavoritesOnly}
                   title={tr('nav.favorites')}
@@ -1988,7 +1995,7 @@ export default function App() {
                     setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
                     setShowMyAddsListing(true);
                   })}
-                  className="relative -mt-4 flex h-[54px] w-[54px] place-self-center items-center justify-center rounded-full bg-[#FF7A50] text-white shadow-[0_14px_28px_rgba(255,122,80,0.34)] transition active:scale-95"
+                  className="relative -mt-4 flex h-[54px] w-[54px] place-self-center items-center justify-center rounded-full border border-white/55 bg-[#FF7A50]/95 text-white shadow-[0_6px_14px_rgba(255,122,80,0.26)] backdrop-blur-[2px] transition active:scale-95"
                   aria-label={tr('nav.myListings')}
                   title={tr('nav.myListings')}
                   id="mobile-create-l-btn"
@@ -2005,7 +2012,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={openMobileMessages}
-                  className="relative flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  className={mobileNavActiveButtonClass}
                   aria-label={tr('nav.messages')}
                   title={tr('nav.messages')}
                 >
@@ -2022,7 +2029,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={openProfile}
-                  className="flex h-11 min-w-0 items-center justify-center rounded-xl text-[#1E293B] transition active:scale-95"
+                  className={mobileNavButtonClass}
                   aria-label={tr('nav.profile')}
                   title={tr('nav.profile')}
                 >

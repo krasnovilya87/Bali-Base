@@ -439,6 +439,11 @@ input[type="range"]::-moz-range-thumb:hover {
   transform: scale(1.15);
 }
 
+html,
+#root {
+  background-color: var(--color-bg-light);
+}
+
 /* Base body reset styled with clean light background to match the screenshot */
 body {
   margin: 0;
