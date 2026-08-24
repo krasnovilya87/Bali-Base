@@ -87,6 +87,24 @@ const upsertEmailProviderIndex = async (user: User, provider: EmailAuthProviderI
 const getEmailProviderId = (provider: UserProfileProvider): EmailAuthProviderId =>
   provider === 'google' ? 'google.com' : 'password';
 
+const shouldUseRedirectSignIn = () => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+  const hasCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  const isSmallViewport = window.matchMedia?.('(max-width: 768px)').matches ?? window.innerWidth <= 768;
+  const isMobileUserAgent = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  return isMobileUserAgent || (hasCoarsePointer && isSmallViewport);
+};
+
+const shouldRetryGoogleSignInWithRedirect = (code: string) =>
+  [
+    'auth/popup-blocked',
+    'auth/cancelled-popup-request',
+    'auth/popup-closed-by-user',
+    'auth/operation-not-supported-in-this-environment'
+  ].includes(code);
+
 const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
@@ -237,6 +255,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
+        if (shouldUseRedirectSignIn()) {
+          setAuthDebug(`Starting Google redirect. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+
         setAuthDebug(`Starting Google popup. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
         const credential = await signInWithPopup(auth, provider);
         setUser(credential.user);
@@ -245,9 +269,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await safeUpsertUserProfile(credential.user, 'google');
       } catch (error) {
         const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : '';
-        if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request') {
+        if (shouldRetryGoogleSignInWithRedirect(code)) {
           const provider = new GoogleAuthProvider();
           provider.setCustomParameters({ prompt: 'select_account' });
+          setAuthDebug(`Retrying Google redirect after popup failure. code=${code || 'unknown'}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
           await signInWithRedirect(auth, provider);
           return;
         }
