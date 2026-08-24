@@ -189,6 +189,7 @@ export default function App() {
   // Live Auto-complete states
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAutoComplete, setShowAutoComplete] = useState<boolean>(false);
+  const [showMenuCurrencyDrop, setShowMenuCurrencyDrop] = useState<boolean>(false);
 
   // Filters state
   const [filters, setFilters] = useState<FilterState>(readStoredFilters);
@@ -534,6 +535,7 @@ export default function App() {
 
       setShowUsersDropdown(false);
       setShowAutoComplete(false);
+      setShowMenuCurrencyDrop(false);
     };
 
     document.addEventListener('pointerdown', handleHeaderOutsidePointer);
@@ -588,11 +590,12 @@ export default function App() {
       setShowCalendar(false);
       return;
     }
-    if (showSortDropdown || showDistrictDropdown || showUsersDropdown || showAutoComplete) {
+    if (showSortDropdown || showDistrictDropdown || showUsersDropdown || showAutoComplete || showMenuCurrencyDrop) {
       setShowSortDropdown(false);
       setShowDistrictDropdown(false);
       setShowUsersDropdown(false);
       setShowAutoComplete(false);
+      setShowMenuCurrencyDrop(false);
       return;
     }
     if (currentView === 'app') {
@@ -1029,16 +1032,20 @@ export default function App() {
                 </div>
 
                 {/* LIVE AUTOCAMP SUGGEST SEARCH BAR */}
-                <div className="header-popover-root relative mx-1 block min-w-0 flex-1 sm:mx-0 md:max-w-md">
-                  <div className="header-popover-root relative">
+                <div className="header-popover-root relative mx-1 flex min-w-0 flex-1 items-center gap-1.5 sm:mx-0 sm:gap-2 md:max-w-md">
+                  <div className="relative min-w-0 flex-1">
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={e => {
                         setSearchTerm(e.target.value);
                         setShowAutoComplete(true);
+                        setShowMenuCurrencyDrop(false);
                       }}
-                      onFocus={() => setShowAutoComplete(true)}
+                      onFocus={() => {
+                        setShowAutoComplete(true);
+                        setShowMenuCurrencyDrop(false);
+                      }}
                       placeholder={tr('search.placeholder')}
                       className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
                       id="live-search-input-menu"
@@ -1053,33 +1060,69 @@ export default function App() {
                         Г—
                       </button>
                     )}
+
+                    {showAutoComplete && suggestions && (
+                      <SearchSuggestions
+                        suggestions={suggestions}
+                        tr={tr}
+                        className="text-left z-50"
+                        onListingSelect={item => {
+                          setSelectedListing(item);
+                          setShowAutoComplete(false);
+                          selectL1(item.category);
+                          const legacySubcategory = (item as Listing & { subcategory?: string }).subcategory;
+                          if (legacySubcategory) {
+                            selectSingleL2(legacySubcategory);
+                          }
+                          openAppView();
+                        }}
+                        onGuideSelect={guide => {
+                          const inputField = document.getElementById('live-search-input-menu') as HTMLInputElement;
+                          if (inputField) inputField.value = guide.title;
+                          setSearchTerm(guide.title);
+                          setShowAutoComplete(false);
+                          selectL1('useful');
+                          openAppView();
+                        }}
+                      />
+                    )}
                   </div>
 
-                  {showAutoComplete && suggestions && (
-                    <SearchSuggestions
-                      suggestions={suggestions}
-                      tr={tr}
-                      className="text-left z-50"
-                      onListingSelect={item => {
-                        setSelectedListing(item);
+                  <div className="relative shrink-0 md:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenuCurrencyDrop(!showMenuCurrencyDrop);
                         setShowAutoComplete(false);
-                        selectL1(item.category);
-                        const legacySubcategory = (item as Listing & { subcategory?: string }).subcategory;
-                        if (legacySubcategory) {
-                          selectSingleL2(legacySubcategory);
-                        }
-                        openAppView();
                       }}
-                      onGuideSelect={guide => {
-                        const inputField = document.getElementById('live-search-input-menu') as HTMLInputElement;
-                        if (inputField) inputField.value = guide.title;
-                        setSearchTerm(guide.title);
-                        setShowAutoComplete(false);
-                        selectL1('useful');
-                        openAppView();
-                      }}
-                    />
-                  )}
+                      className="box-border flex h-8 min-h-8 w-14 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 font-sans text-[11px] font-black uppercase leading-none text-[#1E293B] transition hover:bg-gray-100 active:scale-95 sm:h-9 sm:min-h-9 sm:w-16 sm:text-xs"
+                      title={tr('nav.currency.title')}
+                      aria-label={tr('nav.currency.title')}
+                      aria-expanded={showMenuCurrencyDrop}
+                    >
+                      {activeCurrency}
+                    </button>
+
+                    {showMenuCurrencyDrop && (
+                      <div className="pu absolute right-0 top-10 z-50 w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in sm:top-11">
+                        {Object.keys(CURRENCIES).map(curr => (
+                          <button
+                            key={curr}
+                            type="button"
+                            onClick={() => {
+                              setActiveCurrency(curr as CurrencyKey);
+                              setShowMenuCurrencyDrop(false);
+                            }}
+                            className={`block w-full py-2 font-bold text-[#1E293B] transition hover:bg-white/70 ${
+                              activeCurrency === curr ? 'bg-white/70 text-[#FF7A50]' : ''
+                            }`}
+                          >
+                            {CURRENCIES[curr as CurrencyKey].symbol} {curr}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* CONTROLS AREA (PLACE LISTING / PERSONAL CABINET) */}
@@ -2055,7 +2098,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={openProfile}
-                  className={mobileNavButtonClass}
+                  className={`${mobileNavButtonClass} overflow-hidden p-0`}
                   aria-label={tr('nav.profile')}
                   title={tr('nav.profile')}
                 >
@@ -2063,7 +2106,7 @@ export default function App() {
                     <img
                       src={user.photoURL}
                       alt=""
-                      className="h-7 w-7 rounded-full border border-white object-cover shadow-sm"
+                      className="h-full w-full rounded-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Loader2, Mail, Phone, Save, User, X } from 'lucide-react';
+import { Camera, Loader2, LogOut, Mail, Phone, Save, User, X } from 'lucide-react';
 import { updateEmail, updateProfile } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -13,7 +13,7 @@ import { formatPhoneInput } from '../utils/phone';
 import PhoneInput from './PhoneInput';
 
 const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
-const profileInputClass = 'profile-input-field h-12 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-0 text-sm font-bold text-[#17231F] outline-none transition focus:border-[#2F7D69]';
+const profileInputClass = 'profile-input-field h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-0 text-sm font-bold text-[#17231F] outline-none transition focus:border-[#2F7D69] sm:h-12 sm:rounded-2xl';
 
 const normalizeProfilePhone = (value: string) => {
   const formatted = formatPhoneInput(value, 'ID');
@@ -41,7 +41,7 @@ export default function ProfileModal({
   setActiveLanguage
 }: ProfileModalProps) {
   const { tr } = useI18n();
-  const { user } = useAuth();
+  const { signOut, user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -54,6 +54,7 @@ export default function ProfileModal({
   const [showLanguageDrop, setShowLanguageDrop] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -206,6 +207,19 @@ export default function ProfileModal({
     }
   };
 
+  const handleSignOut = async () => {
+    setError('');
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      onClose();
+    } catch (signOutError) {
+      setError(signOutError instanceof Error ? signOutError.message : tr('profile.saveError'));
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[610] flex items-center justify-center bg-[#0B1714]/70 px-3 py-5 backdrop-blur-md sm:px-5">
       <form
@@ -230,12 +244,12 @@ export default function ProfileModal({
         </div>
 
         <div className="-mt-14 px-5 pb-5 sm:px-7 sm:pb-7">
-          <div className="rounded-2xl border border-[#E5E0D6] bg-white p-4 shadow-[0_16px_40px_rgba(23,35,31,0.08)]">
-            <div className="flex items-center gap-4">
+          <div className="rounded-2xl border border-[#E5E0D6] bg-white p-3.5 shadow-[0_16px_40px_rgba(23,35,31,0.08)] sm:p-4">
+            <div className="flex items-stretch gap-3 sm:items-center sm:gap-4">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E0D6] bg-[#E8F5EF] text-3xl font-black text-[#2F7D69] transition hover:border-[#FF7A50]"
+                className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E5E0D6] bg-[#E8F5EF] text-3xl font-black text-[#2F7D69] transition hover:border-[#FF7A50] sm:h-24 sm:w-24"
                 title={tr('profile.changePhoto')}
                 aria-label={tr('profile.changePhoto')}
               >
@@ -249,21 +263,22 @@ export default function ProfileModal({
                   {tr('profile.changePhoto')}
                 </span>
               </button>
-              <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#2F7D69]/10 px-3 py-1 text-xs font-black text-[#2F7D69]">
-                  <User className="h-3.5 w-3.5" />
-                  <span>{tr('profile.totalListings', { count: listingsCount })}</span>
+              <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 justify-start sm:flex-1">
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#2F7D69]/10 px-3 py-1.5 text-[11px] font-black text-[#2F7D69] sm:py-1 sm:text-xs">
+                    <User className="h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0 truncate">{tr('profile.totalListings', { count: listingsCount })}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <div className="relative">
+                <div className="grid w-full shrink-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1.5">
+                  <div className="relative min-w-0">
                   <button
                     type="button"
                     onClick={() => {
                       setShowCurrencyDrop(value => !value);
                       setShowLanguageDrop(false);
                     }}
-                    className="flex h-9 items-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold uppercase leading-none text-[#1E293B] transition hover:bg-gray-100"
+                    className="flex h-10 w-full items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold uppercase leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9"
                     title={tr('nav.currency.title')}
                     aria-label={tr('nav.currency.title')}
                     aria-expanded={showCurrencyDrop}
@@ -272,7 +287,7 @@ export default function ProfileModal({
                   </button>
 
                   {showCurrencyDrop && (
-                    <div className="pu absolute right-0 top-11 z-50 w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in">
+                    <div className="pu absolute left-0 top-12 z-50 w-full min-w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in sm:left-auto sm:right-0 sm:top-11 sm:w-28">
                       {Object.keys(CURRENCIES).map(currency => (
                         <button
                           key={currency}
@@ -289,14 +304,14 @@ export default function ProfileModal({
                   )}
                 </div>
 
-                <div className="relative shrink-0">
+                <div className="relative min-w-0 shrink-0">
                   <button
                     type="button"
                     onClick={() => {
                       setShowLanguageDrop(value => !value);
                       setShowCurrencyDrop(false);
                     }}
-                    className="flex h-9 items-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold leading-none text-[#1E293B] transition hover:bg-gray-100"
+                    className="flex h-10 w-full items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[12px] font-bold leading-none text-[#1E293B] transition hover:bg-gray-100 sm:h-9"
                     title={tr('nav.language.title')}
                     aria-label={tr('nav.language.title')}
                     aria-expanded={showLanguageDrop}
@@ -305,7 +320,7 @@ export default function ProfileModal({
                   </button>
 
                   {showLanguageDrop && (
-                    <div className="pu absolute right-0 top-11 z-50 w-32 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-xs shadow-xl animate-fade-in">
+                    <div className="pu absolute right-0 top-12 z-50 w-40 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-xs shadow-xl animate-fade-in sm:top-11 sm:w-32">
                       {LANGUAGES.map(lang => (
                         <button
                           key={lang.code}
@@ -322,6 +337,7 @@ export default function ProfileModal({
                   )}
                 </div>
               </div>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -331,7 +347,7 @@ export default function ProfileModal({
               />
             </div>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3.5 sm:mt-5 sm:space-y-3">
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-[#68726E]">
                   <User className="h-3.5 w-3.5 text-[#FF7A50]" />
@@ -375,7 +391,7 @@ export default function ProfileModal({
                   ariaLabel={tr('profile.phone')}
                   defaultCountry="ID"
                   shellClassName="profile-phone-input"
-                  className={`${profileInputClass} !h-12 !min-h-12 !rounded-2xl !border-[#E5E7EB] !bg-white !py-0 !pl-4 !pr-14 !text-sm !font-bold !text-[#17231F] focus:!border-[#2F7D69]`}
+                  className={`${profileInputClass} !h-11 !min-h-11 !rounded-xl !border-[#E5E7EB] !bg-white !py-0 !pl-4 !pr-14 !text-sm !font-bold !text-[#17231F] focus:!border-[#2F7D69] sm:!h-12 sm:!min-h-12 sm:!rounded-2xl`}
                 />
               </label>
 
@@ -396,6 +412,16 @@ export default function ProfileModal({
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span>{tr('profile.save')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#F2C9BC] bg-[#FFF4EF] px-4 py-3.5 text-sm font-black text-[#B9472B] transition hover:border-[#FF7A50] hover:bg-[#FFE8DF] disabled:opacity-60 sm:hidden"
+            >
+              {isSigningOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              <span>{tr('nav.logout')}</span>
             </button>
           </div>
         </div>
