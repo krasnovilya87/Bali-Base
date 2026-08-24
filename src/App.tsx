@@ -40,6 +40,9 @@ const DISTRICT_MENU_GROUPS = [
 
 const MENU_SELECTION_STORAGE_KEY = 'bali_base_menu_selection';
 const FILTERS_STORAGE_KEY = 'bali_base_filters';
+const AUTH_RETURN_VIEW_STORAGE_KEY = 'bali_base_auth_return_view';
+
+type AppView = 'cover' | 'menu' | 'app';
 
 const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
 
@@ -124,9 +127,33 @@ const readStoredFilters = (): FilterState => {
   }
 };
 
+const readAuthReturnView = (): AppView | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const storedView = window.sessionStorage.getItem(AUTH_RETURN_VIEW_STORAGE_KEY);
+    window.sessionStorage.removeItem(AUTH_RETURN_VIEW_STORAGE_KEY);
+    return storedView === 'cover' || storedView === 'menu' || storedView === 'app'
+      ? storedView
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const storeAuthReturnView = (view: AppView) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(AUTH_RETURN_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Ignore storage failures; auth still works, only return-screen restore is skipped.
+  }
+};
+
 export default function App() {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<'cover' | 'menu' | 'app'>('cover');
+  const [currentView, setCurrentView] = useState<AppView>(() => readAuthReturnView() || 'cover');
   const {
     bookings,
     handleAddBooking,
@@ -370,6 +397,7 @@ export default function App() {
   const requestAuth = (reasonKey = 'auth.defaultReason', afterAuth?: () => void) => {
     if (user) return true;
     pendingAuthActionRef.current = afterAuth || null;
+    storeAuthReturnView(currentView);
     setAuthModalReason(tr(reasonKey));
     return false;
   };
@@ -919,9 +947,9 @@ export default function App() {
 
         {/* 1. COVER SCREEN (SCREEN 1) */}
         {currentView === 'cover' && (
-          <div className="relative min-h-[100lvh] w-full px-4 text-center select-none">
+          <div className="relative min-h-[100lvh] w-full overflow-hidden px-4 text-center select-none">
             {/* Ambient Video styled Background overlay */}
-            <div className="absolute inset-x-0 top-[calc(-1*env(safe-area-inset-top))] bottom-[-18svh] overflow-hidden">
+            <div className="pointer-events-none fixed inset-x-0 top-[calc(-1*max(env(safe-area-inset-top),24px))] bottom-[-18svh] overflow-hidden">
               <img
                 src={baliRiceBg}
                 alt="Rice Terraces Background"
