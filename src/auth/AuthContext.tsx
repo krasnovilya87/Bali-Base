@@ -106,7 +106,16 @@ const shouldRetryGoogleSignInWithRedirect = (code: string) =>
   ].includes(code);
 
 const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
+  const userRef = doc(db, 'users', user.uid);
+  const existingProfile = await getDoc(userRef);
+
   await setDoc(doc(db, 'users', user.uid), {
+    ...(!existingProfile.exists() ? {
+      role: 'guest',
+      status: 'active',
+      listingsCount: 0,
+      registeredAt: serverTimestamp()
+    } : {}),
     uid: user.uid,
     email: user.email || '',
     displayName: user.displayName || user.email || 'Bali Base user',

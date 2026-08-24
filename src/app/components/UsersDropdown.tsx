@@ -21,9 +21,6 @@ interface UsersDropdownProps {
   setUsersModalTab: (tab: 'favorites' | 'whatsapp') => void;
 }
 
-const isOwnListing = (item: Listing) =>
-  item.ownerId === 'owner-personal' || item.ownerId === 'owner-1' || item.ownerId === 'owner-direct';
-
 export default function UsersDropdown({
   bookings,
   id,
@@ -43,7 +40,8 @@ export default function UsersDropdown({
   const { signOut } = useAuth();
   const getOwnListings = () => {
     const activeUserId = auth.currentUser?.uid || currentUser?.uid;
-    return listings.filter(item => item.ownerId === activeUserId || isOwnListing(item));
+    if (!activeUserId) return [];
+    return listings.filter(item => item.ownerId === activeUserId);
   };
   const ownListings = getOwnListings();
   const userPhotoURL = currentUser?.photoURL || '';

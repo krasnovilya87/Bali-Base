@@ -375,15 +375,13 @@ export default function App() {
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
   const { favoriteIds } = useFavoriteListings();
-  const ownerListingIds = useMemo(() => new Set(listings
-    .filter(item =>
-      item.ownerId === user?.uid ||
-      item.ownerId === 'owner-1' ||
-      item.ownerId === 'owner-personal' ||
-      item.ownerId === 'owner-direct'
-    )
-    .map(item => item.id)
-  ), [listings, user?.uid]);
+  const ownerListingIds = useMemo(() => {
+    if (!user?.uid) return new Set<string>();
+    return new Set(listings
+      .filter(item => item.ownerId === user.uid)
+      .map(item => item.id)
+    );
+  }, [listings, user?.uid]);
   const newBookingRequests = useMemo(() => bookings.filter(booking =>
     booking.status === 'pending' && ownerListingIds.has(booking.listingId)
   ), [bookings, ownerListingIds]);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
 import { Listing } from '../../types';
-import { LISTINGS_COLLECTION, deleteDocument, setDocument } from '../../firebase';
+import { LISTINGS_COLLECTION, db, deleteDocument, getCollection, setDocument } from '../../firebase';
 import { DEFAULT_ADMIN_USERS } from './mockData';
 import { normalizeHousingListingForImport } from './importListingNormalizer';
 import { AdminDashboardProps, AdminTab, AdminUser, SupportTicket } from './types';
@@ -20,6 +21,95 @@ type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
   'listings' | 'onToggleStatus' | 'onUpdateListing' | 'onDeleteListing' | 'menuOverrides' | 'onUpdateMenuOverrides'
 >;
+
+const ADMIN_USERS_STORAGE_KEY = 'bali_base_admin_users';
+const DEFAULT_USER_AVATAR = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80';
+
+const toIsoString = (value: any) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  return '';
+};
+
+const getStoredAdminUsers = () => {
+  try {
+    const storedUsers = localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
+    return storedUsers ? JSON.parse(storedUsers) as AdminUser[] : DEFAULT_ADMIN_USERS;
+  } catch {
+    return DEFAULT_ADMIN_USERS;
+  }
+};
+
+const mergeAdminUsers = (baseUsers: AdminUser[], incomingUsers: AdminUser[]) => {
+  const merged = new Map<string, AdminUser>();
+  baseUsers.forEach(user => merged.set(user.id, user));
+  incomingUsers.forEach(user => {
+    const byEmail = Array.from(merged.values()).find(existing =>
+      existing.email && user.email && existing.email.toLowerCase() === user.email.toLowerCase()
+    );
+    if (byEmail && byEmail.id !== user.id) {
+      merged.delete(byEmail.id);
+      merged.set(user.id, {
+        ...byEmail,
+        ...user,
+        role: user.role || byEmail.role,
+        status: user.status || byEmail.status
+      });
+      return;
+    }
+    merged.set(user.id, { ...merged.get(user.id), ...user });
+  });
+
+  return Array.from(merged.values()).sort((a, b) =>
+    new Date(b.registeredAt || 0).getTime() - new Date(a.registeredAt || 0).getTime()
+  );
+};
+
+const buildAdminUserFromProfile = (profile: any, listings: Listing[], fallbackUser?: AdminUser): AdminUser => {
+  const id = String(profile.uid || profile.id || fallbackUser?.id || '').trim();
+  const displayName = String(
+    profile.displayName ||
+    profile.contactName ||
+    fallbackUser?.name ||
+    profile.email ||
+    'Bali Base user'
+  );
+  const email = String(profile.email || fallbackUser?.email || '');
+  const phone = String(profile.contactPhone || profile.whatsappNumber || profile.phone || fallbackUser?.phone || '');
+  const listingsCount = listings.filter(listing =>
+    (id && listing.ownerId === id) ||
+    (displayName && listing.ownerName === displayName)
+  ).length;
+
+  return {
+    id,
+    name: displayName,
+    email,
+    phone,
+    role: (profile.role || fallbackUser?.role || 'guest') as AdminUser['role'],
+    status: (profile.status || fallbackUser?.status || 'active') as AdminUser['status'],
+    listingsCount: listingsCount || Number(profile.listingsCount || fallbackUser?.listingsCount || 0),
+    registeredAt: toIsoString(profile.registeredAt) || fallbackUser?.registeredAt || '',
+    avatar: String(profile.photoURL || profile.avatar || fallbackUser?.avatar || DEFAULT_USER_AVATAR)
+  };
+};
+
+const persistAdminUser = async (user: AdminUser) => {
+  await setDoc(doc(db, 'users', user.id), {
+    uid: user.id,
+    displayName: user.name,
+    email: user.email,
+    contactPhone: user.phone,
+    role: user.role,
+    status: user.status,
+    listingsCount: user.listingsCount,
+    registeredAt: user.registeredAt,
+    photoURL: user.avatar,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+};
 
 export function useAdminDashboardController({
   listings,
@@ -498,18 +588,36 @@ export function useAdminDashboardController({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load Admin Users from localStorage or populate defaults
-    const storedUsers = localStorage.getItem('bali_base_admin_users');
-    if (storedUsers) {
+    const storedAdminUsers = getStoredAdminUsers();
+    setAdminUsers(storedAdminUsers);
+    localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(storedAdminUsers));
+
+    let isMounted = true;
+    const loadFirestoreUsers = async () => {
       try {
-        setAdminUsers(JSON.parse(storedUsers));
-      } catch {
-        setAdminUsers(DEFAULT_ADMIN_USERS);
+        const userProfiles = await getCollection<any>('users');
+        if (!isMounted) return;
+
+        const storedUsers = getStoredAdminUsers();
+        const firestoreUsers = userProfiles
+          .filter(profile => profile?.id || profile?.uid)
+          .map(profile => {
+            const profileId = String(profile.uid || profile.id || '').trim();
+            const fallback = storedUsers.find(user =>
+              user.id === profileId ||
+              (user.email && profile.email && user.email.toLowerCase() === String(profile.email).toLowerCase())
+            );
+            return buildAdminUserFromProfile(profile, listings, fallback);
+          });
+        const mergedUsers = mergeAdminUsers(storedUsers, firestoreUsers);
+        setAdminUsers(mergedUsers);
+        localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(mergedUsers));
+      } catch (error) {
+        console.warn('Could not load Firestore users for admin dashboard:', error);
       }
-    } else {
-      setAdminUsers(DEFAULT_ADMIN_USERS);
-      localStorage.setItem('bali_base_admin_users', JSON.stringify(DEFAULT_ADMIN_USERS));
-    }
+    };
+
+    loadFirestoreUsers();
 
     const syncTickets = () => {
       const loadedTickets = readSupportTickets();
@@ -529,13 +637,14 @@ export function useAdminDashboardController({
     if (savedMaintenance) setMaintenanceMode(savedMaintenance === 'true');
 
     return () => {
+      isMounted = false;
       window.removeEventListener(SUPPORT_TICKETS_UPDATED_EVENT, syncTickets as EventListener);
     };
-  }, []);
+  }, [listings]);
 
   const saveUsers = (newUsersList: AdminUser[]) => {
     setAdminUsers(newUsersList);
-    localStorage.setItem('bali_base_admin_users', JSON.stringify(newUsersList));
+    localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(newUsersList));
   };
 
   const saveTicketsList = (newTicketsList: SupportTicket[]) => {
@@ -553,7 +662,7 @@ export function useAdminDashboardController({
   };
 
   // Create User Handler
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPhone) {
       showToast('Please fill in all fields.');
@@ -568,9 +677,15 @@ export function useAdminDashboardController({
       status: 'active',
       listingsCount: 0,
       registeredAt: new Date().toISOString(),
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80'
+      avatar: DEFAULT_USER_AVATAR
     };
-    saveUsers([...adminUsers, newUser]);
+    const updatedUsers = mergeAdminUsers(adminUsers, [newUser]);
+    saveUsers(updatedUsers);
+    try {
+      await persistAdminUser(newUser);
+    } catch (error) {
+      console.warn('Could not save admin-created user to Firestore:', error);
+    }
     setShowAddUserModal(false);
     setNewUserName('');
     setNewUserEmail('');
@@ -579,7 +694,7 @@ export function useAdminDashboardController({
   };
 
   // Change Role Handler
-  const handleChangeRole = (userId: string, newRole: 'admin' | 'moderator' | 'host' | 'guest') => {
+  const handleChangeRole = async (userId: string, newRole: 'admin' | 'moderator' | 'host' | 'guest') => {
     const updated = adminUsers.map(u => {
       if (u.id === userId) {
         return { ...u, role: newRole };
@@ -587,11 +702,19 @@ export function useAdminDashboardController({
       return u;
     });
     saveUsers(updated);
+    const matched = updated.find(u => u.id === userId);
+    if (matched) {
+      try {
+        await persistAdminUser(matched);
+      } catch (error) {
+        console.warn('Could not update user role in Firestore:', error);
+      }
+    }
     showToast(`User role changed to ${newRole}.`);
   };
 
   // Toggle User Ban Status
-  const handleToggleUserBan = (userId: string) => {
+  const handleToggleUserBan = async (userId: string) => {
     const updated = adminUsers.map(u => {
       if (u.id === userId) {
         const toggle = u.status === 'banned' ? 'active' : 'banned';
@@ -601,14 +724,27 @@ export function useAdminDashboardController({
     });
     saveUsers(updated);
     const matched = adminUsers.find(u => u.id === userId);
+    const updatedUser = updated.find(u => u.id === userId);
+    if (updatedUser) {
+      try {
+        await persistAdminUser(updatedUser);
+      } catch (error) {
+        console.warn('Could not update user status in Firestore:', error);
+      }
+    }
     const verb = matched?.status === 'active' ? 'banned' : 'unbanned';
     showToast(`User ${matched?.name} ${verb}.`);
   };
 
   // Delete User Handler
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const updated = adminUsers.filter(u => u.id !== userId);
     saveUsers(updated);
+    try {
+      await deleteDocument('users', userId);
+    } catch (error) {
+      console.warn('Could not delete user profile from Firestore:', error);
+    }
     showToast('User deleted.');
   };
 

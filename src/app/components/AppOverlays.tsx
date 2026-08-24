@@ -140,12 +140,9 @@ export default function AppOverlays({
   const [rejectionPopupListing, setRejectionPopupListing] = useState<Listing | null>(null);
   const [returnToMyAddsOnListingClose, setReturnToMyAddsOnListingClose] = useState(false);
   const activeUserId = auth.currentUser?.uid;
-  const ownListingsCount = listings.filter(item =>
-    item.ownerId === activeUserId ||
-    item.ownerId === 'owner-1' ||
-    item.ownerId === 'owner-personal' ||
-    item.ownerId === 'owner-direct'
-  ).length;
+  const ownListingsCount = activeUserId
+    ? listings.filter(item => item.ownerId === activeUserId).length
+    : 0;
   const selectedListingFresh = selectedListing
     ? listings.find(listing => listing.id === selectedListing.id) || selectedListing
     : null;

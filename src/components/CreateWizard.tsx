@@ -642,7 +642,7 @@ export default function CreateWizard({
 
     return {
       id,
-      ownerId: sourceListing?.ownerId || 'owner-personal',
+      ownerId: initialListing?.ownerId || user?.uid || sourceListing?.ownerId || 'owner-personal',
       category: category as Listing['category'],
       subCategory,
       title: cleanListingTitle,

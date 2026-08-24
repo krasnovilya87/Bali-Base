@@ -57,16 +57,22 @@ export default function MyAddsListing({
 }: MyAddsListingProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
+  const createListingLabel = tr('myListings.create');
+  const createListingLabelBreakIndex = createListingLabel.lastIndexOf(' ');
+  const createListingLabelFirstLine = createListingLabelBreakIndex > 0
+    ? createListingLabel.slice(0, createListingLabelBreakIndex)
+    : createListingLabel;
+  const createListingLabelLastLine = createListingLabelBreakIndex > 0
+    ? createListingLabel.slice(createListingLabelBreakIndex + 1)
+    : '';
 
   // Filtration for listings belonging to current user session
-  const ownerListings = useMemo(() => listings
-    .filter(item =>
-      item.ownerId === user?.uid ||
-      item.ownerId === 'owner-1' ||
-      item.ownerId === 'owner-personal' ||
-      item.ownerId === 'owner-direct'
-    )
-    .sort((a, b) => getListingActivityTime(b) - getListingActivityTime(a)), [listings, user?.uid]);
+  const ownerListings = useMemo(() => {
+    if (!user?.uid) return [];
+    return listings
+      .filter(item => item.ownerId === user.uid)
+      .sort((a, b) => getListingActivityTime(b) - getListingActivityTime(a));
+  }, [listings, user?.uid]);
 
   // Sub-modal overlay states
   const [promoteListing, setPromoteListing] = useState<Listing | null>(null);
@@ -228,10 +234,22 @@ export default function MyAddsListing({
           <div className="flex items-center gap-2">
             <button
               onClick={onCreateClick}
-              className="px-4 py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shrink-0"
+              className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition flex items-center gap-1 sm:gap-1.5 cursor-pointer active:scale-95 shadow-sm shrink-0"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{tr('myListings.create')}</span>
+              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="text-center leading-[1.05]">
+                {createListingLabelLastLine ? (
+                  <>
+                    <span className="block sm:inline">{createListingLabelFirstLine}</span>
+                    <span className="block sm:inline">
+                      <span className="hidden sm:inline"> </span>
+                      {createListingLabelLastLine}
+                    </span>
+                  </>
+                ) : (
+                  createListingLabel
+                )}
+              </span>
             </button>
 
             <button
