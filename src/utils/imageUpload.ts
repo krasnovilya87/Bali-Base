@@ -1,5 +1,7 @@
 const FREEIMAGE_UPLOAD_ENDPOINT = 'https://freeimage.host/api/1/upload';
 const FREEIMAGE_PROXY_ENDPOINT = '/api/image-upload/freeimage';
+const FREEIMAGE_CLOUD_RUN_PROXY_ENDPOINT =
+  'https://bali-base-api-516937970438.asia-southeast1.run.app/api/image-upload/freeimage';
 const DEFAULT_FREEIMAGE_API_KEY = '6d207e02198a847aa98d0a2a901485a5';
 
 type FreeImageHostResponse = {
@@ -142,11 +144,13 @@ const uploadSourceToFreeImageHost = async (
 const uploadBase64SourceViaProxy = async (
   source: string,
   diagnostics: ImageUploadDiagnosticStep[],
-  metadata?: { fileName?: string; fileType?: string }
+  metadata?: { fileName?: string; fileType?: string },
+  endpoint = FREEIMAGE_PROXY_ENDPOINT,
+  phase = 'proxy-upload'
 ) => {
   let response: Response;
   try {
-    response = await fetch(FREEIMAGE_PROXY_ENDPOINT, {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -159,7 +163,7 @@ const uploadBase64SourceViaProxy = async (
     });
   } catch (error) {
     diagnostics.push({
-      phase: 'proxy-upload',
+      phase,
       ok: false,
       message: getErrorMessage(error)
     });
@@ -167,30 +171,35 @@ const uploadBase64SourceViaProxy = async (
   }
 
   let data: FreeImageProxyResponse | null = null;
+  const responseType = response.headers.get('content-type') || undefined;
   try {
-    data = await response.json();
+    data = responseType?.includes('application/json')
+      ? await response.json()
+      : null;
   } catch {
     data = null;
   }
 
   if (response.ok && data?.url) {
     diagnostics.push({
-      phase: 'proxy-upload',
+      phase,
       ok: true,
       status: response.status,
       statusText: response.statusText,
-      responseType: response.headers.get('content-type') || undefined
+      responseType
     });
     return normalizeImageUrl(data.url);
   }
 
-  const message = data?.error || response.statusText || 'Image upload failed.';
+  const message = data?.error || (
+    responseType?.includes('text/html') ? 'Proxy returned HTML instead of JSON.' : response.statusText
+  ) || 'Image upload failed.';
   diagnostics.push({
-    phase: 'proxy-upload',
+    phase,
     ok: false,
     status: response.status,
     statusText: response.statusText,
-    responseType: response.headers.get('content-type') || undefined,
+    responseType,
     message
   });
   throw new Error(message);
@@ -210,7 +219,18 @@ export const uploadImageToFreeImageHost = async (
       ok: true,
       message: `${Math.round(base64Source.length / 1024)} KB base64 payload`
     });
-    return await uploadBase64SourceViaProxy(base64Source, diagnostics, metadata);
+    try {
+      return await uploadBase64SourceViaProxy(base64Source, diagnostics, metadata);
+    } catch (proxyError) {
+      finalError = proxyError;
+      return await uploadBase64SourceViaProxy(
+        base64Source,
+        diagnostics,
+        metadata,
+        FREEIMAGE_CLOUD_RUN_PROXY_ENDPOINT,
+        'cloud-run-proxy-upload'
+      );
+    }
   } catch (proxyError) {
     finalError = proxyError;
   }
