@@ -1,7 +1,7 @@
 ﻿import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
 import { useI18n } from '../../../i18nContext';
-import { uploadImageToFreeImageHost } from '../../../utils/imageUpload';
+import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
   PhotoSlotConfig,
@@ -11,6 +11,16 @@ import {
 
 type UsePhotoStepParams = {
   initialListing?: Listing | null;
+};
+
+type PhotoUploadDiagnostic = {
+  fileName: string;
+  fileType: string;
+  fileSizeKb: number;
+  uploadSizeKb?: number;
+  compressed: boolean;
+  steps: ImageUploadDiagnosticStep[];
+  errorMessage: string;
 };
 
 export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
@@ -66,6 +76,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
 
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
+  const [uploadDiagnostic, setUploadDiagnostic] = useState<PhotoUploadDiagnostic | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,12 +132,24 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
   const uploadPhotoToStorage = async (file: File) => {
     setIsUploading(true);
     setUploadError('');
+    setUploadDiagnostic(null);
+    let uploadableImage: Blob | File = file;
     try {
-      const uploadableImage = await resizeAndCompressListingImage(file);
+      uploadableImage = await resizeAndCompressListingImage(file);
       const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage);
       setPhotoUrls(prev => [...prev, uploadedUrl]);
     } catch (error) {
-      console.error('freeimage.host upload failed', error);
+      const diagnostic: PhotoUploadDiagnostic = {
+        fileName: file.name || 'unnamed file',
+        fileType: file.type || 'unknown',
+        fileSizeKb: Math.round(file.size / 1024),
+        uploadSizeKb: Math.round(uploadableImage.size / 1024),
+        compressed: uploadableImage !== file,
+        steps: error instanceof ImageUploadError ? error.diagnostics : [],
+        errorMessage: error instanceof Error ? error.message : String(error)
+      };
+      console.error('freeimage.host upload failed', diagnostic, error);
+      setUploadDiagnostic(diagnostic);
       setUploadError(tr('wizard.photos.loadImageError'));
     } finally {
       setIsUploading(false);
@@ -161,6 +184,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
       for (const file of files as any) {
         await uploadPhotoToStorage(file);
       }
+      e.target.value = '';
     }
   };
 
@@ -192,6 +216,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     requiredPhotoTotalCount,
     isUploading,
     uploadError,
+    uploadDiagnostic,
     dragActive,
     fileInputRef,
     handleDrag,

@@ -13,6 +13,25 @@ type FreeImageHostResponse = {
   };
 };
 
+export type ImageUploadDiagnosticStep = {
+  phase: string;
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  message?: string;
+  responseType?: string;
+};
+
+export class ImageUploadError extends Error {
+  diagnostics: ImageUploadDiagnosticStep[];
+
+  constructor(message: string, diagnostics: ImageUploadDiagnosticStep[]) {
+    super(message);
+    this.name = 'ImageUploadError';
+    this.diagnostics = diagnostics;
+  }
+}
+
 const getFreeImageApiKey = () => {
   const envKey = (import.meta as any).env?.VITE_FREEIMAGE_API_KEY;
   const cleanEnvKey = typeof envKey === 'string' ? envKey.trim() : '';
@@ -55,7 +74,14 @@ const blobToBase64Source = (blob: Blob) =>
     reader.readAsDataURL(blob);
   });
 
-const uploadSourceToFreeImageHost = async (source: Blob | string) => {
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const uploadSourceToFreeImageHost = async (
+  source: Blob | string,
+  phase: string,
+  diagnostics: ImageUploadDiagnosticStep[]
+) => {
   const apiKey = getFreeImageApiKey();
   const formData = new FormData();
   formData.append('key', apiKey);
@@ -63,23 +89,61 @@ const uploadSourceToFreeImageHost = async (source: Blob | string) => {
   formData.append('format', 'json');
   formData.append('source', source);
 
-  const response = await fetch(FREEIMAGE_UPLOAD_ENDPOINT, {
-    method: 'POST',
-    body: formData
-  });
+  let response: Response;
+  try {
+    response = await fetch(FREEIMAGE_UPLOAD_ENDPOINT, {
+      method: 'POST',
+      body: formData
+    });
+  } catch (error) {
+    diagnostics.push({
+      phase,
+      ok: false,
+      message: getErrorMessage(error)
+    });
+    throw error;
+  }
 
-  return parseFreeImageResponse(response);
+  try {
+    const uploadedUrl = await parseFreeImageResponse(response);
+    diagnostics.push({
+      phase,
+      ok: true,
+      status: response.status,
+      statusText: response.statusText,
+      responseType: response.headers.get('content-type') || undefined
+    });
+    return uploadedUrl;
+  } catch (error) {
+    diagnostics.push({
+      phase,
+      ok: false,
+      status: response.status,
+      statusText: response.statusText,
+      responseType: response.headers.get('content-type') || undefined,
+      message: getErrorMessage(error)
+    });
+    throw error;
+  }
 };
 
 export const uploadImageToFreeImageHost = async (image: Blob): Promise<string> => {
+  const diagnostics: ImageUploadDiagnosticStep[] = [];
+
   try {
-    return await uploadSourceToFreeImageHost(image);
+    return await uploadSourceToFreeImageHost(image, 'binary-upload', diagnostics);
   } catch (binaryError) {
     try {
       const base64Source = await blobToBase64Source(image);
-      return await uploadSourceToFreeImageHost(base64Source);
+      diagnostics.push({
+        phase: 'base64-conversion',
+        ok: true,
+        message: `${Math.round(base64Source.length / 1024)} KB base64 payload`
+      });
+      return await uploadSourceToFreeImageHost(base64Source, 'base64-upload', diagnostics);
     } catch (base64Error) {
-      throw base64Error instanceof Error ? base64Error : binaryError;
+      const finalError = base64Error instanceof Error ? base64Error : binaryError;
+      throw new ImageUploadError(getErrorMessage(finalError), diagnostics);
     }
   }
 };

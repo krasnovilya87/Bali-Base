@@ -21,6 +21,22 @@ type StepPhotosProps = {
   handleFileChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
   isUploading: boolean;
   uploadError: string;
+  uploadDiagnostic: {
+    fileName: string;
+    fileType: string;
+    fileSizeKb: number;
+    uploadSizeKb?: number;
+    compressed: boolean;
+    steps: Array<{
+      phase: string;
+      ok: boolean;
+      status?: number;
+      statusText?: string;
+      message?: string;
+      responseType?: string;
+    }>;
+    errorMessage: string;
+  } | null;
   photoUrls: string[];
   setDraggedPhotoSlotId: React.Dispatch<React.SetStateAction<PhotoSlotId | null>>;
   draggedPhotoSlotId: PhotoSlotId | null;
@@ -37,6 +53,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   handleFileChoose,
   isUploading,
   uploadError,
+  uploadDiagnostic,
   photoUrls,
   setDraggedPhotoSlotId,
   draggedPhotoSlotId,
@@ -81,9 +98,34 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
         </p>
 
         {uploadError && (
-          <span className="text-[9.5px] font-semibold text-rose-500 italic mt-1 block">
-            {uploadError} ({tr('wizard.photos.localPreviewMode')})
-          </span>
+          <div className="mt-1 max-w-full space-y-1">
+            <span className="text-[9.5px] font-semibold text-rose-500 italic block">
+              {uploadError} ({tr('wizard.photos.localPreviewMode')})
+            </span>
+
+            {uploadDiagnostic && (
+              <div className="mx-auto max-w-full rounded-xl bg-rose-50 px-3 py-2 text-left text-[10px] font-semibold leading-relaxed text-rose-700">
+                <div className="truncate">{tr('wizard.photos.diagnosticFile')}: {uploadDiagnostic.fileName}</div>
+                <div>
+                  {tr('wizard.photos.diagnosticType')}: {uploadDiagnostic.fileType}; {tr('wizard.photos.diagnosticSize')}: {uploadDiagnostic.fileSizeKb} KB
+                  {uploadDiagnostic.uploadSizeKb !== undefined ? `; ${tr('wizard.photos.diagnosticUploadSize')}: ${uploadDiagnostic.uploadSizeKb} KB` : ''}
+                </div>
+                <div>
+                  {tr('wizard.photos.diagnosticCompressed')}: {uploadDiagnostic.compressed ? tr('common.yes') : tr('common.no')}
+                </div>
+                <div className="break-words">
+                  {tr('wizard.photos.diagnosticError')}: {uploadDiagnostic.errorMessage}
+                </div>
+                {uploadDiagnostic.steps.length > 0 && (
+                  <div className="break-words">
+                    {tr('wizard.photos.diagnosticSteps')}: {uploadDiagnostic.steps.map(step =>
+                      `${step.phase}=${step.ok ? 'ok' : 'failed'}${step.status ? `/${step.status}` : ''}${step.message ? ` (${step.message})` : ''}`
+                    ).join(' -> ')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

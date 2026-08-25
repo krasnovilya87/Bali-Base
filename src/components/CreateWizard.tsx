@@ -156,6 +156,7 @@ export default function CreateWizard({
     getPhotoSlot,
     isUploading,
     uploadError,
+    uploadDiagnostic,
     dragActive,
     fileInputRef,
     handleDrag,
@@ -828,6 +829,7 @@ export default function CreateWizard({
       handleFileChoose,
       isUploading,
       uploadError,
+      uploadDiagnostic,
       photoUrls,
       getRemainingPhotoCount,
       setDraggedPhotoSlotId,
@@ -978,7 +980,7 @@ export default function CreateWizard({
                     className="group flex h-6 min-w-0 flex-col items-center text-center focus:outline-none sm:h-auto sm:gap-1.5"
                     title={label}
                   >
-                    <span className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-medium shadow-[0_0_0_3px_#EAEAEC] transition ${isActive ? 'border-[#FF7A50] bg-white text-[#FF7A50] ring-2 ring-[#FF7A50]/25' : isReached ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#CBD5E1] bg-[#E5E7EB] text-[#64748B]'}`}>
+                    <span className={`relative z-10 flex size-6 aspect-square shrink-0 items-center justify-center rounded-full border text-[9px] font-medium shadow-[0_0_0_3px_#EAEAEC] transition ${isActive ? 'border-[#FF7A50] bg-white text-[#FF7A50] ring-2 ring-[#FF7A50]/25' : isReached ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#CBD5E1] bg-[#E5E7EB] text-[#64748B]'}`}>
                       {itemStep}
                     </span>
                     <span className={`hidden w-full truncate text-[9px] font-normal leading-tight transition sm:block ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
