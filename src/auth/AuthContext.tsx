@@ -150,8 +150,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
-  const [authDebug, setAuthDebug] = useState('');
+  const [authDebugEvents, setAuthDebugEvents] = useState<string[]>([]);
   const [emailLinkSent, setEmailLinkSent] = useState(false);
+  const authDebug = authDebugEvents.join('\n');
+
+  const pushAuthDebug = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setAuthDebugEvents(events => [...events, `${timestamp} ${message}`].slice(-5));
+  };
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -165,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.warn('Firebase Auth persistence setup failed:', error);
         if (isMounted) {
-          setAuthDebug(`Persistence setup failed: ${error instanceof Error ? error.message : String(error)}`);
+          pushAuthDebug(`Persistence setup failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
@@ -175,23 +181,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (redirectCredential?.user) {
           setUser(redirectCredential.user);
           setAuthError('');
-          setAuthDebug(`Google redirect user: ${redirectCredential.user.email || redirectCredential.user.uid}`);
+          pushAuthDebug(`Google redirect user: ${redirectCredential.user.email || redirectCredential.user.uid}`);
           redirectDebugHandled = true;
           await safeUpsertUserProfile(redirectCredential.user, 'google');
         } else {
-          setAuthDebug(`Google redirect empty. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+          pushAuthDebug(`Google redirect empty. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
           redirectDebugHandled = true;
         }
       } catch (error) {
         if (isMounted) {
           setAuthError(error instanceof Error ? error.message : 'Could not complete Google sign in.');
-          setAuthDebug(`Google redirect failed. code=${getAuthErrorCode(error)}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+          pushAuthDebug(`Google redirect failed. code=${getAuthErrorCode(error)}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
           redirectDebugHandled = true;
         }
       }
 
       if (!redirectDebugHandled) {
-        setAuthDebug(`Auth initialized. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+        pushAuthDebug(`Auth initialized. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
 
       unsubscribe = onAuthStateChanged(auth, nextUser => {
@@ -210,9 +216,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setLoading(false);
         if (nextUser) {
-          setAuthDebug(`Auth state changed. currentUser=${nextUser.email || nextUser.uid}`);
+          pushAuthDebug(`Auth state changed. currentUser=${nextUser.email || nextUser.uid}`);
         } else {
-          setAuthDebug(`Auth state changed. currentUser=no, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}`);
+          pushAuthDebug(`Auth state changed. currentUser=no, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}`);
         }
         if (nextUser) {
           safeUpsertUserProfile(nextUser, 'existing_session');
@@ -273,29 +279,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         if (shouldUseRedirectSignIn()) {
-          setAuthDebug(`Starting Google redirect. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
+          pushAuthDebug(`Starting Google redirect. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
           await signInWithRedirect(auth, provider);
           return;
         }
 
-        setAuthDebug(`Starting Google popup. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
+        pushAuthDebug(`Starting Google popup. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
         const credential = await signInWithPopup(auth, provider);
         setUser(credential.user);
         setAuthError('');
-        setAuthDebug(`Google popup user: ${credential.user.email || credential.user.uid}`);
+        pushAuthDebug(`Google popup user: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'google');
       } catch (error) {
         const code = getAuthErrorCode(error);
         if (shouldRetryGoogleSignInWithRedirect(code)) {
           const provider = new GoogleAuthProvider();
           provider.setCustomParameters({ prompt: 'select_account' });
-          setAuthDebug(`Retrying Google redirect after popup failure. code=${code || 'unknown'}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
+          pushAuthDebug(`Retrying Google redirect after popup failure. code=${code || 'unknown'}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
           await signInWithRedirect(auth, provider);
           return;
         }
 
         setAuthError(error instanceof Error ? error.message : 'Could not sign in with Google popup.');
-        setAuthDebug(`Google popup failed. code=${code}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+        pushAuthDebug(`Google popup failed. code=${code}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     sendEmailLink: async (email: string, termsAccepted: boolean) => {
@@ -349,11 +355,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(credential.user);
-        setAuthDebug(`Email password user: ${credential.user.email || credential.user.uid}`);
+        pushAuthDebug(`Email password user: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'email_link');
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not sign in with email and password.');
-        setAuthDebug(`Email password sign in failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+        pushAuthDebug(`Email password sign in failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     createEmailPasswordUser: async (email: string, password: string, confirmPassword: string) => {
@@ -377,11 +383,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         setUser(credential.user);
-        setAuthDebug(`Email password user created: ${credential.user.email || credential.user.uid}`);
+        pushAuthDebug(`Email password user created: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'email_link');
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not create an account.');
-        setAuthDebug(`Email password sign up failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+        pushAuthDebug(`Email password sign up failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     getEmailSignInMethods: async (email: string) => {
@@ -405,7 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (indexError: any) {
           if (indexError?.code === 'permission-denied') {
             indexedProviders = ['google.com'];
-            setAuthDebug('Email provider index is not readable yet. Deploy firestore.rules to enable exact provider detection.');
+            pushAuthDebug('Email provider index is not readable yet. Deploy firestore.rules to enable exact provider detection.');
           } else {
             throw indexError;
           }
