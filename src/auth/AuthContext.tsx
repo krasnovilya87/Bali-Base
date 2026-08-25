@@ -94,12 +94,6 @@ const shouldUseRedirectSignIn = () => {
   const hasCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const isSmallViewport = window.matchMedia?.('(max-width: 768px)').matches ?? window.innerWidth <= 768;
   const isMobileUserAgent = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isIosSafari =
-    /iPhone|iPad|iPod/i.test(navigator.userAgent) &&
-    /Safari/i.test(navigator.userAgent) &&
-    !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
-
-  if (isIosSafari) return false;
 
   return isMobileUserAgent || (hasCoarsePointer && isSmallViewport);
 };
