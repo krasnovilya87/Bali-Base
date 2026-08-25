@@ -8,6 +8,7 @@
     "dev:full": "node scripts/dev-with-api.mjs",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "tsx src/server/app.ts",
     "server": "tsx src/server/app.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",

@@ -959,9 +959,9 @@ export default function CreateWizard({
 
         <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
           <div className="relative h-8 pt-0.5 pb-0.5 sm:h-auto sm:pt-1 sm:pb-1">
-            <div className="absolute left-[5%] right-[5%] top-2.5 h-px rounded-full bg-[#CBD5E1] sm:top-4" />
+            <div className="absolute left-[5%] right-[5%] top-2 h-px rounded-full bg-[#CBD5E1] sm:top-4" />
             <div
-              className="absolute left-[5%] top-2.5 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
+              className="absolute left-[5%] top-2 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
               style={{ width: `calc(90% * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
             />
             <div className="absolute inset-x-0 -bottom-1 block truncate px-10 text-center text-[10px] font-normal leading-none text-[#94A3B8] sm:hidden">
