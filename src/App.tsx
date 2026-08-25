@@ -152,7 +152,7 @@ const storeAuthReturnView = (view: AppView) => {
 };
 
 export default function App() {
-  const { user } = useAuth();
+  const { authDebug, user } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(() => readAuthReturnView() || 'cover');
   const {
     bookings,
@@ -2177,6 +2177,12 @@ export default function App() {
           }}
           reason={authModalReason}
         />
+
+        {authDebug && (
+          <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] left-3 right-3 z-[700] mx-auto max-w-[680px] break-words rounded-2xl border border-[#E5E0D6] bg-white/95 px-4 py-3 font-mono text-[10px] font-semibold leading-relaxed text-[#17231F] shadow-[0_12px_36px_rgba(11,23,20,0.18)] sm:bottom-4">
+            {authDebug}
+          </div>
+        )}
 
         {showContactUsModal && (
           <SupportContactModal onClose={() => setShowContactUsModal(false)} />

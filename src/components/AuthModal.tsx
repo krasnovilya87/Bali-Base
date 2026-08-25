@@ -17,6 +17,7 @@ type EmailAccountState = 'unknown' | 'registered' | 'new';
 export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
   const { tr } = useI18n();
   const {
+    authDebug,
     authError,
     clearAuthStatus,
     createEmailPasswordUser,
@@ -327,7 +328,18 @@ export default function AuthModal({ isOpen, onClose, reason }: AuthModalProps) {
 
               {(authError || emailLinkSent) && (
                 <div className={`mt-4 rounded-2xl px-4 py-3 text-xs font-bold ${authError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                  {authError || tr('auth.passwordResetSent')}
+                  <div>{authError || tr('auth.passwordResetSent')}</div>
+                  {authError && authDebug && (
+                    <div className="mt-2 break-words rounded-xl bg-white/70 px-3 py-2 font-mono text-[10px] font-semibold leading-relaxed text-red-900">
+                      {authDebug}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {authDebug && (
+                <div className="mt-4 break-words rounded-2xl border border-[#E5E0D6] bg-white/70 px-4 py-3 font-mono text-[10px] font-semibold leading-relaxed text-[#68726E]">
+                  {authDebug}
                 </div>
               )}
             </div>

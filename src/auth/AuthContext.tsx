@@ -105,6 +105,9 @@ const shouldRetryGoogleSignInWithRedirect = (code: string) =>
     'auth/operation-not-supported-in-this-environment'
   ].includes(code);
 
+const getAuthErrorCode = (error: unknown) =>
+  typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : 'unknown';
+
 const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
   const userRef = doc(db, 'users', user.uid);
   const existingProfile = await getDoc(userRef);
@@ -175,11 +178,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthDebug(`Google redirect user: ${redirectCredential.user.email || redirectCredential.user.uid}`);
           redirectDebugHandled = true;
           await safeUpsertUserProfile(redirectCredential.user, 'google');
+        } else {
+          setAuthDebug(`Google redirect empty. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+          redirectDebugHandled = true;
         }
       } catch (error) {
         if (isMounted) {
           setAuthError(error instanceof Error ? error.message : 'Could not complete Google sign in.');
-          setAuthDebug(`Google redirect failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+          setAuthDebug(`Google redirect failed. code=${getAuthErrorCode(error)}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
           redirectDebugHandled = true;
         }
       }
@@ -205,6 +211,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         if (nextUser) {
           setAuthDebug(`Auth state changed. currentUser=${nextUser.email || nextUser.uid}`);
+        } else {
+          setAuthDebug(`Auth state changed. currentUser=no, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}`);
         }
         if (nextUser) {
           safeUpsertUserProfile(nextUser, 'existing_session');
@@ -277,7 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthDebug(`Google popup user: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'google');
       } catch (error) {
-        const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : '';
+        const code = getAuthErrorCode(error);
         if (shouldRetryGoogleSignInWithRedirect(code)) {
           const provider = new GoogleAuthProvider();
           provider.setCustomParameters({ prompt: 'select_account' });
@@ -287,7 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setAuthError(error instanceof Error ? error.message : 'Could not sign in with Google popup.');
-        setAuthDebug(`Google popup failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
+        setAuthDebug(`Google popup failed. code=${code}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     sendEmailLink: async (email: string, termsAccepted: boolean) => {
