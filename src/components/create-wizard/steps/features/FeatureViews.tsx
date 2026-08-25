@@ -27,13 +27,13 @@ const FeatureViews: React.FC<FeatureSectionProps> = (props) => {
                             key={v.value}
                             type="button"
                             onClick={() => toggleViewType(v.value)}
-                            className={`pl pl-interactive p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-1 cursor-pointer select-none h-[95px] relative ${isActive
-                              ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm'
+                            className={`pl pl-interactive wizard-choice-tile p-2.5 rounded-2xl text-center flex flex-col items-center justify-center gap-1 cursor-pointer select-none h-[95px] relative ${isActive
+                              ? 'wizard-choice-tile--active'
                               : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
                               }`}
                           >
                             {isActive && (
-                              <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[7px] font-extrabold z-10 animate-scale-up">✓</span>
+                              <span className="wizard-choice-check absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[7px] font-extrabold z-10 animate-scale-up">✓</span>
                             )}
                             <span className="text-2xl leading-none">{v.icon}</span>
                             <span className="text-xs font-sans font-bold leading-tight mt-1">{v.label}</span>

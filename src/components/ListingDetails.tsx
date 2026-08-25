@@ -1111,6 +1111,7 @@ export default function ListingDetails({
     } as Record<string, string>,
     cleaningFrequency: {
       none: 'Не указана',
+      '2_times_week': '2 раза в неделю',
       '3_times_week': '3 раза в неделю',
       once_week: 'Раз в неделю',
       daily: 'Ежедневно'
@@ -1230,7 +1231,7 @@ export default function ListingDetails({
       icon: '🔄',
       label: 'Построен / реновация',
       value: listing.yearBuilt === 'other'
-        ? 'Другое'
+        ? '-'
         : `${listing.yearBuilt} г${listing.yearRenovated ? ` (рен. ${listing.yearRenovated})` : ''}`
     });
   }

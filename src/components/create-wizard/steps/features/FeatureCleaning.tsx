@@ -11,9 +11,11 @@ const FeatureCleaning: React.FC<FeatureSectionProps> = (props) => {
     ? tr('wizard.features.cleaning.daily')
     : cleaningFrequency === '3_times_week'
       ? tr('wizard.features.cleaning.threeTimesWeek')
-      : cleaningFrequency === 'once_week'
-        ? tr('wizard.features.cleaning.onceWeek')
-        : tr('wizard.features.cleaning.none');
+      : cleaningFrequency === '2_times_week'
+        ? tr('wizard.features.cleaning.twoTimesWeek')
+        : cleaningFrequency === 'once_week'
+          ? tr('wizard.features.cleaning.onceWeek')
+          : tr('wizard.features.cleaning.none');
 
   return (
     <>
@@ -29,22 +31,24 @@ const FeatureCleaning: React.FC<FeatureSectionProps> = (props) => {
                     <div className="pt-2 relative">
                       <Polzunok
                         min={0}
-                        max={3}
+                        max={4}
                         step={1}
                         value={
-                          cleaningFrequency === 'daily' ? 3 :
-                            cleaningFrequency === '3_times_week' ? 2 :
-                              cleaningFrequency === 'once_week' ? 1 : 0
+                          cleaningFrequency === 'daily' ? 4 :
+                            cleaningFrequency === '3_times_week' ? 3 :
+                              cleaningFrequency === '2_times_week' ? 2 :
+                                cleaningFrequency === 'once_week' ? 1 : 0
                         }
                         onChange={idx => {
-                          const freqMap: ('none' | 'once_week' | '3_times_week' | 'daily')[] = ['none', 'once_week', '3_times_week', 'daily'];
+                          const freqMap: ('none' | 'once_week' | '2_times_week' | '3_times_week' | 'daily')[] = ['none', 'once_week', '2_times_week', '3_times_week', 'daily'];
                           setCleaningFrequency(freqMap[idx]);
                         }}
                       />
                       <div className="relative h-4 mt-1.5 text-[10px] text-gray-400 font-sans font-bold">
                         <span className="absolute left-0">{tr('wizard.features.cleaning.none')}</span>
-                        <span className="absolute left-1/3 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.onceWeekShort')}</span>
-                        <span className="absolute left-2/3 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.threeTimesWeekShort')}</span>
+                        <span className="absolute left-1/4 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.onceWeekShort')}</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.twoTimesWeekShort')}</span>
+                        <span className="absolute left-3/4 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.threeTimesWeekShort')}</span>
                         <span className="absolute right-0">{tr('wizard.features.cleaning.daily')}</span>
                       </div>
                     </div>

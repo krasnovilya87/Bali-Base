@@ -26,13 +26,13 @@ const FeatureDensity: React.FC<FeatureSectionProps> = (props) => {
                               key={density.value}
                               type="button"
                               onClick={() => setDensityType(density.value as any)}
-                              className={`pl pl-interactive p-3.5 rounded-2xl text-center flex flex-col items-center justify-center gap-1 cursor-pointer select-none relative overflow-hidden min-h-[110px] ${isActive
-                                ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-bold shadow-xs scale-102'
+                              className={`pl pl-interactive wizard-choice-tile p-3.5 rounded-2xl text-center flex flex-col items-center justify-center gap-1 cursor-pointer select-none relative overflow-hidden min-h-[110px] ${isActive
+                                ? 'wizard-choice-tile--active'
                                 : 'bg-white border-[#E5E7EB] text-gray-600 hover:border-[#FF7A50] hover:bg-white'
                                 }`}
                             >
                               {isActive && (
-                                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
+                                <span className="wizard-choice-check absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                               )}
                               <span className="text-3xl leading-none">{density.icon}</span>
                               <span className="text-xs font-sans font-extrabold mt-1">{density.label}</span>

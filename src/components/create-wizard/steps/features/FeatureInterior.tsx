@@ -27,13 +27,13 @@ const FeatureInterior: React.FC<FeatureSectionProps> = (props) => {
                             key={style.value}
                             type="button"
                             onClick={() => setInteriorStyle(style.value as any)}
-                            className={`pl pl-interactive p-2 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer select-none relative overflow-hidden h-[100px] ${isActive
-                              ? 'selected bg-[#FF7A50]/10 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm scale-102'
+                            className={`pl pl-interactive wizard-choice-tile p-2 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer select-none relative overflow-hidden h-[100px] ${isActive
+                              ? 'wizard-choice-tile--active'
                               : 'bg-white border-[#E5E7EB] text-gray-650 hover:border-[#FF7A50] hover:bg-gray-50/40'
                               }`}
                           >
                             {isActive && (
-                              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-[900] z-10 animate-scale-up">✓</span>
+                              <span className="wizard-choice-check absolute top-1 right-1 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-[900] z-10 animate-scale-up">✓</span>
                             )}
                             <span className="text-3xl leading-none">{style.icon}</span>
                             <span className="text-xs font-sans font-extrabold leading-tight">{style.label}</span>

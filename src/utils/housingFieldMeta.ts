@@ -254,6 +254,7 @@ const labelMaps = {
   } as Record<string, string>,
   cleaningFrequency: {
     none: 'Not included',
+    '2_times_week': '2 times per week',
     '3_times_week': '3 times per week',
     once_week: 'Once per week',
     daily: 'Daily'

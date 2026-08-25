@@ -158,6 +158,32 @@
   font-weight: 600 !important;
 }
 
+.pl.wizard-choice-tile {
+  box-shadow: inset 0 0 0 1px rgb(229 231 235) !important;
+}
+
+.pl.wizard-choice-tile:hover {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 122 80 / 65%),
+    0 14px 30px rgb(30 41 59 / 12%),
+    0 4px 10px rgb(30 41 59 / 6%) !important;
+}
+
+.pl.wizard-choice-tile--active {
+  background: rgb(255 122 80 / 12%) !important;
+  color: #FF7A50 !important;
+  box-shadow: inset 0 0 0 1px #FF7A50 !important;
+}
+
+.pl.wizard-choice-tile--active :where(span:not(.wizard-choice-check), p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: #FF7A50 !important;
+  font-weight: 800 !important;
+}
+
+.pl .wizard-choice-check {
+  color: #ffffff !important;
+}
+
 .pl-nearby {
   border: 0 !important;
   background: rgb(255 255 255 / 80%) !important;

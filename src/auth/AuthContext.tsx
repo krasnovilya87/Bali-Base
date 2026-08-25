@@ -23,13 +23,11 @@ import { auth, db } from '../firebase';
 const EMAIL_SIGN_IN_KEY = 'bali_base_email_sign_in';
 const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
 const EMAIL_PROVIDERS_COLLECTION = 'auth_email_providers';
-const AUTH_DEBUG_EVENTS_KEY = 'bali_base_auth_debug_events';
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   authError: string;
-  authDebug: string;
   emailLinkSent: boolean;
   signInWithGoogle: (termsAccepted: boolean) => Promise<void>;
   sendEmailLink: (email: string, termsAccepted: boolean) => Promise<void>;
@@ -106,31 +104,6 @@ const shouldRetryGoogleSignInWithRedirect = (code: string) =>
     'auth/operation-not-supported-in-this-environment'
   ].includes(code);
 
-const getAuthErrorCode = (error: unknown) =>
-  typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : 'unknown';
-
-const readAuthDebugEvents = () => {
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const raw = window.sessionStorage.getItem(AUTH_DEBUG_EVENTS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((event): event is string => typeof event === 'string').slice(-5) : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeAuthDebugEvents = (events: string[]) => {
-  if (typeof window === 'undefined') return;
-
-  try {
-    window.sessionStorage.setItem(AUTH_DEBUG_EVENTS_KEY, JSON.stringify(events.slice(-5)));
-  } catch {
-    // Ignore storage failures; debug output is best effort only.
-  }
-};
-
 const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
   const userRef = doc(db, 'users', user.uid);
   const existingProfile = await getDoc(userRef);
@@ -173,18 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
-  const [authDebugEvents, setAuthDebugEvents] = useState<string[]>(readAuthDebugEvents);
   const [emailLinkSent, setEmailLinkSent] = useState(false);
-  const authDebug = authDebugEvents.join('\n');
-
-  const pushAuthDebug = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-    setAuthDebugEvents(events => {
-      const nextEvents = [...events, `${timestamp} ${message}`].slice(-5);
-      writeAuthDebugEvents(nextEvents);
-      return nextEvents;
-    });
-  };
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -197,34 +159,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setPersistence(auth, browserLocalPersistence);
       } catch (error) {
         console.warn('Firebase Auth persistence setup failed:', error);
-        if (isMounted) {
-          pushAuthDebug(`Persistence setup failed: ${error instanceof Error ? error.message : String(error)}`);
-        }
       }
 
-      let redirectDebugHandled = false;
       try {
         const redirectCredential = await getRedirectResult(auth);
         if (redirectCredential?.user) {
           setUser(redirectCredential.user);
           setAuthError('');
-          pushAuthDebug(`Google redirect user: ${redirectCredential.user.email || redirectCredential.user.uid}`);
-          redirectDebugHandled = true;
           await safeUpsertUserProfile(redirectCredential.user, 'google');
-        } else {
-          pushAuthDebug(`Google redirect empty. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
-          redirectDebugHandled = true;
         }
       } catch (error) {
         if (isMounted) {
           setAuthError(error instanceof Error ? error.message : 'Could not complete Google sign in.');
-          pushAuthDebug(`Google redirect failed. code=${getAuthErrorCode(error)}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
-          redirectDebugHandled = true;
         }
-      }
-
-      if (!redirectDebugHandled) {
-        pushAuthDebug(`Auth initialized. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
 
       unsubscribe = onAuthStateChanged(auth, nextUser => {
@@ -242,11 +189,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           window.localStorage.removeItem(CURRENT_USER_PROFILE_KEY);
         }
         setLoading(false);
-        if (nextUser) {
-          pushAuthDebug(`Auth state changed. currentUser=${nextUser.email || nextUser.uid}`);
-        } else {
-          pushAuthDebug(`Auth state changed. currentUser=no, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}`);
-        }
         if (nextUser) {
           safeUpsertUserProfile(nextUser, 'existing_session');
         }
@@ -292,7 +234,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     authError,
-    authDebug,
     emailLinkSent,
     signInWithGoogle: async (termsAccepted: boolean) => {
       setAuthError('');
@@ -306,29 +247,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         if (shouldUseRedirectSignIn()) {
-          pushAuthDebug(`Starting Google redirect. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
           await signInWithRedirect(auth, provider);
           return;
         }
 
-        pushAuthDebug(`Starting Google popup. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
         const credential = await signInWithPopup(auth, provider);
         setUser(credential.user);
         setAuthError('');
-        pushAuthDebug(`Google popup user: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'google');
       } catch (error) {
-        const code = getAuthErrorCode(error);
+        const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : '';
         if (shouldRetryGoogleSignInWithRedirect(code)) {
           const provider = new GoogleAuthProvider();
           provider.setCustomParameters({ prompt: 'select_account' });
-          pushAuthDebug(`Retrying Google redirect after popup failure. code=${code || 'unknown'}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}`);
           await signInWithRedirect(auth, provider);
           return;
         }
 
         setAuthError(error instanceof Error ? error.message : 'Could not sign in with Google popup.');
-        pushAuthDebug(`Google popup failed. code=${code}, projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, url=${window.location.href}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     sendEmailLink: async (email: string, termsAccepted: boolean) => {
@@ -382,11 +318,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(credential.user);
-        pushAuthDebug(`Email password user: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'email_link');
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not sign in with email and password.');
-        pushAuthDebug(`Email password sign in failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     createEmailPasswordUser: async (email: string, password: string, confirmPassword: string) => {
@@ -410,11 +344,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         setUser(credential.user);
-        pushAuthDebug(`Email password user created: ${credential.user.email || credential.user.uid}`);
         await safeUpsertUserProfile(credential.user, 'email_link');
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not create an account.');
-        pushAuthDebug(`Email password sign up failed. projectId=${auth.app.options.projectId || 'unknown'}, authDomain=${auth.app.options.authDomain || 'unknown'}, currentUser=${auth.currentUser ? 'yes' : 'no'}`);
       }
     },
     getEmailSignInMethods: async (email: string) => {
@@ -438,7 +370,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (indexError: any) {
           if (indexError?.code === 'permission-denied') {
             indexedProviders = ['google.com'];
-            pushAuthDebug('Email provider index is not readable yet. Deploy firestore.rules to enable exact provider detection.');
           } else {
             throw indexError;
           }
@@ -473,7 +404,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError('');
       setEmailLinkSent(false);
     }
-  }), [authDebug, authError, emailLinkSent, loading, user]);
+  }), [authError, emailLinkSent, loading, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

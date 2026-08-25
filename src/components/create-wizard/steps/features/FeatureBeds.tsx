@@ -37,15 +37,15 @@ const FeatureBeds: React.FC<FeatureSectionProps> = (props) => {
                               }
                             }}
                             title={isLimitReached ? tr('wizard.features.beds.max', { count: maxBeds }) : undefined}
-                            className={`pl pl-interactive p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer min-h-[120px] relative ${isActive
-                              ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm scale-102'
+                            className={`pl pl-interactive wizard-choice-tile p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer min-h-[120px] relative ${isActive
+                              ? 'wizard-choice-tile--active'
                               : isLimitReached
                                 ? 'bg-white border-[#E5E7EB] text-gray-300 opacity-50 cursor-not-allowed'
                                 : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
                               }`}
                           >
                             {isActive && (
-                              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
+                              <span className="wizard-choice-check absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                             )}
                             <span className="text-[9px] font-bold text-gray-400 leading-none">{bed.section}</span>
                             <span className="text-3xl leading-none my-0.5">{bed.icon}</span>

@@ -29,13 +29,13 @@ const FeaturePreferences: React.FC<FeatureSectionProps> = (props) => {
                             key={opt.value}
                             type="button"
                             onClick={() => toggleExtraOption(opt.value)}
-                            className={`pl pl-interactive w-full p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer select-none relative overflow-hidden h-[105px] ${isActive
-                              ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold scale-102 font-sans shadow-sm'
+                            className={`pl pl-interactive wizard-choice-tile w-full p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer select-none relative overflow-hidden h-[105px] ${isActive
+                              ? 'wizard-choice-tile--active'
                               : 'bg-white border-[#E5E7EB] text-gray-655 hover:border-[#FF7A50]'
                               }`}
                           >
                             {isActive && (
-                              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
+                              <span className="wizard-choice-check absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#FF7A50] text-white flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                             )}
                             <span className="text-3xl leading-none">{opt.icon}</span>
                             <span className="text-xs font-extrabold font-sans leading-tight mt-0.5">{opt.label}</span>

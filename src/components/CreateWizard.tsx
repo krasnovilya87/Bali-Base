@@ -178,14 +178,14 @@ export default function CreateWizard({
   const [selectedBedTypes, setSelectedBedTypes] = useState<string[]>(initialListing?.bedTypes || (initialListing?.bedType ? [initialListing.bedType] : []));
   const [selectedViews, setSelectedViews] = useState<string[]>(initialListing?.viewType ? [initialListing.viewType] : []);
   const [internetSpeed, setInternetSpeed] = useState<number>(initialListing?.internetSpeed || 0);
-  const [cleaningFrequency, setCleaningFrequency] = useState<'none' | '3_times_week' | 'once_week' | 'daily'>(initialListing?.cleaningFrequency || 'none');
+  const [cleaningFrequency, setCleaningFrequency] = useState<'none' | 'once_week' | '2_times_week' | '3_times_week' | 'daily'>(initialListing?.cleaningFrequency || 'none');
   const [cleanlinessTags, setCleanlinessTags] = useState<string[]>([]);
   const [densityType, setDensityType] = useState<'cozy' | 'medium' | 'large'>(initialListing?.densityType || 'cozy');
   const [showKitchenTooltip, setShowKitchenTooltip] = useState<boolean>(false);
 
   const currentYear = new Date().getFullYear();
   const recentYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
-  const [yearBuilt, setYearBuilt] = useState<string>(String(initialListing?.yearBuilt || currentYear));
+  const [yearBuilt, setYearBuilt] = useState<string>(String(initialListing?.yearBuilt || 'other'));
 
   const [pricePerDay, setPricePerDay] = useState<number>(initialListing?.pricePerDay || 450000);
   const [pricePerMonth, setPricePerMonth] = useState<number>(initialListing?.pricePerMonth || 11000000);
@@ -956,10 +956,10 @@ export default function CreateWizard({
         </div>
 
         <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
-          <div className="relative pt-1 pb-1">
-            <div className="absolute left-[5%] right-[5%] top-4 h-px rounded-full bg-[#CBD5E1]" />
+          <div className="relative h-8 pt-0.5 pb-0.5 sm:h-auto sm:pt-1 sm:pb-1">
+            <div className="absolute left-[5%] right-[5%] top-3 h-px rounded-full bg-[#CBD5E1] sm:top-4" />
             <div
-              className="absolute left-[5%] top-4 h-px rounded-full bg-[#FF7A50] transition-all duration-300"
+              className="absolute left-[5%] top-3 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
               style={{ width: `calc(90% * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
             />
             <div className="relative grid w-full grid-cols-10 gap-0 sm:gap-3">
@@ -972,13 +972,13 @@ export default function CreateWizard({
                     key={label}
                     type="button"
                     onClick={() => setStep(itemStep)}
-                    className="group flex min-w-0 flex-col items-center gap-1.5 text-center focus:outline-none"
+                    className="group flex h-8 min-w-0 flex-col items-center gap-0.5 text-center focus:outline-none sm:h-auto sm:gap-1.5"
                     title={label}
                   >
                     <span className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-medium shadow-[0_0_0_3px_#EAEAEC] transition ${isActive ? 'border-[#FF7A50] bg-white text-[#FF7A50] ring-2 ring-[#FF7A50]/25' : isReached ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#CBD5E1] bg-[#E5E7EB] text-[#64748B]'}`}>
                       {itemStep}
                     </span>
-                    <span className={`hidden w-full truncate text-[9px] font-normal leading-tight transition sm:block ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
+                    <span className={`block w-[calc(100vw/10-8px)] max-w-12 truncate text-center text-[6px] font-normal leading-[0.6rem] transition sm:w-full sm:max-w-none sm:text-[9px] sm:leading-tight ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
                       {label}
                     </span>
                   </button>

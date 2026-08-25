@@ -1382,6 +1382,7 @@ export default function HousingFilters({
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
                 {localFilters.cleaningFrequency.includes('daily') ? tr('details.option.cleaningFrequency.daily') :
                  localFilters.cleaningFrequency.includes('3_times_week') ? tr('details.option.cleaningFrequency.3_times_week') :
+                 localFilters.cleaningFrequency.includes('2_times_week') ? tr('details.option.cleaningFrequency.2_times_week') :
                  localFilters.cleaningFrequency.includes('once_week') ? tr('details.option.cleaningFrequency.once_week') : tr('filters.cleaning.none')}
               </span>
             </div>
@@ -1389,21 +1390,23 @@ export default function HousingFilters({
             <div className="pt-2 relative">
               <Polzunok
                 min={0}
-                max={3}
+                max={4}
                 step={1}
                 value={
-                  localFilters.cleaningFrequency.includes('daily') ? 3 :
-                  localFilters.cleaningFrequency.includes('3_times_week') ? 2 :
+                  localFilters.cleaningFrequency.includes('daily') ? 4 :
+                  localFilters.cleaningFrequency.includes('3_times_week') ? 3 :
+                  localFilters.cleaningFrequency.includes('2_times_week') ? 2 :
                   localFilters.cleaningFrequency.includes('once_week') ? 1 : 0
                 }
                 onChange={idx => {
-                  const freqMap = ['none', 'once_week', '3_times_week', 'daily'];
+                  const freqMap = ['none', 'once_week', '2_times_week', '3_times_week', 'daily'];
                   setLocalFilters({ ...localFilters, cleaningFrequency: [freqMap[idx]] });
                 }}
               />
               {renderSliderScaleLabels([
                 tr('filters.cleaning.none'),
                 tr('filters.cleaning.onceShort'),
+                tr('filters.cleaning.twoShort'),
                 tr('filters.cleaning.threeShort'),
                 tr('details.option.cleaningFrequency.daily')
               ])}
