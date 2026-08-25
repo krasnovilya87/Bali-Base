@@ -453,6 +453,22 @@
   border: 1px solid transparent !important;
 }
 
+.pl.pl-muted-option.filter-muted-choice--active {
+  background-color: rgb(255 122 80 / 15%) !important;
+  color: #FF7A50 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 12px rgb(255 122 80 / 8%) !important;
+}
+
+.pl.pl-muted-option.filter-muted-choice--active :where(span:not(.filter-muted-choice-check), p, h1, h2, h3, h4, h5, h6, label, button, a) {
+  color: #FF7A50 !important;
+  font-weight: 800 !important;
+}
+
+.pl.pl-muted-option .filter-muted-choice-check {
+  color: #1E293B !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .pl.pl-interactive,

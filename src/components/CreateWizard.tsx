@@ -962,6 +962,9 @@ export default function CreateWizard({
               className="absolute left-[5%] top-3 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
               style={{ width: `calc(90% * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
             />
+            <div className="absolute inset-x-0 bottom-0 block truncate px-10 text-center text-[10px] font-bold leading-none text-[#FF7A50] sm:hidden">
+              {stepLabels[step - 1]}
+            </div>
             <div className="relative grid w-full grid-cols-10 gap-0 sm:gap-3">
               {stepLabels.map((label, index) => {
                 const itemStep = index + 1;
@@ -972,13 +975,13 @@ export default function CreateWizard({
                     key={label}
                     type="button"
                     onClick={() => setStep(itemStep)}
-                    className="group flex h-8 min-w-0 flex-col items-center gap-0.5 text-center focus:outline-none sm:h-auto sm:gap-1.5"
+                    className="group flex h-6 min-w-0 flex-col items-center text-center focus:outline-none sm:h-auto sm:gap-1.5"
                     title={label}
                   >
                     <span className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[9px] font-medium shadow-[0_0_0_3px_#EAEAEC] transition ${isActive ? 'border-[#FF7A50] bg-white text-[#FF7A50] ring-2 ring-[#FF7A50]/25' : isReached ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#CBD5E1] bg-[#E5E7EB] text-[#64748B]'}`}>
                       {itemStep}
                     </span>
-                    <span className={`block w-[calc(100vw/10-8px)] max-w-12 truncate text-center text-[6px] font-normal leading-[0.6rem] transition sm:w-full sm:max-w-none sm:text-[9px] sm:leading-tight ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
+                    <span className={`hidden w-full truncate text-[9px] font-normal leading-tight transition sm:block ${isReached ? 'text-[#FF7A50]' : 'text-[#94A3B8]'}`}>
                       {label}
                     </span>
                   </button>

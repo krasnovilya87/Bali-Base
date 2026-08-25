@@ -46,9 +46,9 @@ const FeatureCleaning: React.FC<FeatureSectionProps> = (props) => {
                       />
                       <div className="relative h-4 mt-1.5 text-[10px] text-gray-400 font-sans font-bold">
                         <span className="absolute left-0">{tr('wizard.features.cleaning.none')}</span>
-                        <span className="absolute left-1/4 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.onceWeekShort')}</span>
-                        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.twoTimesWeekShort')}</span>
-                        <span className="absolute left-3/4 -translate-x-1/2 whitespace-nowrap">{tr('wizard.features.cleaning.threeTimesWeekShort')}</span>
+                        <span className="absolute left-1/4 -translate-x-1/2 whitespace-nowrap">1</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">2</span>
+                        <span className="absolute left-3/4 -translate-x-1/2 whitespace-nowrap">3</span>
                         <span className="absolute right-0">{tr('wizard.features.cleaning.daily')}</span>
                       </div>
                     </div>

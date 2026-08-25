@@ -1075,7 +1075,7 @@ export default function HousingFilters({
                 }}
                 className={`pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between transition cursor-pointer select-none ${
                   hasPrivateKitchen
-                    ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm'
+                    ? 'filter-muted-choice--active'
                     : 'text-gray-655'
                 }`}
               >
@@ -1088,7 +1088,7 @@ export default function HousingFilters({
                     ? 'border-[#FF7A50] bg-[#FF7A50] text-white'
                     : 'border-[#E5E7EB] bg-white'
                 }`}>
-                  {hasPrivateKitchen && <span className="text-[10px] font-bold">✓</span>}
+                  {hasPrivateKitchen && <span className="filter-muted-choice-check text-[10px] font-bold">✓</span>}
                 </div>
               </button>
             </div>
@@ -1163,7 +1163,7 @@ export default function HousingFilters({
                 }}
                 className={`pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between transition cursor-pointer select-none ${
                   localFilters.poolType.includes('infinity')
-                    ? 'selected bg-[#FF7A50]/15 border-[#FF7A50] text-[#FF7A50] font-extrabold shadow-sm'
+                    ? 'filter-muted-choice--active'
                     : 'text-gray-655'
                 }`}
               >
@@ -1176,7 +1176,7 @@ export default function HousingFilters({
                     ? 'border-[#FF7A50] bg-[#FF7A50] text-white'
                     : 'border-[#E5E7EB] bg-white'
                 }`}>
-                  {localFilters.poolType.includes('infinity') && <span className="text-[10px] font-bold">✓</span>}
+                  {localFilters.poolType.includes('infinity') && <span className="filter-muted-choice-check text-[10px] font-bold">✓</span>}
                 </div>
               </button>
             </div>
