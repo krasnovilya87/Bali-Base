@@ -741,7 +741,7 @@ const fr: TranslationDictionary = {
   "wizard.photoDeleteBody": "Cette photo sera retiree du brouillon de l'annonce.",
   "wizard.photoDeleteConfirm": "Oui, supprimer",
   "wizard.extraPhoto": "Photo supplementaire",
-  "wizard.photos.assignCategories": "Attribuer des categories aux photos",
+  "wizard.photos.assignCategories": "Veuillez attribuer des categories aux photos :",
   "wizard.photos.required": "Photos requises",
   "wizard.photos.optional": "Photos optionnelles",
   "wizard.photos.localPreviewMode": "mode apercu local applique",

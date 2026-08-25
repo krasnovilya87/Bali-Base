@@ -1103,7 +1103,7 @@ const en: TranslationDictionary = {
   "admin.users.status.banned": "Banned",
   "admin.messages.status.open": "Open",
   "admin.messages.status.closed": "Closed",
-  "wizard.photos.assignCategories": "Assign categories for photos",
+  "wizard.photos.assignCategories": "Please assign categories for photos:",
   "wizard.photos.required": "Required photos",
   "wizard.photos.optional": "Optional photos",
   "wizard.photos.localPreviewMode": "local preview mode applied",

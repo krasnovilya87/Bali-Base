@@ -778,7 +778,7 @@ const id: TranslationDictionary = {
   "wizard.photoDeleteBody": "Foto ini akan dihapus dari draf iklan.",
   "wizard.photoDeleteConfirm": "Ya, hapus",
   "wizard.extraPhoto": "Foto tambahan",
-  "wizard.photos.assignCategories": "Tetapkan kategori untuk foto",
+  "wizard.photos.assignCategories": "Silakan tetapkan kategori untuk foto:",
   "wizard.photos.required": "Foto wajib",
   "wizard.photos.optional": "Foto opsional",
   "wizard.photos.localPreviewMode": "mode pratinjau lokal diterapkan",

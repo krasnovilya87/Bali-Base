@@ -967,7 +967,7 @@ export default function CreateWizard({
             <div className="absolute inset-x-0 -bottom-1 block truncate px-10 text-center text-[10px] font-normal leading-none text-[#94A3B8] sm:hidden">
               {stepLabels[step - 1]}
             </div>
-                    <div className="relative grid w-full -translate-y-1 grid-cols-10 gap-0 sm:translate-y-0 sm:gap-3">
+                    <div className="relative grid w-full -translate-y-[6px] grid-cols-10 gap-0 sm:translate-y-0 sm:gap-3">
               {stepLabels.map((label, index) => {
                 const itemStep = index + 1;
                 const isReached = step >= itemStep;

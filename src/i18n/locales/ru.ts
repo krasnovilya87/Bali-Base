@@ -881,7 +881,7 @@ const ru: TranslationDictionary = {
   "wizard.step.ical": "iCal",
   "wizard.step.contacts": "Контакты",
   "wizard.step.publish": "Публикация",
-  "wizard.photos.assignCategories": "Назначьте категории для фотографий",
+  "wizard.photos.assignCategories": "Назначьте, пожалуйста, категории для фотографий:",
   "wizard.photos.required": "Обязательные фотографии",
   "wizard.photos.optional": "Необязательные фотографии",
   "wizard.photos.localPreviewMode": "применен локальный режим просмотра",

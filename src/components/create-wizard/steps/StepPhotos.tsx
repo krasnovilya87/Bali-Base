@@ -40,6 +40,7 @@ type StepPhotosProps = {
   photoUrls: string[];
   setDraggedPhotoSlotId: React.Dispatch<React.SetStateAction<PhotoSlotId | null>>;
   draggedPhotoSlotId: PhotoSlotId | null;
+  getAssignedPhotoUrls: (slotId: PhotoSlotId) => string[];
   getPhotoSlot: (photoUrl: string) => PhotoSlotConfig | undefined;
   assignPhotoToSlot: (photoUrl: string, slotId: PhotoSlotId | 'extra') => void;
   handleRemovePhoto: (index: number) => void;
@@ -57,6 +58,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   photoUrls,
   setDraggedPhotoSlotId,
   draggedPhotoSlotId,
+  getAssignedPhotoUrls,
   getPhotoSlot,
   assignPhotoToSlot,
   handleRemovePhoto
@@ -135,6 +137,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
             requiredSlots={REQUIRED_PHOTO_SLOTS}
             optionalSlots={OPTIONAL_PHOTO_SLOTS}
             setDraggedPhotoSlotId={setDraggedPhotoSlotId}
+            getAssignedPhotoUrls={getAssignedPhotoUrls}
           />
         )}
 

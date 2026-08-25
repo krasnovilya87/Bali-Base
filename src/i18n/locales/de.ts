@@ -742,7 +742,7 @@ const de: TranslationDictionary = {
   "wizard.photoDeleteBody": "Dieses Foto wird aus dem Anzeigenentwurf entfernt.",
   "wizard.photoDeleteConfirm": "Ja, loeschen",
   "wizard.extraPhoto": "Extra-Foto",
-  "wizard.photos.assignCategories": "Kategorien fuer Fotos zuweisen",
+  "wizard.photos.assignCategories": "Bitte Kategorien fuer Fotos zuweisen:",
   "wizard.photos.required": "Pflichtfotos",
   "wizard.photos.optional": "Optionale Fotos",
   "wizard.photos.localPreviewMode": "lokaler Vorschaumodus angewendet",
