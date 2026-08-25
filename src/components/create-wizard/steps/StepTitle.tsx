@@ -169,7 +169,7 @@ const StepTitle: React.FC<StepTitleProps> = ({
     {showsUnitTypeAndCount && (
       <div className="space-y-2">
         <label className="font-semibold block text-xs text-[#1E293B]">{tr('wizard.unitTypeLabel')}</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible sm:pb-0">
           {UNIT_TYPE_OPTIONS.map(value => {
             const isSelected = unitType === value;
             return (
@@ -177,7 +177,7 @@ const StepTitle: React.FC<StepTitleProps> = ({
                 key={value}
                 type="button"
                 onClick={() => setUnitType(current => current === value ? '' : value)}
-                className={`pl pl-interactive px-3 py-3 rounded-xl border-0 text-xs font-bold transition active:scale-95 ${
+                className={`pl pl-interactive min-w-[112px] px-3 py-3 rounded-xl border-0 text-xs font-bold transition active:scale-95 sm:min-w-0 ${
                   isSelected
                     ? 'selected text-[#1E293B] ring-0'
                     : 'text-gray-600'

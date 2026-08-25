@@ -3,14 +3,16 @@ import express from 'express';
 import { createAiModerationRouter } from './aiModeration';
 import { createAiTranslationRouter } from './aiTranslation';
 import { createGooglePlacesReviewsRouter } from './googlePlacesReviews';
+import { createImageUploadRouter } from './imageUpload';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '25mb' }));
 app.use('/api/ai', createAiTranslationRouter());
 app.use('/api/ai', createAiModerationRouter());
 app.use('/api/google-places', createGooglePlacesReviewsRouter());
+app.use('/api/image-upload', createImageUploadRouter());
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });

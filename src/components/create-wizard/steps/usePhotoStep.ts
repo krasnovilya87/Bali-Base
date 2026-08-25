@@ -136,7 +136,10 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     let uploadableImage: Blob | File = file;
     try {
       uploadableImage = await resizeAndCompressListingImage(file);
-      const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage);
+      const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
+        fileName: file.name,
+        fileType: file.type
+      });
       setPhotoUrls(prev => [...prev, uploadedUrl]);
     } catch (error) {
       const diagnostic: PhotoUploadDiagnostic = {
