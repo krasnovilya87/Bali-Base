@@ -23,6 +23,7 @@ import { auth, db } from '../firebase';
 const EMAIL_SIGN_IN_KEY = 'bali_base_email_sign_in';
 const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
 const EMAIL_PROVIDERS_COLLECTION = 'auth_email_providers';
+const AUTH_DEBUG_EVENTS_KEY = 'bali_base_auth_debug_events';
 
 type AuthContextValue = {
   user: User | null;
@@ -93,6 +94,12 @@ const shouldUseRedirectSignIn = () => {
   const hasCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const isSmallViewport = window.matchMedia?.('(max-width: 768px)').matches ?? window.innerWidth <= 768;
   const isMobileUserAgent = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isIosSafari =
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) &&
+    /Safari/i.test(navigator.userAgent) &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
+
+  if (isIosSafari) return false;
 
   return isMobileUserAgent || (hasCoarsePointer && isSmallViewport);
 };
@@ -107,6 +114,28 @@ const shouldRetryGoogleSignInWithRedirect = (code: string) =>
 
 const getAuthErrorCode = (error: unknown) =>
   typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : 'unknown';
+
+const readAuthDebugEvents = () => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_DEBUG_EVENTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((event): event is string => typeof event === 'string').slice(-5) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeAuthDebugEvents = (events: string[]) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(AUTH_DEBUG_EVENTS_KEY, JSON.stringify(events.slice(-5)));
+  } catch {
+    // Ignore storage failures; debug output is best effort only.
+  }
+};
 
 const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
   const userRef = doc(db, 'users', user.uid);
@@ -150,13 +179,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
-  const [authDebugEvents, setAuthDebugEvents] = useState<string[]>([]);
+  const [authDebugEvents, setAuthDebugEvents] = useState<string[]>(readAuthDebugEvents);
   const [emailLinkSent, setEmailLinkSent] = useState(false);
   const authDebug = authDebugEvents.join('\n');
 
   const pushAuthDebug = (message: string) => {
     const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-    setAuthDebugEvents(events => [...events, `${timestamp} ${message}`].slice(-5));
+    setAuthDebugEvents(events => {
+      const nextEvents = [...events, `${timestamp} ${message}`].slice(-5);
+      writeAuthDebugEvents(nextEvents);
+      return nextEvents;
+    });
   };
 
   useEffect(() => {
