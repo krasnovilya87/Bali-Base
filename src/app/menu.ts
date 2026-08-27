@@ -1,50 +1,116 @@
 // @ts-ignore
-import menuHousing from '../assets/images/menu_housing_1780404154855_optimized.webp';
+import menuHousing from '../assets/images/menu_housing_firebase.webp';
 // @ts-ignore
-import menuTransport from '../assets/images/menu_transport_1780404170729_optimized.webp';
+import menuTransport from '../assets/images/menu_transport_firebase.webp';
 // @ts-ignore
-import menuServices from '../assets/images/menu_services_1780404187685_optimized.webp';
+import menuServices from '../assets/images/menu_services_firebase.webp';
 // @ts-ignore
-import menuAds from '../assets/images/menu_ads_1780404203502_optimized.webp';
+import menuAds from '../assets/images/menu_ads_firebase.webp';
 // @ts-ignore
-import menuAfisha from '../assets/images/menu_afisha_1780404226444_optimized.webp';
+import menuAfisha from '../assets/images/menu_afisha_firebase.webp';
 // @ts-ignore
-import menuLife from '../assets/images/menu_life_1780404239433_optimized.webp';
+import menuLife from '../assets/images/menu_life_firebase.webp';
+// @ts-ignore
+import menuInvestments from '../assets/images/menu_investments_firebase.webp';
+// @ts-ignore
+import menuUseful from '../assets/images/menu_useful_firebase.webp';
+// @ts-ignore
+import menuL2EntirePlace from '../assets/images/menu_l2_entire_place.webp';
+// @ts-ignore
+import menuL2PrivateSuite from '../assets/images/menu_l2_private_suite.webp';
+// @ts-ignore
+import menuL2PrivateRoom from '../assets/images/menu_l2_private_room.webp';
+// @ts-ignore
+import menuL2Scooters from '../assets/images/menu_l2_scooters_firebase.webp';
+// @ts-ignore
+import menuL2Motorcycles from '../assets/images/menu_l2_motorcycles_firebase.webp';
+// @ts-ignore
+import menuL2Cars from '../assets/images/menu_l2_cars_firebase.webp';
+// @ts-ignore
+import menuL2Villas from '../assets/images/menu_l2_villas.webp';
+// @ts-ignore
+import menuL2Land from '../assets/images/menu_l2_land.webp';
+// @ts-ignore
+import menuL2Business from '../assets/images/menu_l2_business.webp';
+// @ts-ignore
+import menuL2ForLeisure from '../assets/images/menu_l2_for_leisure.webp';
+// @ts-ignore
+import menuL2ForLiving from '../assets/images/menu_l2_for_living.webp';
+// @ts-ignore
+import menuL2HouseholdServices from '../assets/images/menu_l2_household_services.webp';
+// @ts-ignore
+import menuL2BeautyCare from '../assets/images/menu_l2_beauty_care.png';
+// @ts-ignore
+import menuL2Health from '../assets/images/menu_l2_health.webp';
+// @ts-ignore
+import menuL2Education from '../assets/images/menu_l2_education.webp';
+// @ts-ignore
+import menuL2PhotoVideo from '../assets/images/menu_l2_photo_video.webp';
+// @ts-ignore
+import menuL2SportService from '../assets/images/menu_l2_sport_service.webp';
+// @ts-ignore
+import menuL2OtherServices from '../assets/images/menu_l2_other_services.png';
+// @ts-ignore
+import menuL2Electronics from '../assets/images/menu_l2_electronics.webp';
+// @ts-ignore
+import menuL2TransSaleScooter from '../assets/images/menu_l2_trans_sale_scooter.webp';
+// @ts-ignore
+import menuL2Clothes from '../assets/images/menu_l2_clothes.webp';
+// @ts-ignore
+import menuL2HouseFurn from '../assets/images/menu_l2_house_furn.webp';
+// @ts-ignore
+import menuL2Festivals from '../assets/images/menu_l2_festivals.webp';
+// @ts-ignore
+import menuL2Seminars from '../assets/images/menu_l2_seminars.webp';
+// @ts-ignore
+import menuL2Exhibitions from '../assets/images/menu_l2_exhibitions.webp';
+// @ts-ignore
+import menuL2Meetings from '../assets/images/menu_l2_meetings.webp';
+// @ts-ignore
+import menuL2Buddies from '../assets/images/menu_l2_buddies.webp';
 
-export const SUBCATEGORIES_MAP: Record<string, Array<{ id: string; label: string; icon: string }>> = {
+export const SUBCATEGORIES_MAP: Record<string, Array<{ id: string; label: string; icon: string; customImage?: string }>> = {
   housing: [
-    { id: 'entire_place', label: 'Private villa / house', icon: '🏡' },
-    { id: 'private_suite', label: 'Apartments', icon: '🏢' },
-    { id: 'private_room', label: 'Private room', icon: '🛌' }
+    { id: 'entire_place', label: 'Private villa / house', icon: '🏡', customImage: menuL2EntirePlace },
+    { id: 'private_suite', label: 'Apartments', icon: '🏢', customImage: menuL2PrivateSuite },
+    { id: 'private_room', label: 'Private room', icon: '🛌', customImage: menuL2PrivateRoom }
   ],
   transport: [
-    { id: 'scooters', label: 'Scooters', icon: '🛵' },
-    { id: 'motorcycles', label: 'Motorcycles', icon: '🏍' },
-    { id: 'cars', label: 'Cars', icon: '🚗' }
+    { id: 'scooters', label: 'Scooters', icon: '🛵', customImage: menuL2Scooters },
+    { id: 'motorcycles', label: 'Motorcycles', icon: '🏍', customImage: menuL2Motorcycles },
+    { id: 'cars', label: 'Cars', icon: '🚗', customImage: menuL2Cars }
   ],
   investments: [
-    { id: 'villas', label: 'Villas & apartments', icon: '🏢' },
-    { id: 'land', label: 'Land plots', icon: '🏝' },
-    { id: 'business', label: 'Ready business', icon: '💼' }
+    { id: 'villas', label: 'Villas & apartments', icon: '🏢', customImage: menuL2Villas },
+    { id: 'land', label: 'Land plots', icon: '🏝', customImage: menuL2Land },
+    { id: 'business', label: 'Ready business', icon: '💼', customImage: menuL2Business }
   ],
   services: [
-    { id: 'for_leisure', label: 'Leisure & surfing', icon: '🏄‍♂️' },
-    { id: 'for_living', label: 'Living & consultations', icon: '💼' }
+    { id: 'household_services', label: 'Household services', icon: '🧰', customImage: menuL2HouseholdServices },
+    { id: 'beauty_care', label: 'Beauty & care', icon: '✨', customImage: menuL2BeautyCare },
+    { id: 'health', label: 'Health', icon: '🩺', customImage: menuL2Health },
+    { id: 'education', label: 'Education', icon: '📚', customImage: menuL2Education },
+    { id: 'sport', label: 'Sport', icon: '🏄‍♂️', customImage: menuL2SportService },
+    { id: 'photo_video', label: 'Photo & video', icon: '📷', customImage: menuL2PhotoVideo },
+    { id: 'consultations', label: 'Consultations', icon: '💡', customImage: menuL2ForLiving },
+    { id: 'service_business', label: 'Business', icon: '💼', customImage: menuL2Business },
+    { id: 'service_transport', label: 'Transport', icon: '🛵', customImage: menuL2TransSaleScooter },
+    { id: 'other_services', label: 'Other services', icon: '⭐', customImage: menuL2OtherServices }
   ],
   ads: [
-    { id: 'electronics', label: 'Electronics & photo', icon: '🔌' },
-    { id: 'trans_sale', label: 'Transport for sale', icon: '🏍' },
-    { id: 'clothes', label: 'Clothes and personal items', icon: '👕' },
-    { id: 'house_furn', label: 'Home and interior', icon: '🏡' }
+    { id: 'electronics', label: 'Electronics & photo', icon: '🔌', customImage: menuL2Electronics },
+    { id: 'trans_sale', label: 'Transport for sale', icon: '🛵', customImage: menuL2TransSaleScooter },
+    { id: 'clothes', label: 'Clothes and personal items', icon: '👕', customImage: menuL2Clothes },
+    { id: 'house_furn', label: 'Home and interior', icon: '🏡', customImage: menuL2HouseFurn }
   ],
   afisha: [
-    { id: 'festivals', label: 'Festivals & parties', icon: '🎉' },
-    { id: 'seminars', label: 'Business seminars', icon: '💼' },
-    { id: 'exhibitions', label: 'Exhibitions & kids', icon: '🎨' }
+    { id: 'festivals', label: 'Festivals & parties', icon: '🎉', customImage: menuL2Festivals },
+    { id: 'seminars', label: 'Business seminars', icon: '💼', customImage: menuL2Seminars },
+    { id: 'exhibitions', label: 'Exhibitions & kids', icon: '🎨', customImage: menuL2Exhibitions }
   ],
   life: [
-    { id: 'meetings', label: 'Meetups & sport', icon: '💬' },
-    { id: 'buddies', label: 'Travel buddies & trips', icon: '🛵' }
+    { id: 'meetings', label: 'Meetups & sport', icon: '💬', customImage: menuL2Meetings },
+    { id: 'buddies', label: 'Travel buddies & trips', icon: '🛵', customImage: menuL2Buddies }
   ],
   useful: []
 };
@@ -69,7 +135,7 @@ export const L1_CATEGORIES = [
   {
     id: 'investments',
     label: 'Investments',
-    image: 'https://images.unsplash.com/photo-1638184984605-af1f05249a56?w=280&fit=crop&q=80',
+    image: menuInvestments,
     desc: 'Villas, land and ready businesses in Bali with strong returns',
     l2: 'villas',
     icon: '🏢'
@@ -79,7 +145,7 @@ export const L1_CATEGORIES = [
     label: 'Services',
     image: menuServices,
     desc: 'Guides, nannies, chefs, cleaning and massage directly',
-    l2: 'for_leisure',
+    l2: 'household_services',
     icon: '🧑‍💼'
   },
   {
@@ -109,7 +175,7 @@ export const L1_CATEGORIES = [
   {
     id: 'useful',
     label: 'Useful',
-    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=280&fit=crop&q=80',
+    image: menuUseful,
     desc: 'Useful guides, visa information, Balinese names and life hacks',
     l2: '',
     icon: '🧭'
@@ -117,6 +183,13 @@ export const L1_CATEGORIES = [
 ];
 
 const preloadedMenuImageUrls = new Set<string>();
+const LOCAL_L1_IMAGE_PRIORITY_IDS = new Set(['housing', 'transport', 'investments', 'services', 'ads', 'afisha', 'life', 'useful']);
+const LOCAL_L2_IMAGE_PRIORITY_IDS = new Set(
+  Object.values(SUBCATEGORIES_MAP)
+    .flat()
+    .filter(sub => Boolean(sub.customImage))
+    .map(sub => sub.id)
+);
 
 const isCacheableMenuImageUrl = (value: unknown): value is string => {
   return typeof value === 'string'
@@ -128,19 +201,44 @@ export const getMenuImageUrls = (overrides: any = {}) => {
   const urls = new Set<string>();
 
   L1_CATEGORIES.forEach(cat => {
-    const image = overrides?.l1?.[cat.id]?.image || cat.image;
+    const image = getMenuCategoryImage(cat, overrides);
     if (isCacheableMenuImageUrl(image)) {
       urls.add(image);
     }
   });
 
-  Object.values(overrides?.l2 || {}).forEach((item: any) => {
-    if (isCacheableMenuImageUrl(item?.customImage)) {
-      urls.add(item.customImage);
-    }
+  Object.values(SUBCATEGORIES_MAP).forEach(subcategories => {
+    subcategories.forEach(sub => {
+      const image = getMenuSubcategoryImage(sub, overrides);
+      if (isCacheableMenuImageUrl(image)) {
+        urls.add(image);
+      }
+    });
   });
 
   return Array.from(urls);
+};
+
+export const getMenuCategoryImage = (
+  category: { id: string; image?: string },
+  overrides: any = {}
+) => {
+  if (LOCAL_L1_IMAGE_PRIORITY_IDS.has(category.id)) {
+    return category.image;
+  }
+
+  return overrides?.l1?.[category.id]?.image || category.image;
+};
+
+export const getMenuSubcategoryImage = (
+  subcategory: { id: string; customImage?: string },
+  overrides: any = {}
+) => {
+  if (LOCAL_L2_IMAGE_PRIORITY_IDS.has(subcategory.id)) {
+    return subcategory.customImage;
+  }
+
+  return overrides?.l2?.[subcategory.id]?.customImage || subcategory.customImage;
 };
 
 export const preloadMenuImages = (overrides: any = {}) => {

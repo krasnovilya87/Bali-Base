@@ -30,6 +30,225 @@ export const MOCK_REVIEWS: Review[] = [
   }
 ];
 
+type HousingSubCategory = 'entire_place' | 'private_suite' | 'private_room';
+
+const GENERATED_HOUSING_COUNTS: Record<HousingSubCategory, number> = {
+  entire_place: 18,
+  private_suite: 20,
+  private_room: 19
+};
+
+const GENERATED_HOUSING_START_IDS: Record<HousingSubCategory, number> = {
+  entire_place: 4,
+  private_suite: 22,
+  private_room: 42
+};
+
+const BALI_DISTRICTS = [
+  'Canggu',
+  'Ubud',
+  'Uluwatu',
+  'Seminyak',
+  'Sanur',
+  'Pererenan',
+  'Berawa',
+  'Bingin',
+  'Nusa Dua',
+  'Kerobokan',
+  'Jimbaran',
+  'Amed',
+  'Lovina',
+  'Sidemen',
+  'Seseh',
+  'Ungasan',
+  'Tabanan',
+  'Kuta',
+  'Denpasar',
+  'Kintamani'
+];
+
+const HOUSING_IMAGE_SETS = [
+  [
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&fit=crop&q=80'
+  ]
+];
+
+const OWNER_NAMES = [
+  'Made Wirawan',
+  'Kadek Sari',
+  'Nyoman Pratama',
+  'Komang Ayu',
+  'Putu Mahendra',
+  'Ketut Lestari',
+  'Wayan Arimbawa',
+  'Dewi Santika'
+];
+
+const createGeneratedHousingListings = (
+  subCategory: HousingSubCategory,
+  count: number,
+  startId: number
+): Listing[] => {
+  const categoryLabel = {
+    entire_place: 'Villa',
+    private_suite: 'Apartment',
+    private_room: 'Private Room'
+  }[subCategory];
+
+  const titleStyles = [
+    'Tropical',
+    'Modern',
+    'Quiet',
+    'Sunlit',
+    'Garden',
+    'Ocean Breeze',
+    'Rice Field',
+    'Minimalist',
+    'Family',
+    'Nomad Ready',
+    'Poolside',
+    'Coastal',
+    'Jungle View',
+    'Fresh',
+    'Premium',
+    'Walkable',
+    'Bright',
+    'Serene',
+    'Compact',
+    'Resort Style'
+  ];
+
+  const housingTypesByCategory: Record<HousingSubCategory, string[]> = {
+    entire_place: [
+      'Privet Villa (must pool)',
+      'House (no pool)',
+      'Bungalow (standalone unit)',
+      'Privet Villa (must pool)'
+    ],
+    private_suite: ['Apartment Complex (privet unit)', 'Apartment Complex (privet unit)', 'Bungalow (standalone unit)'],
+    private_room: [
+      'Guesthouse (privet room, shared property)',
+      'Villa / House (privet room)',
+      'Apartment (privet room)',
+      'Hotel (privet room)'
+    ]
+  };
+
+  return Array.from({ length: count }, (_, index) => {
+    const idNumber = startId + index;
+    const district = BALI_DISTRICTS[index % BALI_DISTRICTS.length];
+    const ownerName = OWNER_NAMES[index % OWNER_NAMES.length];
+    const hasPrivateSpace = subCategory !== 'private_room';
+    const bedroomsCount = subCategory === 'private_room' ? 1 : (index % 4) + 1;
+    const roomsTotal = subCategory === 'private_room' ? (index % 4) + 4 : bedroomsCount + 2;
+    const priceBase = subCategory === 'entire_place' ? 420000 : subCategory === 'private_suite' ? 280000 : 165000;
+    const pricePerDay = priceBase + (index % 8) * 35000;
+    const pricePerMonth = Math.round(pricePerDay * (subCategory === 'entire_place' ? 23 : 24));
+    const hasDropPrice = index % 3 === 0;
+    const poolType = subCategory === 'private_room'
+      ? (index % 4 === 0 ? 'none' : 'shared')
+      : (index % 3 === 0 ? 'private' : index % 3 === 1 ? 'shared' : 'infinity');
+    const kitchenType = subCategory === 'private_room'
+      ? (index % 5 === 0 ? 'none' : 'basic')
+      : (subCategory === 'private_suite' ? 'private_equipped' : 'equipped');
+    const viewTypes = ['rice_fields', 'garden', 'pool', 'ocean', 'jungle'] as const;
+    const interiorStyles = ['basic', 'bali_style', 'modern', 'luxury'] as const;
+    const cleaningFrequencies = ['once_week', '2_times_week', '3_times_week', 'daily'] as const;
+    const title = `${titleStyles[index % titleStyles.length]} ${district} ${categoryLabel}`;
+
+    return {
+      id: `house-${idNumber}`,
+      ownerId: `owner-${(index % 8) + 4}`,
+      category: 'housing',
+      subCategory,
+      title,
+      description: `${title} with reliable internet, clear pricing, and practical access to cafes, beaches, gyms, and daily essentials. The space is prepared for comfortable stays in Bali, with clean rooms, good airflow, and responsive local support.`,
+      district,
+      address: `Jl. Bali Base ${idNumber}, ${district}, Bali`,
+      images: HOUSING_IMAGE_SETS[index % HOUSING_IMAGE_SETS.length],
+      rating: Number((4.55 + (index % 9) * 0.04).toFixed(1)),
+      reviewsCount: 6 + index * 2,
+      reviews: index % 2 === 0 ? [MOCK_REVIEWS[index % MOCK_REVIEWS.length]] : [],
+      isApproved: index % 7 !== 0,
+      isVerified: index % 4 === 0,
+      isNew: index % 5 < 2,
+      status: 'active',
+      pricePerDay,
+      pricePerMonth,
+      bookingComPrice: pricePerDay + 120000 + (index % 4) * 25000,
+      competitorPlatform: ['Booking', 'Airbnb', 'Agoda', 'Traveloka'][index % 4] as Listing['competitorPlatform'],
+      hasDropPrice,
+      dropPricePerDay: hasDropPrice ? pricePerDay - 45000 : undefined,
+      dropPricePerMonth: hasDropPrice ? pricePerMonth - 900000 : undefined,
+      dropPriceEndsAt: hasDropPrice ? new Date(Date.now() + 86400000 * ((index % 5) + 1)).toISOString() : undefined,
+      roomsTotal,
+      bedroomsCount,
+      wallMaterial: index % 5 === 0 ? 'wood' : 'concrete',
+      territoryType: hasPrivateSpace ? (index % 6 === 0 ? 'resort' : 'private') : 'shared',
+      densityType: subCategory === 'private_room' ? (index % 3 === 0 ? 'medium' : 'cozy') : undefined,
+      bedType: index % 3 === 0 ? 'king_size' : 'queen_size',
+      bedTypes: index % 4 === 0 ? ['queen_size', 'single_bed'] : undefined,
+      roomType: subCategory === 'private_room' ? (['standard', 'deluxe', 'super_deluxe', 'family'][index % 4] as Listing['roomType']) : undefined,
+      unitType: subCategory !== 'private_room' ? (['type_1', 'type_2', 'type_3', 'type_4'][index % 4] as Listing['unitType']) : undefined,
+      kitchenType,
+      poolType,
+      internetSpeed: 80 + (index % 7) * 25,
+      bathroomType: (['standard', 'modern', 'designer'][index % 3] as Listing['bathroomType']),
+      bathroomOptions: index % 2 === 0 ? ['tropical_shower', 'stone_sink'] : ['tropical_shower', 'garden_view'],
+      amenities: [
+        'AC',
+        'parking',
+        'workspace',
+        ...(index % 2 === 0 ? ['smart_tv'] : []),
+        ...(subCategory !== 'private_room' ? ['washing_machine'] : [])
+      ],
+      cleaningFrequency: cleaningFrequencies[index % cleaningFrequencies.length],
+      viewType: viewTypes[index % viewTypes.length],
+      extraOptions: [
+        ...(index % 2 === 0 ? ['quiet_location'] : []),
+        ...(index % 3 === 0 ? ['all_bills_included'] : []),
+        ...(index % 5 === 0 ? ['breakfast_paid'] : [])
+      ],
+      yearBuilt: 2020 + (index % 6),
+      yearRenovated: index % 3 === 0 ? 2025 : undefined,
+      distanceToSeaMinutes: 3 + (index % 12),
+      interiorStyle: interiorStyles[index % interiorStyles.length],
+      housingType: housingTypesByCategory[subCategory][index % housingTypesByCategory[subCategory].length],
+      area: subCategory === 'private_room' ? 22 + (index % 8) * 4 : 58 + (index % 10) * 18,
+      whatsappNumber: `+62812${String(34000000 + idNumber).padStart(8, '0')}`,
+      ownerName,
+      ownerAvatar: `https://images.unsplash.com/photo-${index % 2 === 0 ? '1500648767791-00dcc994a43e' : '1535713875002-d1d0cf377fde'}?w=100&h=100&fit=crop&q=80`,
+      clicksCount: 35 + index * 11,
+      viewsCount: 260 + index * 74,
+      isPromoTop: index % 11 === 0,
+      isPromoPremium: index % 13 === 0
+    };
+  });
+};
+
+const buildGeneratedHousingListings = (): Listing[] => [
+  ...createGeneratedHousingListings('entire_place', GENERATED_HOUSING_COUNTS.entire_place, GENERATED_HOUSING_START_IDS.entire_place),
+  ...createGeneratedHousingListings('private_suite', GENERATED_HOUSING_COUNTS.private_suite, GENERATED_HOUSING_START_IDS.private_suite),
+  ...createGeneratedHousingListings('private_room', GENERATED_HOUSING_COUNTS.private_room, GENERATED_HOUSING_START_IDS.private_room)
+];
+
 export const MOCK_HOUSING_LISTINGS: Listing[] = [
   {
     id: 'house-1',
@@ -187,7 +406,8 @@ export const MOCK_HOUSING_LISTINGS: Listing[] = [
     ownerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&q=80',
     clicksCount: 51,
     viewsCount: 410
-  }
+  },
+  ...buildGeneratedHousingListings()
 ];
 
 export const MOCK_OTHER_LISTINGS: Listing[] = [
@@ -262,7 +482,7 @@ export const MOCK_OTHER_LISTINGS: Listing[] = [
     id: 'srv-1',
     ownerId: 'owner-4',
     category: 'services',
-    subCategory: 'for_leisure',
+    subCategory: 'sport',
     title: 'Индивидуальные уроки серфинга от Pro-инструктора',
     description: 'Прогрессируйте на Бали быстрее и без травм! Обучение от сертифицированного тренера с видеоразбором каждой волны. Все споты Чангу, Семиньяка и Букита. Аренда доски и рашгарда включена.',
     district: 'Canggu',

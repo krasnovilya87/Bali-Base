@@ -12,6 +12,7 @@ import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
 
 interface HousingFiltersProps {
   listings: Listing[];
+  category?: string;
   subCategory: string; // 'entire_place' | 'private_suite' | 'private_room' | string
   selectedSubCategories?: string[];
   onSubCategoryChange?: (subCategoryId: string) => void;
@@ -26,6 +27,7 @@ interface HousingFiltersProps {
 
 export default function HousingFilters({
   listings,
+  category = 'housing',
   subCategory,
   selectedSubCategories = [subCategory],
   onSubCategoryChange,
@@ -39,9 +41,28 @@ export default function HousingFilters({
 }: HousingFiltersProps) {
   const { tr } = useI18n();
   const { favoriteIds } = useFavoriteListings();
+  const isHousingCategory = category === 'housing';
   const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
   const minBound = 0;
-  const maxBound = Math.max(30000000, selectedDayCount * 1000000);
+  const subCategoryOrder = ['entire_place', 'private_suite', 'private_room'];
+  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]))
+    .sort((a, b) => {
+      const aIndex = subCategoryOrder.indexOf(a);
+      const bIndex = subCategoryOrder.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  const getItemFilterPrice = (item: Listing) => {
+    const dailyPrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
+    return dailyPrice * selectedDayCount;
+  };
+  const relevantListings = listings.filter(
+    item => item.category === category && (activeSubCategories.length === 0 || activeSubCategories.includes(item.subCategory))
+  );
+  const maxRelevantPrice = Math.max(...relevantListings.map(getItemFilterPrice), 0);
+  const maxBound = Math.max(30000000, selectedDayCount * 1000000, Math.ceil(maxRelevantPrice / 1000000) * 1000000);
   const priceMinGap = 100000;
   const priceSnapStep = 100000;
   const pricePeriodLabel = selectedDayCount === 1
@@ -62,18 +83,8 @@ export default function HousingFilters({
   const trackRef = useRef<HTMLDivElement>(null);
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
-  const subCategoryOrder = ['entire_place', 'private_suite', 'private_room'];
-  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]))
-    .sort((a, b) => {
-      const aIndex = subCategoryOrder.indexOf(a);
-      const bIndex = subCategoryOrder.indexOf(b);
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
   const activeSubCategoryIndex = Math.max(0, activeSubCategories.indexOf(subCategory));
-  const hasSubCategorySwitcher = activeSubCategories.length > 1 && !!onSubCategoryChange;
+  const hasSubCategorySwitcher = isHousingCategory && activeSubCategories.length > 1 && !!onSubCategoryChange;
   const roomOnlyAmenityOptions = subCategory === 'private_room'
     ? [
       { value: 'room_fridge', label: 'In-room fridge', icon: '🧊', type: 'amenity' },
@@ -229,17 +240,7 @@ export default function HousingFilters({
     toggleArrayFilter('viewType', value);
   };
 
-  // 1. Get the relevant price for the current filter mode.
-  const getItemFilterPrice = (item: Listing) => {
-    const dailyPrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
-    return dailyPrice * selectedDayCount;
-  };
-
   // 2. Compute Histogram Distribution statistics
-  const relevantListings = listings.filter(
-    item => item.category === 'housing' && activeSubCategories.includes(item.subCategory)
-  );
-  
   const numBins = 24;
   const binWidth = (maxBound - minBound) / numBins;
   
@@ -360,16 +361,14 @@ export default function HousingFilters({
   // 4. Calculate real-time matching listings count
   const getMatchingListingsCount = () => {
     return listings.filter(item => {
-      // Category L1 & subCategory mapping
-      if (item.category !== 'housing') return false;
+      if (item.category !== category) return false;
       if (activeSubCategories.length > 0 && !activeSubCategories.includes(item.subCategory)) return false;
 
       // Pricing check matched to localFilters in real-time
       const price = getItemFilterPrice(item);
       if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
 
-      // Distance check
-      if (item.distanceToSeaMinutes !== undefined) {
+      if (isHousingCategory && item.distanceToSeaMinutes !== undefined) {
         if (item.distanceToSeaMinutes < (localFilters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > localFilters.distanceToSeaMax) {
           return false;
         }
@@ -382,8 +381,7 @@ export default function HousingFilters({
 
       if (localFilters.favoritesOnly && !favoriteIds.has(item.id)) return false;
 
-      // Cleanliness
-      if (localFilters.cleanlinessTags.length > 0) {
+      if (isHousingCategory && localFilters.cleanlinessTags.length > 0) {
         const matchesAllTags = localFilters.cleanlinessTags.every(tag => {
           if (tag === 'Approved') return isListingVerified(item);
           const revTags = item.reviews ? item.reviews.flatMap(r => r.cleanlinessLabels || []) : [];
@@ -394,10 +392,10 @@ export default function HousingFilters({
 
       // Super tags / fast check
       if (localFilters.isApprovedOnly && !isListingVerified(item)) return false;
-      if (localFilters.hasDropPriceOnly && !item.hasDropPrice) return false;
+      if (isHousingCategory && localFilters.hasDropPriceOnly && !item.hasDropPrice) return false;
 
       // Type
-      if (localFilters.housingType.length > 0 && item.housingType) {
+      if (isHousingCategory && localFilters.housingType.length > 0 && item.housingType) {
         const housingTypeAliases: Record<string, string[]> = {
           'Privet Villa (must pool)': ['Privet Villa (must pool)', 'Villa'],
           'House (no pool)': ['House (no pool)', 'House'],
@@ -417,28 +415,28 @@ export default function HousingFilters({
       }
       
       // Territory
-      if (localFilters.territoryType.length > 0 && item.territoryType && !localFilters.territoryType.includes(item.territoryType)) return false;
+      if (isHousingCategory && localFilters.territoryType.length > 0 && item.territoryType && !localFilters.territoryType.includes(item.territoryType)) return false;
 
       // Density
-      if (localFilters.densityType.length > 0) {
+      if (isHousingCategory && localFilters.densityType.length > 0) {
         const itemDensity = item.densityType || (item.roomsTotal ? (item.roomsTotal <= 4 ? 'cozy' : item.roomsTotal <= 10 ? 'medium' : 'large') : 'cozy');
         if (!localFilters.densityType.includes(itemDensity)) return false;
       }
 
       // Interior style
-      if (localFilters.interiorStyle.length > 0 && !localFilters.interiorStyle.includes(item.interiorStyle)) return false;
+      if (isHousingCategory && localFilters.interiorStyle.length > 0 && !localFilters.interiorStyle.includes(item.interiorStyle)) return false;
 
       // Wall materials
-      if (localFilters.wallMaterial.length > 0 && item.wallMaterial && !localFilters.wallMaterial.includes(item.wallMaterial)) return false;
+      if (isHousingCategory && localFilters.wallMaterial.length > 0 && item.wallMaterial && !localFilters.wallMaterial.includes(item.wallMaterial)) return false;
 
       // Bed Type
-      if (localFilters.bedType.length > 0 && item.bedType && !localFilters.bedType.includes(item.bedType)) return false;
+      if (isHousingCategory && localFilters.bedType.length > 0 && item.bedType && !localFilters.bedType.includes(item.bedType)) return false;
 
       // Kitchen Type
-      if (localFilters.kitchenType.length > 0 && item.kitchenType && !localFilters.kitchenType.includes(item.kitchenType)) return false;
+      if (isHousingCategory && localFilters.kitchenType.length > 0 && item.kitchenType && !localFilters.kitchenType.includes(item.kitchenType)) return false;
 
       // Pool Type
-      if (localFilters.poolType.length > 0) {
+      if (isHousingCategory && localFilters.poolType.length > 0) {
         if (!item.poolType || item.poolType === 'none') return false;
         
         if (localFilters.poolType.includes('infinity')) {
@@ -457,37 +455,37 @@ export default function HousingFilters({
       }
 
       // Internet Minimum Speed
-      if (localFilters.internetSpeedMin > 0 && (item.internetSpeed === undefined || item.internetSpeed < localFilters.internetSpeedMin)) return false;
+      if (isHousingCategory && localFilters.internetSpeedMin > 0 && (item.internetSpeed === undefined || item.internetSpeed < localFilters.internetSpeedMin)) return false;
 
       // Bathroom Type & Options
-      if (localFilters.bathroomType.length > 0 && item.bathroomType && !localFilters.bathroomType.includes(item.bathroomType)) return false;
-      if (localFilters.bathroomOptions.length > 0) {
+      if (isHousingCategory && localFilters.bathroomType.length > 0 && item.bathroomType && !localFilters.bathroomType.includes(item.bathroomType)) return false;
+      if (isHousingCategory && localFilters.bathroomOptions.length > 0) {
         const hasAllBathOpts = localFilters.bathroomOptions.every(opt => item.bathroomOptions && item.bathroomOptions.includes(opt));
         if (!hasAllBathOpts) return false;
       }
 
       // Room quantity or Area quantity check
-      if (item.subCategory === 'private_suite' || item.subCategory === 'private_room') {
+      if (isHousingCategory && (item.subCategory === 'private_suite' || item.subCategory === 'private_room')) {
         const areaMinFilter = localFilters.areaMin !== undefined ? localFilters.areaMin : 5;
         const itemArea = item.area !== undefined ? item.area : (item.roomsTotal ? item.roomsTotal * 12 : 25);
         if (itemArea < areaMinFilter) return false;
-      } else {
+      } else if (isHousingCategory) {
         if (item.roomsTotal !== undefined) {
           if (item.roomsTotal < localFilters.roomsMin || item.roomsTotal > localFilters.roomsMax) return false;
         }
       }
 
       // Cleaning frequency
-      if (localFilters.cleaningFrequency.length > 0 && item.cleaningFrequency && !localFilters.cleaningFrequency.includes(item.cleaningFrequency)) return false;
+      if (isHousingCategory && localFilters.cleaningFrequency.length > 0 && item.cleaningFrequency && !localFilters.cleaningFrequency.includes(item.cleaningFrequency)) return false;
 
       // Amenities
-      if (localFilters.amenities.length > 0) {
+      if (isHousingCategory && localFilters.amenities.length > 0) {
         const hasAll = localFilters.amenities.every(amen => item.amenities && item.amenities.includes(amen));
         if (!hasAll) return false;
       }
 
       // Extra options
-      if (localFilters.extraOptions.length > 0) {
+      if (isHousingCategory && localFilters.extraOptions.length > 0) {
         const extraOptionAliases: Record<string, string[]> = {
           airport_transfer_included: ['airport_transfer_included', 'transfer_included'],
           airport_transfer_paid: ['airport_transfer_paid', 'airport_transfer'],
@@ -502,7 +500,7 @@ export default function HousingFilters({
       }
 
       // View Type
-      if (localFilters.viewType.length > 0 && item.viewType && !localFilters.viewType.includes(item.viewType)) return false;
+      if (isHousingCategory && localFilters.viewType.length > 0 && item.viewType && !localFilters.viewType.includes(item.viewType)) return false;
 
       return true;
     }).length;
@@ -513,6 +511,13 @@ export default function HousingFilters({
   // Handle percentages for style layouts
   const minPct = ((localFilters.priceMin - minBound) / (maxBound - minBound)) * 100;
   const maxPct = ((localFilters.priceMax - minBound) / (maxBound - minBound)) * 100;
+  const headerTitle = isHousingCategory
+    ? subCategory === 'entire_place'
+      ? tr('filters.subEntirePlace')
+      : subCategory === 'private_suite'
+        ? tr('filters.subPrivateSuite')
+        : tr('filters.subPrivateRoom')
+    : tr(`category.${category}.label`);
 
   return (
     <div 
@@ -537,7 +542,7 @@ export default function HousingFilters({
             </div>
             <div>
               <h2 className="font-sans text-lg font-bold text-[#1E293B] leading-tight">
-                {subCategory === 'entire_place' ? tr('filters.subEntirePlace') : subCategory === 'private_suite' ? tr('filters.subPrivateSuite') : tr('filters.subPrivateRoom')}
+                {headerTitle}
               </h2>
               {hasSubCategorySwitcher && (
                 <div className="absolute left-[88px] bottom-2 flex items-center gap-0.5 rounded-full bg-[#F4F7F6] p-0.5 w-fit">
@@ -613,7 +618,7 @@ export default function HousingFilters({
                   <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/20 text-white ring-1 ring-white/30 flex items-center justify-center text-[8px] font-extrabold z-10 animate-scale-up">✓</span>
                 )}
                 <span className="text-2xl leading-none">🧭</span>
-                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-white' : 'text-sky-900'}`}>{tr('filters.newHousing')}</span>
+                <span className={`text-xs font-semibold mt-1 transition-colors ${localFilters.isNewOnly ? 'text-white' : 'text-sky-900'}`}>{tr('filters.newOnly')}</span>
               </button>
 
               {/* Checked card 4: Favorites only */}
@@ -733,7 +738,8 @@ export default function HousingFilters({
             </div>
           </div>
 
-          {/* SEA DISTANCE SLIDER (SEPARATE BLOCK) */}
+          {isHousingCategory && (
+          <div className="contents">
           <div className={sectionCardClass}>
             <div className="flex justify-between items-center">
               <span className={sectionTitleClass}>🛵 {tr('filters.distanceSea')}</span>
@@ -1215,7 +1221,6 @@ export default function HousingFilters({
               })}
             </div>
           </div>
-
           {showRiceFieldsNotice && (
             <div
               className="fixed inset-0 z-[620] flex items-center justify-center bg-[#1E293B]/55 backdrop-blur-sm p-4 animate-fade-in"
@@ -1448,6 +1453,8 @@ export default function HousingFilters({
               })}
             </div>
           </div>
+          </div>
+          )}
         </div>
 
         {/* BOTTOM STICKY ACTION FOOTER */}

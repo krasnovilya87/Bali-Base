@@ -462,10 +462,18 @@ export function SettingsTab(props: AdminTabProps) {
                               { id: 'villas', label: `🏢 ${tr('subcategory.villas')}` },
                               { id: 'land', label: `🏝 ${tr('subcategory.land')}` },
                               { id: 'business', label: `💼 ${tr('subcategory.business')}` },
-                              { id: 'for_leisure', label: `🏄‍♂️ ${tr('subcategory.for_leisure')}` },
-                              { id: 'for_living', label: `💼 ${tr('subcategory.for_living')}` },
+                              { id: 'household_services', label: `🧰 ${tr('subcategory.household_services')}` },
+                              { id: 'beauty_care', label: `✨ ${tr('subcategory.beauty_care')}` },
+                              { id: 'health', label: `🩺 ${tr('subcategory.health')}` },
+                              { id: 'education', label: `📚 ${tr('subcategory.education')}` },
+                              { id: 'sport', label: `🏄‍♂️ ${tr('subcategory.sport')}` },
+                              { id: 'photo_video', label: `📷 ${tr('subcategory.photo_video')}` },
+                              { id: 'consultations', label: `💡 ${tr('subcategory.consultations')}` },
+                              { id: 'service_business', label: `💼 ${tr('subcategory.service_business')}` },
+                              { id: 'service_transport', label: `🛵 ${tr('subcategory.service_transport')}` },
+                              { id: 'other_services', label: `⭐ ${tr('subcategory.other_services')}` },
                               { id: 'electronics', label: `🔌 ${tr('subcategory.electronics')}` },
-                              { id: 'trans_sale', label: `🏍 ${tr('subcategory.trans_sale')}` },
+                              { id: 'trans_sale', label: `🛵 ${tr('subcategory.trans_sale')}` },
                               { id: 'clothes', label: `👕 ${tr('subcategory.clothes')}` },
                               { id: 'house_furn', label: `🏡 ${tr('subcategory.house_furn')}` },
                               { id: 'festivals', label: `🎉 ${tr('subcategory.festivals')}` },
@@ -478,7 +486,18 @@ export function SettingsTab(props: AdminTabProps) {
                               if (l2ParentId === 'housing') return ['entire_place', 'private_suite', 'private_room'].includes(item.id);
                               if (l2ParentId === 'transport') return ['scooters', 'motorcycles', 'cars'].includes(item.id);
                               if (l2ParentId === 'investments') return ['villas', 'land', 'business'].includes(item.id);
-                              if (l2ParentId === 'services') return ['for_leisure', 'for_living'].includes(item.id);
+                              if (l2ParentId === 'services') return [
+                                'household_services',
+                                'beauty_care',
+                                'health',
+                                'education',
+                                'sport',
+                                'photo_video',
+                                'consultations',
+                                'service_business',
+                                'service_transport',
+                                'other_services'
+                              ].includes(item.id);
                               if (l2ParentId === 'ads') return ['electronics', 'trans_sale', 'clothes', 'house_furn'].includes(item.id);
                               if (l2ParentId === 'afisha') return ['festivals', 'seminars', 'exhibitions'].includes(item.id);
                               if (l2ParentId === 'life') return ['meetings', 'buddies'].includes(item.id);

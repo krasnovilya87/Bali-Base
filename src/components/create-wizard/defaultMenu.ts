@@ -1,3 +1,10 @@
+// @ts-ignore
+import menuL2Scooters from '../../assets/images/menu_l2_scooters_firebase.webp';
+// @ts-ignore
+import menuL2Motorcycles from '../../assets/images/menu_l2_motorcycles_firebase.webp';
+// @ts-ignore
+import menuL2Cars from '../../assets/images/menu_l2_cars_firebase.webp';
+
 export const defaultCategoriesList = [
   { id: 'housing', label: 'Жилье', icon: '🏡', desc: 'Виллы, апартаменты, дома' },
   { id: 'transport', label: 'Транспорт', icon: '🛵', desc: 'Скутеры, байки, авто' },
@@ -9,16 +16,16 @@ export const defaultCategoriesList = [
   { id: 'useful', label: 'Полезное', icon: '🧭', desc: 'Гайды, советы, разное' }
 ];
 
-export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: string; icon: string }>> = {
+export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: string; icon: string; customImage?: string }>> = {
   housing: [
     { id: 'entire_place', label: 'Вилла / Дом', icon: '🏡' },
     { id: 'private_suite', label: 'Апартаменты', icon: '🏢' },
     { id: 'private_room', label: 'Комната', icon: '🛌' }
   ],
   transport: [
-    { id: 'scooters', label: 'Скутеры', icon: '🛵' },
-    { id: 'motorcycles', label: 'Мотоциклы', icon: '🏍' },
-    { id: 'cars', label: 'Автомобили', icon: '🚗' }
+    { id: 'scooters', label: 'Скутеры', icon: '🛵', customImage: menuL2Scooters },
+    { id: 'motorcycles', label: 'Мотоциклы', icon: '🏍', customImage: menuL2Motorcycles },
+    { id: 'cars', label: 'Автомобили', icon: '🚗', customImage: menuL2Cars }
   ],
   investments: [
     { id: 'villas', label: 'Виллы & Апартаменты', icon: '🏢' },
@@ -26,12 +33,20 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'business', label: 'Готовый Бизнес', icon: '💼' }
   ],
   services: [
-    { id: 'for_leisure', label: 'Для отдыха & Серфинг', icon: '🏄‍♂️' },
-    { id: 'for_living', label: 'Для жизни & Консультации', icon: '💼' }
+    { id: 'household_services', label: 'Бытовые услуги', icon: '🧰' },
+    { id: 'beauty_care', label: 'Красота и уход', icon: '✨' },
+    { id: 'health', label: 'Здоровье', icon: '🩺' },
+    { id: 'education', label: 'Обучение', icon: '📚' },
+    { id: 'sport', label: 'Спорт', icon: '🏄‍♂️' },
+    { id: 'photo_video', label: 'Фото и видео', icon: '📷' },
+    { id: 'consultations', label: 'Консультации', icon: '💡' },
+    { id: 'service_business', label: 'Бизнес', icon: '💼' },
+    { id: 'service_transport', label: 'Транспорт', icon: '🛵' },
+    { id: 'other_services', label: 'Другие услуги', icon: '⭐' }
   ],
   ads: [
     { id: 'electronics', label: 'Электроника & Фото', icon: '🔌' },
-    { id: 'trans_sale', label: 'Транспорт продажа', icon: '🏍' },
+    { id: 'trans_sale', label: 'Транспорт продажа', icon: '🛵' },
     { id: 'clothes', label: 'Одежда и личные вещи', icon: '👕' },
     { id: 'house_furn', label: 'Дом и интерьер', icon: '🏡' }
   ],

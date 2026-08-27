@@ -831,6 +831,7 @@ export default function CreateWizard({
       uploadError,
       uploadDiagnostic,
       photoUrls,
+      getAssignedPhotoUrls,
       getRemainingPhotoCount,
       setDraggedPhotoSlotId,
       draggedPhotoSlotId,

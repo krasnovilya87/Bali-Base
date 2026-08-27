@@ -290,8 +290,16 @@ export default function ListingCard({
       case 'scooters': return '🛵 Скутер';
       case 'motorcycles': return '🏍 Мотоцикл';
       case 'cars': return '🚗 Автомобиль';
-      case 'for_leisure': return '🌴 Досуг и спорт';
-      case 'for_living': return '💼 Для жизни';
+      case 'household_services': return '🧰 Бытовые услуги';
+      case 'beauty_care': return '✨ Красота и уход';
+      case 'health': return '🩺 Здоровье';
+      case 'education': return '📚 Обучение';
+      case 'sport': return '🏄‍♂️ Спорт';
+      case 'photo_video': return '📷 Фото и видео';
+      case 'consultations': return '💡 Консультации';
+      case 'service_business': return '💼 Бизнес';
+      case 'service_transport': return '🛵 Транспорт';
+      case 'other_services': return '⭐ Другие услуги';
       case 'electronics': return '🔌 Гаджеты';
       case 'festivals': return '📅 Афиша: Фестиваль';
       default: return '🏷 Объявление';

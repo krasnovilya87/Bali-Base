@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Listing } from '../../../types';
 import { defaultCategoriesList, defaultSubcategoriesMap } from '../defaultMenu';
 import { useI18n } from '../../../i18nContext';
+import { getMenuCategoryImage, getMenuSubcategoryImage } from '../../../app/menu';
 
 type CategorySourceItem = {
   id: string;
@@ -16,6 +17,7 @@ type SubcategorySourceItem = {
   id: string;
   label: string;
   icon: string;
+  customImage?: string;
 };
 
 type UseCategoryStepsParams = {
@@ -42,7 +44,7 @@ export const useCategorySteps = ({
     return categoriesToUse.map(cat => {
       const displayLabel = tr(`category.${cat.id}.label`);
       const displayIcon = menuOverrides?.l1?.[cat.id]?.icon || cat.icon || '📦';
-      const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
+      const displayImage = getMenuCategoryImage(cat, menuOverrides);
       const displayDesc = tr(`category.${cat.id}.desc`);
       return {
         id: cat.id,
@@ -59,7 +61,7 @@ export const useCategorySteps = ({
     return rawSubs.map(sub => {
       const displayLabel = tr(`subcategory.${sub.id}`);
       const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon || '⭐';
-      const displayCustomImage = menuOverrides?.l2?.[sub.id]?.customImage;
+      const displayCustomImage = getMenuSubcategoryImage(sub, menuOverrides);
       return {
         id: sub.id,
         label: displayLabel,

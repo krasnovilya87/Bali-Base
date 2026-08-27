@@ -1,4 +1,4 @@
-import { List, LogOut, MessageSquare, ShieldAlert, User, UserRoundCog } from 'lucide-react';
+import { List, LogOut, MessageSquare, User, UserRoundCog } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuth } from '../../auth/AuthContext';
 import { auth } from '../../firebase';
@@ -30,7 +30,6 @@ export default function UsersDropdown({
   currentUser,
   onRequireAuth,
   setShowUsersDropdown,
-  setShowAdminDashboard,
   setShowCreateWizard,
   setShowMyAddsListing,
   setShowProfileModal,
@@ -91,17 +90,6 @@ export default function UsersDropdown({
 
       {showUsersDropdown && (
         <div className="pu absolute right-0 mt-2 w-60 rounded-2xl shadow-xl border border-white/50 py-2.5 z-[520] animate-fade-in text-xs font-sans text-left overflow-hidden">
-          <button
-            onClick={() => {
-              setShowAdminDashboard(true);
-              setShowUsersDropdown(false);
-            }}
-            className="w-full text-left px-4 py-2.5 hover:bg-white/70 text-[#1E293B] font-extrabold flex items-center gap-2 cursor-pointer transition border-b border-[#E5E7EB]"
-          >
-            <ShieldAlert className="w-4 h-4 text-[#FF7A50]" />
-            <span>{tr('nav.admin')}</span>
-          </button>
-
           <button
             onClick={() => {
               if (!onRequireAuth('auth.defaultReason', openProfile)) {

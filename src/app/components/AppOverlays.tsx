@@ -23,6 +23,7 @@ type AppOverlaysProps = {
   currencyRate: number;
   currencySymbol: string;
   currentL2: string[];
+  currentL1: string;
   customPoint: { x: number; y: number } | null;
   customRadius: number;
   editingListing: Listing | null;
@@ -83,6 +84,7 @@ export default function AppOverlays({
   currencyRate,
   currencySymbol,
   currentL2,
+  currentL1,
   customPoint,
   customRadius,
   editingListing,
@@ -177,6 +179,7 @@ export default function AppOverlays({
       {showFiltersModal && (
         <HousingFilters
           listings={listings}
+          category={currentL1}
           subCategory={primaryL2}
           selectedSubCategories={currentL2}
           onSubCategoryChange={setPrimaryL2}

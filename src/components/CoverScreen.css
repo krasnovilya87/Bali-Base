@@ -1,0 +1,478 @@
+.cover-screen {
+  --cover-bg-image: url("/cover-hero.jpg");
+  --cover-bg-position: center 38%;
+  --cover-bg-mobile-position: center 44%;
+  --cover-bg-overlay: rgb(0 0 0 / 55%);
+  --cover-bg-top-offset: calc(-1 * max(env(safe-area-inset-top), 24px));
+  --cover-bg-bottom-offset: -18svh;
+  position: relative;
+}
+
+.cover-screen::before {
+  content: none;
+}
+
+.cover-screen::after {
+  content: none;
+}
+
+html.cover-screen-active,
+html.cover-screen-active body,
+html.cover-screen-active #root {
+  background-color: transparent !important;
+  background-image: var(--cover-bg-image);
+  background-position: center 44%;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+html.cover-screen-active,
+html.cover-screen-active body {
+  min-height: 100%;
+  overscroll-behavior-y: contain;
+}
+
+.cover-app-shell {
+  background: transparent !important;
+}
+
+@keyframes coverScalePan {
+  0% {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: scale(1.12) translate3d(-10px, -5px, 0);
+  }
+
+  100% {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes coverMobileScalePan {
+  0% {
+    transform: scale(1.22) translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: scale(1.32) translate3d(-8px, -6px, 0);
+  }
+
+  100% {
+    transform: scale(1.22) translate3d(0, 0, 0);
+  }
+}
+
+.cover-screen__background {
+  pointer-events: none;
+  position: fixed;
+  inset-inline: 0;
+  top: var(--cover-bg-top-offset);
+  bottom: var(--cover-bg-bottom-offset);
+  overflow: hidden;
+}
+
+.cover-screen__background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--cover-bg-image);
+  background-position: var(--cover-bg-position);
+  background-repeat: no-repeat;
+  background-size: cover;
+  animation: coverScalePan 20s ease-in-out infinite alternate;
+  transform-origin: center 42%;
+  will-change: transform;
+}
+
+.cover-screen__shade {
+  background: var(--cover-bg-overlay);
+}
+
+.cover-scroll-mouse {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 92px;
+  opacity: 0.96;
+}
+
+.cover-scroll-mouse-shell {
+  position: relative;
+  width: 44px;
+  height: 66px;
+  border: 2px solid rgb(255 255 255 / 90%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 4%));
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 20%);
+}
+
+.cover-scroll-mouse-shell::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgb(255 255 255 / 82%);
+  border-bottom: 2px solid rgb(255 255 255 / 82%);
+  transform: translateX(-50%) rotate(45deg);
+  animation: coverScrollArrowDown 1.35s ease-in-out infinite;
+}
+
+.cover-scroll-wheel {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 5px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 92%), rgb(255 255 255 / 8%));
+  box-shadow:
+    inset 0 0 6px rgb(255 255 255 / 14%),
+    0 0 6px rgb(255 255 255 / 8%);
+  transform: translateX(-50%);
+  overflow: hidden;
+}
+
+.cover-scroll-wheel::before,
+.cover-scroll-wheel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  animation: coverMouseWheelGlide 1.9s cubic-bezier(0.32, 0, 0.16, 1) infinite;
+}
+
+.cover-scroll-wheel::before {
+  top: 2px;
+  width: 2px;
+  height: 7px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(255 255 255 / 48%));
+  box-shadow: 0 0 6px rgb(255 255 255 / 38%);
+}
+
+.cover-scroll-wheel::after {
+  top: -8px;
+  width: 1px;
+  height: 18px;
+  background: linear-gradient(180deg, transparent, rgb(255 255 255 / 36%), transparent);
+  animation-delay: 80ms;
+}
+
+@keyframes coverMouseWheelGlide {
+
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scaleY(0.7);
+  }
+
+  28% {
+    opacity: 0.96;
+    transform: translateX(-50%) translateY(0) scaleY(1);
+  }
+
+  72% {
+    opacity: 0.78;
+    transform: translateX(-50%) translateY(15px) scaleY(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(21px) scaleY(0.55);
+  }
+}
+
+@keyframes coverScrollArrowDown {
+
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: translateX(-50%) translateY(-2px) rotate(45deg);
+  }
+
+  50% {
+    opacity: 0.92;
+    transform: translateX(-50%) translateY(4px) rotate(45deg);
+  }
+}
+
+.cover-swipe-hand {
+  position: relative;
+  width: 64px;
+  height: 84px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-200%);
+}
+
+.cover-swipe-up {
+  position: relative;
+  width: 44px;
+  height: 84px;
+}
+
+.cover-swipe-up-track {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  width: 1px;
+  height: 52px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 56%), rgb(255 255 255 / 8%));
+  transform: translateX(-50%) scaleY(0.2);
+  transform-origin: bottom;
+  animation: coverSwipeTrackUp 1.65s cubic-bezier(0.33, 0, 0.16, 1) infinite;
+}
+
+.cover-swipe-up-dot {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 78%);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 18%),
+    0 8px 16px rgb(0 0 0 / 12%);
+  transform: translateX(-50%);
+  animation: coverSwipeDotUp 1.65s cubic-bezier(0.33, 0, 0.16, 1) infinite;
+}
+
+.cover-swipe-up-arrow {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 30px;
+  height: 30px;
+  border-top: 1px solid rgb(255 255 255 / 58%);
+  border-left: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 999px 0 0;
+  transform: translateX(-50%);
+  animation: coverSwipeArrowUp 1.65s ease-in-out infinite;
+}
+
+.cover-swipe-up-arrow::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 18px;
+  height: 18px;
+  border-top: 1px solid rgb(255 255 255 / 40%);
+  border-left: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 999px 0 0;
+}
+
+@keyframes coverSwipeDotUp {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0) scale(0.76);
+  }
+
+  16% {
+    opacity: 0.86;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  70% {
+    opacity: 0.74;
+    transform: translateX(-50%) translateY(-48px) scale(0.92);
+  }
+
+  86% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-54px) scale(0.74);
+  }
+}
+
+@keyframes coverSwipeTrackUp {
+
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0.14);
+  }
+
+  36% {
+    opacity: 0.72;
+    transform: translateX(-50%) scaleY(1);
+  }
+
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0.18);
+  }
+}
+
+@keyframes coverSwipeArrowUp {
+
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateX(-50%) translateY(5px) scale(0.9) rotate(45deg);
+  }
+
+  46%,
+  72% {
+    opacity: 0.76;
+    transform: translateX(-50%) translateY(-1px) scale(1) rotate(45deg);
+  }
+}
+
+@media (max-width: 640px) {
+
+  html.cover-screen-active,
+  html.cover-screen-active body,
+  html.cover-screen-active #root {
+    min-height: calc((var(--cover-vh, 1vh) * 100) + 2px);
+  }
+
+  .cover-screen {
+    --cover-bg-top-offset: 0;
+    --cover-bg-bottom-offset: 0;
+    position: absolute;
+    inset: 0 0 auto;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: -webkit-fill-available;
+    height: 100dvh;
+    height: calc((var(--cover-vh, 1vh) * 100) + 2px);
+    overflow: hidden;
+  }
+
+  .cover-screen__background {
+    position: fixed;
+    inset: 0;
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: -webkit-fill-available;
+    height: 100dvh;
+    height: calc((var(--cover-vh, 1vh) * 100) + 2px);
+  }
+
+  .cover-screen__content {
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: -webkit-fill-available;
+    min-height: calc(var(--cover-vh, 1vh) * 100);
+  }
+
+  .cover-screen__background::before {
+    background-position: var(--cover-bg-mobile-position);
+    background-size: cover;
+    animation: coverMobileScalePan 20s ease-in-out infinite alternate;
+  }
+
+  .cover-screen__tail-spacer {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+
+  html.cover-screen-ios-safari,
+  html.cover-screen-ios-safari body,
+  html.cover-screen-ios-safari #root {
+    height: auto;
+    min-height: 100%;
+    background-color: transparent !important;
+    overflow-x: clip;
+    overscroll-behavior-y: auto;
+  }
+
+  html.cover-screen-ios-safari .cover-screen {
+    position: relative;
+    inset: auto;
+    min-height: 120svh;
+    min-height: calc((var(--cover-vh, 1vh) * 100) + max(env(safe-area-inset-top, 0px), 44px) + max(env(safe-area-inset-bottom, 0px), 120px));
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    background-image: var(--cover-bg-image);
+    background-position: var(--cover-bg-mobile-position);
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  html.cover-screen-ios-safari .cover-screen::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(-1 * max(env(safe-area-inset-top, 0px), 72px));
+    height: max(env(safe-area-inset-top, 0px), 72px);
+    z-index: 1;
+    background: #000;
+    pointer-events: none;
+  }
+
+  html.cover-screen-ios-safari .cover-screen__background {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    height: auto;
+    min-height: 100%;
+    display: block;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  html.cover-screen-ios-safari .cover-screen__background::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    display: block;
+    background-image: var(--cover-bg-image);
+    background-position: var(--cover-bg-mobile-position);
+    background-repeat: no-repeat;
+    background-size: cover;
+    animation: coverMobileScalePan 20s ease-in-out infinite alternate;
+    transform-origin: center 42%;
+    will-change: transform;
+  }
+
+  html.cover-screen-ios-safari .cover-screen__shade {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    min-height: 100%;
+  }
+
+  html.cover-screen-ios-safari .cover-screen__content,
+  html.cover-screen-ios-safari .cover-screen__scroll-indicator {
+    z-index: 2;
+  }
+
+  html.cover-screen-ios-safari .cover-screen__tail-spacer {
+    display: block;
+    height: max(env(safe-area-inset-bottom, 0px), 120px);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1279px) {
+  .cover-swipe-hand {
+    width: 72px;
+    height: 92px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .cover-scroll-mouse {
+    display: flex;
+  }
+
+  .cover-swipe-hand {
+    display: none;
+  }
+}

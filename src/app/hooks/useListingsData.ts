@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { BookingRequest, Listing } from '../../types';
-import { filterDeletedListings, getStoredData, rememberDeletedListingId, saveStoredData } from '../../data';
+import { MOCK_HOUSING_LISTINGS, filterDeletedListings, getStoredData, rememberDeletedListingId, saveStoredData } from '../../data';
 import {
   db,
   deleteDocument,
@@ -32,6 +32,13 @@ const getHousingListingCollection = (listing: Listing) => {
   return LISTINGS_COLLECTION;
 };
 
+const mergeFirebaseListingsWithStaticHousing = (firebaseListings: Listing[]) => {
+  const firebaseIds = new Set(firebaseListings.map(listing => listing.id));
+  const staticHousingListings = MOCK_HOUSING_LISTINGS.filter(listing => !firebaseIds.has(listing.id));
+
+  return [...firebaseListings, ...staticHousingListings];
+};
+
 const mergeGoogleReviewsCacheIntoListings = async (listings: Listing[]) => {
   const listingsWithPlaceIds = listings.filter(listing =>
     listing.category === 'housing' &&
@@ -60,11 +67,25 @@ const mergeGoogleReviewsCacheIntoListings = async (listings: Listing[]) => {
   return listings.map(listing => cachedById.get(listing.id) || listing);
 };
 
+const getStoredMenuOverrides = () => {
+  if (typeof window === 'undefined') return { l1: {}, l2: {} };
+
+  const savedOverrides = localStorage.getItem('bali_base_menu_overrides');
+  if (!savedOverrides) return { l1: {}, l2: {} };
+
+  try {
+    return sanitizeMenuOverrides(JSON.parse(savedOverrides));
+  } catch (e) {
+    console.error('Error parsing local menu overrides', e);
+    return { l1: {}, l2: {} };
+  }
+};
+
 export const useListingsData = () => {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
-  const [menuOverrides, setMenuOverrides] = useState<any>({ l1: {}, l2: {} });
+  const [menuOverrides, setMenuOverrides] = useState<any>(() => getStoredMenuOverrides());
 
   useEffect(() => {
     const loaded = getStoredData();
@@ -72,23 +93,14 @@ export const useListingsData = () => {
     setListings(loaded.listings);
     setBookings(loadedBookings);
 
-    const savedOverrides = localStorage.getItem('bali_base_menu_overrides');
-    if (savedOverrides) {
-      try {
-        const parsed = JSON.parse(savedOverrides);
-        setMenuOverrides(sanitizeMenuOverrides(parsed));
-      } catch (e) {
-        console.error('Error parsing local menu overrides', e);
-      }
-    }
-
     const initFirebase = async () => {
       await testConnection();
       let syncPassed = false;
       try {
         const synced = await syncWithFirebase();
+        const syncedListings = mergeFirebaseListingsWithStaticHousing(synced.listings);
         const visibleListings = filterDeletedListings(
-          await mergeGoogleReviewsCacheIntoListings(synced.listings)
+          await mergeGoogleReviewsCacheIntoListings(syncedListings)
         );
         const visibleBookings = synced.bookings.filter(isBookingStored);
         setListings(visibleListings);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Upload } from 'lucide-react';
+import { Check, ChevronDown, RefreshCw, Upload } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
 import PhotoCategoryPanel from '../PhotoCategoryPanel';
 import Del from '../../Del';
@@ -133,12 +133,16 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
 
       <div className="space-y-2 pt-2">
         {photoUrls.length > 0 && (
-          <PhotoCategoryPanel
-            requiredSlots={REQUIRED_PHOTO_SLOTS}
-            optionalSlots={OPTIONAL_PHOTO_SLOTS}
-            setDraggedPhotoSlotId={setDraggedPhotoSlotId}
-            getAssignedPhotoUrls={getAssignedPhotoUrls}
-          />
+          <>
+            <PhotoCategoryPanel
+              requiredSlots={REQUIRED_PHOTO_SLOTS}
+              optionalSlots={OPTIONAL_PHOTO_SLOTS}
+              setDraggedPhotoSlotId={setDraggedPhotoSlotId}
+            />
+            <p className="sm:hidden text-center text-[11px] font-black text-[#1E293B] tracking-wider">
+              {tr('wizard.photos.assignCategories')}
+            </p>
+          </>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -181,22 +185,58 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                   </span>
                 </div>
 
-                <select
-                  value={selectValue}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    assignPhotoToSlot(url, nextValue === 'extra' ? 'extra' : nextValue as PhotoSlotId);
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  className="sm:hidden w-full bg-white border border-[#E5E7EB] rounded-xl px-2.5 py-2 text-[11px] font-bold text-[#1E293B] focus:outline-none focus:border-[#FF7A50]"
-                >
-                  {PHOTO_SLOT_CONFIG.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.index + 1}. {tr(item.labelKey)}
-                    </option>
-                  ))}
-                  <option value="extra">{tr('wizard.extraPhoto')}</option>
-                </select>
+                <details className="group sm:hidden relative">
+                  <summary className="flex min-h-9 w-full list-none items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-white px-2.5 py-2 text-[11px] font-bold text-[#1E293B] marker:hidden [&::-webkit-details-marker]:hidden">
+                    <span className="truncate">
+                      {slot ? `${slot.index + 1}. ${tr(slot.labelKey)}` : tr('wizard.extraPhoto')}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                  </summary>
+
+                  <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 rounded-2xl border border-[#E5E7EB] bg-white p-1.5 shadow-xl">
+                    {PHOTO_SLOT_CONFIG.map(item => {
+                      const isRequired = item.required;
+                      const isAssigned = getAssignedPhotoUrls(item.id).length > 0;
+                      const isSelected = selectValue === item.id;
+                      const requiredTextClass = isAssigned ? 'text-[#1E293B]' : 'text-rose-600';
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={(event) => {
+                            assignPhotoToSlot(url, item.id);
+                            event.currentTarget.closest('details')?.removeAttribute('open');
+                          }}
+                          className={`flex min-h-9 w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[11px] font-black transition ${isSelected ? 'bg-[#FF7A50]/10' : 'hover:bg-gray-50'} ${isRequired ? requiredTextClass : 'text-[#1E293B]'}`}
+                        >
+                          {isRequired && (
+                            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${isAssigned
+                              ? 'border-[#1E293B] bg-[#1E293B] text-white'
+                              : 'border-rose-500 bg-white text-transparent'
+                              }`}>
+                              {isAssigned && <Check className="h-3 w-3" strokeWidth={3} />}
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.index + 1}. {tr(item.labelKey)}
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        assignPhotoToSlot(url, 'extra');
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                      }}
+                      className={`flex min-h-9 w-full items-center rounded-xl px-2 py-1.5 text-left text-[11px] font-black text-[#1E293B] transition ${selectValue === 'extra' ? 'bg-[#FF7A50]/10' : 'hover:bg-gray-50'}`}
+                    >
+                      <span className="truncate">{tr('wizard.extraPhoto')}</span>
+                    </button>
+                  </div>
+                </details>
               </div>
             );
           })}

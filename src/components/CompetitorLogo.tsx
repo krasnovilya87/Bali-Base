@@ -5,7 +5,7 @@ type CompetitorPlatform = NonNullable<Listing['competitorPlatform']>;
 
 const LOGO_URLS: Partial<Record<CompetitorPlatform, string>> = {
   Booking: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2FBooking.com_logo.svg?alt=media&token=eb07b7cd-05a1-4884-99ef-a298eb71f7f7',
-  Traveloka: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2FTraveloka.svg?alt=media&token=e44b3536-f82e-4541-b362-af2105fed442',
+  Traveloka: '/logo/traveloka-cropped.svg',
   'Trip.com': 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2FTrip.com_logo.svg?alt=media&token=cec6be0b-7c7e-4c4f-a94e-ac2fea6a3bba',
   Agoda: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2Fagoda-1.svg?alt=media&token=e6c21cbd-6032-4cc5-a8fb-28aa52a18c16',
   Airbnb: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2Fairbnb.svg?alt=media&token=4f5fcd34-6254-4185-a21a-5715a6c2b221',
@@ -23,7 +23,12 @@ type CompetitorLogoProps = {
 
 const CompetitorLogo: React.FC<CompetitorLogoProps> = ({ platform = 'Booking', size = 'sm' }) => {
   const logoUrl = LOGO_URLS[platform];
-  const heightClass = size === 'md' ? 'h-5' : 'h-4';
+  const heightClass = platform === 'Booking'
+    ? (size === 'md' ? 'h-[12px]' : 'h-[10.5px]')
+    : platform === 'Traveloka'
+      ? (size === 'md' ? 'h-[17px]' : 'h-[13px]')
+      : (size === 'md' ? 'h-5' : 'h-4');
+  const alignmentClass = platform === 'Traveloka' ? '-translate-y-[2px]' : platform === 'Booking' ? 'translate-y-px' : '';
 
   if (logoUrl) {
     return (
@@ -31,7 +36,7 @@ const CompetitorLogo: React.FC<CompetitorLogoProps> = ({ platform = 'Booking', s
         <img
           src={logoUrl}
           alt={platform}
-          className={`${heightClass} max-w-[74px] object-contain`}
+          className={`${heightClass} max-w-[74px] object-contain ${alignmentClass}`}
           loading="lazy"
         />
       </span>

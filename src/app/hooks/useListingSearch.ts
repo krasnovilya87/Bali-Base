@@ -76,8 +76,17 @@ export const useListingSearch = ({
   checkOutDate
 }: UseListingSearchParams) => {
   const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
+  const defaultPriceMax = 30000000;
+  const currentPriceCeiling = useMemo(() => {
+    const categoryPrices = listings
+      .filter(item => item.status === 'active' && item.category === currentL1)
+      .filter(item => currentL2.length === 0 || currentL2.includes(item.subCategory))
+      .map(item => getComparablePrice(item, selectedDayCount));
+
+    return Math.max(defaultPriceMax, selectedDayCount * 1000000, ...categoryPrices);
+  }, [currentL1, currentL2, listings, selectedDayCount]);
   const effectivePriceMax = filters.priceMax === 30000000
-    ? Math.max(30000000, selectedDayCount * 1000000)
+    ? currentPriceCeiling
     : filters.priceMax;
 
   const filteredListings = useMemo(() => listings.filter(item => {
@@ -112,7 +121,7 @@ export const useListingSearch = ({
     const comparablePrice = getComparablePrice(item, selectedDayCount);
     if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
 
-    if (item.distanceToSeaMinutes !== undefined) {
+    if (currentL1 === 'housing' && item.distanceToSeaMinutes !== undefined) {
       if (item.distanceToSeaMinutes < (filters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > filters.distanceToSeaMax) {
         return false;
       }
@@ -120,7 +129,7 @@ export const useListingSearch = ({
 
     if (filters.isNewOnly && !isListingFresh(item)) return false;
 
-    if (filters.cleanlinessTags.length > 0) {
+    if (currentL1 === 'housing' && filters.cleanlinessTags.length > 0) {
       const matchAllClean = filters.cleanlinessTags.every(tag => {
         if (tag === 'Approved') return isListingVerified(item);
         const revLabels = item.reviews ? item.reviews.flatMap(r => r.cleanlinessLabels || []) : [];
@@ -130,16 +139,16 @@ export const useListingSearch = ({
     }
 
     if (filters.isApprovedOnly && !isListingVerified(item)) return false;
-    if (filters.hasDropPriceOnly && !item.hasDropPrice) return false;
-    if (filters.interiorStyle.length > 0 && !filters.interiorStyle.includes(item.interiorStyle)) return false;
-    if (filters.housingType.length > 0 && item.housingType && !filters.housingType.includes(item.housingType)) return false;
-    if (filters.territoryType.length > 0 && item.territoryType && !filters.territoryType.includes(item.territoryType)) return false;
-    if (filters.densityType.length > 0 && item.densityType && !filters.densityType.includes(item.densityType)) return false;
-    if (filters.wallMaterial.length > 0 && item.wallMaterial && !filters.wallMaterial.includes(item.wallMaterial)) return false;
-    if (filters.bedType.length > 0 && item.bedType && !filters.bedType.includes(item.bedType)) return false;
-    if (filters.kitchenType.length > 0 && item.kitchenType && !filters.kitchenType.includes(item.kitchenType)) return false;
+    if (currentL1 === 'housing' && filters.hasDropPriceOnly && !item.hasDropPrice) return false;
+    if (currentL1 === 'housing' && filters.interiorStyle.length > 0 && !filters.interiorStyle.includes(item.interiorStyle)) return false;
+    if (currentL1 === 'housing' && filters.housingType.length > 0 && item.housingType && !filters.housingType.includes(item.housingType)) return false;
+    if (currentL1 === 'housing' && filters.territoryType.length > 0 && item.territoryType && !filters.territoryType.includes(item.territoryType)) return false;
+    if (currentL1 === 'housing' && filters.densityType.length > 0 && item.densityType && !filters.densityType.includes(item.densityType)) return false;
+    if (currentL1 === 'housing' && filters.wallMaterial.length > 0 && item.wallMaterial && !filters.wallMaterial.includes(item.wallMaterial)) return false;
+    if (currentL1 === 'housing' && filters.bedType.length > 0 && item.bedType && !filters.bedType.includes(item.bedType)) return false;
+    if (currentL1 === 'housing' && filters.kitchenType.length > 0 && item.kitchenType && !filters.kitchenType.includes(item.kitchenType)) return false;
 
-    if (filters.poolType.length > 0) {
+    if (currentL1 === 'housing' && filters.poolType.length > 0) {
       if (!item.poolType || item.poolType === 'none') return false;
 
       if (filters.poolType.includes('infinity') && item.poolType !== 'infinity') return false;
@@ -155,26 +164,26 @@ export const useListingSearch = ({
       }
     }
 
-    if (filters.internetSpeedMin > 0 && (item.internetSpeed === undefined || item.internetSpeed < filters.internetSpeedMin)) return false;
-    if (filters.bathroomType.length > 0 && item.bathroomType && !filters.bathroomType.includes(item.bathroomType)) return false;
+    if (currentL1 === 'housing' && filters.internetSpeedMin > 0 && (item.internetSpeed === undefined || item.internetSpeed < filters.internetSpeedMin)) return false;
+    if (currentL1 === 'housing' && filters.bathroomType.length > 0 && item.bathroomType && !filters.bathroomType.includes(item.bathroomType)) return false;
 
-    if (filters.bathroomOptions.length > 0) {
+    if (currentL1 === 'housing' && filters.bathroomOptions.length > 0) {
       const hasAllBathOpts = filters.bathroomOptions.every(opt => item.bathroomOptions && item.bathroomOptions.includes(opt));
       if (!hasAllBathOpts) return false;
     }
 
-    if (item.roomsTotal !== undefined) {
+    if (currentL1 === 'housing' && item.roomsTotal !== undefined) {
       if (item.roomsTotal < filters.roomsMin || item.roomsTotal > filters.roomsMax) return false;
     }
 
-    if (filters.cleaningFrequency.length > 0 && item.cleaningFrequency && !filters.cleaningFrequency.includes(item.cleaningFrequency)) return false;
+    if (currentL1 === 'housing' && filters.cleaningFrequency.length > 0 && item.cleaningFrequency && !filters.cleaningFrequency.includes(item.cleaningFrequency)) return false;
 
-    if (filters.amenities.length > 0) {
+    if (currentL1 === 'housing' && filters.amenities.length > 0) {
       const hasAll = filters.amenities.every(amen => item.amenities && item.amenities.includes(amen));
       if (!hasAll) return false;
     }
 
-    if (filters.viewType.length > 0 && item.viewType && !filters.viewType.includes(item.viewType)) return false;
+    if (currentL1 === 'housing' && filters.viewType.length > 0 && item.viewType && !filters.viewType.includes(item.viewType)) return false;
 
     return true;
   }), [

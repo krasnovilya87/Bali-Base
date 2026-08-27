@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
@@ -7,9 +8,41 @@ import { defineConfig } from 'vite';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isAdminRequest = (url?: string) =>
+  url?.split('?')[0].replace(/\/+$/, '') === '/adm';
+
+const adminRouteFallback = () => ({
+  name: 'admin-route-fallback',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      if (isAdminRequest(req.url)) {
+        const templatePath = path.resolve(__dirname, 'index.html');
+        const template = fs.readFileSync(templatePath, 'utf-8');
+        const html = await server.transformIndexHtml('/index.html', template);
+        res.setHeader('Content-Type', 'text/html');
+        res.end(html);
+        return;
+      }
+      next();
+    });
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (isAdminRequest(req.url)) {
+        const html = fs.readFileSync(path.resolve(__dirname, 'dist', 'index.html'), 'utf-8');
+        res.setHeader('Content-Type', 'text/html');
+        res.end(html);
+        return;
+      }
+      next();
+    });
+  }
+});
+
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    appType: 'spa' as const,
+    plugins: [adminRouteFallback(), react(), tailwindcss()],
     resolve: {
       alias: [
         { find: '@', replacement: path.resolve(__dirname, '.') },

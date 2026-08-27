@@ -6,19 +6,25 @@ import ListingCard from './components/ListingCard';
 import SupportContactModal from './components/SupportContactModal';
 import TwoMonthCalendar from './components/TwoMonthCalendar';
 import { ThreeDIcon } from './components/ThreeDIcon';
+import AdminDashboard from './components/AdminDashboard';
 import { THEME } from './theme';
 import { DEFAULT_LANGUAGE, LanguageCode, loadTranslations, t } from './i18n';
 import { I18nProvider } from './i18nContext';
-// @ts-ignore
-import baliRiceBg from './assets/images/hero4.jpg';
 import { CURRENCIES, CurrencyKey } from './app/currency';
 import { getDeviceLanguage } from './app/language';
-import { L1_CATEGORIES, preloadMenuImages, SUBCATEGORIES_MAP } from './app/menu';
+import {
+  getMenuCategoryImage,
+  getMenuSubcategoryImage,
+  L1_CATEGORIES,
+  preloadMenuImages,
+  SUBCATEGORIES_MAP
+} from './app/menu';
 import AppOverlays from './app/components/AppOverlays';
 import BrandWordmark from './app/components/BrandWordmark';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
 import AuthModal from './components/AuthModal';
+import CoverScreen from './components/CoverScreen';
 import { useListingsData } from './app/hooks/useListingsData';
 import { useListingSearch } from './app/hooks/useListingSearch';
 import { useFavoriteListings } from './hooks/useFavoriteListings';
@@ -29,7 +35,7 @@ import { LISTING_SHARE_PARAM } from './utils/listingShare';
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid
+  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid, LockKeyhole
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -41,6 +47,9 @@ const DISTRICT_MENU_GROUPS = [
 const MENU_SELECTION_STORAGE_KEY = 'bali_base_menu_selection';
 const FILTERS_STORAGE_KEY = 'bali_base_filters';
 const AUTH_RETURN_VIEW_STORAGE_KEY = 'bali_base_auth_return_view';
+const INITIAL_VIEW_STORAGE_KEY = 'bali_base_initial_view';
+const ADMIN_ROUTE = '/adm';
+const ADMIN_EMAILS = ['krasnovilya87@gmail.com'];
 
 type AppView = 'cover' | 'menu' | 'app';
 
@@ -141,6 +150,23 @@ const readAuthReturnView = (): AppView | null => {
   }
 };
 
+const readInitialView = (): AppView => {
+  const authReturnView = readAuthReturnView();
+  if (authReturnView) return authReturnView;
+  if (typeof window === 'undefined') return 'cover';
+
+  try {
+    window.sessionStorage.removeItem('bali_base_static_cover_done');
+    const initialView = window.sessionStorage.getItem(INITIAL_VIEW_STORAGE_KEY);
+    window.sessionStorage.removeItem(INITIAL_VIEW_STORAGE_KEY);
+    if (initialView === 'menu' || initialView === 'app') return initialView;
+
+    return 'cover';
+  } catch {
+    return 'cover';
+  }
+};
+
 const storeAuthReturnView = (view: AppView) => {
   if (typeof window === 'undefined') return;
 
@@ -151,9 +177,18 @@ const storeAuthReturnView = (view: AppView) => {
   }
 };
 
+const readIsAdminRoute = () => {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === ADMIN_ROUTE;
+};
+
+const isAdminEmail = (email?: string | null) =>
+  Boolean(email && ADMIN_EMAILS.includes(email.trim().toLowerCase()));
+
 export default function App() {
-  const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<AppView>(() => readAuthReturnView() || 'cover');
+  const { user, loading } = useAuth();
+  const [currentView, setCurrentView] = useState<AppView>(readInitialView);
+  const [isAdminRoute, setIsAdminRoute] = useState(readIsAdminRoute);
   const {
     bookings,
     handleAddBooking,
@@ -225,6 +260,25 @@ export default function App() {
   const footerRef = useRef<HTMLElement | null>(null);
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
   const mapFrameRef = useRef({ top: 154, height: 420 });
+  const isCurrentUserAdmin = isAdminEmail(user?.email);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncAdminRoute = () => setIsAdminRoute(readIsAdminRoute());
+    const openMenuFromStaticCover = () => {
+      setCurrentView('menu');
+      resetViewScrollAfterLayout();
+    };
+
+    window.addEventListener('popstate', syncAdminRoute);
+    window.addEventListener('bali-base-static-cover-dismiss', openMenuFromStaticCover);
+
+    return () => {
+      window.removeEventListener('popstate', syncAdminRoute);
+      window.removeEventListener('bali-base-static-cover-dismiss', openMenuFromStaticCover);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -401,6 +455,16 @@ export default function App() {
     return false;
   };
 
+  const closeAdminRoute = () => {
+    setShowAdminDashboard(false);
+    if (typeof window === 'undefined') {
+      setIsAdminRoute(false);
+      return;
+    }
+    window.history.pushState({}, document.title, '/');
+    setIsAdminRoute(false);
+  };
+
   const requireAuth = (reasonKey: string, action: () => void) => {
     if (!user) {
       requestAuth(reasonKey, action);
@@ -493,6 +557,9 @@ export default function App() {
   const resetViewScroll = () => {
     if (typeof window === 'undefined') return;
 
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     if (document.scrollingElement) {
       document.scrollingElement.scrollTop = 0;
@@ -506,14 +573,33 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
+  const resetViewScrollAfterLayout = () => {
+    if (typeof window === 'undefined') return [];
+
     resetViewScroll();
-    const frame = window.requestAnimationFrame(resetViewScroll);
-    const timer = window.setTimeout(resetViewScroll, 80);
+    const frames = [
+      window.requestAnimationFrame(() => {
+        resetViewScroll();
+        window.requestAnimationFrame(resetViewScroll);
+      })
+    ];
+    const timers = [40, 80, 160, 320, 640, 1000].map(delay =>
+      window.setTimeout(resetViewScroll, delay)
+    );
+
+    return [...frames, ...timers];
+  };
+
+  useEffect(() => {
+    if (currentView === 'cover') return;
+
+    const resetHandles = resetViewScrollAfterLayout();
 
     return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
+      resetHandles.forEach(handle => {
+        window.cancelAnimationFrame(handle);
+        window.clearTimeout(handle);
+      });
     };
   }, [currentView]);
 
@@ -543,6 +629,10 @@ export default function App() {
   }, [currentView]);
 
   const handleGlobalBack = () => {
+    if (isAdminRoute) {
+      closeAdminRoute();
+      return;
+    }
     if (showMapSelectModal) {
       setShowMapSelectModal(false);
       return;
@@ -736,6 +826,7 @@ export default function App() {
     };
   }, [
     currentView,
+    isAdminRoute,
     isMapFullscreen,
     selectedListing,
     showAdminDashboard,
@@ -753,7 +844,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (currentView !== 'cover') return;
+    if (isAdminRoute || currentView !== 'cover') return;
 
     let touchStartY = 0;
     let isCoverSwipeCandidate = false;
@@ -761,6 +852,8 @@ export default function App() {
     const goToMenuFromCover = () => {
       resetViewScroll();
       setCurrentView('menu');
+      window.requestAnimationFrame(resetViewScroll);
+      window.setTimeout(resetViewScroll, 80);
     };
 
     const handleWheel = (e: WheelEvent) => {
@@ -814,7 +907,7 @@ export default function App() {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [currentView]);
+  }, [currentView, isAdminRoute]);
 
   const formatReservationDates = (startStr: string, endStr: string) => {
     if (!startStr) return "";
@@ -934,11 +1027,12 @@ export default function App() {
   });
   const mobileNavButtonClass = 'flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/32 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
   const mobileNavActiveButtonClass = 'relative flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/38 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
+  const isCoverView = !isAdminRoute && currentView === 'cover';
 
   return (
     <I18nProvider language={activeLanguage}>
       <div
-        className="min-h-screen bg-[#F4F7F6] text-[#1E293B] antialiased selection:bg-[#FF7A50]/20 flex flex-col font-sans"
+        className={`min-h-screen text-[#1E293B] antialiased selection:bg-[#FF7A50]/20 flex flex-col font-sans ${isCoverView ? 'cover-app-shell' : 'bg-[#F4F7F6]'}`}
         style={{
           transform: backSwipeOffset > 0 ? `translate3d(${backSwipeOffset}px, 0, 0)` : undefined,
           transition: isBackSwipeSettling ? 'transform 180ms cubic-bezier(0.2, 0, 0, 1)' : 'none',
@@ -946,64 +1040,45 @@ export default function App() {
         }}
       >
 
+        {isAdminRoute && (
+          isCurrentUserAdmin ? (
+            <AdminDashboard
+              listings={listings}
+              bookings={bookings}
+              onToggleStatus={handleToggleListingStatus}
+              onUpdateBookingStatus={handleUpdateBookingStatus}
+              onUpdateListing={handleUpdateListing}
+              onDeleteListing={handleDeleteListing}
+              onSelectListing={(listing) => {
+                setSelectedListing(listing);
+              }}
+              onClose={closeAdminRoute}
+              currencySymbol={CURRENCIES[activeCurrency].symbol}
+              currencyRate={CURRENCIES[activeCurrency].rate}
+              menuOverrides={menuOverrides}
+              onUpdateMenuOverrides={handleUpdateMenuOverrides}
+            />
+          ) : (
+            <AdminAccessScreen
+              loading={loading}
+              signedIn={Boolean(user)}
+              tr={tr}
+              onBack={closeAdminRoute}
+              onSignIn={() => requestAuth('auth.reason.admin')}
+            />
+          )
+        )}
+
         {/* 1. COVER SCREEN (SCREEN 1) */}
-        {currentView === 'cover' && (
-          <div className="relative min-h-[100lvh] w-full overflow-hidden px-4 text-center select-none">
-            {/* Ambient Video styled Background overlay */}
-            <div className="pointer-events-none fixed inset-x-0 top-[calc(-1*max(env(safe-area-inset-top),24px))] bottom-[-18svh] overflow-hidden">
-              <img
-                src={baliRiceBg}
-                alt="Rice Terraces Background"
-                className="cover-hero-image absolute inset-0 h-full w-full object-cover object-[center_38%] scale-105 animate-scale-slow-pan"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-black/55 z-10" />
-            </div>
-
-            <div className="relative z-20 mx-auto flex min-h-[100lvh] w-full max-w-5xl flex-col items-center justify-center pb-[calc(22svh+env(safe-area-inset-bottom))] pt-[calc(10svh+env(safe-area-inset-top))] sm:pb-[20svh] sm:pt-[8svh]">
-              <div className="flex translate-y-[-2svh] flex-col items-center sm:translate-y-[-3svh]">
-                {/* Glowing badges upper area */}
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 backdrop-blur-md sm:mb-5 sm:px-4 animate-bounce-slow">
-                  <Compass className="w-4 h-4 text-[#FF7A50]" />
-                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-white sm:text-xs">
-                    {tr('cover.badge')}
-                  </span>
-                </div>
-
-                <div className="mx-auto max-w-[92vw] pb-2">
-                  <BrandWordmark label={tr('brand.name')} variant="cover" />
-                </div>
-
-                <p className="mx-auto mt-3 max-w-[min(38rem,86vw)] text-balance font-sans text-base font-medium leading-relaxed text-emerald-50/90 drop-shadow-sm sm:mt-4 sm:text-xl">
-                  {tr('cover.subtitle')}
-                </p>
-              </div>
-            </div>
-
-            {/* Scroll directive indicator */}
-            <div className="absolute inset-x-0 bottom-[calc(6svh+env(safe-area-inset-bottom))] z-20 flex items-center justify-center text-white/90 sm:bottom-[7svh]">
-              <div className="cover-scroll-mouse" aria-hidden="true">
-                <div className="cover-scroll-mouse-shell">
-                  <div className="cover-scroll-wheel" />
-                </div>
-              </div>
-              <div className="flex cover-swipe-hand" aria-hidden="true">
-                <div className="cover-swipe-up">
-                  <span className="cover-swipe-up-arrow" />
-                  <span className="cover-swipe-up-track" />
-                  <span className="cover-swipe-up-dot" />
-                </div>
-              </div>
-            </div>
-            <div className="relative h-[18svh]" aria-hidden="true" />
-          </div>
+        {isCoverView && (
+          <CoverScreen tr={tr} />
         )}
 
         {/* 2. MAIN MENU (SCREEN 2) */}
-        {currentView === 'menu' && (
+        {!isAdminRoute && currentView === 'menu' && (
           <div className="h-[100dvh] sm:min-h-screen w-full flex flex-col animate-fade-in bg-[#F4F7F6] overflow-hidden sm:overflow-visible">
             {/* HEADER BAR ROW */}
-            <header className={`sticky top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+            <header className={`fixed inset-x-0 top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] sm:sticky sm:inset-x-auto md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4 font-sans">
 
                 {/* BRAND EMBLEM & COVER BUTTON */}
@@ -1197,11 +1272,11 @@ export default function App() {
             </header>
 
             {/* Main Menu body */}
-            <div className="flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
+            <div className="mt-16 flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:mt-0 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
               <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
-                  const displayImage = menuOverrides?.l1?.[cat.id]?.image || cat.image;
+                  const displayImage = getMenuCategoryImage(cat, menuOverrides);
                   return (
                     <div
                       key={cat.id}
@@ -1243,7 +1318,7 @@ export default function App() {
         )}
 
         {/* 3. APP VIEW (SCREEN 3) */}
-        {currentView === 'app' && (
+        {!isAdminRoute && currentView === 'app' && (
           <div className="flex-1 flex flex-col animate-fade-in min-h-screen">
 
             {/* HEADER BAR ROW */}
@@ -1455,7 +1530,7 @@ export default function App() {
                 {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
                   const displayLabel = tr(`subcategory.${sub.id}`);
                   const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon;
-                  const displayCustomImage = menuOverrides?.l2?.[sub.id]?.customImage;
+                  const displayCustomImage = getMenuSubcategoryImage(sub, menuOverrides);
                   const isSelected = currentL2.includes(sub.id);
 
                   return (
@@ -1468,11 +1543,11 @@ export default function App() {
                         }`}
                     >
                       {displayCustomImage ? (
-                        <div className={`w-[30px] h-[30px] flex items-center justify-center shrink-0 overflow-hidden rounded-lg bg-gray-50 shadow-[0_2px_4px_rgba(15,23,42,0.12)] transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
+                        <div className={`w-11 h-11 flex items-center justify-center shrink-0 overflow-hidden rounded-lg transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
                           <img
                             src={displayCustomImage}
                             alt={displayLabel}
-                            className="w-full h-full object-cover rounded-lg"
+                            className="w-full h-full object-contain"
                             referrerPolicy="no-referrer"
                           />
                         </div>
@@ -1720,7 +1795,7 @@ export default function App() {
                 </div>
 
                 {/* FILTERS: CIRCULAR BUTTON with symbol only (right of "Р“РґРµ? | РљРѕРіРґР°?") */}
-                {currentL1 === 'housing' && (
+                {currentL1 !== 'useful' && (
                   <button
                     onClick={() => setShowFiltersModal(true)}
                     className="w-10 h-10 flex items-center justify-center bg-white/32 border-[0.5px] border-white/60 text-[#FF7A50] hover:text-[#E05A30] hover:bg-white/42 rounded-full transition active:scale-95 cursor-pointer shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] shrink-0 mr-6 sm:mr-0"
@@ -1976,7 +2051,7 @@ export default function App() {
           </div>
         )}
 
-        {currentView !== 'cover' && !isMapFullscreen && (
+        {!isAdminRoute && currentView !== 'cover' && !isMapFullscreen && (
           <nav
             className={`fixed inset-x-0 bottom-0 z-[260] md:hidden transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'translate-y-[115%]' : 'translate-y-0'}`}
             aria-label={tr('nav.mobile.label')}
@@ -2113,6 +2188,7 @@ export default function App() {
           bookings={bookings}
           currencyRate={CURRENCIES[activeCurrency].rate}
           currencySymbol={CURRENCIES[activeCurrency].symbol}
+          currentL1={currentL1}
           currentL2={currentL2}
           customPoint={customPoint}
           customRadius={customRadius}
@@ -2204,4 +2280,56 @@ function getAcceptedContactHistoryBookingCount(bookings: BookingRequest[]) {
   } catch {
     return 0;
   }
+}
+
+function AdminAccessScreen({
+  loading,
+  signedIn,
+  tr,
+  onBack,
+  onSignIn
+}: {
+  loading: boolean;
+  signedIn: boolean;
+  tr: (key: string) => string;
+  onBack: () => void;
+  onSignIn: () => void;
+}) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#F4F7F6] px-4 py-10">
+      <section className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-6 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF7A50]/10 text-[#FF7A50]">
+          <LockKeyhole className="h-6 w-6" strokeWidth={1.8} />
+        </div>
+        <h1 className="font-display text-2xl font-black text-[#1E293B]">
+          {loading ? tr('admin.access.loadingTitle') : tr('admin.access.title')}
+        </h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm font-medium leading-relaxed text-slate-500">
+          {loading
+            ? tr('admin.access.loadingBody')
+            : signedIn
+              ? tr('admin.access.deniedBody')
+              : tr('admin.access.signInBody')}
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {!loading && !signedIn && (
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="rounded-xl bg-[#FF7A50] px-5 py-3 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(255,122,80,0.24)] transition hover:bg-[#E05A30] active:scale-95"
+            >
+              {tr('admin.access.signIn')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] px-5 py-3 text-sm font-extrabold text-[#1E293B] transition hover:bg-white active:scale-95"
+          >
+            {tr('admin.access.back')}
+          </button>
+        </div>
+      </section>
+    </main>
+  );
 }
