@@ -7,8 +7,37 @@ import { isListingVerified } from '../utils/listingVerification';
 import { snapRangeValue } from '../utils/range';
 import { useI18n } from '../i18nContext';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import {
+  SCOOTER_COLOR_OPTIONS,
+  SCOOTER_CONDITION_OPTIONS,
+  SCOOTER_MODEL_GROUPS,
+  SCOOTER_SELLER_TYPE_OPTIONS,
+  ScooterModelGroup,
+  getListingSellerType,
+  getListingVehicleColor,
+  getListingVehicleCondition,
+  getListingVehicleModel,
+  getScooterModelsForGroup,
+  listingOffersFreeDeliveryToAddress,
+  yearMeetsMinimum
+} from '../utils/scooterFilters';
 // @ts-ignore
 import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
+// @ts-ignore
+import scooterConditionSprite from '../assets/images/scooter-condition-sprite.png';
+
+const getVehicleColorSwatch = (color: string) => ({
+  black: '#111827',
+  white: '#FFFFFF',
+  red: '#EF4444',
+  blue: '#2563EB',
+  silver: '#CBD5E1',
+  gray: '#64748B',
+  green: '#16A34A',
+  yellow: '#FACC15',
+  orange: '#F97316',
+  brown: '#92400E'
+}[color] || '#E5E7EB');
 
 interface HousingFiltersProps {
   listings: Listing[];
@@ -16,6 +45,8 @@ interface HousingFiltersProps {
   subCategory: string; // 'entire_place' | 'private_suite' | 'private_room' | string
   selectedSubCategories?: string[];
   onSubCategoryChange?: (subCategoryId: string) => void;
+  deliveryPoint?: { x: number; y: number } | null;
+  onRequestDeliveryPoint?: () => void;
   filters: FilterState;
   onApplyFilters: (newFilters: FilterState) => void;
   onClose: () => void;
@@ -31,6 +62,8 @@ export default function HousingFilters({
   subCategory,
   selectedSubCategories = [subCategory],
   onSubCategoryChange,
+  deliveryPoint = null,
+  onRequestDeliveryPoint,
   filters,
   onApplyFilters,
   onClose,
@@ -54,6 +87,7 @@ export default function HousingFilters({
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
+  const isScootersCategory = category === 'transport' && activeSubCategories.includes('scooters');
   const getItemFilterPrice = (item: Listing) => {
     const dailyPrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
     return dailyPrice * selectedDayCount;
@@ -80,6 +114,8 @@ export default function HousingFilters({
 
   const [activeDrag, setActiveDrag] = useState<'min' | 'max' | null>(null);
   const [showRiceFieldsNotice, setShowRiceFieldsNotice] = useState(false);
+  const [activeScooterModelGroup, setActiveScooterModelGroup] = useState<ScooterModelGroup>('all');
+  const currentVehicleYear = new Date().getFullYear();
   const trackRef = useRef<HTMLDivElement>(null);
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
@@ -213,7 +249,15 @@ export default function HousingFilters({
       extraOptions: [],
       engineSize: [],
       transmission: [],
-      vehicleBrand: []
+      vehicleBrand: [],
+      vehicleModel: [],
+      vehicleColor: [],
+      vehicleYear: [],
+      vehicleYearMin: 0,
+      vehicleCondition: [],
+      sellerType: [],
+      freeDeliveryToAddressOnly: false,
+      freeDeliveryToDistrictOnly: false
     };
     setLocalFilters(defaultFilters);
   };
@@ -368,6 +412,15 @@ export default function HousingFilters({
       const price = getItemFilterPrice(item);
       if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
 
+      if (category === 'transport' && item.subCategory === 'scooters') {
+        if (localFilters.vehicleModel.length > 0 && !localFilters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
+        if (localFilters.vehicleColor.length > 0 && !localFilters.vehicleColor.includes(getListingVehicleColor(item) || '')) return false;
+        if (!yearMeetsMinimum(item.yearBuilt, localFilters.vehicleYearMin || 0)) return false;
+        if (localFilters.vehicleCondition.length > 0 && !localFilters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
+        if (localFilters.sellerType.length > 0 && !localFilters.sellerType.includes(getListingSellerType(item))) return false;
+        if (localFilters.freeDeliveryToAddressOnly && deliveryPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
+      }
+
       if (isHousingCategory && item.distanceToSeaMinutes !== undefined) {
         if (item.distanceToSeaMinutes < (localFilters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > localFilters.distanceToSeaMax) {
           return false;
@@ -518,6 +571,29 @@ export default function HousingFilters({
         ? tr('filters.subPrivateSuite')
         : tr('filters.subPrivateRoom')
     : tr(`category.${category}.label`);
+  const visibleScooterModels = getScooterModelsForGroup(activeScooterModelGroup);
+  const vehicleYearSliderValue = localFilters.vehicleYearMin > 0
+    ? Math.min(Math.max(currentVehicleYear - localFilters.vehicleYearMin, 0), 3)
+    : 4;
+  const vehicleYearLabel = localFilters.vehicleYearMin > 0
+    ? `${localFilters.vehicleYearMin}+`
+    : tr('filters.transport.year.any');
+  const deliveryAddressLabel = deliveryPoint
+    ? tr('filters.transport.delivery.addressSelected')
+    : tr('filters.transport.delivery.chooseAddressInline');
+  const handleFreeDeliveryToggle = () => {
+    const isEnabling = !localFilters.freeDeliveryToAddressOnly;
+    const nextFilters = {
+      ...localFilters,
+      freeDeliveryToAddressOnly: isEnabling
+    };
+    setLocalFilters(nextFilters);
+
+    if (isEnabling && !deliveryPoint) {
+      onApplyFilters(nextFilters);
+      onRequestDeliveryPoint?.();
+    }
+  };
 
   return (
     <div 
@@ -737,6 +813,216 @@ export default function HousingFilters({
               </div>
             </div>
           </div>
+
+          {isScootersCategory && (
+            <div className="contents">
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.transport.models')}</span>
+                <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                  {SCOOTER_MODEL_GROUPS.map(group => {
+                    const isActive = activeScooterModelGroup === group.value;
+                    return (
+                      <button
+                        key={group.value}
+                        type="button"
+                        onClick={() => setActiveScooterModelGroup(group.value)}
+                        className={`pl pl-interactive inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'bg-[#1E293B] text-white shadow-[0_8px_16px_rgba(30,41,59,0.14)]'
+                            : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                        }`}
+                      >
+                        {tr(group.labelKey)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {visibleScooterModels.map(model => {
+                    const isActive = localFilters.vehicleModel.includes(model.value);
+                    return (
+                      <button
+                        key={model.value}
+                        type="button"
+                        onClick={() => toggleArrayFilter('vehicleModel', model.value)}
+                        className={`pl pl-interactive inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                        }`}
+                      >
+                        {isActive && <Check className="h-3.5 w-3.5" />}
+                        {model.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.transport.color')}</span>
+                <div className="flex flex-wrap gap-3">
+                  {SCOOTER_COLOR_OPTIONS.map(color => {
+                    const isActive = localFilters.vehicleColor.includes(color);
+                    const colorLabel = tr(`filters.transport.color.${color}`);
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        aria-label={colorLabel}
+                        title={colorLabel}
+                        aria-pressed={isActive}
+                        onClick={() => toggleArrayFilter('vehicleColor', color)}
+                        className={`pl pl-interactive relative h-10 w-10 rounded-full border transition cursor-pointer select-none shrink-0 ${
+                          isActive
+                            ? 'border-[#FF7A50] ring-4 ring-[#FF7A50]/18 shadow-[0_10px_18px_rgba(255,122,80,0.16)]'
+                            : 'border-white ring-1 ring-[#1E293B]/10 hover:ring-[#FF7A50]/45'
+                        }`}
+                      >
+                        <span className="absolute inset-1 rounded-full border border-[#1E293B]/10" style={{ backgroundColor: getVehicleColorSwatch(color) }} />
+                        {isActive && (
+                          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FF7A50] text-white ring-2 ring-white">
+                            <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                          </span>
+                        )}
+                        <span className="sr-only">
+                          {colorLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className={sectionTitleClass}>{tr('filters.transport.year')}</span>
+                  <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                    {vehicleYearLabel}
+                  </span>
+                </div>
+
+                <div className="pt-2 relative">
+                  <Polzunok
+                    min={0}
+                    max={4}
+                    step={1}
+                    value={vehicleYearSliderValue}
+                    onChange={idx => {
+                      setLocalFilters({
+                        ...localFilters,
+                        vehicleYear: [],
+                        vehicleYearMin: idx === 4 ? 0 : currentVehicleYear - idx
+                      });
+                    }}
+                  />
+                  {renderSliderScaleLabels([
+                    currentVehicleYear,
+                    currentVehicleYear - 1,
+                    currentVehicleYear - 2,
+                    currentVehicleYear - 3,
+                    tr('filters.transport.year.any')
+                  ])}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.transport.condition')}</span>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {SCOOTER_CONDITION_OPTIONS.map((condition, index) => {
+                    const isActive = localFilters.vehicleCondition.includes(condition);
+                    const conditionLabel = tr(`filters.transport.condition.${condition}`);
+                    return (
+                      <button
+                        key={condition}
+                        type="button"
+                        aria-label={conditionLabel}
+                        title={conditionLabel}
+                        aria-pressed={isActive}
+                        onClick={() => toggleArrayFilter('vehicleCondition', condition)}
+                        className={`pl pl-interactive relative aspect-square overflow-hidden rounded-2xl border transition cursor-pointer select-none ${
+                          isActive
+                            ? 'border-[#FF7A50] ring-4 ring-[#FF7A50]/18 shadow-[0_12px_24px_rgba(255,122,80,0.18)]'
+                            : 'border-white ring-1 ring-[#1E293B]/10 hover:ring-[#FF7A50]/45'
+                        }`}
+                      >
+                        <span
+                          className="absolute inset-0 bg-cover bg-center transition-transform duration-300 hover:scale-105"
+                          style={{
+                            backgroundImage: `url(${scooterConditionSprite})`,
+                            backgroundSize: '300% 100%',
+                            backgroundPosition: `${index * 50}% center`
+                          }}
+                        />
+                        <span className="absolute inset-0 bg-gradient-to-t from-[#1E293B]/20 via-transparent to-white/5" />
+                        <span className="absolute left-2 top-2 max-w-[calc(100%-1rem)] rounded-full bg-white/88 px-2.5 py-1 text-[10px] font-extrabold leading-tight text-[#1E293B] shadow-[0_8px_18px_rgba(15,23,42,0.14)] backdrop-blur-md">
+                          {conditionLabel}
+                        </span>
+                        {isActive && (
+                          <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF7A50] text-white ring-2 ring-white">
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                        )}
+                        <span className="sr-only">{conditionLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.transport.delivery')}</span>
+                <button
+                  type="button"
+                  onClick={handleFreeDeliveryToggle}
+                  aria-pressed={localFilters.freeDeliveryToAddressOnly}
+                  className={`pl pl-interactive w-full rounded-2xl border p-4 transition cursor-pointer select-none flex items-center justify-between gap-4 text-left ${
+                    localFilters.freeDeliveryToAddressOnly
+                      ? 'border-[#FF7A50] bg-[#FF7A50]/12 shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                      : 'border-[#E5E7EB] bg-white hover:border-[#FF7A50]/60'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-extrabold text-[#1E293B] leading-tight">
+                      {tr('filters.transport.delivery.toSelectedAddress')}: {deliveryAddressLabel}
+                    </span>
+                  </div>
+                  <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    localFilters.freeDeliveryToAddressOnly ? 'bg-[#FF7A50]' : 'bg-[#CBD5E1]'
+                  }`}>
+                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      localFilters.freeDeliveryToAddressOnly ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.transport.sellerType')}</span>
+                <div className="flex flex-wrap gap-2">
+                  {SCOOTER_SELLER_TYPE_OPTIONS.map(type => {
+                    const isActive = localFilters.sellerType.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => toggleArrayFilter('sellerType', type)}
+                        aria-pressed={isActive}
+                        className={`pl pl-interactive inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                        }`}
+                      >
+                        {isActive && <Check className="h-3.5 w-3.5" />}
+                        {tr(`filters.transport.sellerType.${type}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {isHousingCategory && (
           <div className="contents">

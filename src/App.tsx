@@ -23,6 +23,7 @@ import AppOverlays from './app/components/AppOverlays';
 import BrandWordmark from './app/components/BrandWordmark';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
+import AiVoiceSearchDialog from './components/AiVoiceSearchDialog';
 import AuthModal from './components/AuthModal';
 import CoverScreen from './components/CoverScreen';
 import { useListingsData } from './app/hooks/useListingsData';
@@ -31,11 +32,12 @@ import { useFavoriteListings } from './hooks/useFavoriteListings';
 import { useAuth } from './auth/AuthContext';
 import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
 import { LISTING_SHARE_PARAM } from './utils/listingShare';
+import { AiSearchIntent, requestAiSearchIntent } from './utils/aiSearchClient';
 
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid, LockKeyhole
+  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid, LockKeyhole, Mic
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -85,6 +87,14 @@ const getDefaultFilters = (): FilterState => ({
   engineSize: [],
   transmission: [],
   vehicleBrand: [],
+  vehicleModel: [],
+  vehicleColor: [],
+  vehicleYear: [],
+  vehicleYearMin: 0,
+  vehicleCondition: [],
+  sellerType: [],
+  freeDeliveryToAddressOnly: false,
+  freeDeliveryToDistrictOnly: false,
   favoritesOnly: false
 });
 
@@ -225,6 +235,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAutoComplete, setShowAutoComplete] = useState<boolean>(false);
   const [showMenuCurrencyDrop, setShowMenuCurrencyDrop] = useState<boolean>(false);
+  const [isAiSearchLoading, setIsAiSearchLoading] = useState<boolean>(false);
+  const [showAiVoiceSearchDialog, setShowAiVoiceSearchDialog] = useState<boolean>(false);
 
   // Filters state
   const [filters, setFilters] = useState<FilterState>(readStoredFilters);
@@ -551,6 +563,7 @@ export default function App() {
   const [customPolygon, setCustomPolygon] = useState<{ x: number, y: number }[] | null>(null);
   const [isMapSelectionActive, setIsMapSelectionActive] = useState<boolean>(false);
   const [selectionFitRequest, setSelectionFitRequest] = useState<number>(0);
+  const [returnToFiltersAfterDeliveryPoint, setReturnToFiltersAfterDeliveryPoint] = useState<boolean>(false);
   const [backSwipeOffset, setBackSwipeOffset] = useState<number>(0);
   const [isBackSwipeSettling, setIsBackSwipeSettling] = useState<boolean>(false);
 
@@ -1009,6 +1022,84 @@ export default function App() {
     setShowFavoritesOnly(nextFilters.favoritesOnly);
   };
 
+  const applyAiSearchIntent = (intent: AiSearchIntent, sourceQuery: string) => {
+    if (!intent.supported || intent.shouldFallback || intent.category !== 'housing') {
+      setSearchTerm(intent.searchText || sourceQuery);
+      openAppView();
+      return;
+    }
+
+    const nextFilters: FilterState = {
+      ...filters,
+      favoritesOnly: showFavoritesOnly,
+      ...(intent.priceMin !== null ? { priceMin: intent.priceMin } : {}),
+      ...(intent.priceMax !== null ? { priceMax: intent.priceMax } : {}),
+      ...(intent.roomsMin !== null ? { roomsMin: intent.roomsMin, roomsMax: 10 } : {}),
+      ...(intent.areaMin !== null ? { areaMin: intent.areaMin } : {}),
+      ...(intent.internetSpeedMin !== null ? { internetSpeedMin: intent.internetSpeedMin } : {}),
+      ...(intent.distanceToSeaMax !== null ? { distanceToSeaMin: 0, distanceToSeaMax: intent.distanceToSeaMax } : {}),
+      housingType: intent.housingType.length ? intent.housingType : filters.housingType,
+      interiorStyle: intent.interiorStyle.length ? intent.interiorStyle : filters.interiorStyle,
+      territoryType: intent.territoryType.length ? intent.territoryType : filters.territoryType,
+      densityType: intent.densityType.length ? intent.densityType : filters.densityType,
+      bedType: intent.bedType.length ? intent.bedType : filters.bedType,
+      kitchenType: intent.kitchenType.length ? intent.kitchenType : filters.kitchenType,
+      poolType: intent.poolType.length ? intent.poolType : filters.poolType,
+      bathroomOptions: intent.bathroomOptions.length ? intent.bathroomOptions : filters.bathroomOptions,
+      amenities: intent.amenities.length ? intent.amenities : filters.amenities,
+      cleaningFrequency: intent.cleaningFrequency.length ? intent.cleaningFrequency : filters.cleaningFrequency,
+      viewType: intent.viewType.length ? intent.viewType : filters.viewType,
+      extraOptions: intent.extraOptions.length ? intent.extraOptions : filters.extraOptions
+    };
+
+    setCurrentL1('housing');
+    setCurrentL2(intent.subCategory ? [intent.subCategory] : getL2IdsForL1('housing'));
+    setDistrictSearch(intent.district ? [intent.district] : []);
+    setCustomPoint(null);
+    setCustomPolygon(null);
+    applyFilters(nextFilters);
+    setSearchTerm(intent.searchText || '');
+    setShowAutoComplete(false);
+    openAppView();
+  };
+
+  const openAiVoiceSearchDialog = () => {
+    setShowAiVoiceSearchDialog(true);
+    setShowAutoComplete(false);
+    setShowMenuCurrencyDrop(false);
+  };
+
+  const runAiSearch = async (queryOverride?: string) => {
+    const query = (queryOverride || searchTerm).trim();
+    if (!query || isAiSearchLoading) {
+      const inputField = document.getElementById(currentView === 'menu' ? 'live-search-input-menu' : 'live-search-input') as HTMLInputElement | null;
+      inputField?.focus();
+      return;
+    }
+
+    setSearchTerm(query);
+    setIsAiSearchLoading(true);
+    setShowAutoComplete(false);
+    try {
+      const intent = await requestAiSearchIntent(query);
+      applyAiSearchIntent(intent, query);
+    } catch (error) {
+      console.warn('[AI search] Falling back to normal search.', error);
+      openAppView();
+    } finally {
+      setIsAiSearchLoading(false);
+      setShowAiVoiceSearchDialog(false);
+    }
+  };
+
+  const requestTransportDeliveryPoint = () => {
+    setReturnToFiltersAfterDeliveryPoint(true);
+    setShowFiltersModal(false);
+    setShowListingMap(true);
+    setIsMapFullscreen(true);
+    setIsMapSelectionActive(true);
+  };
+
   const { sortedListings, suggestions } = useListingSearch({
     listings,
     bookings,
@@ -1115,12 +1206,18 @@ export default function App() {
                         setShowAutoComplete(true);
                         setShowMenuCurrencyDrop(false);
                       }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          runAiSearch();
+                        }
+                      }}
                       onFocus={() => {
                         setShowAutoComplete(true);
                         setShowMenuCurrencyDrop(false);
                       }}
                       placeholder={tr('search.placeholder')}
-                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-14"
                       id="live-search-input-menu"
                     />
                     <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
@@ -1128,11 +1225,22 @@ export default function App() {
                     {searchTerm && (
                       <button
                         onClick={() => setSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-9"
                       >
                         Г—
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={openAiVoiceSearchDialog}
+                      disabled={isAiSearchLoading}
+                      className="absolute right-2.5 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#FF7A50] transition hover:bg-[#FF7A50]/10 disabled:cursor-wait disabled:opacity-60 md:flex"
+                      title={tr('search.ai')}
+                      aria-label={tr('search.ai')}
+                    >
+                      <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
+                    </button>
 
                     {showAutoComplete && suggestions && (
                       <SearchSuggestions
@@ -1164,37 +1272,13 @@ export default function App() {
                   <div className="relative shrink-0 md:hidden">
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowMenuCurrencyDrop(!showMenuCurrencyDrop);
-                        setShowAutoComplete(false);
-                      }}
-                      className="box-border flex h-8 min-h-8 w-14 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 font-sans text-[11px] font-black uppercase leading-none text-[#1E293B] transition hover:bg-gray-100 active:scale-95 sm:h-9 sm:min-h-9 sm:w-16 sm:text-xs"
-                      title={tr('nav.currency.title')}
-                      aria-label={tr('nav.currency.title')}
-                      aria-expanded={showMenuCurrencyDrop}
+                      onClick={openProfile}
+                      className="box-border flex h-8 min-h-8 w-10 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2 text-[#FF7A50] transition hover:bg-gray-100 active:scale-95 sm:h-9 sm:min-h-9 sm:w-11"
+                      title={tr('nav.profile')}
+                      aria-label={tr('nav.profile')}
                     >
-                      {activeCurrency}
+                      <UserRound className="h-4.5 w-4.5" strokeWidth={1.8} />
                     </button>
-
-                    {showMenuCurrencyDrop && (
-                      <div className="pu absolute right-0 top-10 z-50 w-28 overflow-hidden rounded-2xl border border-white/50 py-1.5 text-center text-xs shadow-xl animate-fade-in sm:top-11">
-                        {Object.keys(CURRENCIES).map(curr => (
-                          <button
-                            key={curr}
-                            type="button"
-                            onClick={() => {
-                              setActiveCurrency(curr as CurrencyKey);
-                              setShowMenuCurrencyDrop(false);
-                            }}
-                            className={`block w-full py-2 font-bold text-[#1E293B] transition hover:bg-white/70 ${
-                              activeCurrency === curr ? 'bg-white/70 text-[#FF7A50]' : ''
-                            }`}
-                          >
-                            {CURRENCIES[curr as CurrencyKey].symbol} {curr}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1358,9 +1442,15 @@ export default function App() {
                         setSearchTerm(e.target.value);
                         setShowAutoComplete(true);
                       }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          runAiSearch();
+                        }
+                      }}
                       onFocus={() => setShowAutoComplete(true)}
                       placeholder={tr('search.placeholder')}
-                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-14"
                       id="live-search-input"
                     />
                     <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
@@ -1368,11 +1458,21 @@ export default function App() {
                     {searchTerm && (
                       <button
                         onClick={() => setSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-9"
                       >
                         Г—
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={openAiVoiceSearchDialog}
+                      disabled={isAiSearchLoading}
+                      className="absolute right-2.5 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#FF7A50] transition hover:bg-[#FF7A50]/10 disabled:cursor-wait disabled:opacity-60 md:flex"
+                      title={tr('search.ai')}
+                      aria-label={tr('search.ai')}
+                    >
+                      <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
+                    </button>
                   </div>
 
                   {showAutoComplete && suggestions && (
@@ -1972,6 +2072,7 @@ export default function App() {
                         currencyRate={CURRENCIES[activeCurrency].rate}
                         isFullscreen={isMapFullscreen}
                         isSelectionActive={isMapSelectionActive}
+                        selectionVariant={currentL1 === 'transport' ? 'point' : 'area'}
                         selectedDistricts={districtSearch}
                         onSelectionStart={() => setIsMapSelectionActive(true)}
                         onSelectionClose={() => setIsMapSelectionActive(false)}
@@ -2000,9 +2101,15 @@ export default function App() {
                             setCustomRadius(radius);
                           }
                           setDistrictSearch([]); // Clear district filters in favor of map selection
-                          setSortBy('distance_point'); // Sort automatically by distance for best UX
+                          if (currentL1 !== 'transport') {
+                            setSortBy('distance_point'); // Sort automatically by distance for best UX
+                          }
                           setIsMapFullscreen(false);
                           setSelectionFitRequest(request => request + 1);
+                          if (returnToFiltersAfterDeliveryPoint) {
+                            setReturnToFiltersAfterDeliveryPoint(false);
+                            window.setTimeout(() => setShowFiltersModal(true), 120);
+                          }
                         }}
                         initialPoint={customPoint}
                         initialRadius={customRadius}
@@ -2170,12 +2277,13 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={openProfile}
+                  onClick={openAiVoiceSearchDialog}
+                  disabled={isAiSearchLoading}
                   className={mobileNavButtonClass}
-                  aria-label={tr('nav.profile')}
-                  title={tr('nav.profile')}
+                  aria-label={tr('search.ai')}
+                  title={tr('search.ai')}
                 >
-                  <UserRound className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                  <Sparkles className={`h-[22px] w-[22px] text-[#FF7A50] ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={1.8} />
                 </button>
               </div>
             </div>
@@ -2218,6 +2326,7 @@ export default function App() {
           setCheckInDate={setCheckInDate}
           setCheckOutDate={setCheckOutDate}
           setCustomPoint={setCustomPoint}
+          setCustomPolygon={setCustomPolygon}
           setCustomRadius={setCustomRadius}
           setDistrictSearch={setDistrictSearch}
           setEditingListing={setEditingListing}
@@ -2231,6 +2340,7 @@ export default function App() {
           setShowMyAddsListing={setShowMyAddsListing}
           setShowProfileModal={setShowProfileModal}
           setShowUsersModal={setShowUsersModal}
+          onRequestDeliveryPoint={requestTransportDeliveryPoint}
           setSortBy={setSortBy}
           onInitialBookingsOpened={() => setInitialBookingsListingId(null)}
           showAdminDashboard={showAdminDashboard}
@@ -2242,6 +2352,15 @@ export default function App() {
           showUsersModal={showUsersModal}
           usersModalTab={usersModalTab}
         />
+
+        {showAiVoiceSearchDialog && (
+          <AiVoiceSearchDialog
+            activeLanguage={activeLanguage}
+            isSearching={isAiSearchLoading}
+            onClose={() => setShowAiVoiceSearchDialog(false)}
+            onSubmit={query => runAiSearch(query)}
+          />
+        )}
 
         <AuthModal
           isOpen={Boolean(authModalReason)}

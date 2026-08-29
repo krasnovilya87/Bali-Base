@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Listing } from '../types';
 import { getDistrictBounds, getDistrictBoundsSync, getDistrictCoordsSync, getListingCoords as utilGetListingCoords } from '../utils/geo';
-import { Info, Plus, Minus, Locate, CircleDot, Pentagon, Star, Heart, Flame, ShieldCheck } from 'lucide-react';
+import { Info, Plus, Minus, Locate, CircleDot, Pentagon, Star, Heart, Flame, ShieldCheck, MapPin } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useI18n } from '../i18nContext';
 import { THEME } from '../theme';
@@ -29,8 +29,11 @@ interface MapBoxProps {
   initialRadius?: number;
   initialPolygon?: { x: number; y: number }[] | null;
   selectedDistricts?: string[];
+  selectionVariant?: 'area' | 'point';
   selectionFitRequest?: number;
 }
+
+type MapSelectionMode = 'radius' | 'area' | 'point';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -50,8 +53,9 @@ interface MapViewControllerProps {
   isSelectionActive: boolean;
   onSelectionStart?: () => void;
   onMyLocationDetected?: (pos: { lat: number; lng: number }) => void;
-  selectionMode?: 'radius' | 'area';
-  setSelectionMode?: (m: 'radius' | 'area') => void;
+  selectionMode?: MapSelectionMode;
+  selectionVariant?: 'area' | 'point';
+  setSelectionMode?: (m: MapSelectionMode) => void;
   setSelectionState?: (s: 'idle' | 'drawing' | 'fixed') => void;
   setTempPoint?: (p: { lat: number; lng: number } | null) => void;
   setRadiusMarkerPoint?: (p: { lat: number; lng: number } | null) => void;
@@ -75,6 +79,7 @@ function MapViewController({
   onSelectionStart,
   onMyLocationDetected,
   selectionMode = 'radius',
+  selectionVariant = 'area',
   setSelectionMode,
   setSelectionState,
   setTempPoint,
@@ -228,7 +233,32 @@ function MapViewController({
       {/* Beautiful styled floating map controls on the right (Google Maps design styling) */}
       <div className="absolute right-4 bottom-24 z-20 flex flex-col gap-2.5 pointer-events-auto select-none">
         {/* Selection Mode Toggles */}
-        {setSelectionMode && setSelectionState && setTempPoint && setPolygonPoints && setActiveMousePoint && setRadiusMarkerPoint && (
+        {selectionVariant === 'point' && setSelectionMode && setSelectionState && setTempPoint && setPolygonPoints && setActiveMousePoint && setRadiusMarkerPoint && (
+          <>
+            <button
+              onClick={() => {
+                onSelectionStart?.();
+                setSelectionMode('point');
+                setSelectionState('idle');
+                setTempPoint(null);
+                setRadiusMarkerPoint(null);
+                setPolygonPoints([]);
+                setActiveMousePoint(null);
+              }}
+              type="button"
+              title={tr('map.deliveryPointMode')}
+              className={`w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 group ${isSelectionActive
+                ? 'bg-[#FF7A50] text-white hover:bg-[#E05A30]'
+                : 'bg-[#F4F7F6] text-[#1E293B] hover:bg-white hover:text-[#FF7A50]'
+                }`}
+            >
+              <MapPin className="w-5 h-5 transition-transform group-hover:scale-110" />
+            </button>
+            <div className="h-[1px] bg-gray-200/50 my-1 mx-2" />
+          </>
+        )}
+
+        {selectionVariant === 'area' && setSelectionMode && setSelectionState && setTempPoint && setPolygonPoints && setActiveMousePoint && setRadiusMarkerPoint && (
           <>
             <button
               onClick={() => {
@@ -321,10 +351,10 @@ const getDistance = (p1: { lat: number; lng: number }, p2: { lat: number; lng: n
 };
 
 // Coordinate mapping between Google Maps Lat/Lng and the SVG filter system
-const latLngToSvg = (lat: number, lng: number): { x: number; y: number } => {
+const latLngToSvg = (lat: number, lng: number, round = true): { x: number; y: number } => {
   const x = 446.688 * lng - 51241.25;
   const y = -515.132 * lat - 4214.91;
-  return { x: Math.round(x), y: Math.round(y) };
+  return round ? { x: Math.round(x), y: Math.round(y) } : { x, y };
 };
 
 const svgToLatLng = (x: number, y: number): { lat: number; lng: number } => {
@@ -683,7 +713,7 @@ function MapPolygon({ path }: { path: { lat: number; lng: number }[] }) {
 
 interface MapDrawingControllerProps {
   isInteractive: boolean;
-  selectionMode: 'radius' | 'area';
+  selectionMode: MapSelectionMode;
   selectionState: 'idle' | 'drawing' | 'fixed';
   setSelectionState: (s: 'idle' | 'drawing' | 'fixed') => void;
   tempPoint: { lat: number; lng: number } | null;
@@ -736,7 +766,14 @@ function MapDrawingController({
       if (!latLng) return;
       const coords = { lat: latLng.lat(), lng: latLng.lng() };
 
-      if (selectionMode === 'radius') {
+      if (selectionMode === 'point') {
+        setTempPoint(coords);
+        setTempRadius(0.1);
+        setRadiusMarkerPoint(null);
+        setPolygonPoints([]);
+        setActiveMousePoint(null);
+        setSelectionState('fixed');
+      } else if (selectionMode === 'radius') {
         if (selectionState === 'idle' || selectionState === 'fixed') {
           setTempPoint(coords);
           setTempRadius(0.1);
@@ -798,6 +835,34 @@ function MapDrawingController({
         ) : (
           <MapCircle center={tempPoint} radius={tempRadius} />
         )
+      )}
+
+      {selectionMode === 'point' && tempPoint && (
+        <AdvancedMarker position={tempPoint}>
+          <div className="relative drop-shadow-[0_12px_18px_rgba(255,122,80,0.36)]">
+            <svg
+              width="44"
+              height="58"
+              viewBox="0 0 24 24"
+              className="block"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                fill="#FF7A50"
+                stroke="rgba(255,255,255,0.96)"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="12"
+                cy="9"
+                r="2.65"
+                fill="rgba(255,255,255,0.96)"
+              />
+            </svg>
+          </div>
+        </AdvancedMarker>
       )}
 
       {selectionMode === 'area' && polygonPoints.length > 0 && (
@@ -1104,6 +1169,7 @@ export default function MapBox({
   initialPoint = null,
   initialRadius = 80,
   initialPolygon = null,
+  selectionVariant = 'area',
   selectionFitRequest = 0
 }: MapBoxProps) {
   const { tr } = useI18n();
@@ -1120,7 +1186,8 @@ export default function MapBox({
   const lastMarkerInteractionRef = useRef<number>(0);
   const [sessionPenalties, setSessionPenalties] = useState<Record<string, number>>({});
 
-  const [selectionMode, setSelectionMode] = useState<'radius' | 'area'>(() => {
+  const [selectionMode, setSelectionMode] = useState<MapSelectionMode>(() => {
+    if (selectionVariant === 'point') return 'point';
     if (initialPolygon && initialPolygon.length > 0) return 'area';
     return 'radius';
   });
@@ -1157,12 +1224,23 @@ export default function MapBox({
     return [];
   });
   const [activeMousePoint, setActiveMousePoint] = useState<{ lat: number; lng: number } | null>(null);
-  const isAppliedSelectionView = isSelectionActive && selectionFitRequest > 0 && selectionState === 'fixed';
+  const isAppliedSelectionView = selectionVariant !== 'point' && isSelectionActive && selectionFitRequest > 0 && selectionState === 'fixed';
   const isSelectionEditing = isSelectionActive && !isAppliedSelectionView;
 
   useEffect(() => {
     if (isSelectionActive) {
-      if (initialPolygon && initialPolygon.length > 0) {
+      if (selectionVariant === 'point') {
+        setSelectionMode('point');
+        setPolygonPoints([]);
+        setRadiusMarkerPoint(null);
+        if (initialPoint) {
+          setTempPoint(svgToLatLng(initialPoint.x, initialPoint.y));
+          setSelectionState('fixed');
+        } else {
+          setTempPoint(null);
+          setSelectionState('idle');
+        }
+      } else if (initialPolygon && initialPolygon.length > 0) {
         setPolygonPoints(initialPolygon.map(p => svgToLatLng(p.x, p.y)));
         setSelectionMode('area');
         setSelectionState('fixed');
@@ -1189,7 +1267,7 @@ export default function MapBox({
         setTempRadius(15);
       }
     }
-  }, [isSelectionActive, initialPoint, initialRadius, initialPolygon]);
+  }, [isSelectionActive, initialPoint, initialRadius, initialPolygon, selectionVariant]);
 
   useEffect(() => {
     if (!isSelectionActive) return;
@@ -1440,6 +1518,7 @@ export default function MapBox({
       {/* FLOATING APPLY BUTTON FOR SELECTION */}
       {isSelectionActive && (
         (selectionMode === 'radius' && selectionState === 'fixed' && tempPoint) ||
+        (selectionMode === 'point' && selectionState === 'fixed' && tempPoint) ||
         (selectionMode === 'area' && polygonPoints.length >= 3)
       ) && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 pointer-events-auto">
@@ -1464,6 +1543,9 @@ export default function MapBox({
                   if (selectionMode === 'area') {
                     const svgPts = polygonPoints.map(p => latLngToSvg(p.lat, p.lng));
                     onSelectionApply(svgPts, 0);
+                  } else if (selectionMode === 'point' && tempPoint) {
+                    const svgPt = latLngToSvg(tempPoint.lat, tempPoint.lng, false);
+                    onSelectionApply(svgPt, 0);
                   } else if (tempPoint) {
                     const svgPt = latLngToSvg(tempPoint.lat, tempPoint.lng);
                     onSelectionApply(svgPt, Math.round(tempRadius * KM_TO_SVG_RADIUS));
@@ -1567,6 +1649,7 @@ export default function MapBox({
                   onSelectionStart={onSelectionStart}
                   onMyLocationDetected={setMyLocation}
                   selectionMode={selectionMode}
+                  selectionVariant={selectionVariant}
                   setSelectionMode={setSelectionMode}
                   setSelectionState={setSelectionState}
                   setTempPoint={setTempPoint}

@@ -47,6 +47,7 @@ type AppOverlaysProps = {
   setCheckInDate: Dispatch<SetStateAction<string>>;
   setCheckOutDate: Dispatch<SetStateAction<string>>;
   setCustomPoint: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
+  setCustomPolygon: Dispatch<SetStateAction<{ x: number; y: number }[] | null>>;
   setCustomRadius: Dispatch<SetStateAction<number>>;
   setDistrictSearch: Dispatch<SetStateAction<string[]>>;
   setEditingListing: Dispatch<SetStateAction<Listing | null>>;
@@ -60,6 +61,7 @@ type AppOverlaysProps = {
   setShowMyAddsListing: Dispatch<SetStateAction<boolean>>;
   setShowProfileModal: Dispatch<SetStateAction<boolean>>;
   setShowUsersModal: Dispatch<SetStateAction<boolean>>;
+  onRequestDeliveryPoint?: () => void;
   setSortBy: Dispatch<SetStateAction<string>>;
   showAdminDashboard: boolean;
   showCreateWizard: boolean;
@@ -108,6 +110,7 @@ export default function AppOverlays({
   setCheckInDate,
   setCheckOutDate,
   setCustomPoint,
+  setCustomPolygon,
   setCustomRadius,
   setDistrictSearch,
   setEditingListing,
@@ -121,6 +124,7 @@ export default function AppOverlays({
   setShowMyAddsListing,
   setShowProfileModal,
   setShowUsersModal,
+  onRequestDeliveryPoint,
   setSortBy,
   showAdminDashboard,
   showCreateWizard,
@@ -183,6 +187,8 @@ export default function AppOverlays({
           subCategory={primaryL2}
           selectedSubCategories={currentL2}
           onSubCategoryChange={setPrimaryL2}
+          deliveryPoint={customPoint}
+          onRequestDeliveryPoint={onRequestDeliveryPoint}
           filters={filters}
           onApplyFilters={(newF) => setFilters(newF)}
           onClose={() => setShowFiltersModal(false)}

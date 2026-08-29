@@ -125,6 +125,16 @@ export interface Listing {
   cleaningFrequency?: 'none' | 'once_week' | '2_times_week' | '3_times_week' | 'daily';
   viewType?: 'rice_fields' | 'garden' | 'pool' | 'ocean' | 'jungle';
   extraOptions?: string[]; // pets_allowed, quiet_location, all_bills_included, airport_transfer_included, airport_transfer_paid, breakfast_included, breakfast_paid, nanny, chef
+
+  // Transport attributes
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleColor?: string;
+  vehicleCondition?: 'like_new' | 'minor_scratches' | 'faded_surf_rack';
+  sellerType?: 'private' | 'company';
+  freeDeliveryToAddress?: boolean;
+  freeDeliveryToDistricts?: boolean;
+  freeDeliveryDistricts?: string[];
   
   // Construction metrics
   yearBuilt: number | 'other';
@@ -219,4 +229,12 @@ export interface FilterState {
   engineSize: string[];
   transmission: string[];
   vehicleBrand: string[];
+  vehicleModel: string[];
+  vehicleColor: string[];
+  vehicleYear: string[];
+  vehicleYearMin: number;
+  vehicleCondition: string[];
+  sellerType: string[];
+  freeDeliveryToAddressOnly: boolean;
+  freeDeliveryToDistrictOnly: boolean;
 }

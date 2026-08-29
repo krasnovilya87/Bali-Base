@@ -1635,6 +1635,21 @@ export default function ListingDetails({
                       )}
                     </div>
 
+                    {/* Line 3: Savings in small red font */}
+                    {hasSavings && (
+                      <div className="flex items-center self-start">
+                        <div className="bg-[#FF3B30]/10 rounded-full px-2.5 py-1 sm:py-0.5 flex items-center gap-2 shadow-xs backdrop-blur-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
+                          <span className={`text-[14px] sm:text-xs lg:text-[13px] text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
+                            {showSavingsPercent ? `${savingsPercent}%` : `${convertPrice(savingsAmount)} ${currencySymbol}`}
+                          </span>
+                          <span className={`text-[12.5px] sm:text-[10px] lg:text-[10.5px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
+                            {tr('listing.saved')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-1 flex min-w-0 items-center gap-2 self-start max-w-full">
                       {listing.ownerAvatar ? (
                         <img
@@ -1657,21 +1672,6 @@ export default function ListingDetails({
                         </p>
                       </div>
                     </div>
-
-                    {/* Line 3: Savings in small red font */}
-                    {hasSavings && (
-                      <div className="flex items-center self-start">
-                        <div className="bg-[#FF3B30]/10 rounded-full px-2.5 py-1 sm:py-0.5 flex items-center gap-2 shadow-xs backdrop-blur-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] shrink-0" />
-                          <span className={`text-[14px] sm:text-xs lg:text-[13px] text-[#FF3B30] font-bold tracking-wide leading-none ${THEME.fonts.mono}`}>
-                            {showSavingsPercent ? `${savingsPercent}%` : `${convertPrice(savingsAmount)} ${currencySymbol}`}
-                          </span>
-                          <span className={`text-[12.5px] sm:text-[10px] lg:text-[10.5px] text-[#FF3B30] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                            {tr('listing.saved')}
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

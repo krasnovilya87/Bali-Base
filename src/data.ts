@@ -410,6 +410,106 @@ export const MOCK_HOUSING_LISTINGS: Listing[] = [
   ...buildGeneratedHousingListings()
 ];
 
+const BIKE_IMAGE_SETS = [
+  [
+    'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1615887023516-9b6bcd559e87?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1609630875171-b1321377ee65?w=800&fit=crop&q=80'
+  ],
+  [
+    'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1542362567-b07e54358753?w=800&fit=crop&q=80'
+  ]
+];
+
+const GENERATED_BIKES = [
+  ['Scoopy', 'scoopy', 'white', 2026, 'like_new', 'private', 'Canggu', 85000],
+  ['NMAX', 'nmax', 'black', 2025, 'like_new', 'company', 'Berawa', 135000],
+  ['NMAX turbo', 'nmax_turbo', 'gray', 2026, 'like_new', 'company', 'Canggu', 165000],
+  ['Vario 160', 'vario_160', 'red', 2024, 'minor_scratches', 'company', 'Seminyak', 115000],
+  ['Honda PCX', 'honda_pcx', 'blue', 2025, 'like_new', 'company', 'Sanur', 125000],
+  ['Vario 125', 'vario_125', 'silver', 2023, 'minor_scratches', 'private', 'Ubud', 90000],
+  ['Fazzio', 'fazzio', 'green', 2024, 'like_new', 'private', 'Pererenan', 95000],
+  ['Beat 110', 'beat_110', 'yellow', 2022, 'minor_scratches', 'private', 'Kuta', 70000],
+  ['Genio 110', 'genio_110', 'orange', 2023, 'minor_scratches', 'private', 'Denpasar', 75000],
+  ['Grand Filano 125', 'grand_filano_125', 'brown', 2025, 'like_new', 'company', 'Jimbaran', 105000],
+  ['FreeGo 125', 'freego_125', 'gray', 2022, 'faded_surf_rack', 'private', 'Uluwatu', 80000],
+  ['Mio 125', 'mio_125', 'black', 2021, 'faded_surf_rack', 'private', 'Amed', 65000],
+  ['Vespa Sprint 150', 'vespa_sprint_150', 'red', 2024, 'like_new', 'company', 'Seminyak', 180000],
+  ['Vespa Primavera 150', 'vespa_primavera_150', 'white', 2025, 'like_new', 'company', 'Nusa Dua', 190000],
+  ['XMAX', 'xmax', 'blue', 2024, 'minor_scratches', 'company', 'Canggu', 260000],
+  ['ADV', 'adv', 'gray', 2023, 'faded_surf_rack', 'private', 'Bingin', 155000],
+  ['PCX', 'pcx', 'silver', 2022, 'minor_scratches', 'private', 'Sanur', 110000],
+  ['Aerox 155', 'aerox_155', 'green', 2025, 'like_new', 'company', 'Kerobokan', 130000],
+  ['Scoopy', 'scoopy', 'brown', 2021, 'faded_surf_rack', 'private', 'Lovina', 68000],
+  ['Vario 160', 'vario_160', 'black', 2026, 'like_new', 'company', 'Tabanan', 120000],
+  ['Fazzio', 'fazzio', 'yellow', 2023, 'minor_scratches', 'private', 'Seseh', 88000]
+] as const;
+
+const createGeneratedBikeListings = (): Listing[] => GENERATED_BIKES.map(([
+  modelLabel,
+  vehicleModel,
+  vehicleColor,
+  yearBuilt,
+  vehicleCondition,
+  sellerType,
+  district,
+  pricePerDay
+], index) => {
+  const isCompany = sellerType === 'company';
+  const freeDeliveryToAddress = index % 3 !== 1;
+  return {
+    id: `trans-bike-${index + 1}`,
+    ownerId: isCompany ? `bike-company-${(index % 5) + 1}` : `bike-private-${(index % 8) + 1}`,
+    category: 'transport',
+    subCategory: 'scooters',
+    title: `${modelLabel} ${yearBuilt} ${vehicleColor}`,
+    description: `${modelLabel} in ${vehicleColor}, ${yearBuilt}. ${vehicleCondition === 'like_new'
+      ? 'Like new condition, clean plastic, glossy paint and fresh service.'
+      : vehicleCondition === 'minor_scratches'
+        ? 'Second hand scooter with small scratches, serviced brakes and good tires.'
+        : 'Technically sound scooter with faded paint and surf rack for beach rides.'
+    } ${['nmax', 'nmax_turbo', 'xmax', 'adv', 'pcx'].includes(vehicleModel) ? 'Comfortable for a couple and longer rides.' : 'Best for solo city rides.'} ${freeDeliveryToAddress ? 'Free delivery to selected address.' : 'Pickup at the listed area.'}`,
+    district,
+    address: `Jl. Raya ${district}, Bali`,
+    images: BIKE_IMAGE_SETS[index % BIKE_IMAGE_SETS.length],
+    rating: Number((4.4 + (index % 6) * 0.08).toFixed(1)),
+    reviewsCount: 3 + index * 2,
+    reviews: [],
+    isApproved: true,
+    isNew: index % 4 === 0,
+    status: 'active',
+    pricePerDay,
+    pricePerMonth: pricePerDay * 24,
+    bookingComPrice: Math.round(pricePerDay * 1.25),
+    competitorPlatform: index % 2 === 0 ? 'Booking' : 'Agoda',
+    hasDropPrice: index % 5 === 0,
+    dropPricePerDay: index % 5 === 0 ? Math.round(pricePerDay * 0.88) : undefined,
+    dropPricePerMonth: index % 5 === 0 ? Math.round(pricePerDay * 20) : undefined,
+    dropPriceEndsAt: index % 5 === 0 ? new Date(Date.now() + 86400000 * (index % 4 + 1)).toISOString() : undefined,
+    yearBuilt,
+    vehicleModel,
+    vehicleColor,
+    vehicleCondition,
+    sellerType,
+    freeDeliveryToAddress,
+    freeDeliveryToDistricts: freeDeliveryToAddress,
+    amenities: ['helmet_included', ...(index % 4 === 0 ? ['phone_mount'] : []), ...(vehicleCondition === 'faded_surf_rack' ? ['surf_rack'] : [])],
+    whatsappNumber: `+62812${String(44000000 + index * 17391).slice(0, 8)}`,
+    ownerName: isCompany ? ['Island Bike Rental', 'Canggu Scooter Co', 'Bali Moto Fleet', 'Sunset Wheels', 'Nusa Rental Bikes'][index % 5] : ['Made Putra', 'Kadek Ari', 'Wayan Sari', 'Nyoman Dika', 'Ketut Lestari', 'Ayu Komang', 'Gede Wirawan', 'Putu Adi'][index % 8],
+    clicksCount: 35 + index * 9,
+    viewsCount: 180 + index * 57,
+    interiorStyle: 'modern'
+  };
+});
+
 export const MOCK_OTHER_LISTINGS: Listing[] = [
   {
     id: 'trans-1',
@@ -446,6 +546,7 @@ export const MOCK_OTHER_LISTINGS: Listing[] = [
     viewsCount: 1450,
     interiorStyle: 'modern'
   },
+  ...createGeneratedBikeListings(),
   {
     id: 'trans-2',
     ownerId: 'owner-3',

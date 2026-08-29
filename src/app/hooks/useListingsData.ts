@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { BookingRequest, Listing } from '../../types';
-import { MOCK_HOUSING_LISTINGS, filterDeletedListings, getStoredData, rememberDeletedListingId, saveStoredData } from '../../data';
+import { MOCK_HOUSING_LISTINGS, MOCK_OTHER_LISTINGS, filterDeletedListings, getStoredData, rememberDeletedListingId, saveStoredData } from '../../data';
 import {
   db,
   deleteDocument,
@@ -32,11 +32,12 @@ const getHousingListingCollection = (listing: Listing) => {
   return LISTINGS_COLLECTION;
 };
 
-const mergeFirebaseListingsWithStaticHousing = (firebaseListings: Listing[]) => {
+const mergeFirebaseListingsWithStaticListings = (firebaseListings: Listing[]) => {
   const firebaseIds = new Set(firebaseListings.map(listing => listing.id));
   const staticHousingListings = MOCK_HOUSING_LISTINGS.filter(listing => !firebaseIds.has(listing.id));
+  const staticOtherListings = MOCK_OTHER_LISTINGS.filter(listing => !firebaseIds.has(listing.id));
 
-  return [...firebaseListings, ...staticHousingListings];
+  return [...firebaseListings, ...staticHousingListings, ...staticOtherListings];
 };
 
 const mergeGoogleReviewsCacheIntoListings = async (listings: Listing[]) => {
@@ -90,7 +91,7 @@ export const useListingsData = () => {
   useEffect(() => {
     const loaded = getStoredData();
     const loadedBookings = loaded.bookings.filter(isBookingStored);
-    setListings(loaded.listings);
+    setListings(filterDeletedListings(mergeFirebaseListingsWithStaticListings(loaded.listings)));
     setBookings(loadedBookings);
 
     const initFirebase = async () => {
@@ -98,7 +99,7 @@ export const useListingsData = () => {
       let syncPassed = false;
       try {
         const synced = await syncWithFirebase();
-        const syncedListings = mergeFirebaseListingsWithStaticHousing(synced.listings);
+        const syncedListings = mergeFirebaseListingsWithStaticListings(synced.listings);
         const visibleListings = filterDeletedListings(
           await mergeGoogleReviewsCacheIntoListings(syncedListings)
         );

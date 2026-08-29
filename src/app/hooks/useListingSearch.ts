@@ -5,6 +5,14 @@ import { findDistrictByCoordsSync, getDefaultDistrictCoordsSync, getListingCoord
 import { isListingUnavailableForDates } from '../../utils/bookingAvailability';
 import { isListingFresh } from '../../utils/listingFreshness';
 import { isListingVerified } from '../../utils/listingVerification';
+import {
+  getListingVehicleColor,
+  getListingVehicleCondition,
+  getListingVehicleModel,
+  getListingSellerType,
+  listingOffersFreeDeliveryToAddress,
+  yearMeetsMinimum
+} from '../../utils/scooterFilters';
 
 type MapPoint = { x: number; y: number };
 export type SearchGuide = (typeof MOCK_GUIDES)[number];
@@ -96,18 +104,20 @@ export const useListingSearch = ({
     if (currentL2.length > 0 && !currentL2.includes(item.subCategory)) return false;
     if (filters.favoritesOnly && !favoriteIds.has(item.id)) return false;
 
-    if (customPolygon && customPolygon.length >= 3) {
-      if (!isPointInPolygon(getListingMapPoint(item), customPolygon)) return false;
-    } else if (customPoint) {
-      const coord = getListingMapPoint(item);
-      const dx = coord.x - customPoint.x;
-      const dy = coord.y - customPoint.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance > customRadius) return false;
-    } else if (districtSearch.length > 0) {
-      const listingCoords = getListingCoords(item);
-      const listingDistrict = findDistrictByCoordsSync(listingCoords.lat, listingCoords.lng);
-      if (!listingDistrict || !districtSearch.includes(listingDistrict)) return false;
+    if (currentL1 !== 'transport') {
+      if (customPolygon && customPolygon.length >= 3) {
+        if (!isPointInPolygon(getListingMapPoint(item), customPolygon)) return false;
+      } else if (customPoint) {
+        const coord = getListingMapPoint(item);
+        const dx = coord.x - customPoint.x;
+        const dy = coord.y - customPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > customRadius) return false;
+      } else if (districtSearch.length > 0) {
+        const listingCoords = getListingCoords(item);
+        const listingDistrict = findDistrictByCoordsSync(listingCoords.lat, listingCoords.lng);
+        if (!listingDistrict || !districtSearch.includes(listingDistrict)) return false;
+      }
     }
 
     if (searchTerm) {
@@ -120,6 +130,15 @@ export const useListingSearch = ({
 
     const comparablePrice = getComparablePrice(item, selectedDayCount);
     if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
+
+    if (currentL1 === 'transport' && item.subCategory === 'scooters') {
+      if (filters.vehicleModel.length > 0 && !filters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
+      if (filters.vehicleColor.length > 0 && !filters.vehicleColor.includes(getListingVehicleColor(item) || '')) return false;
+      if (!yearMeetsMinimum(item.yearBuilt, filters.vehicleYearMin || 0)) return false;
+      if (filters.vehicleCondition.length > 0 && !filters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
+      if (filters.sellerType.length > 0 && !filters.sellerType.includes(getListingSellerType(item))) return false;
+      if (filters.freeDeliveryToAddressOnly && customPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
+    }
 
     if (currentL1 === 'housing' && item.distanceToSeaMinutes !== undefined) {
       if (item.distanceToSeaMinutes < (filters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > filters.distanceToSeaMax) {

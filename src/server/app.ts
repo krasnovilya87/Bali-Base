@@ -1,5 +1,6 @@
 import './env';
 import express from 'express';
+import { createAiSearchRouter } from './aiSearch';
 import { createAiModerationRouter } from './aiModeration';
 import { createAiTranslationRouter } from './aiTranslation';
 import { createGooglePlacesReviewsRouter } from './googlePlacesReviews';
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '25mb' }));
+app.use('/api/ai-search', createAiSearchRouter());
 app.use('/api/ai', createAiTranslationRouter());
 app.use('/api/ai', createAiModerationRouter());
 app.use('/api/google-places', createGooglePlacesReviewsRouter());

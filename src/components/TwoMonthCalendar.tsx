@@ -403,9 +403,9 @@ export default function TwoMonthCalendar({
     <div
       onClick={(e) => e.stopPropagation()}
       className={`${modalPlacement
-        ? 'fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2'
-        : 'fixed inset-x-0 bottom-0 sm:absolute sm:top-full sm:bottom-auto sm:left-1/2 sm:-translate-x-1/2 md:-translate-x-1/3 sm:-mt-1'
-      } bg-[#F4F7F6] text-gray-950 rounded-t-[24px] sm:rounded-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl z-50 w-full sm:w-[580px] font-sans max-h-[85vh] sm:max-h-none overflow-hidden transition-all duration-300 flex flex-col`}
+        ? 'fixed inset-x-0 bottom-0 w-full sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2'
+        : 'absolute top-full left-1/2 mt-2 w-[calc(100vw-1rem)] max-w-[580px] -translate-x-1/2 sm:w-[580px] sm:-mt-1 md:-translate-x-1/3'
+      } bg-[#F4F7F6] text-gray-950 rounded-[24px] sm:rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl z-50 font-sans max-h-[85vh] sm:max-h-none overflow-hidden transition-all duration-300 flex flex-col`}
     >
       {/* Top Header Section */}
       <div className="bg-[#EAEAEC] p-5 pb-4 border-b border-[#D1D5DB]/30 relative shrink-0">
@@ -422,8 +422,9 @@ export default function TwoMonthCalendar({
           <X className="w-5 h-5 text-gray-400" />
         </button>
 
-        {/* Drag notch indicator for bottom sheet look on mobile */}
-        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+        {modalPlacement && (
+          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+        )}
 
         {/* Dynamic selection mode selector */}
         {!singleDateMode && (
