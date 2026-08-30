@@ -279,7 +279,11 @@ export default function ListingCard({
   };
   const titleParts = splitTitleRoomLabel(listing.title);
   const displayTitle = stripListingRoomTypeFromTitle(titleParts.title);
-  const { translatedDescription } = useTranslatedDescription(listing.description, activeLanguage);
+  const { translatedDescription } = useTranslatedDescription(
+    listing.description,
+    activeLanguage,
+    listing.category !== 'housing'
+  );
 
   // Helper type emoji labeling
   const getSubcategoryEmoji = () => {

@@ -12,7 +12,7 @@ type AdminTabProps = Record<string, any>;
 export function DashboardTab(props: AdminTabProps) {
   const { tr } = useI18n();
   const {
-    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews, googlePlacesQuota,
+    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews, googlePlacesQuota, aiSearchStats,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
     filteredListingsList, listingSearch, setListingSearch, listingCategoryFilter, setListingCategoryFilter, listingStatusFilter, setListingStatusFilter, onUpdateListing, showToast, onToggleStatus, onDeleteListing,
     moderationItems, handleApprove, handleOpenReject,
@@ -87,6 +87,38 @@ export function DashboardTab(props: AdminTabProps) {
                           count: googlePlacesQuota?.creationReserve ?? 500
                         })}
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-violet-500/10 p-2.5 rounded-2xl">
+                        <Sparkles className="w-5 h-5 text-violet-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-[#1E293B]">{tr('admin.dashboard.aiSearchTitle')}</h3>
+                        <p className="text-[10px] text-gray-400">{tr('admin.dashboard.aiSearchBody')}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="block text-[10px] font-bold uppercase text-slate-400">{tr('admin.dashboard.aiTotal')}</span>
+                        <strong className="block text-xl font-black text-[#1E293B]">{aiSearchStats?.totalRequests ?? 0}</strong>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="block text-[10px] font-bold uppercase text-slate-400">{tr('admin.dashboard.aiVoice')}</span>
+                        <strong className="block text-xl font-black text-[#1E293B]">{aiSearchStats?.voiceRequests ?? 0}</strong>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="block text-[10px] font-bold uppercase text-slate-400">{tr('admin.dashboard.aiText')}</span>
+                        <strong className="block text-xl font-black text-[#1E293B]">{aiSearchStats?.textRequests ?? 0}</strong>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <span className="block text-[10px] font-bold uppercase text-slate-400">{tr('admin.dashboard.aiFailed')}</span>
+                        <strong className="block text-xl font-black text-[#1E293B]">{aiSearchStats?.failedRequests ?? 0}</strong>
+                      </div>
                     </div>
                   </div>
                 </div>

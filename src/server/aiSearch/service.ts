@@ -5,6 +5,7 @@ const MAX_QUERY_LENGTH = 240;
 const REQUEST_TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_LIMIT = 100;
+const AI_SEARCH_DEBUG = process.env.AI_SEARCH_DEBUG === 'true';
 
 type CacheEntry = {
   expiresAt: number;
@@ -149,7 +150,7 @@ export const parseAiSearchQuery = async (query: string): Promise<ValidatedAiSear
       if (firstKey) intentCache.delete(firstKey);
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (AI_SEARCH_DEBUG) {
       console.info('[AI search]', {
         query: normalizedQuery,
         intent: validated,
@@ -159,7 +160,7 @@ export const parseAiSearchQuery = async (query: string): Promise<ValidatedAiSear
 
     return validated;
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
+    if (AI_SEARCH_DEBUG) {
       console.warn('[AI search] request failed:', error);
     }
     return safeFallback('ai_search_failed');

@@ -23,6 +23,7 @@ import AppOverlays from './app/components/AppOverlays';
 import BrandWordmark from './app/components/BrandWordmark';
 import SearchSuggestions from './app/components/SearchSuggestions';
 import UsersDropdown from './app/components/UsersDropdown';
+import AiSearchRefinementDialog from './components/AiSearchRefinementDialog';
 import AiVoiceSearchDialog from './components/AiVoiceSearchDialog';
 import AuthModal from './components/AuthModal';
 import CoverScreen from './components/CoverScreen';
@@ -32,7 +33,8 @@ import { useFavoriteListings } from './hooks/useFavoriteListings';
 import { useAuth } from './auth/AuthContext';
 import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
 import { LISTING_SHARE_PARAM } from './utils/listingShare';
-import { AiSearchIntent, requestAiSearchIntent } from './utils/aiSearchClient';
+import { AiSearchIntent, requestAiSearchIntent, requestAiVectorSearch } from './utils/aiSearchClient';
+import { parseLocalAiSearchQuery } from './utils/localAiSearchParser';
 
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
@@ -237,6 +239,9 @@ export default function App() {
   const [showMenuCurrencyDrop, setShowMenuCurrencyDrop] = useState<boolean>(false);
   const [isAiSearchLoading, setIsAiSearchLoading] = useState<boolean>(false);
   const [showAiVoiceSearchDialog, setShowAiVoiceSearchDialog] = useState<boolean>(false);
+  const [showAiRefinementDialog, setShowAiRefinementDialog] = useState<boolean>(false);
+  const [aiVectorListingIds, setAiVectorListingIds] = useState<string[] | null>(null);
+  const [lastAiSearchQuery, setLastAiSearchQuery] = useState<string>('');
 
   // Filters state
   const [filters, setFilters] = useState<FilterState>(readStoredFilters);
@@ -1018,15 +1023,17 @@ export default function App() {
   };
 
   const applyFilters = (nextFilters: FilterState) => {
+    setAiVectorListingIds(null);
     setFilters(nextFilters);
     setShowFavoritesOnly(nextFilters.favoritesOnly);
   };
 
   const applyAiSearchIntent = (intent: AiSearchIntent, sourceQuery: string) => {
     if (!intent.supported || intent.shouldFallback || intent.category !== 'housing') {
+      setAiVectorListingIds(null);
       setSearchTerm(intent.searchText || sourceQuery);
       openAppView();
-      return;
+      return false;
     }
 
     const nextFilters: FilterState = {
@@ -1061,12 +1068,48 @@ export default function App() {
     setSearchTerm(intent.searchText || '');
     setShowAutoComplete(false);
     openAppView();
+    return true;
+  };
+
+  const applyLocalAiSearchFallback = (sourceQuery: string) => {
+    const parsed = parseLocalAiSearchQuery(sourceQuery, {
+      currentL1,
+      currentL2,
+      filters,
+      showFavoritesOnly
+    });
+
+    setAiVectorListingIds(null);
+    setCurrentL1(parsed.currentL1);
+    setCurrentL2(parsed.currentL2);
+    setDistrictSearch(parsed.districtSearch);
+    setCustomPoint(null);
+    setCustomPolygon(null);
+    applyFilters(parsed.filters);
+    setSearchTerm(parsed.searchText);
+    setShowAutoComplete(false);
+    openAppView();
+    return parsed.matched;
   };
 
   const openAiVoiceSearchDialog = () => {
     setShowAiVoiceSearchDialog(true);
+    setShowAiRefinementDialog(false);
     setShowAutoComplete(false);
     setShowMenuCurrencyDrop(false);
+  };
+
+  const applyAiVectorSearchResults = (query: string, listingIds: string[]) => {
+    setSearchTerm(query);
+    setCurrentL1('housing');
+    setCurrentL2(getL2IdsForL1('housing'));
+    setDistrictSearch([]);
+    setCustomPoint(null);
+    setCustomPolygon(null);
+    setAiVectorListingIds(listingIds);
+    setShowAutoComplete(false);
+    setShowAiRefinementDialog(false);
+    openAppView();
   };
 
   const runAiSearch = async (queryOverride?: string) => {
@@ -1078,14 +1121,28 @@ export default function App() {
     }
 
     setSearchTerm(query);
+    setLastAiSearchQuery(query);
     setIsAiSearchLoading(true);
     setShowAutoComplete(false);
     try {
+      try {
+        const vectorResult = await requestAiVectorSearch(query, 10);
+        if (vectorResult.listingIds.length > 0) {
+          applyAiVectorSearchResults(query, vectorResult.listingIds);
+          return;
+        }
+      } catch (vectorError) {
+        console.warn('[AI search] Vector search failed, trying structured fallback.', vectorError);
+      }
+
       const intent = await requestAiSearchIntent(query);
-      applyAiSearchIntent(intent, query);
+      const didApplyStructuredFilters = applyAiSearchIntent(intent, query);
+      const didApplyLocalFallback = didApplyStructuredFilters ? false : applyLocalAiSearchFallback(query);
+      setShowAiRefinementDialog(didApplyStructuredFilters || didApplyLocalFallback || currentL1 !== 'useful');
     } catch (error) {
       console.warn('[AI search] Falling back to normal search.', error);
-      openAppView();
+      const didApplyLocalFallback = applyLocalAiSearchFallback(query);
+      setShowAiRefinementDialog(didApplyLocalFallback || currentL1 !== 'useful');
     } finally {
       setIsAiSearchLoading(false);
       setShowAiVoiceSearchDialog(false);
@@ -1109,13 +1166,23 @@ export default function App() {
     customPoint,
     customRadius,
     customPolygon,
-    searchTerm,
+    searchTerm: aiVectorListingIds ? '' : searchTerm,
     filters: activeFilters,
     sortBy,
     favoriteIds,
     checkInDate,
     checkOutDate
   });
+  const aiVectorOrder = useMemo(() => {
+    if (!aiVectorListingIds) return null;
+    return new Map(aiVectorListingIds.map((id, index) => [id, index]));
+  }, [aiVectorListingIds]);
+  const visibleSortedListings = useMemo(() => {
+    if (!aiVectorOrder) return sortedListings;
+    return sortedListings
+      .filter(listing => aiVectorOrder.has(listing.id))
+      .sort((a, b) => (aiVectorOrder.get(a.id) ?? 0) - (aiVectorOrder.get(b.id) ?? 0));
+  }, [aiVectorOrder, sortedListings]);
   const mobileNavButtonClass = 'flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/32 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
   const mobileNavActiveButtonClass = 'relative flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/38 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
   const isCoverView = !isAdminRoute && currentView === 'cover';
@@ -1169,7 +1236,7 @@ export default function App() {
         {!isAdminRoute && currentView === 'menu' && (
           <div className="h-[100dvh] sm:min-h-screen w-full flex flex-col animate-fade-in bg-[#F4F7F6] overflow-hidden sm:overflow-visible">
             {/* HEADER BAR ROW */}
-            <header className={`fixed inset-x-0 top-0 bg-white border-b border-[#E5E7EB] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] sm:sticky sm:inset-x-auto md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+            <header className={`fixed inset-x-0 top-0 bg-white border-b border-[#E5E7EB] pt-[env(safe-area-inset-top)] z-40 select-none transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] sm:sticky sm:inset-x-auto sm:pt-0 md:translate-y-0 ${isTopHeaderHidden ? '-translate-y-full' : 'translate-y-0'}`}>
               <div className="max-w-7xl mx-auto px-1.5 sm:px-6 h-16 flex items-center justify-between gap-1 sm:gap-4 font-sans">
 
                 {/* BRAND EMBLEM & COVER BUTTON */}
@@ -1202,45 +1269,32 @@ export default function App() {
                       type="text"
                       value={searchTerm}
                       onChange={e => {
+                        setAiVectorListingIds(null);
                         setSearchTerm(e.target.value);
                         setShowAutoComplete(true);
                         setShowMenuCurrencyDrop(false);
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          runAiSearch();
-                        }
                       }}
                       onFocus={() => {
                         setShowAutoComplete(true);
                         setShowMenuCurrencyDrop(false);
                       }}
                       placeholder={tr('search.placeholder')}
-                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-14"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
                       id="live-search-input-menu"
                     />
                     <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
 
                     {searchTerm && (
                       <button
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-9"
+                        onClick={() => {
+                          setAiVectorListingIds(null);
+                          setSearchTerm('');
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
                       >
                         Г—
                       </button>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={openAiVoiceSearchDialog}
-                      disabled={isAiSearchLoading}
-                      className="absolute right-2.5 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#FF7A50] transition hover:bg-[#FF7A50]/10 disabled:cursor-wait disabled:opacity-60 md:flex"
-                      title={tr('search.ai')}
-                      aria-label={tr('search.ai')}
-                    >
-                      <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
-                    </button>
 
                     {showAutoComplete && suggestions && (
                       <SearchSuggestions
@@ -1268,6 +1322,18 @@ export default function App() {
                       />
                     )}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={openAiVoiceSearchDialog}
+                    disabled={isAiSearchLoading}
+                    className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#FF7A50]/25 bg-[#FF7A50] px-3 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(255,122,80,0.18)] transition hover:bg-[#E05A30] active:scale-95 disabled:cursor-wait disabled:opacity-70 md:flex"
+                    title={tr('search.smart')}
+                    aria-label={tr('search.smart')}
+                  >
+                    <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
+                    <span>{tr('search.smart')}</span>
+                  </button>
 
                   <div className="relative shrink-0 md:hidden">
                     <button
@@ -1356,8 +1422,8 @@ export default function App() {
             </header>
 
             {/* Main Menu body */}
-            <div className="mt-16 flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:mt-0 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
-              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_6.2rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
+            <div className="mt-[calc(4rem+env(safe-area-inset-top))] flex-grow max-w-4xl w-full mx-auto px-4 pt-3 pb-3 sm:mt-0 sm:py-8 flex flex-col justify-start sm:justify-center overflow-hidden h-[calc(100dvh_-_64px_-_env(safe-area-inset-top)_-_6.2rem_-_env(safe-area-inset-bottom))] sm:h-auto select-none">
+              <div className="grid w-full max-w-[min(100%,calc((100dvh_-_64px_-_env(safe-area-inset-top)_-_6.2rem_-_env(safe-area-inset-bottom)_-_30px)/2_*_1.18_+_10px))] mx-auto grid-cols-2 grid-rows-4 sm:grid-rows-none sm:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 sm:max-w-none sm:flex-initial min-h-0">
                 {L1_CATEGORIES.map(cat => {
                   const displayLabel = tr(`category.${cat.id}.label`);
                   const displayImage = getMenuCategoryImage(cat, menuOverrides);
@@ -1433,46 +1499,34 @@ export default function App() {
                 </div>
 
                 {/* LIVE AUTOCAMP SUGGEST SEARCH BAR */}
-                <div className="header-popover-root relative mx-1 block min-w-0 flex-1 sm:mx-0 md:max-w-md">
-                  <div className="header-popover-root relative">
+                <div className="header-popover-root relative mx-1 flex min-w-0 flex-1 items-center gap-2 sm:mx-0 md:max-w-xl">
+                  <div className="header-popover-root relative min-w-0 flex-1">
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={e => {
+                        setAiVectorListingIds(null);
                         setSearchTerm(e.target.value);
                         setShowAutoComplete(true);
                       }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          runAiSearch();
-                        }
-                      }}
                       onFocus={() => setShowAutoComplete(true)}
                       placeholder={tr('search.placeholder')}
-                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-14"
+                      className="box-border h-8 min-h-8 max-h-8 w-full appearance-none rounded-xl border border-[#E5E7EB] bg-[#F4F7F6] py-0 pl-8 pr-7 font-sans text-xs leading-none text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#FF7A50] sm:h-9 sm:min-h-9 sm:max-h-9 sm:text-sm md:h-auto md:min-h-0 md:max-h-none md:py-2 md:pl-9 md:pr-4"
                       id="live-search-input"
                     />
                     <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:left-3" />
 
                     {searchTerm && (
                       <button
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-9"
+                        onClick={() => {
+                          setAiVectorListingIds(null);
+                          setSearchTerm('');
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600 md:right-3"
                       >
                         Г—
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={openAiVoiceSearchDialog}
-                      disabled={isAiSearchLoading}
-                      className="absolute right-2.5 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#FF7A50] transition hover:bg-[#FF7A50]/10 disabled:cursor-wait disabled:opacity-60 md:flex"
-                      title={tr('search.ai')}
-                      aria-label={tr('search.ai')}
-                    >
-                      <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
-                    </button>
                   </div>
 
                   {showAutoComplete && suggestions && (
@@ -1491,6 +1545,18 @@ export default function App() {
                       }}
                     />
                   )}
+
+                  <button
+                    type="button"
+                    onClick={openAiVoiceSearchDialog}
+                    disabled={isAiSearchLoading}
+                    className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#FF7A50]/25 bg-[#FF7A50] px-3 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(255,122,80,0.18)] transition hover:bg-[#E05A30] active:scale-95 disabled:cursor-wait disabled:opacity-70 md:flex"
+                    title={tr('search.smart')}
+                    aria-label={tr('search.smart')}
+                  >
+                    <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
+                    <span>{tr('search.smart')}</span>
+                  </button>
                 </div>
 
                 {/* CONTROLS AREA (PLACE LISTING / PERSONAL CABINET) */}
@@ -1926,7 +1992,7 @@ export default function App() {
                       <h2 className="font-display text-lg font-bold text-[#1E293B]">
                         {currentL1 === 'useful' ? tr('results.guidesTitle') : tr('results.foundTitle')} {' '}
                         <span className="font-mono text-[#2F7D69] bg-[#2F7D69]/10 border border-[#2F7D69]/20 px-2.5 py-0.5 rounded-lg text-sm font-extrabold shadow-sm">
-                          {currentL1 === 'useful' ? MOCK_GUIDES.length : sortedListings.length}
+                          {currentL1 === 'useful' ? MOCK_GUIDES.length : visibleSortedListings.length}
                         </span>
                       </h2>
                       {currentL1 !== 'useful' && (
@@ -1979,12 +2045,12 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                  ) : sortedListings.length > 0 ? (
+                  ) : visibleSortedListings.length > 0 ? (
                     <div className={`grid gap-1.5 sm:gap-6 transition-all duration-300 ${showListingMap
                       ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-2'
                       : 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
                       }`}>
-                      {sortedListings.map(item => (
+                      {visibleSortedListings.map(item => (
                         <ListingCard
                           key={item.id}
                           listing={item}
@@ -2063,7 +2129,7 @@ export default function App() {
 
                     <div className="w-full h-full min-h-0 flex-1 relative z-[100]">
                       <MapBox
-                        listings={sortedListings}
+                        listings={visibleSortedListings}
                         selectedListing={selectedListing}
                         hoveredListing={hoveredListing}
                         onListingHover={(lis) => setHoveredListing(lis)}
@@ -2356,9 +2422,30 @@ export default function App() {
         {showAiVoiceSearchDialog && (
           <AiVoiceSearchDialog
             activeLanguage={activeLanguage}
+            currentL1={currentL1}
+            currentL2={currentL2}
             isSearching={isAiSearchLoading}
             onClose={() => setShowAiVoiceSearchDialog(false)}
             onSubmit={query => runAiSearch(query)}
+          />
+        )}
+
+        {showAiRefinementDialog && currentL1 !== 'useful' && (
+          <AiSearchRefinementDialog
+            currentL1={currentL1}
+            currentL2={currentL2}
+            sourceQuery={lastAiSearchQuery}
+            districtSearch={districtSearch}
+            filters={activeFilters}
+            results={visibleSortedListings}
+            onClose={() => setShowAiRefinementDialog(false)}
+            onDistrictChange={districts => {
+              setDistrictSearch(districts);
+              setCustomPoint(null);
+              setCustomPolygon(null);
+            }}
+            onFiltersChange={applyFilters}
+            onSubCategoriesChange={setCurrentL2}
           />
         )}
 

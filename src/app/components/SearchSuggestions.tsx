@@ -20,7 +20,7 @@ export default function SearchSuggestions({
 
   return (
     <div
-      className={`absolute top-11 inset-x-0 bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden text-xs max-h-[350px] overflow-y-auto p-4 space-y-4 ${className}`}
+      className={`absolute top-11 inset-x-0 z-[9999] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl overflow-hidden text-xs max-h-[350px] overflow-y-auto p-4 space-y-4 ${className}`}
     >
       {suggestions.housing.length > 0 && (
         <div className="space-y-2">

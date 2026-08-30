@@ -174,7 +174,7 @@ const createGeneratedHousingListings = (
     const title = `${titleStyles[index % titleStyles.length]} ${district} ${categoryLabel}`;
 
     return {
-      id: `house-${idNumber}`,
+      id: `mock-${subCategory}-${index + 1}`,
       ownerId: `owner-${(index % 8) + 4}`,
       category: 'housing',
       subCategory,

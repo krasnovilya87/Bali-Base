@@ -3,7 +3,6 @@ import { DEFAULT_LANGUAGE, LanguageCode, LANGUAGES } from '../i18n';
 
 const CACHE_PREFIX = 'bali_base_ai_translation_v2';
 const MODEL = 'gemini-flash-lite-latest';
-const DEV_GEMINI_API_KEY = 'AQ.Ab8RN6KSKbE1dES_Qp7SbPI_WFolR-mCvImJX5temhSs4aoA9A';
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -11,7 +10,7 @@ const getApiKey = () => {
   const viteKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
   const runtimeProcess = (globalThis as any).process;
   const injectedKey = runtimeProcess?.env?.GEMINI_API_KEY || '';
-  const key = viteKey || injectedKey || DEV_GEMINI_API_KEY;
+  const key = viteKey || injectedKey;
   return key && key !== 'MY_GEMINI_API_KEY' ? key : '';
 };
 

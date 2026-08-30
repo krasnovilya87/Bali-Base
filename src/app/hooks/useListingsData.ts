@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
 import { t } from '../../i18n';
+import { deleteListingFromAiSearch, indexListingForAiSearch } from '../../utils/aiSearchClient';
 
 const getHousingListingCollection = (listing: Listing) => {
   if (listing.category !== 'housing') {
@@ -66,6 +67,19 @@ const mergeGoogleReviewsCacheIntoListings = async (listings: Listing[]) => {
   const cachedById = new Map(cachedListings.map(listing => [listing.id, listing]));
 
   return listings.map(listing => cachedById.get(listing.id) || listing);
+};
+
+const syncListingAiIndex = (listing: Listing) => {
+  if (listing.status !== 'active') return;
+  indexListingForAiSearch(listing).catch(error => {
+    console.warn('Failed to update AI search index for listing:', listing.id, error);
+  });
+};
+
+const removeListingAiIndex = (listingId: string) => {
+  deleteListingFromAiSearch(listingId).catch(error => {
+    console.warn('Failed to delete listing from AI search index:', listingId, error);
+  });
 };
 
 const getStoredMenuOverrides = () => {
@@ -163,8 +177,16 @@ export const useListingsData = () => {
           listings.filter(listing => listing.id !== item.id).map(listing => listing.id)
         );
         const finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
-        if (targetId !== item.id) deleteDocument(LISTINGS_COLLECTION, item.id);
+        if (targetId !== item.id) {
+          deleteDocument(LISTINGS_COLLECTION, item.id);
+          removeListingAiIndex(item.id);
+        }
         setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+        if (finalListing.status === 'active') {
+          syncListingAiIndex(finalListing);
+        } else {
+          removeListingAiIndex(targetId);
+        }
         return finalListing;
       }
       return item;
@@ -214,6 +236,7 @@ export const useListingsData = () => {
     let finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
     if (targetId !== updatedListing.id) {
       await deleteDocument(LISTINGS_COLLECTION, updatedListing.id);
+      removeListingAiIndex(updatedListing.id);
     }
 
     const optimisticListings = listings.map(item =>
@@ -222,13 +245,17 @@ export const useListingsData = () => {
     saveUpdatedState(optimisticListings, bookings);
 
     await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
-    if (finalListing.status === 'rejected') {
+    if (finalListing.status !== 'active') {
+      removeListingAiIndex(targetId);
       return;
     }
+
+    syncListingAiIndex(finalListing);
 
     finalListing = await refreshGoogleReviewsForListing(finalListing, 'listing_update');
     if (finalListing.googleReviewsUpdatedAt) {
       await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+      syncListingAiIndex(finalListing);
     }
 
     const updated = listings.map(item =>
@@ -244,6 +271,7 @@ export const useListingsData = () => {
     deleteDocument(LISTINGS_COLLECTION, id).catch(err => {
       console.error('Failed to delete listing from Firestore', err);
     });
+    removeListingAiIndex(id);
   };
 
   const handleUpdateBookingStatus = (id: string, status: 'accepted' | 'declined') => {
@@ -345,6 +373,7 @@ export const useListingsData = () => {
     const exists = listings.some(listing => listing.id === newListing.id);
     if (exists && listingForSave.id !== newListing.id) {
       await deleteDocument(collectionPath, newListing.id);
+      removeListingAiIndex(newListing.id);
     }
     await setDocument(collectionPath, listingForSave.id, listingForSave);
     if (user?.uid) {
@@ -360,6 +389,7 @@ export const useListingsData = () => {
       listingForSave = listingWithReviews;
       await setDocument(collectionPath, listingForSave.id, listingForSave);
     }
+    syncListingAiIndex(listingForSave);
 
     const updated = exists
       ? listings.map(listing => listing.id === newListing.id ? listingForSave : listing)

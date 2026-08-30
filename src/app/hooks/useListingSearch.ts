@@ -13,6 +13,7 @@ import {
   listingOffersFreeDeliveryToAddress,
   yearMeetsMinimum
 } from '../../utils/scooterFilters';
+import { normalizeVehicleModelSearchQuery } from '../../utils/vehicleModelNormalizer';
 
 type MapPoint = { x: number; y: number };
 export type SearchGuide = (typeof MOCK_GUIDES)[number];
@@ -96,6 +97,10 @@ export const useListingSearch = ({
   const effectivePriceMax = filters.priceMax === 30000000
     ? currentPriceCeiling
     : filters.priceMax;
+  const normalizedSearch = useMemo(() => normalizeVehicleModelSearchQuery(searchTerm, {
+    category: currentL1,
+    subCategories: currentL2
+  }), [currentL1, currentL2, searchTerm]);
 
   const filteredListings = useMemo(() => listings.filter(item => {
     if (item.status !== 'active') return false;
@@ -121,11 +126,15 @@ export const useListingSearch = ({
     }
 
     if (searchTerm) {
-      const query = searchTerm.toLowerCase();
+      const query = normalizedSearch.query.toLowerCase();
       const inTitle = item.title.toLowerCase().includes(query);
       const inDesc = item.description.toLowerCase().includes(query);
       const inDistrict = item.district.toLowerCase().includes(query);
-      if (!inTitle && !inDesc && !inDistrict) return false;
+      const inVehicleModel = currentL1 === 'transport' &&
+        item.subCategory === 'scooters' &&
+        Boolean(normalizedSearch.modelValue) &&
+        getListingVehicleModel(item) === normalizedSearch.modelValue;
+      if (!inTitle && !inDesc && !inDistrict && !inVehicleModel) return false;
     }
 
     const comparablePrice = getComparablePrice(item, selectedDayCount);
@@ -217,6 +226,7 @@ export const useListingSearch = ({
     favoriteIds,
     filters,
     listings,
+    normalizedSearch,
     searchTerm,
     selectedDayCount,
     checkInDate,
@@ -267,7 +277,11 @@ export const useListingSearch = ({
 
   const suggestions = useMemo<ListingSearchSuggestions | null>(() => {
     if (searchTerm.length < 2) return null;
-    const query = searchTerm.toLowerCase();
+    const normalizedSuggestionSearch = normalizeVehicleModelSearchQuery(searchTerm, {
+      category: currentL1,
+      subCategories: currentL2
+    });
+    const query = normalizedSuggestionSearch.query.toLowerCase();
 
     const matchedHousing = listings.filter(item =>
       item.category === 'housing' &&
@@ -276,7 +290,15 @@ export const useListingSearch = ({
 
     const matchedTransport = listings.filter(item =>
       item.category === 'transport' &&
-      (item.title.toLowerCase().includes(query) || item.description.toLowerCase().includes(query))
+      (
+        item.title.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        (
+          item.subCategory === 'scooters' &&
+          Boolean(normalizedSuggestionSearch.modelValue) &&
+          getListingVehicleModel(item) === normalizedSuggestionSearch.modelValue
+        )
+      )
     );
 
     const matchedGuides = MOCK_GUIDES.filter(guide =>
@@ -288,7 +310,7 @@ export const useListingSearch = ({
       transport: matchedTransport.slice(0, 3),
       guides: matchedGuides.slice(0, 3)
     };
-  }, [listings, searchTerm]);
+  }, [currentL1, currentL2, listings, searchTerm]);
 
   return {
     filteredListings,

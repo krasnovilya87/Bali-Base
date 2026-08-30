@@ -16,6 +16,7 @@ import {
 } from '../../utils/supportTickets';
 import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 import { uploadImageToFreeImageHost } from '../../utils/imageUpload';
+import { AiSearchUsageStats, loadAiSearchUsageStats } from '../../utils/aiSearchClient';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -158,6 +159,7 @@ export function useAdminDashboardController({
   const [jsonImportSummary, setJsonImportSummary] = useState<string>('');
   const [isJsonImporting, setIsJsonImporting] = useState<boolean>(false);
   const [googlePlacesQuota, setGooglePlacesQuota] = useState<GooglePlacesQuotaAdminStats | null>(null);
+  const [aiSearchStats, setAiSearchStats] = useState<AiSearchUsageStats | null>(null);
   const [districtOptions] = useState<string[]>(() => getDistrictNamesFromGeoJSONSync());
 
   const refreshGooglePlacesQuota = () => {
@@ -168,16 +170,30 @@ export function useAdminDashboardController({
       });
   };
 
+  const refreshAiSearchStats = () => {
+    loadAiSearchUsageStats()
+      .then(setAiSearchStats)
+      .catch(error => {
+        console.warn('Could not load AI search stats', error);
+      });
+  };
+
   useEffect(() => {
     refreshGooglePlacesQuota();
+    refreshAiSearchStats();
   }, []);
 
   useEffect(() => {
     if (activeTab !== 'dashboard') return;
 
     refreshGooglePlacesQuota();
+    refreshAiSearchStats();
     const intervalId = window.setInterval(refreshGooglePlacesQuota, 15000);
-    return () => window.clearInterval(intervalId);
+    const aiStatsIntervalId = window.setInterval(refreshAiSearchStats, 15000);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearInterval(aiStatsIntervalId);
+    };
   }, [activeTab]);
 
   const extractHousingListingsFromJson = (payload: any): Listing[] => {
@@ -982,6 +998,7 @@ export function useAdminDashboardController({
     districtViewsStats,
     totalDistrictViews,
     googlePlacesQuota,
+    aiSearchStats,
     filteredUsersList,
     userSearch,
     setUserSearch,
