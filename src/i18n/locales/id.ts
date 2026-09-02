@@ -890,6 +890,7 @@ const id: TranslationDictionary = {
   "wizard.step.publish": "Publikasi",
   "wizard.photosUploading": "Mengunggah gambar...",
   "wizard.photosDrop": "Tarik foto ke sini atau klik untuk memilih",
+  "wizard.photos.scooterPhotoTitle": "Foto skuter",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",
   "wizard.photos.examplesTitle": "Photo examples:",
   "wizard.photos.gotIt": "Got it",

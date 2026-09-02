@@ -1103,6 +1103,7 @@ const en: TranslationDictionary = {
   "wizard.roomTypeNotice": "Each room type creates a separate listing. Duplicate listings are not allowed.",
   "wizard.photosUploading": "Uploading images...",
   "wizard.photosDrop": "Drag photos here or click to choose",
+  "wizard.photos.scooterPhotoTitle": "Scooter photo",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",
   "wizard.photos.examplesTitle": "Photo examples:",
   "wizard.photos.gotIt": "Got it",

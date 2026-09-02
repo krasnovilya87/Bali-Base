@@ -73,6 +73,30 @@
   }
 }
 
+@keyframes scooterCapturePop {
+  0% {
+    transform: scale(1);
+  }
+
+  42% {
+    transform: scale(1.72);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes scooterCameraFlash {
+  0% {
+    opacity: 0.84;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Custom styles */
 .animate-spin-slow {
   animation: var(--animate-spin-slow);
@@ -106,6 +130,14 @@
 
 .animate-scale-up {
   animation: var(--animate-scale-up);
+}
+
+.animate-scooter-capture-pop {
+  animation: scooterCapturePop 520ms cubic-bezier(0.2, 1.8, 0.3, 1);
+}
+
+.animate-scooter-camera-flash {
+  animation: scooterCameraFlash 460ms ease-out forwards;
 }
 
 /* Optimize custom range inputs theme styling */

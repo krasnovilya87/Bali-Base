@@ -89,6 +89,8 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   const [activeCameraSlotId, setActiveCameraSlotId] = useState<PhotoSlotId | null>(null);
   const [pendingPhotoAction, setPendingPhotoAction] = useState<'camera' | 'gallery' | null>(null);
   const [cameraError, setCameraError] = useState('');
+  const [captureFeedbackKey, setCaptureFeedbackKey] = useState(0);
+  const [extraPhotoNumber, setExtraPhotoNumber] = useState(() => requiredPhotoSlots.length + 1);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
 
@@ -141,6 +143,17 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   const scooterBikeExampleSlots = requiredPhotoSlots.filter(slot =>
     ['scooter_front_right', 'scooter_front_left', 'scooter_rear_left', 'scooter_rear_right'].includes(slot.id)
   );
+  const cameraFrameNumber = activeCameraSlot
+    ? activeCameraSlot.id === 'extra'
+      ? extraPhotoNumber
+      : activeCameraSlot.index + 1
+    : 0;
+
+  useEffect(() => {
+    if (activeCameraSlotId !== 'extra') return;
+
+    setExtraPhotoNumber(Math.max(requiredPhotoSlots.length + 1, photoUrls.length + 1));
+  }, [activeCameraSlotId, photoUrls.length, requiredPhotoSlots.length]);
 
   useEffect(() => {
     if (!activeCameraSlot) return undefined;
@@ -245,6 +258,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
       const uploadSlotId = activeCameraSlot.id === 'extra' ? null : activeCameraSlot.id;
       const file = new File([blob], `${activeCameraSlot.id}.jpg`, { type: 'image/jpeg' });
       uploadCameraPhotoForSlot(file, uploadSlotId);
+      setCaptureFeedbackKey(prev => prev + 1);
 
       const nextSlot = requiredPhotoSlots.find(slot =>
         slot.index > activeCameraSlot.index &&
@@ -259,6 +273,11 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
         setActiveCameraSlotId(nextSlot.id);
       } else {
         setActiveCameraSlotId('extra');
+        setExtraPhotoNumber(prev =>
+          activeCameraSlot.id === 'extra'
+            ? Math.max(prev + 1, requiredPhotoSlots.length + 1)
+            : requiredPhotoSlots.length + 1
+        );
       }
     }, 'image/jpeg', 0.9);
   };
@@ -276,15 +295,15 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
             aria-label={tr(slot.labelKey)}
             className={`block text-left disabled:opacity-60 ${allowSlotActions && isPhoneUploadDevice ? 'cursor-pointer' : 'cursor-default'}`}
           >
-            <div className={`relative aspect-square overflow-hidden rounded-2xl border transition ${isDone
+            <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl border transition ${isDone
               ? 'border-emerald-200 bg-emerald-50'
-              : 'border-[#FF7A50]/25 bg-[#F4F7F6]'
+              : 'border-[#FF7A50]/25 bg-white'
               }`}>
               {slot.exampleImage && (
                 <img
                   src={slot.exampleImage}
                   alt={tr(slot.labelKey)}
-                  className={`h-full w-full object-cover ${isDone ? 'opacity-45' : 'opacity-90'}`}
+                  className={`h-full w-full object-contain ${isDone ? 'opacity-45' : 'opacity-100'}`}
                 />
               )}
               <div className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-[11px] font-black text-white backdrop-blur-sm">
@@ -412,36 +431,42 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
       )}
 
       {pendingPhotoAction && (
-        <div className="fixed inset-0 z-[610] flex items-end justify-center bg-[#020617]/55 px-3 pb-3 pt-8 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="w-full max-w-md space-y-4 rounded-[28px] bg-white p-4 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div className="rounded-2xl border border-[#FF7A50]/20 bg-[#FF7A50]/10 px-4 py-3 text-[11px] font-bold leading-relaxed text-[#1E293B]">
-                {tr('wizard.photos.realBikeRule')}
-              </div>
+        <div className="fixed inset-0 z-[610] flex items-center justify-center bg-[#020617]/55 p-3 backdrop-blur-sm sm:p-6">
+          <div className="pu flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-[28px] shadow-2xl">
+            <div className="pu-header pu-window-header">
+              <h3>{tr('wizard.photos.scooterPhotoTitle')}</h3>
               <button
                 type="button"
                 onClick={() => setPendingPhotoAction(null)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F7F6] text-[#1E293B] transition active:scale-95"
+                className="pu-close"
                 aria-label={tr('common.cancel')}
               >
-                <X className="h-4 w-4" />
+                <X className="pu-close-icon" />
               </button>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-black text-[#1E293B]">
-                {tr('wizard.photos.examplesTitle')}
-              </p>
-              {renderScooterRequiredGuide()}
+            <div className="pu-body flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="rounded-2xl border border-[#FF7A50]/20 bg-[#FF7A50]/10 px-4 py-3 text-[11px] font-bold leading-relaxed text-[#1E293B]">
+                {tr('wizard.photos.realBikeRule')}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-black text-[#1E293B]">
+                  {tr('wizard.photos.examplesTitle')}
+                </p>
+                {renderScooterRequiredGuide()}
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={confirmPhotoGuidance}
-              className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#FF7A50] px-4 py-3 text-xs font-black text-white shadow-md transition active:scale-[0.99]"
-            >
-              {tr('wizard.photos.gotIt')}
-            </button>
+            <div className="pu-footer">
+              <button
+                type="button"
+                onClick={confirmPhotoGuidance}
+                className="pu-button-primary w-full"
+              >
+                {tr('wizard.photos.gotIt')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -481,9 +506,18 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                   className={`absolute inset-0 h-full w-full object-contain p-4 opacity-90 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)] ${activeCameraSlot.cameraOverlayMirror ? '-scale-x-100' : ''}`}
                 />
               )}
+              {captureFeedbackKey > 0 && (
+                <div
+                  key={`scooter-camera-flash-${captureFeedbackKey}`}
+                  className="pointer-events-none absolute inset-0 bg-white/80 animate-scooter-camera-flash"
+                />
+              )}
               <div className="pointer-events-none absolute inset-4 rounded-[22px] border border-white/25" />
-              <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-xs font-black text-white backdrop-blur-sm">
-                {activeCameraSlot.index + 1}
+              <div
+                key={`scooter-camera-number-${captureFeedbackKey}-${cameraFrameNumber}`}
+                className={`absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white backdrop-blur-sm ${captureFeedbackKey > 0 ? 'bg-[#FF7A50] shadow-[0_0_0_8px_rgba(255,122,80,0.22)] animate-scooter-capture-pop' : 'bg-black/55'}`}
+              >
+                {cameraFrameNumber}
               </div>
             </div>
 

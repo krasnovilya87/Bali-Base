@@ -853,6 +853,7 @@ const de: TranslationDictionary = {
   "wizard.step.publish": "Veroeffentlichen",
   "wizard.photosUploading": "Bilder hochladen...",
   "wizard.photosDrop": "Fotos hierher ziehen oder klicken",
+  "wizard.photos.scooterPhotoTitle": "Rollerfoto",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",
   "wizard.photos.examplesTitle": "Photo examples:",
   "wizard.photos.gotIt": "Got it",

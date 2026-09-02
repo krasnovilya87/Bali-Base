@@ -425,6 +425,7 @@ const ru: TranslationDictionary = {
   "wizard.roomTypeNotice": "Для каждого типа комнаты создается отдельное объявление. Запрещено создавать одинаковые объявления.",
   "wizard.photosUploading": "Загрузка изображений...",
   "wizard.photosDrop": "Перетащите сюда фото или нажмите для выбора",
+  "wizard.photos.scooterPhotoTitle": "Фото скутера",
   "wizard.photos.realBikeRule": "Используйте реальные фотографии именно этого байка. Фото из интернета, каталожные изображения и фотографии другого байка запрещены.",
   "wizard.photos.examplesTitle": "Примеры фото:",
   "wizard.photos.gotIt": "Понятно",
