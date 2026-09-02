@@ -70,6 +70,9 @@ interface CreateWizardProps {
   propCategoriesList?: Array<{ id: string; label: string; icon: string; desc: string; image?: any; l2?: string }>;
   propSubcategoriesMap?: Record<string, Array<{ id: string; label: string; icon: string }>>;
   menuOverrides?: any;
+  initialCategory?: string;
+  initialSubCategory?: string;
+  initialStepKey?: WizardStepKey;
 }
 
 const stepLabelKeyByStep: Record<WizardStepKey, string> = {
@@ -106,11 +109,17 @@ export default function CreateWizard({
   propSubcategoriesMap,
   menuOverrides,
   existingListings = [],
-  initialListing
+  initialListing,
+  initialCategory,
+  initialSubCategory,
+  initialStepKey
 }: CreateWizardProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
-  const [step, setStep] = useState<number>(1);
+  const initialStep = initialStepKey
+    ? Math.max(1, getWizardFlow(initialListing?.category || initialCategory || 'housing', initialListing?.subCategory || initialSubCategory || '').indexOf(initialStepKey) + 1)
+    : 1;
+  const [step, setStep] = useState<number>(initialStep);
   const wizardBodyRef = useRef<HTMLDivElement | null>(null);
   const wizardOverlayRef = useRef<HTMLDivElement | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -128,6 +137,8 @@ export default function CreateWizard({
     handleSelectCategory
   } = useCategorySteps({
     initialListing,
+    initialCategory,
+    initialSubCategory,
     propCategoriesList,
     propSubcategoriesMap,
     menuOverrides
@@ -228,6 +239,7 @@ export default function CreateWizard({
     handleCameraChoose,
     handleGalleryChoose,
     openCameraForSlot,
+    uploadCameraPhotoForSlot,
     handleRemovePhoto
   } = usePhotoStep({
     initialListing,
@@ -973,6 +985,7 @@ export default function CreateWizard({
       handleCameraChoose,
       handleGalleryChoose,
       openCameraForSlot,
+      uploadCameraPhotoForSlot,
       handleRemovePhoto
     },
     featureState: {

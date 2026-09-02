@@ -3,6 +3,10 @@ import scooterFrontLeftExample from '../../assets/wizard/scooter-front-left-exam
 import scooterFrontRightExample from '../../assets/wizard/scooter-front-right-example.png';
 import scooterRearLeftExample from '../../assets/wizard/scooter-rear-left-example.png';
 import scooterRearRightExample from '../../assets/wizard/scooter-rear-right-example.png';
+import scooterDashboardCloseOutline from '../../assets/wizard/scooter-outline-dashboard-close.png';
+import scooterDashboardWideOutline from '../../assets/wizard/scooter-outline-dashboard-wide.png';
+import scooterFrontOutline from '../../assets/wizard/scooter-outline-front.png';
+import scooterRearOutline from '../../assets/wizard/scooter-outline-rear.png';
 
 export const ROOM_TYPE_LABELS = {
   standard: 'Standard room',
@@ -25,6 +29,8 @@ export type PhotoSlotConfig = {
   required: boolean;
   maxCount: number;
   exampleImage?: string;
+  cameraOverlayImage?: string;
+  cameraOverlayMirror?: boolean;
 };
 
 export const PHOTO_SLOT_CONFIG: PhotoSlotConfig[] = [
@@ -39,11 +45,12 @@ export const PHOTO_SLOT_CONFIG: PhotoSlotConfig[] = [
 ] as const;
 
 export const SCOOTER_PHOTO_SLOT_CONFIG: PhotoSlotConfig[] = [
-  { id: 'scooter_front_left', labelKey: 'wizard.photoSlot.scooterFrontLeft', shortLabelKey: 'wizard.photoSlot.scooterFrontLeftShort', index: 0, required: true, maxCount: 1, exampleImage: scooterFrontLeftExample },
-  { id: 'scooter_front_right', labelKey: 'wizard.photoSlot.scooterFrontRight', shortLabelKey: 'wizard.photoSlot.scooterFrontRightShort', index: 1, required: true, maxCount: 1, exampleImage: scooterFrontRightExample },
-  { id: 'scooter_rear_left', labelKey: 'wizard.photoSlot.scooterRearLeft', shortLabelKey: 'wizard.photoSlot.scooterRearLeftShort', index: 2, required: true, maxCount: 1, exampleImage: scooterRearLeftExample },
-  { id: 'scooter_rear_right', labelKey: 'wizard.photoSlot.scooterRearRight', shortLabelKey: 'wizard.photoSlot.scooterRearRightShort', index: 3, required: true, maxCount: 1, exampleImage: scooterRearRightExample },
-  { id: 'scooter_dashboard', labelKey: 'wizard.photoSlot.scooterDashboard', shortLabelKey: 'wizard.photoSlot.scooterDashboardShort', index: 4, required: true, maxCount: 1, exampleImage: scooterDashboardExample }
+  { id: 'scooter_front_left', labelKey: 'wizard.photoSlot.scooterFrontLeft', shortLabelKey: 'wizard.photoSlot.scooterFrontLeftShort', index: 0, required: true, maxCount: 1, exampleImage: scooterFrontLeftExample, cameraOverlayImage: scooterFrontOutline },
+  { id: 'scooter_front_right', labelKey: 'wizard.photoSlot.scooterFrontRight', shortLabelKey: 'wizard.photoSlot.scooterFrontRightShort', index: 1, required: true, maxCount: 1, exampleImage: scooterFrontRightExample, cameraOverlayImage: scooterFrontOutline, cameraOverlayMirror: true },
+  { id: 'scooter_rear_left', labelKey: 'wizard.photoSlot.scooterRearLeft', shortLabelKey: 'wizard.photoSlot.scooterRearLeftShort', index: 2, required: true, maxCount: 1, exampleImage: scooterRearLeftExample, cameraOverlayImage: scooterRearOutline },
+  { id: 'scooter_rear_right', labelKey: 'wizard.photoSlot.scooterRearRight', shortLabelKey: 'wizard.photoSlot.scooterRearRightShort', index: 3, required: true, maxCount: 1, exampleImage: scooterRearRightExample, cameraOverlayImage: scooterRearOutline, cameraOverlayMirror: true },
+  { id: 'scooter_dashboard_wide', labelKey: 'wizard.photoSlot.scooterDashboardWide', shortLabelKey: 'wizard.photoSlot.scooterDashboardWideShort', index: 4, required: true, maxCount: 1, exampleImage: scooterDashboardExample, cameraOverlayImage: scooterDashboardWideOutline },
+  { id: 'scooter_dashboard_close', labelKey: 'wizard.photoSlot.scooterDashboardClose', shortLabelKey: 'wizard.photoSlot.scooterDashboardCloseShort', index: 5, required: true, maxCount: 1, exampleImage: scooterDashboardExample, cameraOverlayImage: scooterDashboardCloseOutline }
 ] as const;
 
 export const REQUIRED_PHOTO_SLOTS = PHOTO_SLOT_CONFIG.filter(slot => slot.required);

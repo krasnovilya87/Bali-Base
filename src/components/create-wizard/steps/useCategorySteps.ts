@@ -22,6 +22,8 @@ type SubcategorySourceItem = {
 
 type UseCategoryStepsParams = {
   initialListing?: Listing | null;
+  initialCategory?: string;
+  initialSubCategory?: string;
   propCategoriesList?: CategorySourceItem[];
   propSubcategoriesMap?: Record<string, SubcategorySourceItem[]>;
   menuOverrides?: any;
@@ -29,6 +31,8 @@ type UseCategoryStepsParams = {
 
 export const useCategorySteps = ({
   initialListing,
+  initialCategory,
+  initialSubCategory,
   propCategoriesList,
   propSubcategoriesMap,
   menuOverrides
@@ -37,8 +41,8 @@ export const useCategorySteps = ({
   const categoriesToUse = (propCategoriesList || defaultCategoriesList) as CategorySourceItem[];
   const subcategoriesMapToUse = propSubcategoriesMap || defaultSubcategoriesMap;
 
-  const [category, setCategory] = useState<any>(initialListing?.category || 'housing');
-  const [subCategory, setSubCategory] = useState<string>(initialListing?.subCategory || '');
+  const [category, setCategory] = useState<any>(initialListing?.category || initialCategory || 'housing');
+  const [subCategory, setSubCategory] = useState<string>(initialListing?.subCategory || initialSubCategory || '');
 
   const categoriesList = useMemo(() => {
     return categoriesToUse.map(cat => {

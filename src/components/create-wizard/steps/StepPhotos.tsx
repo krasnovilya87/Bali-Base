@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Camera, Check, ChevronDown, ImagePlus, QrCode, RefreshCw, ShieldCheck, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, Check, ChevronDown, ImagePlus, QrCode, RefreshCw, ShieldCheck, Upload, X } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
 import PhotoCategoryPanel from '../PhotoCategoryPanel';
 import Del from '../../Del';
@@ -21,6 +21,7 @@ type StepPhotosProps = {
   handleCameraChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
   handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
   openCameraForSlot: (slotId?: PhotoSlotId) => void;
+  uploadCameraPhotoForSlot: (file: File, slotId?: PhotoSlotId | null) => MaybePromise<void>;
   isUploading: boolean;
   uploadError: string;
   uploadDiagnostic: {
@@ -65,6 +66,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   handleCameraChoose,
   handleGalleryChoose,
   openCameraForSlot,
+  uploadCameraPhotoForSlot,
   isUploading,
   uploadError,
   uploadDiagnostic,
@@ -84,6 +86,10 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
 }) => {
   const { tr } = useI18n();
   const [isPhoneUploadDevice, setIsPhoneUploadDevice] = useState(false);
+  const [activeCameraSlotId, setActiveCameraSlotId] = useState<PhotoSlotId | null>(null);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
@@ -96,29 +102,156 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   }, []);
 
   const currentPageUrl = typeof window === 'undefined' ? '' : window.location.href;
+  const phoneUploadTargetUrl = currentPageUrl
+    ? (() => {
+      const url = new URL(currentPageUrl);
+      url.searchParams.set('create', '1');
+      url.searchParams.set('category', 'transport');
+      url.searchParams.set('subcategory', 'scooters');
+      url.searchParams.set('step', 'photos');
+      return url.toString();
+    })()
+    : '';
   const phoneUploadQrUrl = currentPageUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(currentPageUrl)}`
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(phoneUploadTargetUrl)}`
     : '';
   const requiredPhotoDone = requiredPhotoSlots.every(slot => getAssignedPhotoUrls(slot.id).length >= slot.maxCount);
   const nextRequiredSlot = useMemo(
     () => requiredPhotoSlots.find(slot => getAssignedPhotoUrls(slot.id).length < slot.maxCount),
     [requiredPhotoSlots, photoUrls, photoSlotAssignments]
   );
+  const activeCameraSlot = useMemo(
+    () => activeCameraSlotId ? activePhotoSlotConfig.find(slot => slot.id === activeCameraSlotId) : undefined,
+    [activeCameraSlotId, activePhotoSlotConfig]
+  );
   const uploadModeText = requiredPhotoDone ? tr('wizard.photos.scooterExtraReady') : tr('wizard.photos.scooterNextShot', {
     shot: nextRequiredSlot ? tr(nextRequiredSlot.labelKey) : tr('wizard.extraPhoto')
   });
+  const scooterBikeExampleSlots = requiredPhotoSlots.filter(slot =>
+    ['scooter_front_left', 'scooter_front_right', 'scooter_rear_left', 'scooter_rear_right'].includes(slot.id)
+  );
+
+  useEffect(() => {
+    if (!activeCameraSlot) return undefined;
+
+    let isMounted = true;
+    setCameraError('');
+
+    const startCamera = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setCameraError(tr('wizard.photos.cameraUnavailable'));
+          return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: 'environment' },
+            aspectRatio: { ideal: 1 },
+            width: { ideal: 1280 },
+            height: { ideal: 1280 }
+          }
+        });
+
+        if (!isMounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch {
+        if (isMounted) {
+          setCameraError(tr('wizard.photos.cameraUnavailable'));
+        }
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      isMounted = false;
+      cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+    };
+  }, [activeCameraSlot, tr]);
+
+  const closeScooterCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+    cameraStreamRef.current = null;
+    setActiveCameraSlotId(null);
+    setCameraError('');
+  };
+
+  const openScooterCamera = (slotId?: PhotoSlotId) => {
+    const slot = slotId
+      ? requiredPhotoSlots.find(item => item.id === slotId)
+      : nextRequiredSlot;
+
+    if (!slot) {
+      openCameraForSlot();
+      return;
+    }
+
+    setActiveCameraSlotId(slot.id);
+  };
+
+  const captureScooterPhoto = async () => {
+    if (!activeCameraSlot || !videoRef.current) return;
+
+    const video = videoRef.current;
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+    if (!sourceWidth || !sourceHeight) {
+      setCameraError(tr('wizard.photos.cameraUnavailable'));
+      return;
+    }
+
+    const side = Math.min(sourceWidth, sourceHeight);
+    const sourceX = Math.round((sourceWidth - side) / 2);
+    const sourceY = Math.round((sourceHeight - side) / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 1200;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setCameraError(tr('wizard.photos.cameraUnavailable'));
+      return;
+    }
+
+    ctx.drawImage(video, sourceX, sourceY, side, side, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setCameraError(tr('wizard.photos.cameraUnavailable'));
+        return;
+      }
+
+      const file = new File([blob], `${activeCameraSlot.id}.jpg`, { type: 'image/jpeg' });
+      await uploadCameraPhotoForSlot(file, activeCameraSlot.id);
+      closeScooterCamera();
+    }, 'image/jpeg', 0.9);
+  };
 
   const renderScooterRequiredGuide = () => (
-    <div className="grid gap-3 sm:grid-cols-5">
-      {requiredPhotoSlots.map(slot => {
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {scooterBikeExampleSlots.map(slot => {
         const isDone = getAssignedPhotoUrls(slot.id).length >= slot.maxCount;
 
         return (
-          <div
+          <button
             key={slot.id}
-            className="space-y-2"
+            type="button"
+            onClick={() => isPhoneUploadDevice && openScooterCamera(slot.id)}
+            disabled={isUploading}
+            aria-label={tr(slot.labelKey)}
+            className="block text-left disabled:opacity-60"
           >
-            <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl border transition ${isDone
+            <div className={`relative aspect-square overflow-hidden rounded-2xl border transition ${isDone
               ? 'border-emerald-200 bg-emerald-50'
               : 'border-[#FF7A50]/25 bg-[#F4F7F6]'
               }`}>
@@ -133,23 +266,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                 {isDone ? <Check className="h-4 w-4" strokeWidth={3} /> : slot.index + 1}
               </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-black leading-tight text-[#1E293B]">
-                {tr(slot.labelKey)}
-              </p>
-              {isPhoneUploadDevice && (
-                <button
-                  type="button"
-                  onClick={() => openCameraForSlot(slot.id)}
-                  disabled={isUploading}
-                  className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#FF7A50] px-3 py-2 text-[11px] font-black text-white transition active:scale-[0.99] disabled:opacity-60"
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                  {tr('wizard.photos.takeBikePhoto')}
-                </button>
-              )}
-            </div>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -162,6 +279,9 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
           <div className="rounded-2xl border border-[#FF7A50]/20 bg-[#FF7A50]/10 px-4 py-3 text-[11px] font-bold leading-relaxed text-[#1E293B]">
             {tr('wizard.photos.realBikeRule')}
           </div>
+          <p className="text-xs font-black text-[#1E293B]">
+            {tr('wizard.photos.examplesTitle')}
+          </p>
           {renderScooterRequiredGuide()}
         </div>
       )}
@@ -192,7 +312,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
               </p>
               <button
                 type="button"
-                onClick={() => openCameraForSlot()}
+                onClick={() => openScooterCamera()}
                 disabled={isUploading}
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF7A50] px-4 py-3 text-xs font-black text-white shadow-md transition active:scale-[0.99] disabled:opacity-60"
               >
@@ -260,6 +380,66 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
         <p className="text-xs text-[#1E293B] font-bold">
           {isUploading ? tr('wizard.photosUploading') : tr('wizard.photosDrop')}
         </p>
+        </div>
+      )}
+
+      {activeCameraSlot && (
+        <div className="fixed inset-0 z-[620] flex items-center justify-center bg-[#020617]/95 px-4 py-6">
+          <div className="w-full max-w-[520px] space-y-4">
+            <div className="flex items-center justify-between gap-3 text-white">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black">{tr(activeCameraSlot.labelKey)}</p>
+                <p className="text-[11px] font-semibold text-white/62">{tr('wizard.photos.alignBike')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeScooterCamera}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md transition active:scale-95"
+                aria-label={tr('common.cancel')}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="relative aspect-square overflow-hidden rounded-[28px] border border-white/16 bg-black shadow-2xl">
+              <video
+                ref={videoRef}
+                className="absolute inset-0 h-full w-full object-cover"
+                playsInline
+                muted
+                autoPlay
+              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_58%,rgba(2,6,23,0.34)_100%)]" />
+              {activeCameraSlot.cameraOverlayImage && (
+                <img
+                  src={activeCameraSlot.cameraOverlayImage}
+                  alt=""
+                  aria-hidden="true"
+                  className={`absolute inset-0 h-full w-full object-contain p-4 opacity-90 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)] ${activeCameraSlot.cameraOverlayMirror ? '-scale-x-100' : ''}`}
+                />
+              )}
+              <div className="pointer-events-none absolute inset-4 rounded-[22px] border border-white/25" />
+              <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-xs font-black text-white backdrop-blur-sm">
+                {activeCameraSlot.index + 1}
+              </div>
+            </div>
+
+            {cameraError && (
+              <p className="rounded-2xl bg-rose-500/14 px-4 py-3 text-center text-[11px] font-bold text-rose-100">
+                {cameraError}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={captureScooterPhoto}
+              disabled={isUploading || Boolean(cameraError)}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF7A50] px-5 py-4 text-sm font-black text-white shadow-[0_18px_36px_rgba(255,122,80,0.24)] transition active:scale-[0.99] disabled:opacity-60"
+            >
+              {isUploading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+              {tr('wizard.photos.capture')}
+            </button>
+          </div>
         </div>
       )}
 

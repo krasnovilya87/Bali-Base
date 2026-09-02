@@ -288,6 +288,12 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     cameraInputRef.current?.click();
   };
 
+  const uploadCameraPhotoForSlot = async (file: File, slotId?: PhotoSlotId | null) => {
+    cameraTargetSlotIdRef.current = slotId || null;
+    await uploadPhotoToStorage(file, 'camera');
+    cameraTargetSlotIdRef.current = null;
+  };
+
   const handleRemovePhoto = (index: number) => {
     const removedUrl = photoUrls[index];
     setPhotoUrls(photoUrls.filter((_, i) => i !== index));
@@ -333,6 +339,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     handleCameraChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'camera'),
     handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'gallery'),
     openCameraForSlot,
+    uploadCameraPhotoForSlot,
     handleRemovePhoto
   };
 };

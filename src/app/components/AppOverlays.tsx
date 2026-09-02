@@ -77,6 +77,12 @@ type AppOverlaysProps = {
   checkOutDate: string;
   onInitialBookingsOpened: () => void;
   usersModalTab: 'favorites' | 'whatsapp';
+  onClearCreateWizardDeepLink: () => void;
+  createWizardDeepLink: {
+    category?: string;
+    subCategory?: string;
+    stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
+  } | null;
 };
 
 export default function AppOverlays({
@@ -139,7 +145,9 @@ export default function AppOverlays({
   checkInDate,
   checkOutDate,
   onInitialBookingsOpened,
-  usersModalTab
+  usersModalTab,
+  onClearCreateWizardDeepLink,
+  createWizardDeepLink
 }: AppOverlaysProps) {
   const { tr } = useI18n();
   const [canEditSelectedListing, setCanEditSelectedListing] = useState(false);
@@ -289,6 +297,7 @@ export default function AppOverlays({
         <CreateWizard
           onClose={() => {
             setShowCreateWizard(false);
+            onClearCreateWizardDeepLink();
             if (editingListing) {
               setShowMyAddsListing(true);
             }
@@ -302,6 +311,9 @@ export default function AppOverlays({
           propCategoriesList={L1_CATEGORIES}
           propSubcategoriesMap={SUBCATEGORIES_MAP}
           menuOverrides={menuOverrides}
+          initialCategory={createWizardDeepLink?.category}
+          initialSubCategory={createWizardDeepLink?.subCategory}
+          initialStepKey={createWizardDeepLink?.stepKey}
         />
       )}
 

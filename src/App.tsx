@@ -312,6 +312,11 @@ export default function App() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [hoveredListing, setHoveredListing] = useState<Listing | null>(null);
   const [showCreateWizard, setShowCreateWizard] = useState<boolean>(false);
+  const [createWizardDeepLink, setCreateWizardDeepLink] = useState<{
+    category?: string;
+    subCategory?: string;
+    stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
+  } | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [showMyAddsListing, setShowMyAddsListing] = useState<boolean>(false);
   const [initialBookingsListingId, setInitialBookingsListingId] = useState<string | null>(null);
@@ -393,6 +398,25 @@ export default function App() {
     setCurrentL2([sharedListing.subCategory]);
     setSelectedListing(sharedListing);
   }, [listings, selectedListing]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') !== '1') return;
+
+    const stepKey = params.get('step') as NonNullable<typeof createWizardDeepLink>['stepKey'] | null;
+    setCreateWizardDeepLink({
+      category: params.get('category') || undefined,
+      subCategory: params.get('subcategory') || undefined,
+      stepKey: stepKey || undefined
+    });
+    setCurrentView('app');
+    if (params.get('category')) setCurrentL1(params.get('category') || 'housing');
+    if (params.get('subcategory')) setCurrentL2([params.get('subcategory') || '']);
+    setEditingListing(null);
+    setShowCreateWizard(true);
+  }, []);
 
   const closeSelectedListing = () => {
     const closingListingId = selectedListing?.id;
@@ -2506,6 +2530,8 @@ export default function App() {
           showProfileModal={showProfileModal}
           showUsersModal={showUsersModal}
           usersModalTab={usersModalTab}
+          onClearCreateWizardDeepLink={() => setCreateWizardDeepLink(null)}
+          createWizardDeepLink={createWizardDeepLink}
         />
 
         {showAiVoiceSearchDialog && (
