@@ -10,6 +10,8 @@ import {
   getListingVehicleCondition,
   getListingVehicleModel,
   getListingSellerType,
+  listingHasKeyless,
+  listingHasSurfRack,
   listingOffersFreeDeliveryToAddress,
   yearMeetsMinimum
 } from '../../utils/scooterFilters';
@@ -146,6 +148,8 @@ export const useListingSearch = ({
       if (!yearMeetsMinimum(item.yearBuilt, filters.vehicleYearMin || 0)) return false;
       if (filters.vehicleCondition.length > 0 && !filters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
       if (filters.sellerType.length > 0 && !filters.sellerType.includes(getListingSellerType(item))) return false;
+      if (filters.keylessOnly && !listingHasKeyless(item)) return false;
+      if (filters.surfRackOnly && !listingHasSurfRack(item)) return false;
       if (filters.freeDeliveryToAddressOnly && customPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
     }
 

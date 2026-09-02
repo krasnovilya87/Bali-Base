@@ -55,6 +55,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
 }) => {
   const { tr } = useI18n();
   const [districtCenter, setDistrictCenter] = useState<LatLng>(DEFAULT_BALI_CENTER);
+  const [isPointSelectionActive, setIsPointSelectionActive] = useState(!pickedCoords);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +78,14 @@ const StepLocation: React.FC<StepLocationProps> = ({
     };
   }, [district, pickedCoords]);
 
+  const handlePickedCoordsChange = async (latLng: LatLng) => {
+    setPickedCoords(latLng);
+    setAddress(tr('wizard.detectingAddress'));
+    const result = await fetchAddressFromCoords(latLng.lat, latLng.lng);
+    setAddress(result.address);
+    setDistrict(result.district);
+  };
+
   return (
     <div
       className={`transition-all duration-350 animate-fade-in ${isMapExpanded
@@ -89,21 +98,17 @@ const StepLocation: React.FC<StepLocationProps> = ({
           <APIProvider apiKey={apiKey} libraries={['places']}>
             <GMap
               defaultZoom={13}
-              center={pickedCoords || districtCenter}
+              defaultCenter={pickedCoords || districtCenter}
               mapId="DEMO_MAP_ID"
               disableDefaultUI={true}
+              gestureHandling="greedy"
               onClick={async (event) => {
-                if (event.detail?.latLng) {
-                  const latLng = {
-                    lat: event.detail.latLng.lat,
-                    lng: event.detail.latLng.lng
-                  };
-                  setPickedCoords(latLng);
-                  setAddress(tr('wizard.detectingAddress'));
-                  const result = await fetchAddressFromCoords(latLng.lat, latLng.lng);
-                  setAddress(result.address);
-                  setDistrict(result.district);
-                }
+                if (!isPointSelectionActive || !event.detail?.latLng) return;
+
+                await handlePickedCoordsChange({
+                  lat: event.detail.latLng.lat,
+                  lng: event.detail.latLng.lng
+                });
               }}
               className="w-full h-full animate-fade-in"
             >
@@ -127,6 +132,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
               setZoom={setIframeZoom}
               district={district}
               setDistrict={setDistrict}
+              isPointSelectionActive={isPointSelectionActive}
             />
           </div>
         )}
@@ -205,6 +211,21 @@ const StepLocation: React.FC<StepLocationProps> = ({
         <div className="absolute right-4 top-1/2 -translate-y-1/2 z-[100] flex flex-col gap-2.5">
           <button
             type="button"
+            onClick={() => setIsPointSelectionActive(prev => !prev)}
+            className={`w-10 h-10 rounded-full border-[0.5px] border-[#94A3B8]/30 select-none shadow-md flex items-center justify-center transition cursor-pointer active:scale-95 group ${isPointSelectionActive
+              ? 'bg-[#FF7A50] text-white hover:bg-[#E05A30]'
+              : 'bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50]'
+              }`}
+            title={tr('location.selectOnMap')}
+            aria-label={tr('location.selectOnMap')}
+          >
+            <MapPin className="w-5 h-5 transition-transform group-hover:scale-110" />
+          </button>
+
+          <div className="h-[1px] bg-white/70 mx-2" />
+
+          <button
+            type="button"
             onClick={() => {
               if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -213,11 +234,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
                       lat: position.coords.latitude,
                       lng: position.coords.longitude
                     };
-                    setPickedCoords(pos);
-                    setAddress(tr('wizard.detectingAddress'));
-                    const result = await fetchAddressFromCoords(pos.lat, pos.lng);
-                    setAddress(result.address);
-                    setDistrict(result.district);
+                    await handlePickedCoordsChange(pos);
                   },
                   () => {
                     alert(tr('wizard.geoPermission'));

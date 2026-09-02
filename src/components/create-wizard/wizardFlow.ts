@@ -6,7 +6,6 @@ export type WizardStepKey =
   | 'photos'
   | 'features'
   | 'pricing'
-  | 'ical'
   | 'contact'
   | 'preview';
 
@@ -18,12 +17,27 @@ const housingForRentFlow: WizardStepKey[] = [
   'photos',
   'features',
   'pricing',
-  'ical',
   'contact',
   'preview'
 ];
 
-export const getWizardFlow = (_category: string, _subCategory: string): WizardStepKey[] => {
+const transportScooterFlow: WizardStepKey[] = [
+  'category',
+  'subcategory',
+  'title',
+  'location',
+  'photos',
+  'features',
+  'pricing',
+  'contact',
+  'preview'
+];
+
+export const getWizardFlow = (category: string, subCategory: string): WizardStepKey[] => {
+  if (category === 'transport' && subCategory === 'scooters') {
+    return transportScooterFlow;
+  }
+
   return housingForRentFlow;
 };
 

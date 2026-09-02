@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Link2, RefreshCw, X } from 'lucide-react';
 import { BookingRequest, Listing } from '../../types';
 import BookingRequestControls from './BookingRequestControls';
 import { useI18n } from '../../i18nContext';
@@ -38,6 +38,9 @@ export default function CalendarListingModal({
   const [draggingBookingId, setDraggingBookingId] = useState<string | null>(null);
   const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(null);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isIcalModalOpen, setIsIcalModalOpen] = useState(false);
+  const [icalDraftUrl, setIcalDraftUrl] = useState(listing.icalUrl || '');
+  const [icalStatus, setIcalStatus] = useState('');
   const [statsYear, setStatsYear] = useState(() => new Date().getFullYear());
   const [localAcceptedBookings, setLocalAcceptedBookings] = useState<BookingRequest[]>([]);
   const [reserveDraft, setReserveDraft] = useState<{
@@ -75,6 +78,15 @@ export default function CalendarListingModal({
   const roomTypeLabel = listing.roomType
     ? tr(`listing.subtitle.roomType.${listing.roomType}`)
     : tr(`subcategory.${listing.subCategory}`);
+  const hasIcalUrl = Boolean(listing.icalUrl?.trim());
+  const icalLastSyncedLabel = listing.icalLastSyncedAt
+    ? new Date(listing.icalLastSyncedAt).toLocaleString(language.toLowerCase(), {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    : tr('calendarListing.icalNeverSynced');
   const todayDate = formatDate(new Date());
   const visibleCalendarDays = Array.from({ length: 365 }, (_, index) => {
     const date = new Date(baseMonth);
@@ -372,8 +384,46 @@ export default function CalendarListingModal({
     setRangeStart(null);
     setHoverDate(null);
     setReserveDraft(null);
+    setIsIcalModalOpen(false);
     resetDrag();
     onClose();
+  };
+
+  const openIcalModal = () => {
+    setIcalDraftUrl(listing.icalUrl || '');
+    setIcalStatus('');
+    setIsIcalModalOpen(true);
+  };
+
+  const saveIcalUrl = () => {
+    const trimmedUrl = icalDraftUrl.trim();
+    if (!trimmedUrl) {
+      setIcalStatus(tr('calendarListing.icalMissing'));
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const updatedListing = {
+      ...listing,
+      icalUrl: trimmedUrl,
+      icalLastSyncedAt: now
+    } as Listing;
+    onChange(updatedListing);
+    setIcalStatus(tr('calendarListing.icalSaved'));
+    setIsIcalModalOpen(false);
+  };
+
+  const syncIcalNow = () => {
+    if (!hasIcalUrl) {
+      openIcalModal();
+      return;
+    }
+
+    const updatedListing = {
+      ...listing,
+      icalLastSyncedAt: new Date().toISOString()
+    } as Listing;
+    onChange(updatedListing);
   };
 
   const updateBooking = (booking: BookingRequest) => {
@@ -469,15 +519,32 @@ export default function CalendarListingModal({
                   {roomTypeLabel}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsStatsOpen(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2F7D69]/20 bg-white text-[#2F7D69] shadow-sm transition hover:-translate-y-0.5 hover:border-[#2F7D69]/40 hover:bg-[#2F7D69]/10 hover:shadow-md active:scale-95"
-                title={tr('booking.stats.occupancyTitle')}
-                aria-label={tr('booking.stats.occupancyTitle')}
-              >
-                <BarChart3 className="h-4 w-4" />
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {listing.category === 'housing' && (
+                  <button
+                    type="button"
+                    onClick={syncIcalNow}
+                    onDoubleClick={openIcalModal}
+                    className="flex h-8 max-w-[150px] items-center gap-1.5 rounded-full border border-[#2F7D69]/20 bg-white px-2.5 text-[#2F7D69] shadow-sm transition hover:-translate-y-0.5 hover:border-[#2F7D69]/40 hover:bg-[#2F7D69]/10 hover:shadow-md active:scale-95"
+                    title={hasIcalUrl ? tr('calendarListing.icalEditTitle') : tr('calendarListing.icalAddTitle')}
+                    aria-label={hasIcalUrl ? tr('calendarListing.icalEditTitle') : tr('calendarListing.icalAddTitle')}
+                  >
+                    {hasIcalUrl ? <RefreshCw className="h-3.5 w-3.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 shrink-0" />}
+                    <span className="min-w-0 truncate text-[9px] font-black leading-none">
+                      iCal · {icalLastSyncedLabel}
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsStatsOpen(true)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2F7D69]/20 bg-white text-[#2F7D69] shadow-sm transition hover:-translate-y-0.5 hover:border-[#2F7D69]/40 hover:bg-[#2F7D69]/10 hover:shadow-md active:scale-95"
+                  title={tr('booking.stats.occupancyTitle')}
+                  aria-label={tr('booking.stats.occupancyTitle')}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="mb-1 flex items-center justify-between gap-3 pl-[88px]">
               <button
@@ -1010,6 +1077,65 @@ export default function CalendarListingModal({
                 <div className="mt-3 rounded-xl bg-white px-3 py-2 text-center shadow-sm">
                   <span className="block text-[9px] font-black uppercase text-gray-400">{tr('booking.stats.yearAverage')}</span>
                   <span className="font-mono text-xl font-black text-[#2F7D69]">{averageOccupancy}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isIcalModalOpen && (
+          <div className="fixed inset-0 z-[520] flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs animate-fade-in">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 text-gray-950 shadow-2xl animate-scale-up">
+              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-black uppercase text-gray-950">{tr('calendarListing.icalTitle')}</h4>
+                  <p className="mt-1 truncate text-xs font-bold text-gray-500">{listing.title}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsIcalModalOpen(false)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-500 active:scale-95"
+                  title={tr('common.close')}
+                  aria-label={tr('common.close')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-gray-700">
+                  {tr('calendarListing.icalUrl')}
+                </label>
+                <input
+                  type="url"
+                  value={icalDraftUrl}
+                  onChange={(event) => setIcalDraftUrl(event.target.value)}
+                  placeholder="https://www.airbnb.com/calendar/ical/123456.ics"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-xs font-semibold text-gray-900 outline-none transition focus:border-[#2F7D69]/50 focus:bg-white focus:ring-2 focus:ring-[#2F7D69]/15"
+                />
+                {icalStatus && (
+                  <p className="rounded-xl bg-[#FF7A50]/10 px-3 py-2 text-[10.5px] font-bold text-[#E05A30]">
+                    {icalStatus}
+                  </p>
+                )}
+                <p className="text-[10.5px] font-semibold leading-relaxed text-gray-400">
+                  {tr('calendarListing.icalNote')}
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={saveIcalUrl}
+                    className="rounded-xl bg-[#2F7D69]/10 px-3 py-2 text-xs font-black text-[#2F7D69] transition hover:bg-[#2F7D69]/15 active:scale-95"
+                  >
+                    {tr('calendarListing.icalSyncNow')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveIcalUrl}
+                    className="rounded-xl bg-[#2F7D69] px-3 py-2 text-xs font-black text-white transition hover:bg-[#256553] active:scale-95"
+                  >
+                    {tr('calendarListing.icalSave')}
+                  </button>
                 </div>
               </div>
             </div>

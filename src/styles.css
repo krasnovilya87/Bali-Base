@@ -46,6 +46,18 @@
   color: #FF7A50 !important;
 }
 
+.pl.transport-pill.selected {
+  background: #FF7A50 !important;
+  background-color: #FF7A50 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 18px rgb(255 122 80 / 18%) !important;
+}
+
+.pl.transport-pill.selected :where(span, p, h1, h2, h3, h4, h5, h6, label, button, a),
+.pl.transport-pill.selected svg {
+  color: #ffffff !important;
+}
+
 .pl.quick-status-tile {
   border: 0 !important;
   font-weight: 600 !important;

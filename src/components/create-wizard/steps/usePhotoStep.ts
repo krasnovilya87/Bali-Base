@@ -4,14 +4,24 @@ import { useI18n } from '../../../i18nContext';
 import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
+  SCOOTER_PHOTO_SLOT_CONFIG,
   PhotoSlotConfig,
-  PhotoSlotId,
-  REQUIRED_PHOTO_SLOTS
+  PhotoSlotId
 } from '../constants';
 
 type UsePhotoStepParams = {
   initialListing?: Listing | null;
+  category: string;
+  subCategory: string;
+  uploadNamingContext?: {
+    brand?: string;
+    model?: string;
+    year?: string;
+    color?: string;
+  };
 };
+
+type PhotoUploadSource = 'camera' | 'gallery' | 'files';
 
 type PhotoUploadDiagnostic = {
   fileName: string;
@@ -23,8 +33,39 @@ type PhotoUploadDiagnostic = {
   errorMessage: string;
 };
 
-export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
+const slugifyPhotoNamePart = (value?: string) => {
+  const slug = (value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || 'unknown';
+};
+
+const getLocalUploadDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getUploadExtension = (image: Blob | File, fallbackFile: File) => {
+  const type = image.type || fallbackFile.type;
+  if (type === 'image/png') return 'png';
+  if (type === 'image/webp') return 'webp';
+
+  return 'jpg';
+};
+
+export const usePhotoStep = ({ initialListing, category, subCategory, uploadNamingContext }: UsePhotoStepParams) => {
   const { tr } = useI18n();
+  const isScooterPhotoFlow = category === 'transport' && subCategory === 'scooters';
+  const activePhotoSlotConfig = isScooterPhotoFlow ? SCOOTER_PHOTO_SLOT_CONFIG : PHOTO_SLOT_CONFIG;
+  const requiredPhotoSlots = activePhotoSlotConfig.filter(slot => slot.required);
+  const optionalPhotoSlots = activePhotoSlotConfig.filter(slot => !slot.required);
 
   // STEP 6: Dropzone upload library with previews
   const [photoUrls, setPhotoUrls] = useState<string[]>(
@@ -32,7 +73,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
   );
   const [photoSlotAssignments, setPhotoSlotAssignments] = useState<Partial<Record<PhotoSlotId, string[]>>>(() => {
     if (!initialListing?.images?.length || !initialListing.photoSlotAssignments) return {};
-    return PHOTO_SLOT_CONFIG.reduce<Partial<Record<PhotoSlotId, string[]>>>((acc, slot) => {
+    return activePhotoSlotConfig.reduce<Partial<Record<PhotoSlotId, string[]>>>((acc, slot) => {
       const assignedImages = (initialListing.photoSlotAssignments?.[slot.id] || [])
         .filter(url => initialListing.images.includes(url))
         .slice(0, slot.maxCount);
@@ -42,6 +83,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
       return acc;
     }, {});
   });
+  const [realPhotoUrls, setRealPhotoUrls] = useState<string[]>(initialListing?.realPhotoUrls || []);
   const [draggedPhotoSlotId, setDraggedPhotoSlotId] = useState<PhotoSlotId | null>(null);
 
   const getAssignedPhotoUrls = (slotId: PhotoSlotId) => photoSlotAssignments[slotId] || [];
@@ -51,13 +93,13 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
   const assignPhotoToSlot = (photoUrl: string, slotId: PhotoSlotId | 'extra') => {
     setPhotoSlotAssignments(prev => {
       const next: Partial<Record<PhotoSlotId, string[]>> = {};
-      PHOTO_SLOT_CONFIG.forEach(slot => {
+      activePhotoSlotConfig.forEach(slot => {
         const urls = (prev[slot.id] || []).filter(url => url !== photoUrl);
         if (urls.length) next[slot.id] = urls;
       });
 
       if (slotId !== 'extra') {
-        const slot = PHOTO_SLOT_CONFIG.find(item => item.id === slotId);
+        const slot = activePhotoSlotConfig.find(item => item.id === slotId);
         if (!slot) return next;
         const currentUrls = next[slotId] || [];
         next[slotId] = [...currentUrls, photoUrl].slice(-slot.maxCount);
@@ -68,17 +110,41 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
   };
 
   const getPhotoSlot = (photoUrl: string) => {
-    return PHOTO_SLOT_CONFIG.find(slot => (photoSlotAssignments[slot.id] || []).includes(photoUrl));
+    return activePhotoSlotConfig.find(slot => (photoSlotAssignments[slot.id] || []).includes(photoUrl));
   };
 
-  const requiredPhotoAssignedCount = REQUIRED_PHOTO_SLOTS.reduce((sum, slot) => sum + getAssignedPhotoUrls(slot.id).length, 0);
-  const requiredPhotoTotalCount = REQUIRED_PHOTO_SLOTS.reduce((sum, slot) => sum + slot.maxCount, 0);
+  const requiredPhotoAssignedCount = requiredPhotoSlots.reduce((sum, slot) => sum + getAssignedPhotoUrls(slot.id).length, 0);
+  const requiredPhotoTotalCount = requiredPhotoSlots.reduce((sum, slot) => sum + slot.maxCount, 0);
 
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
   const [uploadDiagnostic, setUploadDiagnostic] = useState<PhotoUploadDiagnostic | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraTargetSlotIdRef = useRef<PhotoSlotId | null>(null);
+
+  const assignUploadedPhoto = (photoUrl: string, preferredSlotId?: PhotoSlotId | null) => {
+    if (!isScooterPhotoFlow) return;
+
+    setPhotoSlotAssignments(prev => {
+      const next: Partial<Record<PhotoSlotId, string[]>> = {};
+      activePhotoSlotConfig.forEach(slot => {
+        const urls = prev[slot.id] || [];
+        if (urls.length) next[slot.id] = urls;
+      });
+
+      const preferredSlot = preferredSlotId
+        ? requiredPhotoSlots.find(slot => slot.id === preferredSlotId)
+        : undefined;
+      const nextRequiredSlot = preferredSlot || requiredPhotoSlots.find(slot => (next[slot.id] || []).length < slot.maxCount);
+      if (!nextRequiredSlot) return next;
+
+      next[nextRequiredSlot.id] = [...(next[nextRequiredSlot.id] || []), photoUrl].slice(0, nextRequiredSlot.maxCount);
+      return next;
+    });
+  };
 
   const resizeAndCompressListingImage = (file: File): Promise<Blob | File> => {
     return new Promise((resolve) => {
@@ -129,18 +195,41 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     });
   };
 
-  const uploadPhotoToStorage = async (file: File) => {
+  const buildSeoPhotoFileName = (image: Blob | File, originalFile: File, batchOffset = 0) => {
+    if (!uploadNamingContext) {
+      return originalFile.name || `listing-photo-${getLocalUploadDate()}.${getUploadExtension(image, originalFile)}`;
+    }
+
+    const sequenceNumber = String(photoUrls.length + batchOffset + 1).padStart(2, '0');
+    const nameParts = [
+      uploadNamingContext?.brand,
+      uploadNamingContext?.model,
+      uploadNamingContext?.year,
+      uploadNamingContext?.color,
+      getLocalUploadDate(),
+      sequenceNumber
+    ].map(slugifyPhotoNamePart);
+
+    return `${nameParts.join('-')}.${getUploadExtension(image, originalFile)}`;
+  };
+
+  const uploadPhotoToStorage = async (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
     setIsUploading(true);
     setUploadError('');
     setUploadDiagnostic(null);
     let uploadableImage: Blob | File = file;
     try {
       uploadableImage = await resizeAndCompressListingImage(file);
+      const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset);
       const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
-        fileName: file.name,
-        fileType: file.type
+        fileName: seoFileName,
+        fileType: uploadableImage.type || file.type || 'image/jpeg'
       });
       setPhotoUrls(prev => [...prev, uploadedUrl]);
+      if (source === 'camera') {
+        setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
+      }
+      assignUploadedPhoto(uploadedUrl, source === 'camera' ? cameraTargetSlotIdRef.current : null);
     } catch (error) {
       const diagnostic: PhotoUploadDiagnostic = {
         fileName: file.name || 'unnamed file',
@@ -175,20 +264,28 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const files = Array.from(e.dataTransfer.files as any).filter((file: any) => file.type.startsWith('image/'));
-      for (const file of files as any) {
-        await uploadPhotoToStorage(file);
+      for (const [index, file] of (files as File[]).entries()) {
+        await uploadPhotoToStorage(file, 'files', index);
       }
     }
   };
 
-  const handleFileChoose = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChoose = async (e: React.ChangeEvent<HTMLInputElement>, source: PhotoUploadSource = 'files') => {
     if (e.target.files && e.target.files[0]) {
       const files = Array.from(e.target.files as any).filter((file: any) => file.type.startsWith('image/'));
-      for (const file of files as any) {
-        await uploadPhotoToStorage(file);
+      for (const [index, file] of (files as File[]).entries()) {
+        await uploadPhotoToStorage(file, source, index);
+      }
+      if (source === 'camera') {
+        cameraTargetSlotIdRef.current = null;
       }
       e.target.value = '';
     }
+  };
+
+  const openCameraForSlot = (slotId?: PhotoSlotId) => {
+    cameraTargetSlotIdRef.current = slotId || null;
+    cameraInputRef.current?.click();
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -196,7 +293,7 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     setPhotoUrls(photoUrls.filter((_, i) => i !== index));
     setPhotoSlotAssignments(prev => {
       const next: Partial<Record<PhotoSlotId, string[]>> = {};
-      PHOTO_SLOT_CONFIG.forEach(slot => {
+      activePhotoSlotConfig.forEach(slot => {
         const urls = (prev[slot.id] || []).filter(url => url !== removedUrl);
         if (urls.length) {
           next[slot.id] = urls;
@@ -204,11 +301,17 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
       });
       return next;
     });
+    setRealPhotoUrls(prev => prev.filter(url => url !== removedUrl));
   };
 
   return {
     photoUrls,
+    realPhotoUrls,
     photoSlotAssignments,
+    activePhotoSlotConfig,
+    requiredPhotoSlots,
+    optionalPhotoSlots,
+    isScooterPhotoFlow,
     draggedPhotoSlotId,
     setDraggedPhotoSlotId,
     getAssignedPhotoUrls,
@@ -222,9 +325,14 @@ export const usePhotoStep = ({ initialListing }: UsePhotoStepParams) => {
     uploadDiagnostic,
     dragActive,
     fileInputRef,
+    cameraInputRef,
+    galleryInputRef,
     handleDrag,
     handleDrop,
     handleFileChoose,
+    handleCameraChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'camera'),
+    handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'gallery'),
+    openCameraForSlot,
     handleRemovePhoto
   };
 };

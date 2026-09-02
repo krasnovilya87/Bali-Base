@@ -76,6 +76,7 @@ export interface Listing {
   googleReviewsUpdatedAt?: string;
   images: string[];
   photoSlotAssignments?: Partial<Record<string, string[]>>;
+  realPhotoUrls?: string[];
   rating: number;
   reviewsCount: number;
   reviews: Review[];
@@ -129,9 +130,12 @@ export interface Listing {
   // Transport attributes
   vehicleBrand?: string;
   vehicleModel?: string;
+  vehicleModelQuantity?: number;
   vehicleColor?: string;
   vehicleCondition?: 'like_new' | 'minor_scratches' | 'faded_surf_rack';
   sellerType?: 'private' | 'company';
+  keyless?: boolean;
+  surfRack?: boolean;
   freeDeliveryToAddress?: boolean;
   freeDeliveryToDistricts?: boolean;
   freeDeliveryDistricts?: string[];
@@ -154,6 +158,8 @@ export interface Listing {
   isPromoPremium?: boolean;
   isPromoTurbo?: boolean;
   blockedDates?: string[];
+  icalUrl?: string;
+  icalLastSyncedAt?: string;
   pushedAt?: string;
   reachMultiplier?: number;
   createdAt?: string;
@@ -235,6 +241,8 @@ export interface FilterState {
   vehicleYearMin: number;
   vehicleCondition: string[];
   sellerType: string[];
+  keylessOnly: boolean;
+  surfRackOnly: boolean;
   freeDeliveryToAddressOnly: boolean;
   freeDeliveryToDistrictOnly: boolean;
 }

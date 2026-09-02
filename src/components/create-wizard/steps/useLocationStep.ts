@@ -5,6 +5,7 @@ import { ensureGoogleMapsLibraries } from '../../../utils/googleMapsLoader';
 
 type UseLocationStepParams = {
   initialListing?: Listing | null;
+  category: string;
   step: number;
   title: string;
   apiKey: string;
@@ -88,6 +89,7 @@ const resolveGoogleMapsLink = async (value: string) => {
 
 export const useLocationStep = ({
   initialListing,
+  category,
   step,
   title,
   apiKey,
@@ -386,11 +388,11 @@ export const useLocationStep = ({
   };
 
   useEffect(() => {
-    if (step === 4 && !address.trim() && title.trim()) {
+    if (category === 'housing' && step === 4 && !address.trim() && title.trim()) {
       handleAddressChange(title);
       triggerDirectSearch(title);
     }
-  }, [step, title, address]);
+  }, [category, step, title, address]);
 
   return {
     district,

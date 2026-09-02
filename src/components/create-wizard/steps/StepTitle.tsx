@@ -2,6 +2,7 @@ import React from 'react';
 import { ROOM_TYPE_LABELS, UNIT_TYPE_OPTIONS } from '../constants';
 import { useI18n } from '../../../i18nContext';
 import { getGoogleMapsSearchText, isGoogleMapsLink } from './useLocationStep';
+import FeatureScooterDetails from './features/FeatureScooterDetails';
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
 type UnitType = typeof UNIT_TYPE_OPTIONS[number];
@@ -13,6 +14,7 @@ type StepTitleProps = {
   setTitle: React.Dispatch<React.SetStateAction<string>>;
   description: string;
   setDescription: React.Dispatch<React.SetStateAction<string>>;
+  isGeneratedScooterDescription?: (value: string) => boolean;
   getSeoLengthVerdict: (length: number) => { color: string };
   roomType: RoomType;
   setRoomType: React.Dispatch<React.SetStateAction<RoomType>>;
@@ -20,6 +22,12 @@ type StepTitleProps = {
   setUnitType: React.Dispatch<React.SetStateAction<UnitType | ''>>;
   roomCount: number | undefined;
   setRoomCount: React.Dispatch<React.SetStateAction<number | undefined>>;
+  vehicleModel?: string;
+  setVehicleModel?: React.Dispatch<React.SetStateAction<string>>;
+  vehicleModelQuantity?: number;
+  setVehicleModelQuantity?: React.Dispatch<React.SetStateAction<number | undefined>>;
+  vehicleColor?: string;
+  setVehicleColor?: React.Dispatch<React.SetStateAction<string>>;
   // optional location helpers (passed from WizardStepContent)
   mapSuggestions?: any[];
   showSuggestionsDropdown?: boolean;
@@ -39,14 +47,20 @@ const StepTitle: React.FC<StepTitleProps> = ({
   setTitle,
   description,
   setDescription,
+  isGeneratedScooterDescription,
   getSeoLengthVerdict,
   roomType,
   setRoomType,
   unitType,
   setUnitType,
   roomCount,
-  setRoomCount
-  ,
+  setRoomCount,
+  vehicleModel = '',
+  setVehicleModel,
+  vehicleModelQuantity,
+  setVehicleModelQuantity,
+  vehicleColor = '',
+  setVehicleColor,
   mapSuggestions,
   showSuggestionsDropdown,
   setShowSuggestionsDropdown,
@@ -59,6 +73,7 @@ const StepTitle: React.FC<StepTitleProps> = ({
 }) => {
   const { tr } = useI18n();
   const showsUnitTypeAndCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
+  const isScooterWizard = category === 'transport' && subCategory === 'scooters';
   const [roomCountInput, setRoomCountInput] = React.useState(roomCount === undefined ? '' : String(roomCount));
 
   React.useEffect(() => {
@@ -88,83 +103,92 @@ const StepTitle: React.FC<StepTitleProps> = ({
 
   return (
   <div className="space-y-4 animate-fade-in">
-    <div className="space-y-1.5">
-      <div className="flex justify-between items-center text-xs">
-        <label className="font-semibold block text-[#1E293B]">
-          {tr('wizard.objectName')}
-        </label>
-        <span className={`font-mono font-bold ${getSeoLengthVerdict(title.length).color}`}>
-          {title.length} / 60
-        </span>
-      </div>
-      <div className="relative">
-        <input
-          type="text"
-          // placeholder="Например: Sunset Villa или вставьте ссылку Google Maps"
-          value={title}
-          onPaste={async (e) => {
-            const paste = (e.clipboardData || (window as any).clipboardData).getData('text');
-            if (isGoogleMapsLink(paste)) {
-              e.preventDefault();
-              const searchText = getGoogleMapsSearchText(paste);
-              if (searchText && searchText !== paste.trim()) {
-                const titleText = searchText.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toLocaleUpperCase()).slice(0, 60);
-                setTitle(titleText);
+    {isScooterWizard && setVehicleModel && setVehicleColor && setVehicleModelQuantity ? (
+      <FeatureScooterDetails
+        title={title}
+        setTitle={setTitle}
+        description={description}
+        setDescription={setDescription}
+        isGeneratedScooterDescription={isGeneratedScooterDescription || (() => false)}
+        vehicleModel={vehicleModel}
+        setVehicleModel={setVehicleModel}
+        vehicleModelQuantity={vehicleModelQuantity}
+        setVehicleModelQuantity={setVehicleModelQuantity}
+        vehicleColor={vehicleColor}
+        setVehicleColor={setVehicleColor}
+      />
+    ) : (
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center text-xs">
+          <label className="font-semibold block text-[#1E293B]">
+            {tr('wizard.objectName')}
+          </label>
+          <span className={`font-mono font-bold ${getSeoLengthVerdict(title.length).color}`}>
+            {title.length} / 60
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            type="text"
+            value={title}
+            onPaste={async (e) => {
+              const paste = (e.clipboardData || (window as any).clipboardData).getData('text');
+              if (category === 'housing' && isGoogleMapsLink(paste)) {
+                e.preventDefault();
+                const searchText = getGoogleMapsSearchText(paste);
+                if (searchText && searchText !== paste.trim()) {
+                  const titleText = searchText.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toLocaleUpperCase()).slice(0, 60);
+                  setTitle(titleText);
+                }
+                triggerDirectSearch?.(paste);
+                setShowSuggestionsDropdown?.(false);
+                return;
               }
-              triggerDirectSearch?.(paste);
-              setShowSuggestionsDropdown?.(false);
-              return;
-            }
-            // try to extract @lat,lng pattern
-            const atMatch = paste.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-            const qMatch = paste.match(/[?&]q=([-+\d\.]+),([-+\d\.]+)/);
-            const latLngMatch = atMatch || qMatch;
-            if (latLngMatch) {
-              const lat = parseFloat(latLngMatch[1]);
-              const lng = parseFloat(latLngMatch[2]);
-              // set picked coords and trigger reverse search
-              setPickedCoords?.({ lat, lng });
-              // try to resolve address via triggerDirectSearch
-              triggerDirectSearch?.(`${lat},${lng}`);
-              setShowSuggestionsDropdown?.(false);
-            }
-          }}
-          onChange={event => {
-            const v = event.target.value.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toLocaleUpperCase());
-            setTitle(v);
-            // also offer map suggestions based on title text
-            if (handleAddressChange) {
-              handleAddressChange(v);
-            }
-          }}
-          maxLength={60}
-          className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
-        />
+              const atMatch = paste.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+              const qMatch = paste.match(/[?&]q=([-+\d\.]+),([-+\d\.]+)/);
+              const latLngMatch = atMatch || qMatch;
+              if (category === 'housing' && latLngMatch) {
+                const lat = parseFloat(latLngMatch[1]);
+                const lng = parseFloat(latLngMatch[2]);
+                setPickedCoords?.({ lat, lng });
+                triggerDirectSearch?.(`${lat},${lng}`);
+                setShowSuggestionsDropdown?.(false);
+              }
+            }}
+            onChange={event => {
+              const v = event.target.value.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) => separator + letter.toLocaleUpperCase());
+              setTitle(v);
+              if (category === 'housing' && handleAddressChange) {
+                handleAddressChange(v);
+              }
+            }}
+            maxLength={60}
+            className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+          />
 
-        {/* Suggestions dropdown from map search (Nominatim) */}
-        {showSuggestionsDropdown && mapSuggestions && mapSuggestions.length > 0 && (
-          <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-56 overflow-auto">
-            {mapSuggestions.map((sug, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  handleSelectSuggestion?.(sug);
-                  // set title to place name for user clarity
-                  const placeName = sug.name || sug.structured_formatting?.main_text || sug.display_name || '';
-                  setTitle(placeName);
-                  setShowSuggestionsDropdown?.(false);
-                }}
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 text-xs"
-              >
-                <div className="truncate">{sug.name || sug.structured_formatting?.main_text || sug.display_name}</div>
-              </button>
-            ))}
-            {isSearchingMap && <div className="px-3 py-2 text-xs text-gray-500">{tr('wizard.searching')}</div>}
-          </div>
-        )}
+          {showSuggestionsDropdown && mapSuggestions && mapSuggestions.length > 0 && (
+            <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-56 overflow-auto">
+              {mapSuggestions.map((sug, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    handleSelectSuggestion?.(sug);
+                    const placeName = sug.name || sug.structured_formatting?.main_text || sug.display_name || '';
+                    setTitle(placeName);
+                    setShowSuggestionsDropdown?.(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-xs"
+                >
+                  <div className="truncate">{sug.name || sug.structured_formatting?.main_text || sug.display_name}</div>
+                </button>
+              ))}
+              {isSearchingMap && <div className="px-3 py-2 text-xs text-gray-500">{tr('wizard.searching')}</div>}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    )}
 
     {showsUnitTypeAndCount && (
       <div className="space-y-2">

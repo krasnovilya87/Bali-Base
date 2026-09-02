@@ -18,6 +18,8 @@ import {
   getListingVehicleCondition,
   getListingVehicleModel,
   getScooterModelsForGroup,
+  listingHasKeyless,
+  listingHasSurfRack,
   listingOffersFreeDeliveryToAddress,
   yearMeetsMinimum
 } from '../utils/scooterFilters';
@@ -31,12 +33,12 @@ const getVehicleColorSwatch = (color: string) => ({
   white: '#FFFFFF',
   red: '#EF4444',
   blue: '#2563EB',
-  silver: '#CBD5E1',
   gray: '#64748B',
   green: '#16A34A',
   yellow: '#FACC15',
   orange: '#F97316',
-  brown: '#92400E'
+  brown: '#92400E',
+  exclusive: '#A855F7'
 }[color] || '#E5E7EB');
 
 interface HousingFiltersProps {
@@ -174,6 +176,10 @@ export default function HousingFilters({
   );
 
   const sectionCardClass = 'pl p-5 rounded-3xl space-y-4';
+  const transportSectionCardClass = `${sectionCardClass} mt-5 first:mt-0`;
+  const transportSectionClass = 'space-y-3 mt-5 first:mt-0';
+  const housingSectionCardClass = `${sectionCardClass} mt-5 first:mt-0`;
+  const housingSectionClass = 'space-y-3 mt-5 first:mt-0';
   const sectionTitleClass = 'text-xs font-semibold font-sans text-[#1E293B] tracking-wider block';
   const quickStatusTileClasses = {
     approved: {
@@ -256,6 +262,8 @@ export default function HousingFilters({
       vehicleYearMin: 0,
       vehicleCondition: [],
       sellerType: [],
+      keylessOnly: false,
+      surfRackOnly: false,
       freeDeliveryToAddressOnly: false,
       freeDeliveryToDistrictOnly: false
     };
@@ -418,6 +426,8 @@ export default function HousingFilters({
         if (!yearMeetsMinimum(item.yearBuilt, localFilters.vehicleYearMin || 0)) return false;
         if (localFilters.vehicleCondition.length > 0 && !localFilters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
         if (localFilters.sellerType.length > 0 && !localFilters.sellerType.includes(getListingSellerType(item))) return false;
+        if (localFilters.keylessOnly && !listingHasKeyless(item)) return false;
+        if (localFilters.surfRackOnly && !listingHasSurfRack(item)) return false;
         if (localFilters.freeDeliveryToAddressOnly && deliveryPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
       }
 
@@ -816,7 +826,7 @@ export default function HousingFilters({
 
           {isScootersCategory && (
             <div className="contents">
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.models')}</span>
                 <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
                   {SCOOTER_MODEL_GROUPS.map(group => {
@@ -826,9 +836,9 @@ export default function HousingFilters({
                         key={group.value}
                         type="button"
                         onClick={() => setActiveScooterModelGroup(group.value)}
-                        className={`pl pl-interactive inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                        className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
                           isActive
-                            ? 'bg-[#1E293B] text-white shadow-[0_8px_16px_rgba(30,41,59,0.14)]'
+                            ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
                             : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
                         }`}
                       >
@@ -845,13 +855,12 @@ export default function HousingFilters({
                         key={model.value}
                         type="button"
                         onClick={() => toggleArrayFilter('vehicleModel', model.value)}
-                        className={`pl pl-interactive inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                        className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
                           isActive
-                            ? 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
                             : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
                         }`}
                       >
-                        {isActive && <Check className="h-3.5 w-3.5" />}
                         {model.label}
                       </button>
                     );
@@ -859,18 +868,51 @@ export default function HousingFilters({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.color')}</span>
                 <div className="flex flex-wrap gap-3">
                   {SCOOTER_COLOR_OPTIONS.map(color => {
                     const isActive = localFilters.vehicleColor.includes(color);
                     const colorLabel = tr(`filters.transport.color.${color}`);
+                    const isExclusive = color === 'exclusive';
+                    const ariaLabel = isExclusive ? tr('filters.transport.color.exclusiveHint') : colorLabel;
+                    const exclusiveLabel = tr('filters.transport.color.exclusiveShort');
+
+                    if (isExclusive) {
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={ariaLabel}
+                          title={ariaLabel}
+                          aria-pressed={isActive}
+                          onClick={() => toggleArrayFilter('vehicleColor', color)}
+                          className={`pl pl-interactive relative h-10 w-[116px] shrink-0 rounded-full border transition cursor-pointer select-none ${
+                            isActive
+                              ? 'border-[#FF7A50] ring-4 ring-[#FF7A50]/18 shadow-[0_10px_18px_rgba(255,122,80,0.16)]'
+                              : 'border-white ring-1 ring-[#1E293B]/10 hover:ring-[#FF7A50]/45'
+                          }`}
+                        >
+                          <span
+                            className="absolute inset-1 flex items-center justify-center rounded-full border border-[#1E293B]/10 bg-[linear-gradient(115deg,#7C3AED_0%,#EC4899_48%,#38BDF8_100%)] px-3 text-[10px] font-black uppercase leading-none text-white shadow-inner"
+                          >
+                            {exclusiveLabel}
+                          </span>
+                          {isActive && (
+                            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#FF7A50] text-white ring-2 ring-white">
+                              <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }
+
                     return (
                       <button
                         key={color}
                         type="button"
-                        aria-label={colorLabel}
-                        title={colorLabel}
+                        aria-label={ariaLabel}
+                        title={ariaLabel}
                         aria-pressed={isActive}
                         onClick={() => toggleArrayFilter('vehicleColor', color)}
                         className={`pl pl-interactive relative h-10 w-10 rounded-full border transition cursor-pointer select-none shrink-0 ${
@@ -894,7 +936,7 @@ export default function HousingFilters({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <div className="flex justify-between items-center">
                   <span className={sectionTitleClass}>{tr('filters.transport.year')}</span>
                   <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -926,7 +968,7 @@ export default function HousingFilters({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.condition')}</span>
                 <div className="grid grid-cols-3 gap-2.5">
                   {SCOOTER_CONDITION_OPTIONS.map((condition, index) => {
@@ -970,7 +1012,7 @@ export default function HousingFilters({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.delivery')}</span>
                 <button
                   type="button"
@@ -978,7 +1020,7 @@ export default function HousingFilters({
                   aria-pressed={localFilters.freeDeliveryToAddressOnly}
                   className={`pl pl-interactive w-full rounded-2xl border p-4 transition cursor-pointer select-none flex items-center justify-between gap-4 text-left ${
                     localFilters.freeDeliveryToAddressOnly
-                      ? 'border-[#FF7A50] bg-[#FF7A50]/12 shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                      ? 'selected border-[#FF7A50] bg-[#FF7A50]/12 shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
                       : 'border-[#E5E7EB] bg-white hover:border-[#FF7A50]/60'
                   }`}
                 >
@@ -997,7 +1039,7 @@ export default function HousingFilters({
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.sellerType')}</span>
                 <div className="flex flex-wrap gap-2">
                   {SCOOTER_SELLER_TYPE_OPTIONS.map(type => {
@@ -1008,14 +1050,52 @@ export default function HousingFilters({
                         type="button"
                         onClick={() => toggleArrayFilter('sellerType', type)}
                         aria-pressed={isActive}
-                        className={`pl pl-interactive inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                        className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
                           isActive
-                            ? 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
                             : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
                         }`}
                       >
-                        {isActive && <Check className="h-3.5 w-3.5" />}
                         {tr(`filters.transport.sellerType.${type}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={transportSectionClass}>
+                <span className={sectionTitleClass}>{tr('filters.transport.features')}</span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { key: 'keylessOnly' as const, labelKey: 'filters.transport.features.keyless', Icon: Key },
+                    { key: 'surfRackOnly' as const, labelKey: 'filters.transport.features.surfRack', Icon: Waves }
+                  ].map(({ key, labelKey, Icon }) => {
+                    const isActive = localFilters[key];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setLocalFilters({ ...localFilters, [key]: !isActive })}
+                        aria-pressed={isActive}
+                        className={`pl pl-interactive rounded-2xl border p-3 transition cursor-pointer select-none flex items-center justify-between gap-2 text-left ${
+                          isActive
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50]/12 shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                            : 'border-[#E5E7EB] bg-white hover:border-[#FF7A50]/60'
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#FF7A50]' : 'text-[#64748B]'}`} />
+                          <span className="truncate text-xs font-extrabold text-[#1E293B] leading-tight">
+                            {tr(labelKey)}
+                          </span>
+                        </span>
+                        <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
+                          isActive ? 'bg-[#FF7A50]' : 'bg-[#CBD5E1]'
+                        }`}>
+                          <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                            isActive ? 'translate-x-5' : 'translate-x-1'
+                          }`} />
+                        </span>
                       </button>
                     );
                   })}
@@ -1026,7 +1106,7 @@ export default function HousingFilters({
 
           {isHousingCategory && (
           <div className="contents">
-          <div className={sectionCardClass}>
+          <div className={housingSectionCardClass}>
             <div className="flex justify-between items-center">
               <span className={sectionTitleClass}>🛵 {tr('filters.distanceSea')}</span>
                 <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1055,7 +1135,7 @@ export default function HousingFilters({
           {/* DYNAMIC METRIC-SPECIFIC ADVANCED SECTIONS */}
           {/* 1. Rooms or area */}
           {subCategory === 'private_suite' ? (
-            <div className={sectionCardClass}>
+            <div className={housingSectionCardClass}>
               <div className="flex justify-between items-center">
                 <span className={sectionTitleClass}>📐 {tr('filters.area')}</span>
                 <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1079,7 +1159,7 @@ export default function HousingFilters({
               </div>
             </div>
           ) : subCategory === 'private_room' ? null : (
-            <div className={sectionCardClass}>
+            <div className={housingSectionCardClass}>
               <div className="flex justify-between items-center">
                 <span className={sectionTitleClass}>🏢 {tr('filters.rooms')}</span>
                 <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1105,7 +1185,7 @@ export default function HousingFilters({
           )}
 
           {/* 4. Interior and design */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🎨 {tr('filters.section.interior')}</span>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -1139,7 +1219,7 @@ export default function HousingFilters({
 
           {/* DYNAMIC FOR PRIVATE_ROOM: TYPE OF OBJECT */}
           {subCategory === 'private_room' && (
-            <div className="space-y-3">
+            <div className={housingSectionClass}>
               <span className={sectionTitleClass}>🏘️ {tr('filters.section.objectType')}</span>
               <div className={`grid gap-2.5 ${subCategory === 'private_room' ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'}`}>
                 {(subCategory === 'private_room'
@@ -1180,7 +1260,7 @@ export default function HousingFilters({
 
           {/* 5. Object type or complex density */}
           {(subCategory === 'private_suite' || subCategory === 'private_room') ? (
-            <div className="space-y-3">
+            <div className={housingSectionClass}>
                 <span className={sectionTitleClass}>🍃 {tr('filters.section.density')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
@@ -1211,7 +1291,7 @@ export default function HousingFilters({
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className={housingSectionClass}>
               <span className={sectionTitleClass}>🏘️ {tr('filters.section.objectType')}</span>
               <div className="grid grid-cols-3 gap-3">
                 {[
@@ -1244,7 +1324,7 @@ export default function HousingFilters({
           )}
 
           {/* 6. Territory */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🏡 {tr('filters.section.territory')}</span>
             <div className="grid grid-cols-3 gap-2.5">
               {[
@@ -1276,7 +1356,7 @@ export default function HousingFilters({
           </div>
 
           {/* 8. Beds */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🛌 {tr('filters.section.beds')}</span>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -1311,7 +1391,7 @@ export default function HousingFilters({
           </div>
 
           {/* 9. Kitchen */}
-          <div className={sectionCardClass}>
+          <div className={housingSectionCardClass}>
             <div className="flex justify-between items-center">
               <span className={sectionTitleClass}>🍳 {tr('filters.section.kitchen')}</span>
               <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1387,7 +1467,7 @@ export default function HousingFilters({
           </div>
 
           {/* 10. Pool */}
-          <div className={sectionCardClass}>
+          <div className={housingSectionCardClass}>
             <div className="flex justify-between items-center">
               <span className={sectionTitleClass}>💦 {tr('filters.section.pool')}</span>
               <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1475,7 +1555,7 @@ export default function HousingFilters({
           </div>
 
           {/* 11. View */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🌅 {tr('filters.section.view')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
@@ -1550,7 +1630,7 @@ export default function HousingFilters({
           )}
 
           {/* 12. Internet speed (WiFi) */}
-          <div className={sectionCardClass}>
+          <div className={housingSectionCardClass}>
             <div className="flex justify-between items-center">
               <span className={sectionTitleClass}>⚡ {tr('filters.section.internet')}</span>
               <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1583,7 +1663,7 @@ export default function HousingFilters({
           </div>
 
           {/* 13. Bathroom */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🚿 {tr('filters.section.bathroom')}</span>
             
             <div className="grid grid-cols-3 gap-2.5">
@@ -1619,7 +1699,7 @@ export default function HousingFilters({
           </div>
 
           {/* 7. Amenities and comfort */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🛋️ {tr('filters.section.amenities')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {[
@@ -1667,7 +1747,7 @@ export default function HousingFilters({
           </div>
 
           {/* 15. Cleaning */}
-          <div className={sectionCardClass}>
+          <div className={housingSectionCardClass}>
             <div className="flex justify-between items-center">
             <span className={sectionTitleClass}>🧹 {tr('filters.section.cleaning')}</span>
               <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -1705,7 +1785,7 @@ export default function HousingFilters({
           </div>
 
           {/* Extra options */}
-          <div className="space-y-3">
+          <div className={housingSectionClass}>
             <span className={sectionTitleClass}>🐾 {tr('filters.section.extraOptions')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[

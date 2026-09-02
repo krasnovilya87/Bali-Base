@@ -1424,7 +1424,7 @@ export default function ListingDetails({
       <div className="bg-white w-full h-full lg:max-w-5xl lg:max-h-[92vh] rounded-none lg:rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-slide-up lg:animate-scale-up border-0 lg:border border-[#E5E7EB]">
 
         {/* Header actions */}
-        <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] z-40 flex items-center gap-2 lg:top-4">
           {onEditClick && (
             <button
               type="button"
@@ -1453,7 +1453,7 @@ export default function ListingDetails({
           <div className="w-full p-0 bg-white border-b border-[#E5E7EB]">
             {/* Primary view */}
             <div
-              className="w-full aspect-video relative rounded-none overflow-hidden bg-gray-50 border-0 cursor-zoom-in group/hero select-none"
+              className="relative w-full aspect-[4/3] sm:aspect-video rounded-none overflow-hidden bg-gray-50 border-0 cursor-zoom-in group/hero select-none"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -1523,7 +1523,7 @@ export default function ListingDetails({
                 {activePhoto + 1} / {listing.images.length}
               </div>
 
-              <div className="absolute top-4 left-4 flex gap-1.5 flex-col z-10 pointer-events-none">
+              <div className="absolute left-4 top-[calc(env(safe-area-inset-top)+14px)] flex gap-1.5 flex-col z-10 pointer-events-none lg:top-4">
                 {isDropPriceActive && countdownText && (
                   <div className="bg-amber-600 border border-amber-500/30 text-white text-[11px] font-mono font-bold px-3 py-1 rounded-xl shadow-md flex items-center gap-1">
                     <Flame className="w-4 h-4 fill-white animate-pulse" />
@@ -1769,45 +1769,45 @@ export default function ListingDetails({
                     {false && (
                       <>
 
-                    {listing.roomsTotal && (
-                      <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
-                        <Home className="w-4 h-4 text-brand-orange shrink-0" />
-                        <div className="text-[10px] sm:text-xs">
-                          <span className="text-gray-400 block leading-tight">{tr('details.quick.totalRooms')}</span>
-                          <span className="font-bold text-text-dark">{tr('details.roomsShort', { count: listing.roomsTotal })}</span>
-                        </div>
-                      </div>
-                    )}
+                        {listing.roomsTotal && (
+                          <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
+                            <Home className="w-4 h-4 text-brand-orange shrink-0" />
+                            <div className="text-[10px] sm:text-xs">
+                              <span className="text-gray-400 block leading-tight">{tr('details.quick.totalRooms')}</span>
+                              <span className="font-bold text-text-dark">{tr('details.roomsShort', { count: listing.roomsTotal })}</span>
+                            </div>
+                          </div>
+                        )}
 
-                    {listing.internetSpeed !== undefined && (
-                      <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
-                        <Wifi className="w-4 h-4 text-brand-orange shrink-0" />
-                        <div className="text-[10px] sm:text-xs">
-                          <span className="text-gray-400 block leading-tight">{tr('details.quick.fastWifi')}</span>
-                          <span className="font-bold text-text-dark">{tr('details.mbps', { count: listing.internetSpeed })}</span>
-                        </div>
-                      </div>
-                    )}
+                        {listing.internetSpeed !== undefined && (
+                          <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
+                            <Wifi className="w-4 h-4 text-brand-orange shrink-0" />
+                            <div className="text-[10px] sm:text-xs">
+                              <span className="text-gray-400 block leading-tight">{tr('details.quick.fastWifi')}</span>
+                              <span className="font-bold text-text-dark">{tr('details.mbps', { count: listing.internetSpeed })}</span>
+                            </div>
+                          </div>
+                        )}
 
-                    {listing.poolType && (
-                      <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
-                        <Waves className="w-4 h-4 text-brand-orange shrink-0" />
-                        <div className="text-[10px] sm:text-xs">
-                          <span className="text-gray-400 block leading-tight">{tr('details.quick.villaPool')}</span>
-                          <span className="font-bold text-text-dark">{listing.poolType === 'infinity' ? tr('details.option.poolType.infinity') : listing.poolType === 'private' ? tr('details.option.poolType.private') : tr('details.option.poolType.shared')}</span>
-                        </div>
-                      </div>
-                    )}
+                        {listing.poolType && (
+                          <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
+                            <Waves className="w-4 h-4 text-brand-orange shrink-0" />
+                            <div className="text-[10px] sm:text-xs">
+                              <span className="text-gray-400 block leading-tight">{tr('details.quick.villaPool')}</span>
+                              <span className="font-bold text-text-dark">{listing.poolType === 'infinity' ? tr('details.option.poolType.infinity') : listing.poolType === 'private' ? tr('details.option.poolType.private') : tr('details.option.poolType.shared')}</span>
+                            </div>
+                          </div>
+                        )}
 
-                    {listing.yearBuilt !== 'other' && (
-                      <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
-                        <RefreshCw className="w-4 h-4 text-brand-orange shrink-0" />
-                        <div className="text-[10px] sm:text-xs">
-                          <span className="text-gray-400 block leading-tight">{tr('details.quick.builtRenovation')}</span>
-                          <span className="font-bold text-[#1E293B]">{listing.yearBuilt} {listing.yearRenovated ? `(${tr('details.yearRenovatedShort', { year: listing.yearRenovated })})` : ''}</span>
-                        </div>
-                      </div>
-                    )}
+                        {listing.yearBuilt !== 'other' && (
+                          <div className="p-3 bg-white border border-[#E5E7EB] rounded-2xl flex items-center gap-2.5">
+                            <RefreshCw className="w-4 h-4 text-brand-orange shrink-0" />
+                            <div className="text-[10px] sm:text-xs">
+                              <span className="text-gray-400 block leading-tight">{tr('details.quick.builtRenovation')}</span>
+                              <span className="font-bold text-[#1E293B]">{listing.yearBuilt} {listing.yearRenovated ? `(${tr('details.yearRenovatedShort', { year: listing.yearRenovated })})` : ''}</span>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1961,30 +1961,30 @@ export default function ListingDetails({
                   selectedPlaceIndex={detailMapSelectedPlaceIndex}
                 />
                 {false && (
-                <div className="flex flex-wrap gap-2">
-                  {mapSpotFilters.map(({ id, label, Icon }) => {
-                    const isActive = activeMapCategory === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setActiveMapCategory(isActive ? null : id)}
-                        className={`h-9 px-3 rounded-full text-[11px] font-extrabold flex items-center gap-1.5 transition active:scale-95 ${isActive
-                          ? 'bg-[#2F7D69] text-white shadow-sm'
-                          : 'bg-[#F4F7F6] text-[#1E293B] hover:bg-white border border-transparent'
-                          }`}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span>{label}</span>
-                      </button>
-                    );
-                  })}
-                  {mapPlacesLoading && (
-                    <div className="h-9 px-3 rounded-full bg-[#2F7D69]/10 text-[#2F7D69] text-[10px] font-extrabold flex items-center">
-                      Google Maps...
-                    </div>
-                  )}
-                </div>
+                  <div className="flex flex-wrap gap-2">
+                    {mapSpotFilters.map(({ id, label, Icon }) => {
+                      const isActive = activeMapCategory === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setActiveMapCategory(isActive ? null : id)}
+                          className={`h-9 px-3 rounded-full text-[11px] font-extrabold flex items-center gap-1.5 transition active:scale-95 ${isActive
+                            ? 'bg-[#2F7D69] text-white shadow-sm'
+                            : 'bg-[#F4F7F6] text-[#1E293B] hover:bg-white border border-transparent'
+                            }`}
+                        >
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                    {mapPlacesLoading && (
+                      <div className="h-9 px-3 rounded-full bg-[#2F7D69]/10 text-[#2F7D69] text-[10px] font-extrabold flex items-center">
+                        Google Maps...
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -2216,7 +2216,7 @@ export default function ListingDetails({
         </div>
 
         {/* Sticky bottom mobile checkout panel */}
-        <div className="lg:hidden p-4 bg-white border-t border-[#E5E7EB] z-40">
+        <div className="lg:hidden bg-white border-t border-[#E5E7EB] px-[30px] pt-[11px] pb-[26px] z-40">
           {unavailableMessage && (
             <div className="mb-3 rounded-2xl border border-[#FF7A50]/25 bg-[#FF7A50]/10 px-3 py-3 text-center">
               <p className="text-xs font-bold leading-relaxed text-[#1E293B]">

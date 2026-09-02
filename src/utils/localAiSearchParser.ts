@@ -28,12 +28,12 @@ const SCOOTER_COLOR_ALIASES: Record<string, string[]> = {
   white: ['white', 'белый', 'белая', 'белого', 'putih'],
   red: ['red', 'красный', 'красная', 'красного', 'merah'],
   blue: ['blue', 'синий', 'синяя', 'синего', 'голубой', 'голубая', 'biru'],
-  silver: ['silver', 'серебро', 'серебристый', 'серебристая', 'серебряный'],
-  gray: ['gray', 'grey', 'серый', 'серая', 'серого', 'abu'],
+  gray: ['gray', 'grey', 'серый', 'серая', 'серого', 'silver', 'серебро', 'серебристый', 'серебристая', 'серебряный', 'abu'],
   green: ['green', 'зеленый', 'зеленая', 'зелёный', 'зелёная', 'hijau'],
   yellow: ['yellow', 'желтый', 'желтая', 'жёлтый', 'жёлтая', 'kuning'],
   orange: ['orange', 'оранжевый', 'оранжевая'],
-  brown: ['brown', 'коричневый', 'коричневая', 'coklat']
+  brown: ['brown', 'коричневый', 'коричневая', 'coklat'],
+  exclusive: ['exclusive', 'exclusive color', 'эксклюзивный', 'эксклюзивная', 'эксклюзив']
 };
 
 const normalizeText = (value: string) =>

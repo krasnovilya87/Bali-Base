@@ -1,5 +1,6 @@
 ﻿import React, { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useEffect } from 'react';
 import { useI18n } from '../i18nContext';
 
 interface TwoMonthCalendarProps {
@@ -9,6 +10,7 @@ interface TwoMonthCalendarProps {
   onClose: () => void;
   singleDateMode?: boolean;
   modalPlacement?: boolean;
+  appOverlayPlacement?: boolean;
 }
 
 export default function TwoMonthCalendar({
@@ -17,7 +19,8 @@ export default function TwoMonthCalendar({
   onChange,
   onClose,
   singleDateMode = false,
-  modalPlacement = false
+  modalPlacement = false,
+  appOverlayPlacement = false
 }: TwoMonthCalendarProps) {
   const { language, tr } = useI18n();
   // Anchored dynamically to current local system date
@@ -30,7 +33,19 @@ export default function TwoMonthCalendar({
   const [localCheckOut, setLocalCheckOut] = useState<string>(checkOutDate);
   const [dragStart, setDragStart] = useState<string | null>(null);
   const [dragEnd, setDragEnd] = useState<string | null>(null);
+  const [isTouchCalendar, setIsTouchCalendar] = useState(false);
   const dragMovedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const query = window.matchMedia('(pointer: coarse), (hover: none)');
+    const updateTouchCalendar = () => setIsTouchCalendar(query.matches);
+    updateTouchCalendar();
+
+    query.addEventListener?.('change', updateTouchCalendar);
+    return () => query.removeEventListener?.('change', updateTouchCalendar);
+  }, []);
 
   const toStr = (d: Date) => {
     const y = d.getFullYear();
@@ -142,6 +157,9 @@ export default function TwoMonthCalendar({
   // Months to display (Base Month and Next Month)
   const month1 = new Date(baseMonth.getFullYear(), baseMonth.getMonth(), 1);
   const month2 = new Date(baseMonth.getFullYear(), baseMonth.getMonth() + 1, 1);
+  const touchMonths = Array.from({ length: 12 }, (_, index) => (
+    new Date(today.getFullYear(), today.getMonth() + index, 1)
+  ));
 
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -204,20 +222,41 @@ export default function TwoMonthCalendar({
       return;
     }
 
-    if (!localCheckIn || (localCheckIn && localCheckOut)) {
+    if (!localCheckIn) {
       setLocalCheckIn(dateStr);
       setLocalCheckOut('');
       setBookingMode('daily');
-    } else {
+      return;
+    }
+
+    if (!localCheckOut) {
       if (new Date(dateStr) < new Date(localCheckIn)) {
         setLocalCheckIn(dateStr);
-        setLocalCheckOut('');
-        setBookingMode('daily');
       } else {
         setLocalCheckOut(dateStr);
-        setBookingMode('daily');
       }
+      setBookingMode('daily');
+      return;
     }
+
+    const startTime = new Date(localCheckIn).getTime();
+    const endTime = new Date(localCheckOut).getTime();
+    const nextTime = new Date(dateStr).getTime();
+    const isCloserToStart = Math.abs(nextTime - startTime) <= Math.abs(nextTime - endTime);
+
+    if (isCloserToStart) {
+      if (nextTime <= endTime) {
+        setLocalCheckIn(dateStr);
+      } else {
+        setLocalCheckOut(dateStr);
+      }
+    } else if (nextTime >= startTime) {
+      setLocalCheckOut(dateStr);
+    } else {
+      setLocalCheckIn(dateStr);
+    }
+
+    setBookingMode('daily');
   };
 
   const resetDrag = () => {
@@ -231,6 +270,7 @@ export default function TwoMonthCalendar({
     dateStr: string,
     fullDate: Date
   ) => {
+    if (event.pointerType !== 'mouse') return;
     if (singleDateMode || bookingMode === 'monthly' || fullDate < todayStart || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -240,6 +280,7 @@ export default function TwoMonthCalendar({
   };
 
   const handleDayPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== 'mouse') return;
     if (!dragStart || singleDateMode) return;
     event.preventDefault();
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-calendar-date]');
@@ -254,6 +295,7 @@ export default function TwoMonthCalendar({
     dateStr: string,
     fullDate: Date
   ) => {
+    if (event.pointerType !== 'mouse') return;
     if (!dragStart || singleDateMode) return;
     event.preventDefault();
 
@@ -333,8 +375,8 @@ export default function TwoMonthCalendar({
             const between = isBetween(dateStr);
             const isStart = dateStr === localCheckIn;
             const isEnd = dateStr === localCheckOut;
-            const previewStart = dragStart && dragEnd ? (dragStart <= dragEnd ? dragStart : dragEnd) : null;
-            const previewEnd = dragStart && dragEnd ? (dragStart <= dragEnd ? dragEnd : dragStart) : null;
+            const previewStart = !isTouchCalendar && dragStart && dragEnd ? (dragStart <= dragEnd ? dragStart : dragEnd) : null;
+            const previewEnd = !isTouchCalendar && dragStart && dragEnd ? (dragStart <= dragEnd ? dragEnd : dragStart) : null;
             const previewSelected = !!previewStart && !!previewEnd && dateStr >= previewStart && dateStr <= previewEnd;
             const previewEdge = previewSelected && (dateStr === previewStart || dateStr === previewEnd);
             const previewBetween = previewSelected && !previewEdge;
@@ -381,12 +423,12 @@ export default function TwoMonthCalendar({
                 <button
                   type="button"
                   disabled={isPast}
-                  onClick={(singleDateMode || bookingMode === 'monthly') ? (e) => handleDayClick(e, dateStr, fullDate) : undefined}
+                  onClick={(isTouchCalendar || singleDateMode || bookingMode === 'monthly') ? (e) => handleDayClick(e, dateStr, fullDate) : undefined}
                   onPointerDown={(event) => handleDayPointerDown(event, dateStr, fullDate)}
                   onPointerMove={handleDayPointerMove}
                   onPointerUp={(event) => handleDayPointerUp(event, dateStr, fullDate)}
                   onPointerCancel={resetDrag}
-                  style={{ touchAction: (singleDateMode || bookingMode === 'monthly') ? 'auto' : 'none' }}
+                  style={{ touchAction: isTouchCalendar ? 'pan-y' : (singleDateMode || bookingMode === 'monthly') ? 'auto' : 'none' }}
                   className={cellClass}
                 >
                   {day}
@@ -402,13 +444,17 @@ export default function TwoMonthCalendar({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`${modalPlacement
-        ? 'fixed inset-x-0 bottom-0 w-full sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2'
+      className={`${appOverlayPlacement
+        ? isTouchCalendar
+          ? 'fixed inset-x-2 top-[calc(env(safe-area-inset-top)+12px)] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[520] mx-auto w-auto max-w-[580px]'
+          : 'fixed left-1/2 top-1/2 z-[520] w-[580px] max-h-[calc(100vh-2rem)] -translate-x-1/2 -translate-y-1/2'
+        : modalPlacement
+        ? 'fixed inset-x-0 bottom-0 w-full max-h-[85vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-h-none'
         : 'absolute top-full left-1/2 mt-2 w-[calc(100vw-1rem)] max-w-[580px] -translate-x-1/2 sm:w-[580px] sm:-mt-1 md:-translate-x-1/3'
-      } bg-[#F4F7F6] text-gray-950 rounded-[24px] sm:rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl z-50 font-sans max-h-[85vh] sm:max-h-none overflow-hidden transition-all duration-300 flex flex-col`}
+      } bg-[#F4F7F6] text-gray-950 rounded-[24px] sm:rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl ${appOverlayPlacement ? '' : 'z-50'} font-sans overflow-hidden transition-all duration-300 flex flex-col`}
     >
       {/* Top Header Section */}
-      <div className="bg-[#EAEAEC] p-5 pb-4 border-b border-[#D1D5DB]/30 relative shrink-0">
+      <div className="bg-[#EAEAEC] p-3 pb-3 sm:p-5 sm:pb-4 border-b border-[#D1D5DB]/30 relative shrink-0">
         {/* Mobile close button */}
         <button
           type="button"
@@ -480,39 +526,46 @@ export default function TwoMonthCalendar({
       </div>
 
       {/* Middle Body Section */}
-      <div className="bg-[#F4F7F6] p-5 overflow-y-auto sm:overflow-visible flex-1">
+      <div className={`bg-[#F4F7F6] p-3 sm:p-5 flex-1 min-h-0 ${isTouchCalendar ? 'overflow-y-auto overscroll-contain' : 'overflow-y-auto sm:overflow-visible'}`}>
         {!singleDateMode && bookingMode === 'monthly' && !localCheckIn && (
           <div className="mb-3 text-center text-xs font-bold text-[#2F7D69] bg-[#2F7D69]/10 rounded-xl px-3 py-2">
             {tr('calendar.selectCheckIn')}
           </div>
         )}
-          <div className="flex flex-col sm:flex-row gap-6 relative">
+          <div className={`flex relative ${isTouchCalendar ? 'flex-col gap-4' : 'flex-col sm:flex-row gap-4 sm:gap-6'}`}>
             {/* Navigation arrows aligned inline with month titles */}
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="absolute left-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
-              title={tr('calendar.prevMonth')}
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="absolute right-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
-              title={tr('calendar.nextMonth')}
-            >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
-            </button>
+            {!isTouchCalendar && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="absolute left-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
+                  title={tr('calendar.prevMonth')}
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="absolute right-1 top-[-2px] p-1.5 hover:bg-gray-200/50 rounded-full transition active:scale-90 z-20"
+                  title={tr('calendar.nextMonth')}
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
+              </>
+            )}
 
-            {renderMonthGrid(month1)}
-            <div className="hidden sm:block w-[1px] bg-gray-200/50 self-stretch" />
-            {renderMonthGrid(month2)}
+            {(isTouchCalendar ? touchMonths : [month1, month2]).map((month, index) => (
+              <React.Fragment key={toStr(month)}>
+                {renderMonthGrid(month)}
+                {!isTouchCalendar && index === 0 && <div className="hidden sm:block w-[1px] bg-gray-200/50 self-stretch" />}
+              </React.Fragment>
+            ))}
           </div>
       </div>
 
       {/* Bottom Footer Section */}
-      <div className="bg-[#EAEAEC] p-5 pb-9 sm:pb-5 border-t border-[#D1D5DB]/30 mt-auto shrink-0">
+      <div className="bg-[#EAEAEC] p-3 sm:p-5 border-t border-[#D1D5DB]/30 mt-auto shrink-0">
         <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="text-xs">
               {singleDateMode ? (

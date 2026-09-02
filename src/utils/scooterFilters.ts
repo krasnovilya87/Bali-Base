@@ -17,7 +17,6 @@ export const SCOOTER_MODEL_OPTIONS = [
   { value: 'nmax', label: 'NMAX' },
   { value: 'nmax_turbo', label: 'NMAX turbo' },
   { value: 'vario_160', label: 'Vario 160' },
-  { value: 'honda_pcx', label: 'Honda PCX' },
   { value: 'vario_125', label: 'Vario 125' },
   { value: 'fazzio', label: 'Fazzio' },
   { value: 'beat_110', label: 'Beat 110' },
@@ -35,7 +34,7 @@ export const SCOOTER_MODEL_OPTIONS = [
 
 export const SCOOTER_MODELS_BY_GROUP: Record<ScooterModelGroup, string[]> = {
   all: SCOOTER_MODEL_OPTIONS.map(model => model.value),
-  popular: ['scoopy', 'nmax', 'vario_160', 'honda_pcx'],
+  popular: ['scoopy', 'nmax', 'vario_160'],
   beginner: ['scoopy', 'vario_125', 'vario_160', 'fazzio', 'beat_110', 'genio_110', 'grand_filano_125', 'freego_125', 'mio_125'],
   couple: ['nmax', 'nmax_turbo', 'xmax', 'adv', 'pcx'],
   retro: ['vespa_sprint_150', 'vespa_primavera_150', 'scoopy'],
@@ -43,7 +42,7 @@ export const SCOOTER_MODELS_BY_GROUP: Record<ScooterModelGroup, string[]> = {
   budget: ['scoopy', 'vario_125', 'fazzio', 'beat_110', 'genio_110', 'freego_125', 'mio_125']
 };
 
-export const SCOOTER_COLOR_OPTIONS = ['black', 'white', 'red', 'blue', 'silver', 'gray', 'green', 'yellow', 'orange', 'brown'];
+export const SCOOTER_COLOR_OPTIONS = ['black', 'white', 'red', 'blue', 'gray', 'green', 'yellow', 'orange', 'brown', 'exclusive'];
 export const SCOOTER_CONDITION_OPTIONS = ['like_new', 'minor_scratches', 'faded_surf_rack'];
 export const SCOOTER_SELLER_TYPE_OPTIONS = ['private', 'company'];
 
@@ -63,8 +62,13 @@ export const getListingVehicleModel = (listing: Listing) => {
   return model?.value;
 };
 
-export const getListingVehicleColor = (listing: Listing) =>
-  listing.vehicleColor?.toLowerCase() || SCOOTER_COLOR_OPTIONS.find(color => textMatchesToken(listing, color));
+export const getListingVehicleColor = (listing: Listing) => {
+  const normalizedColor = listing.vehicleColor?.toLowerCase();
+  if (normalizedColor === 'silver') return 'gray';
+  if (normalizedColor) return normalizedColor;
+
+  return SCOOTER_COLOR_OPTIONS.find(color => textMatchesToken(listing, color));
+};
 
 export const getListingVehicleCondition = (listing: Listing) => {
   if (listing.vehicleCondition) return listing.vehicleCondition;
@@ -84,6 +88,20 @@ export const getListingSellerType = (listing: Listing) => {
   }
 
   return 'private';
+};
+
+export const listingHasKeyless = (listing: Listing) => {
+  if (listing.keyless) return true;
+
+  const text = `${listing.title} ${listing.description}`.toLowerCase();
+  return /\b(keyless|smart key|smartkey)\b|без.?ключ|смарт.?ключ/.test(text);
+};
+
+export const listingHasSurfRack = (listing: Listing) => {
+  if (listing.surfRack || listing.amenities?.includes('surf_rack')) return true;
+
+  const text = `${listing.title} ${listing.description}`.toLowerCase();
+  return /\b(surf.?rack|board.?rack)\b|серф.?рек|креп.{0,12}серф/.test(text);
 };
 
 export const yearMeetsMinimum = (year: Listing['yearBuilt'], minYear: number) =>

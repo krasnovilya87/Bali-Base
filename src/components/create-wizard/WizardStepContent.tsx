@@ -6,7 +6,6 @@ import StepLocation from './steps/StepLocation';
 import StepPhotos from './steps/StepPhotos';
 import StepFeatures from './steps/StepFeatures';
 import StepPricing from './steps/StepPricing';
-import StepIcal from './steps/StepIcal';
 import StepContact from './steps/StepContact';
 import StepPreview from './steps/StepPreview';
 import { getWizardStepKey } from './wizardFlow';
@@ -20,7 +19,6 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
     photoState,
     featureState,
     pricingState,
-    icalState,
     contactState,
     previewState
   } = p;
@@ -40,6 +38,7 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           setTitle={categoryState.setTitle}
           description={categoryState.description}
           setDescription={categoryState.setDescription}
+          isGeneratedScooterDescription={categoryState.isGeneratedScooterDescription}
           getSeoLengthVerdict={categoryState.getSeoLengthVerdict}
           roomType={categoryState.roomType}
           setRoomType={categoryState.setRoomType}
@@ -47,6 +46,12 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           setUnitType={categoryState.setUnitType}
           roomCount={categoryState.roomCount}
           setRoomCount={categoryState.setRoomCount}
+          vehicleModel={categoryState.vehicleModel}
+          setVehicleModel={categoryState.setVehicleModel}
+          vehicleModelQuantity={categoryState.vehicleModelQuantity}
+          setVehicleModelQuantity={categoryState.setVehicleModelQuantity}
+          vehicleColor={categoryState.vehicleColor}
+          setVehicleColor={categoryState.setVehicleColor}
           // location helpers for link parsing and suggestions
           mapSuggestions={locationState.mapSuggestions}
           showSuggestionsDropdown={locationState.showSuggestionsDropdown}
@@ -67,8 +72,6 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
       return <StepFeatures {...featureState} />;
     case 'pricing':
       return <StepPricing {...pricingState} />;
-    case 'ical':
-      return <StepIcal {...icalState} />;
     case 'contact':
       return <StepContact {...contactState} />;
     case 'preview':

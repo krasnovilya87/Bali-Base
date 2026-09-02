@@ -14,6 +14,7 @@ import FeatureBathroom from './features/FeatureBathroom';
 import FeatureAmenities from './features/FeatureAmenities';
 import FeatureCleaning from './features/FeatureCleaning';
 import FeaturePreferences from './features/FeaturePreferences';
+import FeatureScooterParameters from './features/FeatureScooterParameters';
 
 type StepFeaturesProps = Record<string, any>;
 
@@ -35,7 +36,11 @@ const housingFeatureSections = [
 ];
 
 const StepFeatures: React.FC<StepFeaturesProps> = (props) => {
-  const { category } = props;
+  const { category, subCategory } = props;
+
+  if (category === 'transport' && subCategory === 'scooters') {
+    return <FeatureScooterParameters {...props} />;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

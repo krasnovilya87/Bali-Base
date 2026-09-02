@@ -51,11 +51,22 @@ const DISTRICT_MENU_GROUPS = [
 const MENU_SELECTION_STORAGE_KEY = 'bali_base_menu_selection';
 const FILTERS_STORAGE_KEY = 'bali_base_filters';
 const AUTH_RETURN_VIEW_STORAGE_KEY = 'bali_base_auth_return_view';
+const AUTH_RETURN_CONTEXT_STORAGE_KEY = 'bali_base_auth_return_context';
 const INITIAL_VIEW_STORAGE_KEY = 'bali_base_initial_view';
 const ADMIN_ROUTE = '/adm';
 const ADMIN_EMAILS = ['krasnovilya87@gmail.com'];
 
 type AppView = 'cover' | 'menu' | 'app';
+type AuthReturnContext = {
+  view: AppView;
+  listingId?: string;
+  showMyAddsListing?: boolean;
+  showUsersModal?: boolean;
+  usersModalTab?: 'favorites' | 'whatsapp';
+  showProfileModal?: boolean;
+  showAdminDashboard?: boolean;
+  isAdminRoute?: boolean;
+};
 
 const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
 
@@ -95,6 +106,8 @@ const getDefaultFilters = (): FilterState => ({
   vehicleYearMin: 0,
   vehicleCondition: [],
   sellerType: [],
+  keylessOnly: false,
+  surfRackOnly: false,
   freeDeliveryToAddressOnly: false,
   freeDeliveryToDistrictOnly: false,
   favoritesOnly: false
@@ -189,6 +202,54 @@ const storeAuthReturnView = (view: AppView) => {
   }
 };
 
+const readAuthReturnContext = (): AuthReturnContext | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_RETURN_CONTEXT_STORAGE_KEY);
+    window.sessionStorage.removeItem(AUTH_RETURN_CONTEXT_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<AuthReturnContext>;
+    if (parsed.view !== 'cover' && parsed.view !== 'menu' && parsed.view !== 'app') {
+      return null;
+    }
+
+    return {
+      view: parsed.view,
+      ...(typeof parsed.listingId === 'string' ? { listingId: parsed.listingId } : {}),
+      ...(typeof parsed.showMyAddsListing === 'boolean' ? { showMyAddsListing: parsed.showMyAddsListing } : {}),
+      ...(typeof parsed.showUsersModal === 'boolean' ? { showUsersModal: parsed.showUsersModal } : {}),
+      ...(parsed.usersModalTab === 'favorites' || parsed.usersModalTab === 'whatsapp' ? { usersModalTab: parsed.usersModalTab } : {}),
+      ...(typeof parsed.showProfileModal === 'boolean' ? { showProfileModal: parsed.showProfileModal } : {}),
+      ...(typeof parsed.showAdminDashboard === 'boolean' ? { showAdminDashboard: parsed.showAdminDashboard } : {}),
+      ...(typeof parsed.isAdminRoute === 'boolean' ? { isAdminRoute: parsed.isAdminRoute } : {})
+    };
+  } catch {
+    return null;
+  }
+};
+
+const storeAuthReturnContext = (context: AuthReturnContext) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(AUTH_RETURN_CONTEXT_STORAGE_KEY, JSON.stringify(context));
+  } catch {
+    // Ignore storage failures; auth still works, only return-context restore is skipped.
+  }
+};
+
+const clearAuthReturnContext = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.removeItem(AUTH_RETURN_CONTEXT_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+};
+
 const readIsAdminRoute = () => {
   if (typeof window === 'undefined') return false;
   return window.location.pathname.replace(/\/+$/, '') === ADMIN_ROUTE;
@@ -262,6 +323,7 @@ export default function App() {
   const [showContactUsModal, setShowContactUsModal] = useState<boolean>(false);
   const [authModalReason, setAuthModalReason] = useState<string>('');
   const pendingAuthActionRef = useRef<(() => void) | null>(null);
+  const pendingAuthReturnContextRef = useRef<AuthReturnContext | null>(readAuthReturnContext());
   const [showListingMap, setShowListingMap] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 1024; // enabled by default for PC version (tablets & mobile hidden by default)
@@ -468,6 +530,16 @@ export default function App() {
     if (user) return true;
     pendingAuthActionRef.current = afterAuth || null;
     storeAuthReturnView(currentView);
+    storeAuthReturnContext({
+      view: currentView,
+      listingId: selectedListing?.id,
+      showMyAddsListing,
+      showUsersModal,
+      usersModalTab,
+      showProfileModal,
+      showAdminDashboard,
+      isAdminRoute
+    });
     setAuthModalReason(tr(reasonKey));
     return false;
   };
@@ -542,9 +614,44 @@ export default function App() {
 
     const pendingAction = pendingAuthActionRef.current;
     pendingAuthActionRef.current = null;
+    clearAuthReturnContext();
     setAuthModalReason('');
     window.setTimeout(pendingAction, 0);
   }, [user]);
+
+  useEffect(() => {
+    if (!user || loading || !pendingAuthReturnContextRef.current) return;
+
+    const context = pendingAuthReturnContextRef.current;
+    const listing = context.listingId
+      ? listings.find(item => item.id === context.listingId)
+      : null;
+
+    if (context.listingId && !listing && listings.length === 0) return;
+
+    pendingAuthReturnContextRef.current = null;
+    setAuthModalReason('');
+    setCurrentView(context.view);
+    setShowMyAddsListing(Boolean(context.showMyAddsListing));
+    setShowUsersModal(Boolean(context.showUsersModal));
+    setUsersModalTab(context.usersModalTab || 'favorites');
+    setShowProfileModal(Boolean(context.showProfileModal));
+    setShowAdminDashboard(Boolean(context.showAdminDashboard));
+
+    if (context.isAdminRoute && typeof window !== 'undefined') {
+      setIsAdminRoute(true);
+      if (window.location.pathname.replace(/\/+$/, '') !== ADMIN_ROUTE) {
+        window.history.replaceState({}, document.title, ADMIN_ROUTE);
+      }
+    }
+
+    if (listing) {
+      setCurrentView('app');
+      setCurrentL1(listing.category);
+      setCurrentL2([listing.subCategory]);
+      setSelectedListing(listing);
+    }
+  }, [listings, loading, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1737,8 +1844,13 @@ export default function App() {
               </div>
             </nav>
 
+            <div
+              className={`pointer-events-none sticky top-0 z-[220] -mb-[env(safe-area-inset-top)] h-[env(safe-area-inset-top)] shrink-0 border-[0.5px] border-white/60 bg-white/32 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition-[transform,opacity] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] md:hidden ${isMobileNavHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              aria-hidden="true"
+            />
+
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className="sticky top-[env(safe-area-inset-top)] z-[240] shrink-0 select-none border-b-[0.5px] border-white/45 bg-[#F4F7F6]/20 px-2 py-2.5 backdrop-blur-[2px] sm:px-4 sm:py-3 md:top-0">
+            <section ref={filtersBarRef} className={`sticky top-[env(safe-area-inset-top)] z-[240] shrink-0 select-none border-b-[0.5px] border-white/45 bg-[#F4F7F6]/20 px-2 py-2.5 backdrop-blur-[2px] transition-[transform,opacity] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-3 md:top-0 md:translate-y-0 md:opacity-100 ${isMobileNavHidden ? 'pointer-events-none -translate-y-[calc(100%+env(safe-area-inset-top))] opacity-0' : 'translate-y-0 opacity-100'}`}>
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1934,29 +2046,6 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Back-drop layer to close calendar when clicking outside */}
-                    {showCalendar && (
-                      <div
-                        className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent cursor-default"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowCalendar(false);
-                        }}
-                      />
-                    )}
-
-                    {/* Render interactive 2-month custom calendar popup */}
-                    {showCalendar && (
-                      <TwoMonthCalendar
-                        checkInDate={checkInDate}
-                        checkOutDate={checkOutDate}
-                        onChange={(inD, outD) => {
-                          setCheckInDate(inD);
-                          setCheckOutDate(outD);
-                        }}
-                        onClose={() => setShowCalendar(false)}
-                      />
-                    )}
                   </div>
                 </div>
 
@@ -2454,11 +2543,34 @@ export default function App() {
           onClose={() => {
             if (!user) {
               pendingAuthActionRef.current = null;
+              clearAuthReturnContext();
             }
             setAuthModalReason('');
           }}
           reason={authModalReason}
         />
+
+        {showCalendar && (
+          <>
+            <div
+              className="fixed inset-0 z-[500] bg-transparent cursor-default"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCalendar(false);
+              }}
+            />
+            <TwoMonthCalendar
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              onChange={(inD, outD) => {
+                setCheckInDate(inD);
+                setCheckOutDate(outD);
+              }}
+              onClose={() => setShowCalendar(false)}
+              appOverlayPlacement
+            />
+          </>
+        )}
 
         {showContactUsModal && (
           <SupportContactModal onClose={() => setShowContactUsModal(false)} />

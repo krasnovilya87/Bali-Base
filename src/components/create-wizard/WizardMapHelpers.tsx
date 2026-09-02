@@ -35,7 +35,8 @@ export function LeafletFallbackMap({
   zoom,
   setZoom,
   district,
-  setDistrict
+  setDistrict,
+  isPointSelectionActive = true
 }: {
   pickedCoords: { lat: number; lng: number } | null;
   setPickedCoords: (coords: { lat: number; lng: number }) => void;
@@ -44,12 +45,18 @@ export function LeafletFallbackMap({
   setZoom: React.Dispatch<React.SetStateAction<number>>;
   district: string;
   setDistrict: (dist: string) => void;
+  isPointSelectionActive?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const isPointSelectionActiveRef = useRef(isPointSelectionActive);
   const [isLoaded, setIsLoaded] = useState(false);
   const [initialCoords, setInitialCoords] = useState<{ lat: number; lng: number } | null>(pickedCoords);
+
+  useEffect(() => {
+    isPointSelectionActiveRef.current = isPointSelectionActive;
+  }, [isPointSelectionActive]);
 
   useEffect(() => {
     if ((window as any).L) {
@@ -137,6 +144,8 @@ export function LeafletFallbackMap({
       });
 
       map.on('click', async (e: any) => {
+        if (!isPointSelectionActiveRef.current) return;
+
         const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
         marker.setLatLng(e.latlng);
         setPickedCoords(coords);

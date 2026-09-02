@@ -10,7 +10,18 @@ type PricingGraphProps = {
   setInteractiveDays: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const formatValue = (value: number) => value.toLocaleString('ru-RU');
+const formatValue = (value: number) => Math.round(value).toLocaleString('ru-RU');
+
+const roundToPriceStep = (value: number, step: number) =>
+  Math.round(value / step) * step;
+
+const getReadableTickStep = (range: number) => {
+  if (range <= 250000) return 50000;
+  if (range <= 600000) return 100000;
+  if (range <= 1500000) return 250000;
+  if (range <= 3000000) return 500000;
+  return 1000000;
+};
 
 const PricingGraph: React.FC<PricingGraphProps> = ({
   pricePerDay,
@@ -22,7 +33,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
   const { tr } = useI18n();
   const priceChartSvgRef = useRef<SVGSVGElement | null>(null);
 
-  const getPriceForDayNum = (day: number, percent = 0) => {
+  const getRawPriceForDayNum = (day: number, percent = 0) => {
     const basePriceDay = pricePerDay * (1 - percent / 100);
     const basePriceMonth = pricePerMonth
       ? pricePerMonth * (1 - percent / 100)
@@ -33,6 +44,10 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
       pricePerDay: basePriceDay,
       pricePerMonth: basePriceMonth
     });
+  };
+
+  const getPriceForDayNum = (day: number, percent = 0) => {
+    return roundToPriceStep(getRawPriceForDayNum(day, percent), 10000);
   };
 
   const totalRepresentedDays = 34;
@@ -48,10 +63,13 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
   const maxPrice = Math.max(...basePoints.map(point => point.price), 1);
   const minPrice = Math.min(...discountedPoints.map(point => point.price), 1);
   const priceDiff = maxPrice - minPrice || 1;
+  const yMargin = priceDiff * 0.1;
+  const yMin = Math.max(0, minPrice - yMargin);
+  const yMax = maxPrice + yMargin;
 
   const svgWidth = 460;
   const svgHeight = 160;
-  const paddingLeft = 60;
+  const paddingLeft = 72;
   const paddingRight = 20;
   const paddingTop = 25;
   const paddingBottom = 25;
@@ -63,9 +81,6 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
     paddingLeft + ((day - 1) / (totalRepresentedDays - 1)) * plotWidth;
 
   const getYCoords = (price: number) => {
-    const margin = priceDiff * 0.1;
-    const yMin = Math.max(10000, minPrice - margin);
-    const yMax = maxPrice + margin;
     return paddingTop + plotHeight - ((price - yMin) / (yMax - yMin)) * plotHeight;
   };
 
@@ -76,7 +91,11 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
       .forEach((point, index) => {
         const x = getXCoords(point.day);
         const y = getYCoords(point.price);
-        pathStr += `${index === 0 ? 'M' : ' L'} ${x} ${y}`;
+        if (index === 0) {
+          pathStr += `M ${x} ${y}`;
+        } else {
+          pathStr += ` L ${x} ${y}`;
+        }
       });
     return pathStr;
   };
@@ -93,11 +112,11 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
     ? pricePerMonth * (1 - selectedDiscountPercent / 100)
     : pricePerDay * 0.55 * 30 * (1 - selectedDiscountPercent / 100);
   const activeDailyPrice = getPriceForDayNum(interactiveDays, selectedDiscountPercent);
-  const activeTotalPrice = calculateGraphTotalPrice({
+  const activeTotalPrice = roundToPriceStep(calculateGraphTotalPrice({
     days: interactiveDays,
     pricePerDay: activeBasePriceDay,
     pricePerMonth: activeBasePriceMonth
-  });
+  }), 10000);
   const activeBaseTotalPrice = activeBasePriceDay * interactiveDays;
   const graphDiscountPercent = activeBaseTotalPrice > activeTotalPrice
     ? Math.round((1 - activeTotalPrice / activeBaseTotalPrice) * 100)
@@ -106,12 +125,12 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
     ? tr('wizard.pricingGraph.dayOne', { count: interactiveDays })
     : tr('wizard.pricingGraph.days', { count: interactiveDays });
 
-  const priceTickStep = 100000;
-  const startTick = Math.ceil(minPrice / priceTickStep) * priceTickStep;
-  const endTick = Math.floor(maxPrice / priceTickStep) * priceTickStep;
+  const resolvedPriceTickStep = getReadableTickStep(yMax - yMin);
+  const startTick = Math.ceil(yMin / resolvedPriceTickStep) * resolvedPriceTickStep;
+  const endTick = Math.floor(yMax / resolvedPriceTickStep) * resolvedPriceTickStep;
   const yTicks: number[] = [];
-  for (let tick = startTick; tick <= endTick; tick += priceTickStep) {
-    if (tick >= minPrice - priceTickStep * 0.1 && tick <= maxPrice + priceTickStep * 0.1) {
+  for (let tick = startTick; tick <= endTick; tick += resolvedPriceTickStep) {
+    if (tick >= yMin && tick <= yMax) {
       yTicks.push(tick);
     }
   }
@@ -208,7 +227,7 @@ const PricingGraph: React.FC<PricingGraphProps> = ({
               <g key={`grid-${index}`}>
                 <line x1={paddingLeft} y1={y} x2={svgWidth - paddingRight} y2={y} stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="0.5" opacity="0.4" />
                 <text x={paddingLeft - 8} y={y + 3} textAnchor="end" className="fill-[#1E293B]/60 font-sans text-[8px] font-normal">
-                  {Math.round(value / 1000).toLocaleString('ru-RU')}k
+                  {formatValue(value)}
                 </text>
               </g>
             );
