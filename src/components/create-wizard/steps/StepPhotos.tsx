@@ -120,12 +120,26 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
     () => requiredPhotoSlots.find(slot => getAssignedPhotoUrls(slot.id).length < slot.maxCount),
     [requiredPhotoSlots, photoUrls, photoSlotAssignments]
   );
-  const activeCameraSlot = useMemo(
-    () => activeCameraSlotId ? activePhotoSlotConfig.find(slot => slot.id === activeCameraSlotId) : undefined,
-    [activeCameraSlotId, activePhotoSlotConfig]
+  const activeCameraSlot = useMemo<PhotoSlotConfig | undefined>(
+    () => {
+      if (!activeCameraSlotId) return undefined;
+      if (activeCameraSlotId === 'extra') {
+        return {
+          id: 'extra',
+          labelKey: 'wizard.extraPhoto',
+          shortLabelKey: 'wizard.extraPhoto',
+          index: requiredPhotoSlots.length,
+          required: false,
+          maxCount: 999
+        };
+      }
+
+      return activePhotoSlotConfig.find(slot => slot.id === activeCameraSlotId);
+    },
+    [activeCameraSlotId, activePhotoSlotConfig, requiredPhotoSlots.length]
   );
   const scooterBikeExampleSlots = requiredPhotoSlots.filter(slot =>
-    ['scooter_front_left', 'scooter_front_right', 'scooter_rear_left', 'scooter_rear_right'].includes(slot.id)
+    ['scooter_front_right', 'scooter_front_left', 'scooter_rear_left', 'scooter_rear_right'].includes(slot.id)
   );
 
   useEffect(() => {
@@ -190,7 +204,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
       : nextRequiredSlot;
 
     if (!slot) {
-      openCameraForSlot();
+      setActiveCameraSlotId('extra');
       return;
     }
 
@@ -228,8 +242,9 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
         return;
       }
 
+      const uploadSlotId = activeCameraSlot.id === 'extra' ? null : activeCameraSlot.id;
       const file = new File([blob], `${activeCameraSlot.id}.jpg`, { type: 'image/jpeg' });
-      uploadCameraPhotoForSlot(file, activeCameraSlot.id);
+      uploadCameraPhotoForSlot(file, uploadSlotId);
 
       const nextSlot = requiredPhotoSlots.find(slot =>
         slot.index > activeCameraSlot.index &&
@@ -243,7 +258,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
       if (nextSlot) {
         setActiveCameraSlotId(nextSlot.id);
       } else {
-        closeScooterCamera();
+        setActiveCameraSlotId('extra');
       }
     }, 'image/jpeg', 0.9);
   };
@@ -298,18 +313,6 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {isScooterPhotoFlow && !isPhoneUploadDevice && (
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-[#FF7A50]/20 bg-[#FF7A50]/10 px-4 py-3 text-[11px] font-bold leading-relaxed text-[#1E293B]">
-            {tr('wizard.photos.realBikeRule')}
-          </div>
-          <p className="text-xs font-black text-[#1E293B]">
-            {tr('wizard.photos.examplesTitle')}
-          </p>
-          {renderScooterRequiredGuide()}
-        </div>
-      )}
-
       {isScooterPhotoFlow ? (
         <div className="rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
           <input

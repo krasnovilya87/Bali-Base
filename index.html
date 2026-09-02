@@ -83,6 +83,7 @@
         const cover = document.getElementById('static-cover');
         const isRootRoute = window.location.pathname.replace(/\/+$/, '') === '';
         const isMobile = window.matchMedia('(max-width: 640px)').matches;
+        const isCreateWizardDeepLink = new URLSearchParams(window.location.search).get('create') === '1';
         const staticTranslations = {
           EN: {
             'brand.name': 'Bali Base',
@@ -153,7 +154,7 @@
           document.body.scrollTop = 0;
         };
 
-        if (!cover || !isRootRoute || !isMobile) {
+        if (!cover || !isRootRoute || !isMobile || isCreateWizardDeepLink) {
           cover?.remove();
           resetScroll();
           window.requestAnimationFrame(resetScroll);

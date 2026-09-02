@@ -57,6 +57,11 @@ const ADMIN_ROUTE = '/adm';
 const ADMIN_EMAILS = ['krasnovilya87@gmail.com'];
 
 type AppView = 'cover' | 'menu' | 'app';
+type CreateWizardDeepLink = {
+  category?: string;
+  subCategory?: string;
+  stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
+};
 type AuthReturnContext = {
   view: AppView;
   listingId?: string;
@@ -69,6 +74,20 @@ type AuthReturnContext = {
 };
 
 const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
+
+const readCreateWizardDeepLink = (): CreateWizardDeepLink | null => {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('create') !== '1') return null;
+
+  const stepKey = params.get('step') as CreateWizardDeepLink['stepKey'] | null;
+  return {
+    category: params.get('category') || undefined,
+    subCategory: params.get('subcategory') || undefined,
+    stepKey: stepKey || undefined
+  };
+};
 
 const getDefaultFilters = (): FilterState => ({
   priceMin: 0,
@@ -179,6 +198,7 @@ const readInitialView = (): AppView => {
   const authReturnView = readAuthReturnView();
   if (authReturnView) return authReturnView;
   if (typeof window === 'undefined') return 'cover';
+  if (readCreateWizardDeepLink()) return 'app';
 
   try {
     window.sessionStorage.removeItem('bali_base_static_cover_done');
@@ -311,12 +331,9 @@ export default function App() {
   const [showFiltersModal, setShowFiltersModal] = useState<boolean>(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [hoveredListing, setHoveredListing] = useState<Listing | null>(null);
-  const [showCreateWizard, setShowCreateWizard] = useState<boolean>(false);
-  const [createWizardDeepLink, setCreateWizardDeepLink] = useState<{
-    category?: string;
-    subCategory?: string;
-    stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
-  } | null>(null);
+  const [initialCreateWizardDeepLink] = useState(readCreateWizardDeepLink);
+  const [showCreateWizard, setShowCreateWizard] = useState<boolean>(() => Boolean(initialCreateWizardDeepLink));
+  const [createWizardDeepLink, setCreateWizardDeepLink] = useState<CreateWizardDeepLink | null>(initialCreateWizardDeepLink);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [showMyAddsListing, setShowMyAddsListing] = useState<boolean>(false);
   const [initialBookingsListingId, setInitialBookingsListingId] = useState<string | null>(null);
@@ -402,18 +419,13 @@ export default function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('create') !== '1') return;
+    const deepLink = readCreateWizardDeepLink();
+    if (!deepLink) return;
 
-    const stepKey = params.get('step') as NonNullable<typeof createWizardDeepLink>['stepKey'] | null;
-    setCreateWizardDeepLink({
-      category: params.get('category') || undefined,
-      subCategory: params.get('subcategory') || undefined,
-      stepKey: stepKey || undefined
-    });
+    setCreateWizardDeepLink(deepLink);
     setCurrentView('app');
-    if (params.get('category')) setCurrentL1(params.get('category') || 'housing');
-    if (params.get('subcategory')) setCurrentL2([params.get('subcategory') || '']);
+    if (deepLink.category) setCurrentL1(deepLink.category);
+    if (deepLink.subCategory) setCurrentL2([deepLink.subCategory]);
     setEditingListing(null);
     setShowCreateWizard(true);
   }, []);
