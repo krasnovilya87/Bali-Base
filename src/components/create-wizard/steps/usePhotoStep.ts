@@ -85,6 +85,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   });
   const [realPhotoUrls, setRealPhotoUrls] = useState<string[]>(initialListing?.realPhotoUrls || []);
   const [draggedPhotoSlotId, setDraggedPhotoSlotId] = useState<PhotoSlotId | null>(null);
+  const uploadSequenceRef = useRef(initialListing?.images?.length || 0);
 
   const getAssignedPhotoUrls = (slotId: PhotoSlotId) => photoSlotAssignments[slotId] || [];
 
@@ -116,7 +117,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const requiredPhotoAssignedCount = requiredPhotoSlots.reduce((sum, slot) => sum + getAssignedPhotoUrls(slot.id).length, 0);
   const requiredPhotoTotalCount = requiredPhotoSlots.reduce((sum, slot) => sum + slot.maxCount, 0);
 
-  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [activeUploadCount, setActiveUploadCount] = useState(0);
   const [uploadError, setUploadError] = useState<string>('');
   const [uploadDiagnostic, setUploadDiagnostic] = useState<PhotoUploadDiagnostic | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -124,6 +125,10 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraTargetSlotIdRef = useRef<PhotoSlotId | null>(null);
+  const isUploading = activeUploadCount > 0;
+
+  const beginUpload = () => setActiveUploadCount(count => count + 1);
+  const endUpload = () => setActiveUploadCount(count => Math.max(0, count - 1));
 
   const assignUploadedPhoto = (photoUrl: string, preferredSlotId?: PhotoSlotId | null) => {
     if (!isScooterPhotoFlow) return;
@@ -195,12 +200,12 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     });
   };
 
-  const buildSeoPhotoFileName = (image: Blob | File, originalFile: File, batchOffset = 0) => {
+  const buildSeoPhotoFileName = (image: Blob | File, originalFile: File, batchOffset = 0, sequenceOverride?: number) => {
     if (!uploadNamingContext) {
       return originalFile.name || `listing-photo-${getLocalUploadDate()}.${getUploadExtension(image, originalFile)}`;
     }
 
-    const sequenceNumber = String(photoUrls.length + batchOffset + 1).padStart(2, '0');
+    const sequenceNumber = String(sequenceOverride ?? photoUrls.length + batchOffset + 1).padStart(2, '0');
     const nameParts = [
       uploadNamingContext?.brand,
       uploadNamingContext?.model,
@@ -214,13 +219,13 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   };
 
   const uploadPhotoToStorage = async (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
-    setIsUploading(true);
+    beginUpload();
     setUploadError('');
     setUploadDiagnostic(null);
     let uploadableImage: Blob | File = file;
     try {
       uploadableImage = await resizeAndCompressListingImage(file);
-      const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset);
+      const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset, ++uploadSequenceRef.current);
       const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
         fileName: seoFileName,
         fileType: uploadableImage.type || file.type || 'image/jpeg'
@@ -244,7 +249,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       setUploadDiagnostic(diagnostic);
       setUploadError(tr('wizard.photos.loadImageError'));
     } finally {
-      setIsUploading(false);
+      endUpload();
     }
   };
 
@@ -288,10 +293,57 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     cameraInputRef.current?.click();
   };
 
-  const uploadCameraPhotoForSlot = async (file: File, slotId?: PhotoSlotId | null) => {
-    cameraTargetSlotIdRef.current = slotId || null;
-    await uploadPhotoToStorage(file, 'camera');
-    cameraTargetSlotIdRef.current = null;
+  const replacePhotoUrl = (fromUrl: string, toUrl: string) => {
+    setPhotoUrls(prev => prev.map(url => url === fromUrl ? toUrl : url));
+    setRealPhotoUrls(prev => prev.map(url => url === fromUrl ? toUrl : url));
+    setPhotoSlotAssignments(prev => {
+      const next: Partial<Record<PhotoSlotId, string[]>> = {};
+      activePhotoSlotConfig.forEach(slot => {
+        const urls = (prev[slot.id] || []).map(url => url === fromUrl ? toUrl : url);
+        if (urls.length) next[slot.id] = urls;
+      });
+      return next;
+    });
+  };
+
+  const uploadCameraPhotoForSlot = (file: File, slotId?: PhotoSlotId | null) => {
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPhotoUrls(prev => [...prev, localPreviewUrl]);
+    setRealPhotoUrls(prev => prev.includes(localPreviewUrl) ? prev : [...prev, localPreviewUrl]);
+    assignUploadedPhoto(localPreviewUrl, slotId);
+
+    beginUpload();
+    setUploadError('');
+    setUploadDiagnostic(null);
+
+    void (async () => {
+      let uploadableImage: Blob | File = file;
+      try {
+        uploadableImage = await resizeAndCompressListingImage(file);
+        const seoFileName = buildSeoPhotoFileName(uploadableImage, file, 0, ++uploadSequenceRef.current);
+        const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
+          fileName: seoFileName,
+          fileType: uploadableImage.type || file.type || 'image/jpeg'
+        });
+        replacePhotoUrl(localPreviewUrl, uploadedUrl);
+        URL.revokeObjectURL(localPreviewUrl);
+      } catch (error) {
+        const diagnostic: PhotoUploadDiagnostic = {
+          fileName: file.name || 'unnamed file',
+          fileType: file.type || 'unknown',
+          fileSizeKb: Math.round(file.size / 1024),
+          uploadSizeKb: Math.round(uploadableImage.size / 1024),
+          compressed: uploadableImage !== file,
+          steps: error instanceof ImageUploadError ? error.diagnostics : [],
+          errorMessage: error instanceof Error ? error.message : String(error)
+        };
+        console.error('freeimage.host upload failed', diagnostic, error);
+        setUploadDiagnostic(diagnostic);
+        setUploadError(tr('wizard.photos.loadImageError'));
+      } finally {
+        endUpload();
+      }
+    })();
   };
 
   const handleRemovePhoto = (index: number) => {
