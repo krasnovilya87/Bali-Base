@@ -10,7 +10,7 @@ import {
 } from './create-wizard/constants';
 import WizardStepContent from './create-wizard/WizardStepContent';
 import { useCategorySteps } from './create-wizard/steps/useCategorySteps';
-import { useLocationStep } from './create-wizard/steps/useLocationStep';
+import { isGoogleMapsLink, useLocationStep } from './create-wizard/steps/useLocationStep';
 import { usePhotoStep } from './create-wizard/steps/usePhotoStep';
 import { useTitleStep } from './create-wizard/steps/useTitleStep';
 import { getWizardFlow, getWizardStepKey, WizardStepKey } from './create-wizard/wizardFlow';
@@ -28,6 +28,18 @@ const API_KEY =
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
   '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
+
+const buildSellerGoogleMapsUrl = (companyName: string, inputValue: string, placeId: string) => {
+  if (isGoogleMapsLink(inputValue)) return inputValue.trim();
+  if (!placeId) return undefined;
+
+  const params = new URLSearchParams({
+    api: '1',
+    query: companyName || inputValue,
+    query_place_id: placeId
+  });
+  return `https://www.google.com/maps/search/?${params.toString()}`;
+};
 
 const normalizeContactPhone = (value: string) => {
   const formatted = formatPhoneInput(value, 'ID');
@@ -204,8 +216,13 @@ export default function CreateWizard({
   const [vehicleColor, setVehicleColor] = useState<string>(initialListing?.vehicleColor || '');
   const [vehicleCondition, setVehicleCondition] = useState<string>(initialListing?.vehicleCondition || '');
   const [sellerType, setSellerType] = useState<string>(initialListing?.sellerType || '');
+  const [sellerCompanyName, setSellerCompanyName] = useState<string>(initialListing?.sellerType === 'company' ? initialListing?.ownerName || '' : '');
+  const [sellerGoogleMapsUrl, setSellerGoogleMapsUrl] = useState<string>(initialListing?.sellerGoogleMapsUrl || '');
+  const [sellerGooglePlaceId, setSellerGooglePlaceId] = useState<string>(initialListing?.sellerGooglePlaceId || '');
   const [keyless, setKeyless] = useState<boolean>(Boolean(initialListing?.keyless));
+  const [abs, setAbs] = useState<boolean>(Boolean(initialListing?.abs));
   const [surfRack, setSurfRack] = useState<boolean>(Boolean(initialListing?.surfRack || initialListing?.amenities?.includes('surf_rack')));
+  const [insurance, setInsurance] = useState<boolean>(Boolean(initialListing?.insurance));
   const [freeDeliveryDistricts, setFreeDeliveryDistricts] = useState<string[]>(initialListing?.freeDeliveryDistricts || []);
 
   const currentYear = new Date().getFullYear();
@@ -269,6 +286,7 @@ export default function CreateWizard({
         : DEFAULT_HOUSING_PRICE_PER_MONTH
     )
   );
+  const [listingDepositAmount, setListingDepositAmount] = useState<number>(initialListing?.listingDepositAmount || 0);
   const [competitorPrice, setCompetitorPrice] = useState<number>(initialListing?.bookingComPrice || 0);
   const [competitorUrl, setCompetitorUrl] = useState<string>(initialListing?.competitorUrl || '');
   const [competitorPlatform, setCompetitorPlatform] = useState<string>(initialListing?.competitorPlatform || 'Only Facebook');
@@ -410,6 +428,7 @@ export default function CreateWizard({
   const wizardFlow = getWizardFlow(category, subCategory);
   const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
+  const photosStep = Math.max(1, wizardFlow.indexOf('photos') + 1);
 
   useEffect(() => {
     setStep(current => Math.min(current, wizardFlow.length));
@@ -460,11 +479,9 @@ export default function CreateWizard({
     }
 
     if (targetStepKey === 'photos') {
-      if (isUploading) return tr('wizard.validationPhotosUploading');
       if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
         return tr('wizard.validationPhotos');
       }
-      return await validatePhotoQuality();
     }
 
     if (targetStepKey === 'features' && category === 'housing' && !yearBuilt) {
@@ -477,7 +494,15 @@ export default function CreateWizard({
     }
 
     if (targetStepKey === 'contact') {
-      if (ownerName.trim().length < 2) return tr('wizard.validationOwnerName');
+      if (category === 'transport' && subCategory === 'scooters') {
+        if (!sellerType) return tr('wizard.validationSellerType');
+        if (sellerType === 'private' && ownerName.trim().length < 2) return tr('wizard.validationOwnerName');
+        if (sellerType === 'company' && sellerCompanyName.trim().length < 2 && sellerGoogleMapsUrl.trim().length < 3) {
+          return tr('wizard.validationCompanyContact');
+        }
+      } else if (ownerName.trim().length < 2) {
+        return tr('wizard.validationOwnerName');
+      }
       if (!whatsappNumber || whatsappNumber.replace(/\D/g, '').length < 8) return tr('wizard.validationPhone');
     }
 
@@ -675,9 +700,11 @@ export default function CreateWizard({
       return;
     }
 
-    if (currentStepKey === 'photos' && requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
-      showValidationPopup(tr('wizard.validationPhotos'));
-      return;
+    if (currentStepKey === 'photos') {
+      if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
+        showValidationPopup(tr('wizard.validationPhotos'));
+        return;
+      }
     }
     if (currentStepKey === 'features' && category === 'housing' && !yearBuilt) {
       showValidationPopup(tr('wizard.validationYear'));
@@ -771,6 +798,7 @@ export default function CreateWizard({
       status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
       pricePerDay,
       pricePerMonth,
+      listingDepositAmount: listingDepositAmount > 0 ? listingDepositAmount : undefined,
       bookingComPrice: competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,
       competitorPlatform: competitorPlatform !== 'Only Facebook' ? competitorPlatform as Listing['competitorPlatform'] : undefined,
       competitorUrl: competitorUrl || undefined,
@@ -803,8 +831,14 @@ export default function CreateWizard({
       vehicleColor: category === 'transport' && subCategory === 'scooters' ? vehicleColor || undefined : initialListing?.vehicleColor,
       vehicleCondition: category === 'transport' && subCategory === 'scooters' ? vehicleCondition as Listing['vehicleCondition'] || undefined : initialListing?.vehicleCondition,
       sellerType: category === 'transport' && subCategory === 'scooters' ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
+      sellerGoogleMapsUrl: category === 'transport' && subCategory === 'scooters' && sellerType === 'company'
+        ? buildSellerGoogleMapsUrl(sellerCompanyName, sellerGoogleMapsUrl, sellerGooglePlaceId)
+        : initialListing?.sellerGoogleMapsUrl,
+      sellerGooglePlaceId: category === 'transport' && subCategory === 'scooters' && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
       keyless: category === 'transport' && subCategory === 'scooters' ? keyless : initialListing?.keyless,
+      abs: category === 'transport' && subCategory === 'scooters' ? abs : initialListing?.abs,
       surfRack: category === 'transport' && subCategory === 'scooters' ? surfRack : initialListing?.surfRack,
+      insurance: category === 'transport' && subCategory === 'scooters' ? insurance : initialListing?.insurance,
       freeDeliveryToDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts.length > 0 : initialListing?.freeDeliveryToDistricts,
       freeDeliveryDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts : initialListing?.freeDeliveryDistricts,
       yearBuilt: rawYear,
@@ -813,7 +847,9 @@ export default function CreateWizard({
       area: subCategory === 'private_room' ? undefined : area,
       distanceToSeaMinutes: initialListing?.distanceToSeaMinutes || 8,
       whatsappNumber,
-      ownerName,
+      ownerName: category === 'transport' && subCategory === 'scooters' && sellerType === 'company'
+        ? sellerCompanyName || ownerName || sellerGoogleMapsUrl
+        : ownerName,
       ownerAvatar: initialListing?.ownerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&q=80',
       clicksCount: initialListing?.clicksCount || 0,
       viewsCount: initialListing?.viewsCount || 0,
@@ -833,6 +869,19 @@ export default function CreateWizard({
     setIsPublishing(true);
 
     if (!(await validateMechanicalListing())) {
+      setIsPublishing(false);
+      return;
+    }
+
+    if (isUploading) {
+      showValidationPopup(tr('wizard.validationPhotosUploading'), photosStep);
+      setIsPublishing(false);
+      return;
+    }
+
+    const photoQualityMessage = await validatePhotoQuality();
+    if (photoQualityMessage) {
+      showValidationPopup(photoQualityMessage, photosStep);
       setIsPublishing(false);
       return;
     }
@@ -928,12 +977,14 @@ export default function CreateWizard({
       setVehicleCondition,
       yearBuilt,
       setYearBuilt,
-      sellerType,
-      setSellerType,
       keyless,
       setKeyless,
+      abs,
+      setAbs,
       surfRack,
       setSurfRack,
+      insurance,
+      setInsurance,
       freeDeliveryDistricts,
       toggleFreeDeliveryDistrict
     },
@@ -1036,12 +1087,14 @@ export default function CreateWizard({
       setVehicleColor,
       vehicleCondition,
       setVehicleCondition,
-      sellerType,
-      setSellerType,
       keyless,
       setKeyless,
+      abs,
+      setAbs,
       surfRack,
       setSurfRack,
+      insurance,
+      setInsurance,
       freeDeliveryDistricts,
       toggleFreeDeliveryDistrict
     },
@@ -1050,6 +1103,8 @@ export default function CreateWizard({
       setPricePerDay,
       pricePerMonth,
       setPricePerMonth,
+      listingDepositAmount,
+      setListingDepositAmount,
       competitorPlatform,
       setCompetitorPlatform,
       competitorPrice,
@@ -1067,8 +1122,20 @@ export default function CreateWizard({
       hideCompetitorFields: category === 'transport'
     },
     contactState: {
+      category,
+      subCategory,
+      apiKey: API_KEY,
+      hasValidKey,
+      sellerType,
+      setSellerType,
       ownerName,
       setOwnerName,
+      sellerCompanyName,
+      setSellerCompanyName,
+      sellerGoogleMapsUrl,
+      setSellerGoogleMapsUrl,
+      sellerGooglePlaceId,
+      setSellerGooglePlaceId,
       whatsappInput,
       handlePhoneChange
     },

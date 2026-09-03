@@ -1,10 +1,9 @@
 import React from 'react';
-import { Check, ChevronDown, Key, Waves } from 'lucide-react';
+import { Check, ChevronDown, Key, Shield, ShieldCheck, Waves } from 'lucide-react';
 import { useI18n } from '../../../../i18nContext';
-import { getDistrictNamesFromGeoJSONSync } from '../../../../utils/geo';
+import { getDistrictNamesFromGeoJSONSync, sortDistrictsByPopularity } from '../../../../utils/geo';
 import {
   SCOOTER_WIZARD_CONDITION_OPTIONS,
-  SCOOTER_WIZARD_SELLER_TYPE_OPTIONS,
   getScooterWizardYearOptions
 } from '../../configs/scooterWizardConfig';
 // @ts-ignore
@@ -15,12 +14,14 @@ type FeatureScooterParametersProps = {
   setYearBuilt: React.Dispatch<React.SetStateAction<string>>;
   vehicleCondition: string;
   setVehicleCondition: React.Dispatch<React.SetStateAction<string>>;
-  sellerType: string;
-  setSellerType: React.Dispatch<React.SetStateAction<string>>;
   keyless: boolean;
   setKeyless: React.Dispatch<React.SetStateAction<boolean>>;
+  abs: boolean;
+  setAbs: React.Dispatch<React.SetStateAction<boolean>>;
   surfRack: boolean;
   setSurfRack: React.Dispatch<React.SetStateAction<boolean>>;
+  insurance: boolean;
+  setInsurance: React.Dispatch<React.SetStateAction<boolean>>;
   freeDeliveryDistricts: string[];
   toggleFreeDeliveryDistrict: (district: string) => void;
 };
@@ -35,18 +36,20 @@ const FeatureScooterParameters: React.FC<FeatureScooterParametersProps> = ({
   setYearBuilt,
   vehicleCondition,
   setVehicleCondition,
-  sellerType,
-  setSellerType,
   keyless,
   setKeyless,
+  abs,
+  setAbs,
   surfRack,
   setSurfRack,
+  insurance,
+  setInsurance,
   freeDeliveryDistricts,
   toggleFreeDeliveryDistrict
 }) => {
   const { tr } = useI18n();
   const currentYear = new Date().getFullYear();
-  const districtOptions = getDistrictNamesFromGeoJSONSync();
+  const districtOptions = sortDistrictsByPopularity(getDistrictNamesFromGeoJSONSync());
   const yearOptions = getScooterWizardYearOptions(currentYear);
 
   return (
@@ -134,31 +137,13 @@ const FeatureScooterParameters: React.FC<FeatureScooterParametersProps> = ({
       </div>
 
       <div className="space-y-3">
-        <span className={fieldTitleClass}>{tr('filters.transport.sellerType')}</span>
-        <div className="grid grid-cols-2 gap-2.5">
-          {SCOOTER_WIZARD_SELLER_TYPE_OPTIONS.map(type => {
-            const isActive = sellerType === type;
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setSellerType(type)}
-                aria-pressed={isActive}
-                className={`${pillClass} justify-center rounded-2xl ${isActive ? `selected ${activePillClass}` : inactivePillClass}`}
-              >
-                {tr(`filters.transport.sellerType.${type}`)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-3">
         <span className={fieldTitleClass}>{tr('filters.transport.features')}</span>
         <div className="grid grid-cols-2 gap-2.5">
           {[
             { key: 'keyless', labelKey: 'filters.transport.features.keyless', Icon: Key, active: keyless, toggle: setKeyless },
-            { key: 'surfRack', labelKey: 'filters.transport.features.surfRack', Icon: Waves, active: surfRack, toggle: setSurfRack }
+            { key: 'abs', labelKey: 'filters.transport.features.abs', Icon: ShieldCheck, active: abs, toggle: setAbs },
+            { key: 'surfRack', labelKey: 'filters.transport.features.surfRack', Icon: Waves, active: surfRack, toggle: setSurfRack },
+            { key: 'insurance', labelKey: 'filters.transport.features.insurance', Icon: Shield, active: insurance, toggle: setInsurance }
           ].map(({ key, labelKey, Icon, active, toggle }) => (
             <button
               key={key}

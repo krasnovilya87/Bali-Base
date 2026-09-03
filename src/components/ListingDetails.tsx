@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Listing, BookingRequest, ListingNearbySpot } from '../types';
+import { Listing, BookingRequest, FilterState, ListingNearbySpot } from '../types';
 import {
   X, Star, MapPin, Compass, Flame, ShieldCheck, Mail, Calendar,
   ChevronRight, Wifi, ShieldAlert, Waves, Home, Lock, RefreshCw, Sparkles, Send, LayoutGrid, Check, Info, BedDouble,
-  Utensils, Dumbbell, ShoppingBasket, Landmark, Heart, Share2, Settings
+  Utensils, Dumbbell, ShoppingBasket, Landmark, Heart, Share2, Settings,
+  Gauge, CalendarDays, Package, Usb, KeyRound, Building2, Route, Camera, UsersRound, Smartphone, Umbrella
 } from 'lucide-react';
 import { THEME } from '../theme';
 import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { findDistrictByCoordsSync, getHaversineDistance, getListingCoords } from '../utils/geo';
+import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
 import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';
@@ -38,12 +39,38 @@ import {
 } from '../utils/supportTickets';
 import { shareListingLink } from '../utils/listingShare';
 import { isListingVerified } from '../utils/listingVerification';
+import {
+  getListingVehicleModel,
+  listingHasAbs,
+  listingHasKeyless,
+  SCOOTER_MODEL_OPTIONS,
+  SCOOTER_MODELS_BY_GROUP
+} from '../utils/scooterFilters';
 import { ROOM_TYPE_LABELS } from './create-wizard/constants';
+import { getScooterModelLabel } from './create-wizard/configs/scooterWizardConfig';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
+type DetailCharacteristic = {
+  key: string;
+  icon: string;
+  label: string;
+  value?: string;
+  isUnavailable?: boolean;
+  isBoolean?: boolean;
+};
+
+type HelmetSize = 'none' | 'S' | 'M' | 'L' | 'XL';
+
 const NEARBY_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 183;
 const LISTING_NOTES_STORAGE_PREFIX = 'bali_base_listing_notes';
+const HELMET_SIZE_OPTIONS: HelmetSize[] = ['none', 'S', 'M', 'L', 'XL'];
+const DELIVERY_TIME_OPTIONS = Array.from({ length: 15 * 4 }, (_, index) => {
+  const minutes = 7 * 60 + index * 15;
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
 
 const getListingNotesUserKey = () => {
   if (typeof window === 'undefined') return 'guest';
@@ -199,6 +226,54 @@ const ALL_PILLS_MAPPING: Record<string, { label: string; icon: string }> = {
   chef: { label: 'Личный шеф', icon: '👨‍🍳' }
 };
 
+const SCOOTER_ENGINE_CC: Record<string, number> = {
+  scoopy: 110,
+  beat_110: 110,
+  genio_110: 110,
+  vario_125: 125,
+  fazzio: 125,
+  grand_filano_125: 125,
+  freego_125: 125,
+  mio_125: 125,
+  vespa_sprint_150: 150,
+  vespa_primavera_150: 150,
+  nmax: 155,
+  nmax_turbo: 155,
+  aerox_155: 155,
+  vario_160: 160,
+  adv: 160,
+  pcx: 160,
+  xmax: 250
+};
+
+const SCOOTER_USB_MODELS = SCOOTER_MODEL_OPTIONS
+  .map(model => model.value)
+  .filter(model => model !== 'mio_125');
+const SCOOTER_KEYLESS_MODELS = ['scoopy', 'fazzio', 'grand_filano_125', 'nmax', 'nmax_turbo', 'xmax', 'pcx', 'beat_110'];
+const SCOOTER_ABS_MODELS = ['nmax', 'nmax_turbo', 'xmax', 'pcx', 'adv'];
+const SCOOTER_PHOTO_MODELS = SCOOTER_MODELS_BY_GROUP.retro;
+const SCOOTER_LONG_TRIP_MODELS = SCOOTER_MODELS_BY_GROUP.maxi;
+const SCOOTER_COUPLE_MODELS = SCOOTER_MODELS_BY_GROUP.maxi.filter(model => model !== 'aerox_155');
+
+const TRANSPORT_DETAIL_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  engineCc: Gauge,
+  yearBuilt: CalendarDays,
+  largeStorage: Package,
+  usbPort: Usb,
+  abs: ShieldCheck,
+  keyless: KeyRound,
+  cityFit: Building2,
+  longTripsFit: Route,
+  photoFit: Camera,
+  coupleFit: UsersRound,
+  surfRack: Waves,
+  insurance: ShieldCheck,
+  freeDeliveryToAddress: MapPin,
+  freeDeliveryDistricts: MapPin,
+  'amenity-helmet': Umbrella,
+  'amenity-phone_holder': Smartphone
+};
+
 interface ListingDetailsProps {
   listing: Listing;
   onClose: () => void;
@@ -206,6 +281,9 @@ interface ListingDetailsProps {
   currencyRate: number;
   onAddBooking: (booking: BookingRequest) => void;
   bookings?: BookingRequest[];
+  filters?: FilterState;
+  deliveryPoint?: { x: number; y: number } | null;
+  onRequestDeliveryPoint?: () => void;
   initialCheckInDate?: string;
   initialCheckOutDate?: string;
   onDatesChange?: (checkIn: string, checkOut: string) => void;
@@ -222,6 +300,9 @@ export default function ListingDetails({
   currencyRate,
   onAddBooking,
   bookings = [],
+  filters,
+  deliveryPoint = null,
+  onRequestDeliveryPoint,
   initialCheckInDate = '',
   initialCheckOutDate = '',
   onDatesChange,
@@ -247,6 +328,14 @@ export default function ListingDetails({
   const [diffDays, setDiffDays] = useState<number>(5);
   const [orderPlaced, setOrderPlaced] = useState<boolean>(false);
   const [unavailableMessage, setUnavailableMessage] = useState<string>('');
+  const [isTransportBookingConfirmOpen, setIsTransportBookingConfirmOpen] = useState<boolean>(false);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
+  const [deliveryTime, setDeliveryTime] = useState<string>('10:00');
+  const [helmetOneSize, setHelmetOneSize] = useState<HelmetSize>('XL');
+  const [helmetTwoSize, setHelmetTwoSize] = useState<HelmetSize>('none');
+  const [needsSurfRack, setNeedsSurfRack] = useState<boolean>(false);
+  const [needsInsurance, setNeedsInsurance] = useState<boolean>(false);
+  const [deliveryPointRequestedFromBooking, setDeliveryPointRequestedFromBooking] = useState<boolean>(false);
   const [countdownText, setCountdownText] = useState<string>('');
   const [isCharacteristicsExpanded, setIsCharacteristicsExpanded] = useState<boolean>(false);
   const [isAmenitiesExpanded, setIsAmenitiesExpanded] = useState<boolean>(false);
@@ -428,6 +517,19 @@ export default function ListingDetails({
     setCheckInDate(initialCheckInDate);
     setCheckOutDate(initialCheckOutDate);
   }, [initialCheckInDate, initialCheckOutDate]);
+
+  useEffect(() => {
+    const deliveryDistrict = deliveryPoint ? findDistrictByMapPointSync(deliveryPoint) : '';
+    const deliveryPointLabel = deliveryPoint
+      ? deliveryDistrict
+        ? tr('details.transportBooking.deliveryPointWithDistrict', { district: deliveryDistrict })
+        : tr('details.transportBooking.deliveryPointSelected')
+      : '';
+
+    setDeliveryAddress(filters?.freeDeliveryToAddressOnly || deliveryPointRequestedFromBooking ? deliveryPointLabel : '');
+    setNeedsSurfRack(Boolean(filters?.surfRackOnly));
+    setNeedsInsurance(Boolean(filters?.insuranceOnly));
+  }, [activeLanguage, deliveryPoint, deliveryPointRequestedFromBooking, filters?.freeDeliveryToAddressOnly, filters?.surfRackOnly, filters?.insuranceOnly]);
 
   useEffect(() => {
     // Calculate total days
@@ -666,6 +768,36 @@ export default function ListingDetails({
     }
   };
 
+  const getHelmetSizeLabel = (size: HelmetSize) =>
+    size === 'none' ? tr('details.transportBooking.helmetNone') : size;
+
+  const getTransportBookingSummary = () => {
+    if (listing.category !== 'transport') return '';
+
+    const lines = [
+      `${tr('details.transportBooking.deliveryAddress')}: ${deliveryAddress.trim() || tr('details.transportBooking.deliveryAddressEmpty')}`,
+      `${tr('details.transportBooking.deliveryTime')}: ${deliveryTime}`,
+      `${tr('details.transportBooking.helmetOne')}: ${getHelmetSizeLabel(helmetOneSize)}`,
+      `${tr('details.transportBooking.helmetTwo')}: ${getHelmetSizeLabel(helmetTwoSize)}`,
+      `${tr('filters.transport.features.surfRack')}: ${needsSurfRack ? tr('common.yes') : tr('common.no')}`,
+      `${tr('filters.transport.features.insurance')}: ${needsInsurance ? tr('common.yes') : tr('common.no')}`
+    ];
+
+    return `${tr('details.transportBooking.requestDetails')}\n${lines.join('\n')}`;
+  };
+
+  const openTransportBookingConfirm = () => {
+    if (!checkInDate || !checkOutDate) {
+      setShowDateCalendar(true);
+      return;
+    }
+    if (isListingUnavailableForDates(listing, bookings, checkInDate, checkOutDate)) {
+      setUnavailableMessage(tr('details.unavailableForDates', { title: listing.title }));
+      return;
+    }
+    setIsTransportBookingConfirmOpen(true);
+  };
+
   // WhatsApp template dispatch
   const placeWhatsAppBooking = () => {
     const activeUser = auth.currentUser || user;
@@ -683,13 +815,14 @@ export default function ListingDetails({
     const bookingTitle = roomTypeLabel
       ? `${stripListingRoomTypeFromTitle(listing.title)} - ${roomTypeLabel}`
       : listing.title;
+    const transportBookingSummary = getTransportBookingSummary();
     const templateMessage = tr('details.whatsappBookingMessage', {
       bookingTitle,
       checkIn: checkInDate,
       checkOut: checkOutDate,
       nights: diffDays,
       total: formatBookingTotal(totalBudget)
-    });
+    }) + (transportBookingSummary ? `\n\n${transportBookingSummary}` : '');
     const encodedMessage = encodeURIComponent(templateMessage);
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
     const waUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
@@ -739,6 +872,7 @@ export default function ListingDetails({
       totalPrice: totalBudget,
       status: 'pending',
       paymentStatus: 'unpaid',
+      comment: transportBookingSummary || undefined,
       createdAt: new Date().toISOString()
     };
     onAddBooking(newReq);
@@ -754,8 +888,19 @@ export default function ListingDetails({
   };
 
   const handleWhatsAppClick = () => {
-    if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking', placeWhatsAppBooking)) return;
+    const nextAction = listing.category === 'transport' ? openTransportBookingConfirm : placeWhatsAppBooking;
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking', nextAction)) return;
+    nextAction();
+  };
+
+  const confirmTransportBooking = () => {
+    setIsTransportBookingConfirmOpen(false);
     placeWhatsAppBooking();
+  };
+
+  const requestTransportBookingDeliveryPoint = () => {
+    setDeliveryPointRequestedFromBooking(true);
+    onRequestDeliveryPoint?.();
   };
 
   const openProblemReport = () => {
@@ -1117,16 +1262,18 @@ export default function ListingDetails({
       daily: 'Ежедневно'
     } as Record<string, string>
   };
-  const detailCharacteristics: Array<{ key: string; icon: string; label: string; value: string }> = [];
-  const addDetailCharacteristic = (condition: boolean, item: { key: string; icon: string; label: string; value?: string | number | null }) => {
+  const detailCharacteristics: DetailCharacteristic[] = [];
+  const transportFitCharacteristics: DetailCharacteristic[] = [];
+  const addDetailCharacteristic = (condition: boolean, item: { key: string; icon: string; label: string; value?: string | number | null; isUnavailable?: boolean; isBoolean?: boolean }) => {
     if (!condition || item.value === undefined || item.value === null || item.value === '') return;
-    detailCharacteristics.push({ ...item, value: String(item.value) });
+    detailCharacteristics.push({ ...item, value: String(item.value), isUnavailable: item.isUnavailable });
   };
   const formatMappedList = (values: string[] | undefined, map: Record<string, string>) =>
     (values || []).map(value => map[value] || value.replace(/_/g, ' ')).filter(Boolean).join(', ');
   const isPrivateRoomListing = listing.subCategory === 'private_room';
   const isPrivateSuiteListing = listing.subCategory === 'private_suite';
   const isHousingListing = listing.category === 'housing';
+  const isTransportListing = listing.category === 'transport';
   const isHotelListing = listing.housingType === 'Hotel (privet room)' || (listing.housingType || '').toLowerCase().includes('hotel');
   const problemRoomTypeLabel = isPrivateRoomListing && listing.roomType
     ? detailLabelMaps.roomType[listing.roomType] || ROOM_TYPE_LABELS[listing.roomType] || listing.roomType
@@ -1364,6 +1511,104 @@ export default function ListingDetails({
     });
   }
 
+  if (isTransportListing) {
+    const vehicleModel = getListingVehicleModel(listing) || listing.vehicleModel || '';
+    const vehicleModelLabel = vehicleModel ? getScooterModelLabel(vehicleModel) : '';
+    const vehicleColorLabel = listing.vehicleColor
+      ? tr(`filters.transport.color.${listing.vehicleColor}`)
+      : '';
+    const vehicleConditionLabel = listing.vehicleCondition
+      ? tr(`filters.transport.condition.${listing.vehicleCondition}`)
+      : '';
+    const sellerTypeLabel = listing.sellerType
+      ? tr(`filters.transport.sellerType.${listing.sellerType}`)
+      : '';
+
+    addDetailCharacteristic(Boolean(listing.vehicleBrand), {
+      key: 'vehicleBrand',
+      icon: '🏷️',
+      label: tr('details.field.vehicleBrand'),
+      value: listing.vehicleBrand
+    });
+    addDetailCharacteristic(Boolean(listing.vehicleModel), {
+      key: 'vehicleModel',
+      icon: '🛵',
+      label: tr('details.field.vehicleModel'),
+      value: vehicleModelLabel || vehicleModel
+    });
+    addDetailCharacteristic(Boolean(vehicleModel && SCOOTER_ENGINE_CC[vehicleModel]), {
+      key: 'engineCc',
+      icon: '⚙️',
+      label: tr('details.transport.engineCc'),
+      value: tr('details.transport.ccValue', { count: SCOOTER_ENGINE_CC[vehicleModel] })
+    });
+    addDetailCharacteristic(Boolean(listing.yearBuilt), {
+      key: 'yearBuilt',
+      icon: '🔄',
+      label: tr('filters.transport.year'),
+      value: listing.yearBuilt === 'other' ? tr('details.yearOther') : listing.yearBuilt
+    });
+    addDetailCharacteristic(Boolean(listing.vehicleColor), {
+      key: 'vehicleColor',
+      icon: '🎨',
+      label: tr('filters.transport.color'),
+      value: vehicleColorLabel && vehicleColorLabel !== `filters.transport.color.${listing.vehicleColor}`
+        ? vehicleColorLabel
+        : listing.vehicleColor
+    });
+    addDetailCharacteristic(Boolean(listing.vehicleCondition), {
+      key: 'vehicleCondition',
+      icon: '🧰',
+      label: tr('filters.transport.condition'),
+      value: vehicleConditionLabel && vehicleConditionLabel !== `filters.transport.condition.${listing.vehicleCondition}`
+        ? vehicleConditionLabel
+        : listing.vehicleCondition
+    });
+    addDetailCharacteristic(Boolean(listing.sellerType), {
+      key: 'sellerType',
+      icon: '🤝',
+      label: tr('filters.transport.sellerType'),
+      value: sellerTypeLabel && sellerTypeLabel !== `filters.transport.sellerType.${listing.sellerType}`
+        ? sellerTypeLabel
+        : listing.sellerType
+    });
+    const hasLargeStorage = SCOOTER_MODELS_BY_GROUP.maxi.includes(vehicleModel);
+    const hasUsbPort = SCOOTER_USB_MODELS.includes(vehicleModel);
+    const hasAbs = listingHasAbs(listing) || SCOOTER_ABS_MODELS.includes(vehicleModel);
+    const hasKeyless = listingHasKeyless(listing) || SCOOTER_KEYLESS_MODELS.includes(vehicleModel);
+    const isCityFriendly = vehicleModel !== 'xmax';
+    const isLongTripFriendly = SCOOTER_LONG_TRIP_MODELS.includes(vehicleModel);
+    const isPhotoFriendly = SCOOTER_PHOTO_MODELS.includes(vehicleModel);
+    const isCoupleFriendly = SCOOTER_COUPLE_MODELS.includes(vehicleModel);
+    const addTransportBooleanCharacteristic = (key: string, icon: string, labelKey: string, isAvailable: boolean) => {
+      detailCharacteristics.push({
+        key,
+        icon,
+        label: tr(labelKey),
+        isUnavailable: !isAvailable,
+        isBoolean: true
+      });
+    };
+    const addTransportFitCharacteristic = (key: string, icon: string, labelKey: string, isAvailable: boolean) => {
+      transportFitCharacteristics.push({
+        key,
+        icon,
+        label: tr(labelKey),
+        isUnavailable: !isAvailable,
+        isBoolean: true
+      });
+    };
+
+    addTransportBooleanCharacteristic('largeStorage', '🧳', 'details.transport.largeStorage', hasLargeStorage);
+    addTransportBooleanCharacteristic('usbPort', '🔌', 'details.transport.usbPort', hasUsbPort);
+    addTransportBooleanCharacteristic('abs', '🛡️', 'filters.transport.features.abs', hasAbs);
+    addTransportBooleanCharacteristic('keyless', '🔑', 'filters.transport.features.keyless', hasKeyless);
+    addTransportFitCharacteristic('cityFit', '🏙️', 'details.transport.fit.city', isCityFriendly);
+    addTransportFitCharacteristic('longTripsFit', '🛣️', 'details.transport.fit.longTrips', isLongTripFriendly);
+    addTransportFitCharacteristic('photoFit', '📸', 'details.transport.fit.photo', isPhotoFriendly);
+    addTransportFitCharacteristic('coupleFit', '👥', 'details.transport.fit.couple', isCoupleFriendly);
+  }
+
   const detailAmenityGroups: Array<{ key: string; name: string; config: { label: string; icon: string } }> = [];
   const addDetailAmenityGroup = (condition: boolean, key: string, icon: string, label?: string) => {
     if (!condition || !label) return;
@@ -1413,11 +1658,167 @@ export default function ListingDetails({
     );
   }
 
+  const detailAdditionalGroups: DetailCharacteristic[] = [];
+  const addDetailAdditionalGroup = (condition: boolean, key: string, icon: string, label: string, isUnavailable = false) => {
+    if (!condition || !label) return;
+    detailAdditionalGroups.push({ key, icon, label, isUnavailable });
+  };
+
+  if (isTransportListing) {
+    addDetailAdditionalGroup(Boolean(listing.surfRack || listing.amenities?.includes('surf_rack')), 'surfRack', '🌊', tr('filters.transport.features.surfRack'));
+    addDetailAdditionalGroup(true, 'insurance', '✅', tr('filters.transport.features.insurance'), !Boolean(listing.insurance));
+    addDetailAdditionalGroup(Boolean(listing.freeDeliveryToAddress), 'freeDeliveryToAddress', '📍', tr('details.field.freeDeliveryToAddress'));
+    addDetailAdditionalGroup(Boolean(listing.freeDeliveryToDistricts || listing.freeDeliveryDistricts?.length), 'freeDeliveryDistricts', '🗺️', listing.freeDeliveryDistricts?.length
+      ? `${tr('wizard.transport.freeDeliveryDistricts')}: ${listing.freeDeliveryDistricts.join(', ')}`
+      : tr('wizard.transport.freeDeliveryDistricts')
+    );
+    (listing.amenities || [])
+      .filter(name => name !== 'surf_rack')
+      .forEach(name => {
+        const mappedAmenity = ALL_PILLS_MAPPING[name];
+        addDetailAdditionalGroup(
+          true,
+          `amenity-${name}`,
+          mappedAmenity?.icon || '✨',
+          mappedAmenity?.label || name.replace(/_/g, ' ')
+        );
+      });
+    (listing.extraOptions || []).forEach(name => {
+      const mappedExtra = ALL_PILLS_MAPPING[name];
+      addDetailAdditionalGroup(
+        true,
+        `extra-${name}`,
+        mappedExtra?.icon || '✨',
+        mappedExtra?.label || name.replace(/_/g, ' ')
+      );
+    });
+  }
+
   const housingDetailCharacteristics = isHousingListing
     ? buildHousingCharacteristics(listing, tr).filter(item => item.key !== 'distanceToSeaMinutes')
     : detailCharacteristics;
   const housingDetailAmenities = isHousingListing ? buildHousingAmenities(listing, tr) : null;
   const missingHousingAmenities = isHousingListing ? buildMissingHousingAmenities(listing, tr) : [];
+  const getTransportTileTone = (key: string, isUnavailable?: boolean) => {
+    if (isUnavailable) {
+      return {
+        shell: 'text-[#C4C9D1]',
+        icon: 'border-[#E2E5E9] bg-[#F3F4F6] text-[#CCD1D8] shadow-[0_7px_14px_rgba(15,23,42,0.03)]',
+        main: 'text-[#C7CBD1]',
+        sub: 'text-[#D4D7DC]'
+      };
+    }
+
+    if (key === 'engineCc' || key === 'keyless') {
+      return {
+        shell: 'text-[#111827]',
+        icon: 'border-[#F2D98C] bg-[#F5EEDB] text-[#E7A500] shadow-[0_10px_18px_rgba(231,165,0,0.15)]',
+        main: 'text-[#111827]',
+        sub: 'text-[#A2A8B1]'
+      };
+    }
+
+    if (key === 'usbPort' || key === 'cityFit') {
+      return {
+        shell: 'text-[#111827]',
+        icon: 'border-[#99DBE7] bg-[#DDF3F7] text-[#00A9C9] shadow-[0_10px_18px_rgba(0,169,201,0.13)]',
+        main: 'text-[#111827]',
+        sub: 'text-[#A2A8B1]'
+      };
+    }
+
+    if (key === 'abs' || key === 'insurance' || key === 'longTripsFit') {
+      return {
+        shell: 'text-[#111827]',
+        icon: 'border-[#B9D8CA] bg-[#EDF7F1] text-[#2F7D69] shadow-[0_10px_18px_rgba(47,125,105,0.12)]',
+        main: 'text-[#111827]',
+        sub: 'text-[#A2A8B1]'
+      };
+    }
+
+    if (key === 'freeDeliveryToAddress' || key === 'freeDeliveryDistricts' || key === 'coupleFit') {
+      return {
+        shell: 'text-[#111827]',
+        icon: 'border-[#FFB996] bg-[#F4E1D5] text-[#F5651D] shadow-[0_10px_18px_rgba(245,101,29,0.13)]',
+        main: 'text-[#111827]',
+        sub: 'text-[#A2A8B1]'
+      };
+    }
+
+    return {
+      shell: 'text-[#111827]',
+      icon: 'border-[#E2E5EA] bg-[#F8FAFC] text-[#687386] shadow-[0_8px_16px_rgba(15,23,42,0.05)]',
+      main: 'text-[#111827]',
+      sub: 'text-[#A2A8B1]'
+    };
+  };
+  const renderTransportTile = (item: DetailCharacteristic, className = '') => {
+    const tone = getTransportTileTone(item.key, item.isUnavailable);
+    const Icon = TRANSPORT_DETAIL_ICON_MAP[item.key];
+    const mainText = item.value || item.label;
+    const subText = item.value ? item.label : '';
+
+    return (
+      <div
+        key={item.key}
+        className={`flex min-w-0 select-none flex-col items-center justify-start gap-1.5 text-center ${tone.shell} ${THEME.fonts.heading} ${className}`}
+      >
+        <span className={`flex h-[50px] w-[50px] items-center justify-center rounded-[16px] border transition sm:h-[56px] sm:w-[56px] sm:rounded-[18px] ${tone.icon}`}>
+          {Icon ? (
+            <Icon className="h-6 w-6 stroke-[1.4] sm:h-7 sm:w-7" />
+          ) : (
+            <span className="text-[22px] leading-none sm:text-[24px]">{item.icon}</span>
+          )}
+        </span>
+        <span className={`max-w-[78px] text-[11px] font-medium leading-[1.05] tracking-normal sm:max-w-[88px] sm:text-[12px] ${subText ? 'truncate' : 'line-clamp-2'} ${tone.main}`}>
+          {mainText}
+        </span>
+        {subText && (
+          <span className={`max-w-[78px] line-clamp-2 text-[10px] font-normal leading-[1.05] tracking-normal sm:max-w-[88px] ${tone.sub}`}>
+            {subText}
+          </span>
+        )}
+      </div>
+    );
+  };
+  const getTransportDetailsSubtitle = () => {
+    const vehicleModel = getListingVehicleModel(listing) || listing.vehicleModel || '';
+    const parts: string[] = [];
+
+    if (vehicleModel && SCOOTER_ENGINE_CC[vehicleModel]) {
+      parts.push(tr('details.transport.ccValue', { count: SCOOTER_ENGINE_CC[vehicleModel] }));
+    }
+
+    if (listing.yearBuilt && listing.yearBuilt !== 'other') {
+      parts.push(String(listing.yearBuilt));
+    }
+
+    if (listingHasAbs(listing) || SCOOTER_ABS_MODELS.includes(vehicleModel)) {
+      parts.push(tr('filters.transport.features.abs'));
+    }
+
+    if (listingHasKeyless(listing) || SCOOTER_KEYLESS_MODELS.includes(vehicleModel)) {
+      parts.push(tr('filters.transport.features.keyless'));
+    }
+
+    if (vehicleModel && vehicleModel !== 'xmax') {
+      parts.push(tr('details.transport.fit.city'));
+    }
+
+    if (SCOOTER_LONG_TRIP_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.longTrips'));
+    }
+
+    if (SCOOTER_PHOTO_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.photo'));
+    }
+
+    if (SCOOTER_COUPLE_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.coupleComfort'));
+    }
+
+    return parts.join(' • ');
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[400] lg:p-5 p-0 animate-fade-in" id="details-modal">
@@ -1553,7 +1954,7 @@ export default function ListingDetails({
                       {displayTitle}
                     </h3>
                     <p className="line-clamp-2 leading-relaxed mt-1 text-gray-500 font-light text-[14px] sm:text-xs lg:text-[14.5px]">
-                      {buildListingSubtitle(listing, 4, tr)}
+                      {isTransportListing ? getTransportDetailsSubtitle() : buildListingSubtitle(listing, 4, tr)}
                     </p>
                   </div>
                   <div className="flex w-[74px] shrink-0 flex-col items-stretch gap-2 sm:w-[68px] lg:w-[78px]">
@@ -1715,11 +2116,14 @@ export default function ListingDetails({
 
                 {/* Icons / Characteristics specs grid - Square plates */}
                 <div className="space-y-3">
-                  <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.characteristicsTitle')}</h3>
+                  <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
+                    {isTransportListing ? tr('details.characteristicsTransportTitle') : tr('details.characteristicsTitle')}
+                  </h3>
 
                   {(() => {
-                    const buttonVisibilityClass =
-                      housingDetailCharacteristics.length <= 4
+                    const buttonVisibilityClass = isTransportListing
+                      ? 'hidden'
+                      : housingDetailCharacteristics.length <= 4
                         ? 'hidden'
                         : housingDetailCharacteristics.length <= 8
                           ? 'sm:hidden'
@@ -1727,30 +2131,41 @@ export default function ListingDetails({
 
                     return (
                       <div className="grid grid-cols-1 gap-2.5">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full">
+                        <div className={`grid w-full ${isTransportListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
                           {housingDetailCharacteristics.map((item, index) => {
                             const visibilityClass = !isCharacteristicsExpanded
-                              ? index < 4
+                              ? isTransportListing
+                                ? 'flex'
+                                : index < 4
                                 ? 'flex'
                                 : index < 8
                                   ? 'hidden sm:flex'
                                   : 'hidden'
                               : 'flex';
+                            const housingCardClass = item.isUnavailable
+                              ? 'bg-[#F8FAFC] text-[#94A3B8] border border-[#CBD5E1]'
+                              : 'bg-white text-[#1E293B]';
+
+                            if (isTransportListing) {
+                              return renderTransportTile(item, visibilityClass);
+                            }
 
                             return (
                               <div
                                 key={item.key}
-                                className={`${visibilityClass} pl listing-detail-pill p-2.5 rounded-2xl text-center flex-col items-center justify-center gap-1 select-none relative min-h-[82px] bg-white text-[#1E293B] ${THEME.fonts.heading}`}
+                                className={`${visibilityClass} pl listing-detail-pill min-h-[82px] rounded-2xl p-2.5 gap-1 text-center flex-col items-center justify-center select-none relative transition ${housingCardClass} ${THEME.fonts.heading}`}
                               >
-                                <span className="text-xl sm:text-2xl leading-none shrink-0">{item.icon}</span>
-                                <span className="text-[10px] font-bold leading-tight text-gray-400">{item.label}</span>
-                                <span className="listing-pill-main-text text-center line-clamp-2">{item.value}</span>
+                                <span className={`text-xl sm:text-2xl leading-none shrink-0 ${item.isUnavailable ? 'grayscale opacity-45' : ''}`}>{item.icon}</span>
+                                <span className={`text-[10px] font-bold leading-tight ${item.isUnavailable ? 'text-[#94A3B8]' : 'text-gray-400'}`}>{item.label}</span>
+                                {item.value && (
+                                  <span className={`listing-pill-main-text text-center line-clamp-2 ${item.isUnavailable ? 'text-[#94A3B8]' : ''}`}>{item.value}</span>
+                                )}
                               </div>
                             );
                           })}
                         </div>
 
-                        {housingDetailCharacteristics.length > 4 && (
+                        {!isTransportListing && housingDetailCharacteristics.length > 4 && (
                           <div className={`relative flex items-center py-2 ${isCharacteristicsExpanded ? '' : buttonVisibilityClass}`}>
                             <div className="flex-grow border-t border-[#E5E7EB] h-0"></div>
                             <button
@@ -1765,6 +2180,17 @@ export default function ListingDetails({
                       </div>
                     );
                   })()}
+
+                  {isTransportListing && transportFitCharacteristics.length > 0 && (
+                    <div className="pt-1.5">
+                      <h4 className={`mb-2 text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
+                        {tr('details.transport.excellentFor')}
+                      </h4>
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4 w-full">
+                        {transportFitCharacteristics.map(item => renderTransportTile(item))}
+                      </div>
+                    </div>
+                  )}
                   <div className="hidden">
                     {false && (
                       <>
@@ -1815,6 +2241,7 @@ export default function ListingDetails({
                 </div>
 
                 {/* Amenities checkboxes - visual styled exactly like filters */}
+                {!isTransportListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.amenitiesTitle')}</h3>
 
@@ -1902,8 +2329,21 @@ export default function ListingDetails({
                     );
                   })()}
                 </div>
+                )}
+
+                {isTransportListing && detailAdditionalGroups.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.additionalTitle')}</h3>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4 w-full">
+                      {detailAdditionalGroups.map(item => (
+                        renderTransportTile(item)
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Exact Surrounding spots list */}
+                {!isTransportListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
                     {tr('details.nearbyTitle')}
@@ -1944,6 +2384,7 @@ export default function ListingDetails({
                     ))}
                   </div>
                 </div>
+                )}
 
               </div>
 
@@ -2264,7 +2705,7 @@ export default function ListingDetails({
         </div>
 
         {showDateCalendar && (
-          <div className="lg:hidden">
+          <div className={isTransportBookingConfirmOpen ? '' : 'lg:hidden'}>
             <TwoMonthCalendar
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
@@ -2277,6 +2718,214 @@ export default function ListingDetails({
               }}
               onClose={() => setShowDateCalendar(false)}
             />
+          </div>
+        )}
+
+        {isTransportBookingConfirmOpen && (
+          <div className="fixed inset-0 z-[490] flex items-center justify-center bg-black/65 p-3 sm:p-5 backdrop-blur-xs">
+            <div className="pu flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl max-h-[92vh]">
+              <div className="pu-header pu-window-header">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="h-5 w-5 text-[#FF7A50]" />
+                  <h3>{tr('details.transportBooking.title')}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTransportBookingConfirmOpen(false)}
+                  className="pu-close"
+                  title={tr('common.close')}
+                  aria-label={tr('common.close')}
+                >
+                  <X />
+                </button>
+              </div>
+
+              <div className="pu-body space-y-4 overflow-y-auto bg-[#F4F7F6]/55 p-4 sm:p-5">
+                <div className="flex gap-3">
+                  <img
+                    src={listing.images[0]}
+                    alt={listing.title}
+                    className="h-20 w-24 shrink-0 rounded-2xl object-cover"
+                  />
+                  <div className="min-w-0 flex-1 py-1">
+                    <p className={`line-clamp-2 text-sm font-extrabold leading-tight text-[#1E293B] ${THEME.fonts.heading}`}>
+                      {listing.title}
+                    </p>
+                    <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F4F7F6] px-2.5 py-1 text-[10px] font-black uppercase text-[#2F7D69]">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{diffDays} {pluralizeDays(diffDays)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDateCalendar(true)}
+                  className="w-full text-left transition active:scale-[0.99]"
+                >
+                  <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
+                    {tr('details.transportBooking.period')}
+                  </span>
+                  <div className="flex flex-row items-center border-[0.5px] border-white/60 bg-white/32 p-1 rounded-full shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition relative min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-1 px-2 py-2 sm:gap-2 sm:px-4">
+                      <Calendar className="w-4 h-4 text-[#FF7A50] shrink-0" />
+                      <div className="text-left font-sans flex-1 min-w-0">
+                        <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
+                          {tr('details.transportBooking.dateRange', {
+                            from: formatBookingDate(checkInDate),
+                            to: formatBookingDate(checkOutDate)
+                          })}
+                        </span>
+                        <span className="mt-1 text-[#FF7A50] font-bold text-[10px] leading-[1.15] block truncate">
+                          {diffDays} {pluralizeDays(diffDays)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="space-y-2">
+                  <span className="block text-[10px] font-black uppercase text-gray-400">
+                    {tr('details.transportBooking.deliveryAddress')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={requestTransportBookingDeliveryPoint}
+                    className={`pl pl-interactive w-full rounded-2xl border p-4 text-left transition active:scale-[0.99] ${
+                      deliveryAddress
+                        ? 'selected border-[#FF7A50] bg-white shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                        : 'border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:border-[#FF7A50]/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                          deliveryAddress ? 'bg-[#FF7A50] text-white' : 'bg-[#F4F7F6] text-[#2F7D69]'
+                        }`}>
+                          <MapPin className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="block truncate text-xs font-extrabold text-[#1E293B]">
+                            {deliveryAddress || tr('details.transportBooking.chooseAddress')}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[10px] font-bold text-gray-400">
+                            {tr('details.transportBooking.chooseAddressHint')}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[#FF7A50]" />
+                    </div>
+                  </button>
+                </div>
+
+                <div>
+                  <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
+                    {tr('details.transportBooking.deliveryTime')}
+                  </span>
+                  <div className="relative">
+                    <select
+                      value={deliveryTime}
+                      onChange={(event) => setDeliveryTime(event.target.value)}
+                      className="w-full appearance-none rounded-2xl border border-[#E5E7EB] bg-[#F4F7F6] px-4 py-3 pr-10 text-sm font-extrabold text-[#1E293B] outline-none transition focus:border-[#FF7A50] focus:bg-white"
+                    >
+                      {DELIVERY_TIME_OPTIONS.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                    <ChevronRight className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-[#FF7A50]" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'helmetOne', value: helmetOneSize, setter: setHelmetOneSize, label: tr('details.transportBooking.helmetOne') },
+                    { key: 'helmetTwo', value: helmetTwoSize, setter: setHelmetTwoSize, label: tr('details.transportBooking.helmetTwo') }
+                  ].map(item => (
+                    <div key={item.key} className="min-w-0">
+                      <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
+                        {item.label}
+                      </span>
+                      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-[#CBD5E1] bg-[#F4F7F6] p-1">
+                        {HELMET_SIZE_OPTIONS.map(size => {
+                          const isSelected = item.value === size;
+                          return (
+                            <button
+                              key={`${item.key}-${size}`}
+                              type="button"
+                              onClick={() => item.setter(size)}
+                              aria-pressed={isSelected}
+                              className={`min-h-10 rounded-xl px-1 text-xs font-extrabold transition active:scale-95 ${
+                                isSelected
+                                  ? 'bg-[#FF7A50] text-white shadow-sm'
+                                  : 'text-gray-400 hover:text-[#1E293B]'
+                              }`}
+                            >
+                              {getHelmetSizeLabel(size)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {[
+                  { key: 'surfRack', label: tr('filters.transport.features.surfRack'), value: needsSurfRack, setter: setNeedsSurfRack, Icon: Waves },
+                  { key: 'insurance', label: tr('filters.transport.features.insurance'), value: needsInsurance, setter: setNeedsInsurance, Icon: ShieldCheck }
+                ].map(item => (
+                  <div key={item.key} className={`pl pl-interactive flex items-center justify-between gap-3 rounded-2xl border p-4 transition ${
+                    item.value
+                      ? 'selected border-[#FF7A50] bg-white shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                      : 'border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]'
+                  }`}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                        item.value ? 'bg-[#FF7A50] text-white' : 'bg-[#F4F7F6] text-[#2F7D69]'
+                      }`}>
+                        <item.Icon className="h-4 w-4" />
+                      </span>
+                      <span className="truncate text-sm font-extrabold text-[#1E293B]">{item.label}</span>
+                    </div>
+                    <div className="grid w-28 grid-cols-2 rounded-2xl bg-[#F4F7F6] p-1">
+                      {[false, true].map(value => (
+                        <button
+                          key={`${item.key}-${value ? 'yes' : 'no'}`}
+                          type="button"
+                          onClick={() => item.setter(value)}
+                          className={`rounded-xl px-2 py-1.5 text-xs font-extrabold transition ${
+                            item.value === value
+                              ? 'bg-white text-[#FF7A50] shadow-sm'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          {value ? tr('common.yes') : tr('common.no')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-[#E5E7EB] bg-white p-4">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsTransportBookingConfirmOpen(false)}
+                    className="flex-1 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-xs font-extrabold text-[#1E293B] transition hover:border-[#CBD5E1]"
+                  >
+                    {tr('common.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={orderPlaced}
+                    onClick={confirmTransportBooking}
+                    className="flex-1 rounded-2xl bg-[#2F7D69] px-4 py-3 text-xs font-extrabold text-white shadow-md transition hover:bg-emerald-600 disabled:bg-emerald-600"
+                  >
+                    {orderPlaced ? tr('details.loading') : tr('details.transportBooking.confirm')}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

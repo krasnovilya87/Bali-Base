@@ -94,6 +94,7 @@ export interface Listing {
   // Pricing configuration
   pricePerDay: number; // in IDR
   pricePerMonth?: number; // in IDR
+  listingDepositAmount?: number; // in IDR
   bookingComPrice?: number; // in IDR, used for direct comparison
   competitorPlatform?: 'Booking' | 'Airbnb' | 'Agoda' | 'Trip.com' | 'Traveloka' | 'Only Facebook';
   competitorUrl?: string;
@@ -134,8 +135,12 @@ export interface Listing {
   vehicleColor?: string;
   vehicleCondition?: 'like_new' | 'minor_scratches' | 'faded_surf_rack';
   sellerType?: 'private' | 'company';
+  sellerGoogleMapsUrl?: string;
+  sellerGooglePlaceId?: string;
   keyless?: boolean;
+  abs?: boolean;
   surfRack?: boolean;
+  insurance?: boolean;
   freeDeliveryToAddress?: boolean;
   freeDeliveryToDistricts?: boolean;
   freeDeliveryDistricts?: string[];
@@ -242,7 +247,9 @@ export interface FilterState {
   vehicleCondition: string[];
   sellerType: string[];
   keylessOnly: boolean;
+  absOnly: boolean;
   surfRackOnly: boolean;
+  insuranceOnly: boolean;
   freeDeliveryToAddressOnly: boolean;
   freeDeliveryToDistrictOnly: boolean;
 }

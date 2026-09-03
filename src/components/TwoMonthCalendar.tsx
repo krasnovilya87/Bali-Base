@@ -449,9 +449,9 @@ export default function TwoMonthCalendar({
           ? 'fixed inset-x-2 top-[calc(env(safe-area-inset-top)+12px)] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[520] mx-auto w-auto max-w-[580px]'
           : 'fixed left-1/2 top-1/2 z-[520] w-[580px] max-h-[calc(100vh-2rem)] -translate-x-1/2 -translate-y-1/2'
         : modalPlacement
-        ? 'fixed inset-x-0 bottom-0 w-full max-h-[85vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-h-none'
+        ? 'fixed inset-x-0 bottom-0 z-[520] w-full max-h-[85vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-h-none'
         : 'absolute top-full left-1/2 mt-2 w-[calc(100vw-1rem)] max-w-[580px] -translate-x-1/2 sm:w-[580px] sm:-mt-1 md:-translate-x-1/3'
-      } bg-[#F4F7F6] text-gray-950 rounded-[24px] sm:rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl ${appOverlayPlacement ? '' : 'z-50'} font-sans overflow-hidden transition-all duration-300 flex flex-col`}
+      } bg-[#F4F7F6] text-gray-950 rounded-[24px] sm:rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.15)] sm:shadow-2xl ${appOverlayPlacement || modalPlacement ? '' : 'z-50'} font-sans overflow-hidden transition-all duration-300 flex flex-col`}
     >
       {/* Top Header Section */}
       <div className="bg-[#EAEAEC] p-3 pb-3 sm:p-5 sm:pb-4 border-b border-[#D1D5DB]/30 relative shrink-0">

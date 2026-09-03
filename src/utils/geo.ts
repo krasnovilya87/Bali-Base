@@ -41,8 +41,49 @@ const latLngToSvgPoint = (coords: GeoPoint): MapPoint => ({
   y: Math.round(-515.132 * coords.lat - 4214.91)
 });
 
+const svgPointToLatLng = (point: MapPoint): GeoPoint => ({
+  lat: -((point.y + 4214.91) / 515.132),
+  lng: (point.x + 51241.25) / 446.688
+});
+
 const normalizeDistrictKey = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const POPULAR_DISTRICT_ORDER = [
+  'Canggu',
+  'Seminyak',
+  'Kuta',
+  'Ubud',
+  'Sanur',
+  'Uluwatu',
+  'Jimbaran',
+  'Nusa Dua',
+  'Ungasan',
+  'Denpasar',
+  'Seseh',
+  'Amed',
+  'Kintamani',
+  'Lovina',
+  'Nusa Penida',
+  'Lembongan',
+  'Ceningan',
+  'Gili Trawangan',
+  'Gili Air',
+  'Gili Meno',
+  'Kerobokan'
+];
+
+const districtPopularityRank = (district: string) => {
+  const normalizedDistrict = normalizeDistrictKey(district);
+  const rank = POPULAR_DISTRICT_ORDER.findIndex(item => normalizeDistrictKey(item) === normalizedDistrict);
+  return rank === -1 ? POPULAR_DISTRICT_ORDER.length : rank;
+};
+
+export const sortDistrictsByPopularity = (districts: string[]) =>
+  [...districts].sort((a, b) => {
+    const rankDiff = districtPopularityRank(a) - districtPopularityRank(b);
+    return rankDiff || a.localeCompare(b);
+  });
 
 const formatDistrictName = (value: string) =>
   (value.trim().toLowerCase() === 'jimburan' ? 'jimbaran' : value)
@@ -340,6 +381,11 @@ export const findDistrictByCoordsSync = (lat: number, lng: number): string | nul
   }
 
   return null;
+};
+
+export const findDistrictByMapPointSync = (point: MapPoint): string | null => {
+  const coords = svgPointToLatLng(point);
+  return findDistrictByCoordsSync(coords.lat, coords.lng);
 };
 
 export const getDistrictBoundsSync = (districtName: string): GeoBounds | null => {

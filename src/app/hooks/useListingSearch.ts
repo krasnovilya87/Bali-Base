@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { MOCK_GUIDES } from '../../data';
 import { BookingRequest, FilterState, Listing } from '../../types';
-import { findDistrictByCoordsSync, getDefaultDistrictCoordsSync, getListingCoords, isPointInPolygon } from '../../utils/geo';
+import { findDistrictByCoordsSync, findDistrictByMapPointSync, getDefaultDistrictCoordsSync, getListingCoords, isPointInPolygon } from '../../utils/geo';
 import { isListingUnavailableForDates } from '../../utils/bookingAvailability';
 import { isListingFresh } from '../../utils/listingFreshness';
 import { isListingVerified } from '../../utils/listingVerification';
@@ -10,6 +10,8 @@ import {
   getListingVehicleCondition,
   getListingVehicleModel,
   getListingSellerType,
+  listingHasAbs,
+  listingHasInsurance,
   listingHasKeyless,
   listingHasSurfRack,
   listingOffersFreeDeliveryToAddress,
@@ -149,8 +151,10 @@ export const useListingSearch = ({
       if (filters.vehicleCondition.length > 0 && !filters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
       if (filters.sellerType.length > 0 && !filters.sellerType.includes(getListingSellerType(item))) return false;
       if (filters.keylessOnly && !listingHasKeyless(item)) return false;
+      if (filters.absOnly && !listingHasAbs(item)) return false;
       if (filters.surfRackOnly && !listingHasSurfRack(item)) return false;
-      if (filters.freeDeliveryToAddressOnly && customPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
+      if (filters.insuranceOnly && !listingHasInsurance(item)) return false;
+      if (filters.freeDeliveryToAddressOnly && customPoint && !listingOffersFreeDeliveryToAddress(item, findDistrictByMapPointSync(customPoint) || undefined)) return false;
     }
 
     if (currentL1 === 'housing' && item.distanceToSeaMinutes !== undefined) {

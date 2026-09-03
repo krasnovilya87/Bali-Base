@@ -353,11 +353,6 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
 
           {isPhoneUploadDevice ? (
             <div className="space-y-3">
-              {isUploading && (
-                <p className="text-center text-[10px] font-bold text-[#FF7A50]">
-                  {tr('wizard.photos.backgroundUploading')}
-                </p>
-              )}
               <button
                 type="button"
                 onClick={() => setPendingPhotoAction('camera')}
@@ -369,7 +364,6 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
               <button
                 type="button"
                 onClick={() => setPendingPhotoAction('gallery')}
-                disabled={isUploading}
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#CBD5E1] bg-[#F4F7F6] px-4 py-3 text-xs font-black text-[#1E293B] transition active:scale-[0.99] disabled:opacity-60"
               >
                 <ImagePlus className="h-4 w-4" />

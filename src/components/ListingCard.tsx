@@ -14,6 +14,38 @@ import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
+import {
+  getListingVehicleModel,
+  listingHasAbs,
+  listingHasKeyless,
+  SCOOTER_MODELS_BY_GROUP
+} from '../utils/scooterFilters';
+
+const SCOOTER_ENGINE_CC: Record<string, number> = {
+  scoopy: 110,
+  beat_110: 110,
+  genio_110: 110,
+  vario_125: 125,
+  fazzio: 125,
+  grand_filano_125: 125,
+  freego_125: 125,
+  mio_125: 125,
+  vespa_sprint_150: 150,
+  vespa_primavera_150: 150,
+  nmax: 155,
+  nmax_turbo: 155,
+  aerox_155: 155,
+  vario_160: 160,
+  adv: 160,
+  pcx: 160,
+  xmax: 250
+};
+
+const SCOOTER_KEYLESS_MODELS = ['scoopy', 'fazzio', 'grand_filano_125', 'nmax', 'nmax_turbo', 'xmax', 'pcx', 'beat_110'];
+const SCOOTER_ABS_MODELS = ['nmax', 'nmax_turbo', 'xmax', 'pcx', 'adv'];
+const SCOOTER_PHOTO_MODELS = SCOOTER_MODELS_BY_GROUP.retro;
+const SCOOTER_LONG_TRIP_MODELS = SCOOTER_MODELS_BY_GROUP.maxi;
+const SCOOTER_COUPLE_MODELS = SCOOTER_MODELS_BY_GROUP.maxi.filter(model => model !== 'aerox_155');
 
 interface ListingCardProps {
   key?: string;
@@ -320,7 +352,50 @@ export default function ListingCard({
     return `${listing.district}, Бали`;
   };
 
+  const getTransportCardSubtitle = () => {
+    const vehicleModel = getListingVehicleModel(listing) || listing.vehicleModel || '';
+    const parts: string[] = [];
+
+    if (vehicleModel && SCOOTER_ENGINE_CC[vehicleModel]) {
+      parts.push(tr('details.transport.ccValue', { count: SCOOTER_ENGINE_CC[vehicleModel] }));
+    }
+
+    if (listing.yearBuilt && listing.yearBuilt !== 'other') {
+      parts.push(String(listing.yearBuilt));
+    }
+
+    if (listingHasAbs(listing) || SCOOTER_ABS_MODELS.includes(vehicleModel)) {
+      parts.push(tr('filters.transport.features.abs'));
+    }
+
+    if (listingHasKeyless(listing) || SCOOTER_KEYLESS_MODELS.includes(vehicleModel)) {
+      parts.push(tr('filters.transport.features.keyless'));
+    }
+
+    if (vehicleModel && vehicleModel !== 'xmax') {
+      parts.push(tr('details.transport.fit.city'));
+    }
+
+    if (SCOOTER_LONG_TRIP_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.longTrips'));
+    }
+
+    if (SCOOTER_PHOTO_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.photo'));
+    }
+
+    if (SCOOTER_COUPLE_MODELS.includes(vehicleModel)) {
+      parts.push(tr('details.transport.fit.coupleComfort'));
+    }
+
+    return parts.length > 0 ? parts.join(' • ') : translatedDescription;
+  };
+
   const getCardSubtitle = (): string => {
+    if (listing.category === 'transport') {
+      return getTransportCardSubtitle();
+    }
+
     if (listing.category !== 'housing') {
       return listing.description;
     }
@@ -612,7 +687,7 @@ export default function ListingCard({
           </div>
 
           <p className="line-clamp-2 leading-snug sm:leading-relaxed mb-1 sm:mb-2 text-gray-500 font-light text-[10px] sm:text-xs lg:text-[13px]">
-            {listing.category === 'housing' ? buildListingSubtitle(listing, 4, tr) : translatedDescription}
+            {getCardSubtitle()}
           </p>
         </div>
 

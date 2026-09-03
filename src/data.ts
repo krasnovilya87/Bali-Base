@@ -476,7 +476,7 @@ const createGeneratedBikeListings = (): Listing[] => GENERATED_BIKES.map(([
       : vehicleCondition === 'minor_scratches'
         ? 'Second hand scooter with small scratches, serviced brakes and good tires.'
         : 'Technically sound scooter with faded paint and surf rack for beach rides.'
-    } ${['nmax', 'nmax_turbo', 'xmax', 'adv', 'pcx'].includes(vehicleModel) ? 'Comfortable for a couple and longer rides.' : 'Best for solo city rides.'} ${freeDeliveryToAddress ? 'Free delivery to selected address.' : 'Pickup at the listed area.'}`,
+      } ${['nmax', 'nmax_turbo', 'xmax', 'adv', 'pcx'].includes(vehicleModel) ? 'Comfortable for a couple and longer rides.' : 'Best for solo city rides.'} ${freeDeliveryToAddress ? 'Free delivery to selected address.' : 'Pickup at the listed area.'}`,
     district,
     address: `Jl. Raya ${district}, Bali`,
     images: BIKE_IMAGE_SETS[index % BIKE_IMAGE_SETS.length],

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FilterState, Listing } from '../types';
-import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, ShieldCheck, HelpCircle, Wifi, Compass, Waves, Heart } from 'lucide-react';
+import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, ShieldCheck, HelpCircle, Wifi, Compass, Waves, Heart } from 'lucide-react';
 import Polzunok from './Polzunok';
 import { isListingFresh } from '../utils/listingFreshness';
 import { isListingVerified } from '../utils/listingVerification';
@@ -18,11 +18,14 @@ import {
   getListingVehicleCondition,
   getListingVehicleModel,
   getScooterModelsForGroup,
+  listingHasAbs,
+  listingHasInsurance,
   listingHasKeyless,
   listingHasSurfRack,
   listingOffersFreeDeliveryToAddress,
   yearMeetsMinimum
 } from '../utils/scooterFilters';
+import { findDistrictByMapPointSync } from '../utils/geo';
 // @ts-ignore
 import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
 // @ts-ignore
@@ -263,7 +266,9 @@ export default function HousingFilters({
       vehicleCondition: [],
       sellerType: [],
       keylessOnly: false,
+      absOnly: false,
       surfRackOnly: false,
+      insuranceOnly: false,
       freeDeliveryToAddressOnly: false,
       freeDeliveryToDistrictOnly: false
     };
@@ -427,8 +432,10 @@ export default function HousingFilters({
         if (localFilters.vehicleCondition.length > 0 && !localFilters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
         if (localFilters.sellerType.length > 0 && !localFilters.sellerType.includes(getListingSellerType(item))) return false;
         if (localFilters.keylessOnly && !listingHasKeyless(item)) return false;
+        if (localFilters.absOnly && !listingHasAbs(item)) return false;
         if (localFilters.surfRackOnly && !listingHasSurfRack(item)) return false;
-        if (localFilters.freeDeliveryToAddressOnly && deliveryPoint && !listingOffersFreeDeliveryToAddress(item)) return false;
+        if (localFilters.insuranceOnly && !listingHasInsurance(item)) return false;
+        if (localFilters.freeDeliveryToAddressOnly && deliveryPoint && !listingOffersFreeDeliveryToAddress(item, findDistrictByMapPointSync(deliveryPoint) || undefined)) return false;
       }
 
       if (isHousingCategory && item.distanceToSeaMinutes !== undefined) {
@@ -604,7 +611,6 @@ export default function HousingFilters({
       onRequestDeliveryPoint?.();
     }
   };
-
   return (
     <div 
       className="fixed inset-0 bg-[#1E293B]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-[500] animate-fade-in" 
@@ -1068,7 +1074,9 @@ export default function HousingFilters({
                 <div className="grid grid-cols-2 gap-2.5">
                   {[
                     { key: 'keylessOnly' as const, labelKey: 'filters.transport.features.keyless', Icon: Key },
-                    { key: 'surfRackOnly' as const, labelKey: 'filters.transport.features.surfRack', Icon: Waves }
+                    { key: 'absOnly' as const, labelKey: 'filters.transport.features.abs', Icon: ShieldCheck },
+                    { key: 'surfRackOnly' as const, labelKey: 'filters.transport.features.surfRack', Icon: Waves },
+                    { key: 'insuranceOnly' as const, labelKey: 'filters.transport.features.insurance', Icon: Shield }
                   ].map(({ key, labelKey, Icon }) => {
                     const isActive = localFilters[key];
                     return (

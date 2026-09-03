@@ -126,7 +126,9 @@ const getDefaultFilters = (): FilterState => ({
   vehicleCondition: [],
   sellerType: [],
   keylessOnly: false,
+  absOnly: false,
   surfRackOnly: false,
+  insuranceOnly: false,
   freeDeliveryToAddressOnly: false,
   freeDeliveryToDistrictOnly: false,
   favoritesOnly: false

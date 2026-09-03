@@ -97,11 +97,25 @@ export const listingHasKeyless = (listing: Listing) => {
   return /\b(keyless|smart key|smartkey)\b|без.?ключ|смарт.?ключ/.test(text);
 };
 
+export const listingHasAbs = (listing: Listing) => {
+  if (listing.abs) return true;
+
+  const text = `${listing.title} ${listing.description}`.toLowerCase();
+  return /\b(abs|anti.?lock|anti.?lock braking)\b|антиблок|абс/.test(text);
+};
+
 export const listingHasSurfRack = (listing: Listing) => {
   if (listing.surfRack || listing.amenities?.includes('surf_rack')) return true;
 
   const text = `${listing.title} ${listing.description}`.toLowerCase();
   return /\b(surf.?rack|board.?rack)\b|серф.?рек|креп.{0,12}серф/.test(text);
+};
+
+export const listingHasInsurance = (listing: Listing) => {
+  if (listing.insurance) return true;
+
+  const text = `${listing.title} ${listing.description}`.toLowerCase();
+  return /\b(insurance|insured)\b|страхов/.test(text);
 };
 
 export const yearMeetsMinimum = (year: Listing['yearBuilt'], minYear: number) =>
@@ -119,8 +133,12 @@ export const listingOffersFreeDeliveryToDistrict = (listing: Listing, selectedDi
   return selectedDistricts.some(district => text.includes(district.toLowerCase())) || /(all districts|all areas|все район|любой район)/.test(text);
 };
 
-export const listingOffersFreeDeliveryToAddress = (listing: Listing) => {
-  if (listing.freeDeliveryToAddress || listing.freeDeliveryToDistricts) return true;
+export const listingOffersFreeDeliveryToAddress = (listing: Listing, deliveryDistrict?: string) => {
+  if (listing.freeDeliveryToAddress) return true;
+  if (deliveryDistrict && listing.freeDeliveryDistricts?.length) {
+    return listingOffersFreeDeliveryToDistrict(listing, [deliveryDistrict]);
+  }
+  if (listing.freeDeliveryToDistricts) return true;
 
   const text = `${listing.title} ${listing.description}`.toLowerCase();
   return /(free delivery|бесплатн.{0,12}достав|доставк.{0,12}бесплат|gratis delivery|pengiriman gratis)/.test(text);

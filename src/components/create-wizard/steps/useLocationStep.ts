@@ -51,7 +51,7 @@ const getGooglePlacesMapsLinkResolveApiUrl = () => {
   return `${String(apiBaseUrl).replace(/\/$/, '')}/api/google-places/maps-link/resolve`;
 };
 
-const resolveGoogleMapsLink = async (value: string) => {
+export const resolveGoogleMapsLink = async (value: string) => {
   if (!isGoogleMapsLink(value)) {
     return {
       placeId: extractGooglePlaceIdFromText(value),

@@ -8,6 +8,8 @@ type StepPricingProps = {
   setPricePerDay: React.Dispatch<React.SetStateAction<number>>;
   pricePerMonth: number;
   setPricePerMonth: React.Dispatch<React.SetStateAction<number>>;
+  listingDepositAmount: number;
+  setListingDepositAmount: React.Dispatch<React.SetStateAction<number>>;
   competitorPlatform: string;
   setCompetitorPlatform: React.Dispatch<React.SetStateAction<string>>;
   competitorPrice: number;
@@ -41,6 +43,8 @@ const StepPricing: React.FC<StepPricingProps> = ({
   setPricePerDay,
   pricePerMonth,
   setPricePerMonth,
+  listingDepositAmount,
+  setListingDepositAmount,
   competitorPlatform,
   setCompetitorPlatform,
   competitorPrice,
@@ -75,7 +79,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="grid grid-cols-2 gap-4 pt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
             {tr('wizard.priceDay')}
@@ -103,6 +107,22 @@ const StepPricing: React.FC<StepPricingProps> = ({
             onChange={event => {
               const digits = event.target.value.replace(/\D/g, '');
               setPricePerMonth(digits ? parseInt(digits, 10) : 0);
+            }}
+            className="w-full bg-white border-0 p-2.5 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-0"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
+            {tr('wizard.depositAmount')}
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={formatPriceWithSpaces(listingDepositAmount)}
+            onChange={event => {
+              const digits = event.target.value.replace(/\D/g, '');
+              setListingDepositAmount(digits ? parseInt(digits, 10) : 0);
             }}
             className="w-full bg-white border-0 p-2.5 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-0"
           />

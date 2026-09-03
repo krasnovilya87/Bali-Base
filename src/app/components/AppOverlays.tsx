@@ -223,6 +223,9 @@ export default function AppOverlays({
           currencyRate={currencyRate}
           onAddBooking={handleAddBooking}
           bookings={bookings}
+          filters={filters}
+          deliveryPoint={customPoint}
+          onRequestDeliveryPoint={() => setShowMapSelectModal(true)}
           initialCheckInDate={initialCheckInDate}
           initialCheckOutDate={initialCheckOutDate}
           onDatesChange={(checkIn, checkOut) => {
