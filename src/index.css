@@ -180,6 +180,8 @@ html,
   background-position: center 44%;
   background-repeat: no-repeat;
   background-size: cover;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Base body reset styled with clean light background to match the screenshot */
@@ -193,6 +195,27 @@ body {
   background-size: cover;
   color: var(--color-text-dark);
   font-family: var(--font-sans);
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  :where(
+    input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="image"]):not([type="radio"]):not([type="range"]):not([type="reset"]):not([type="submit"]),
+    textarea,
+    select
+  ) {
+    box-sizing: border-box;
+    max-width: 100%;
+    font-size: 16px !important;
+  }
+
+  :where(.pu, [role="dialog"] > form, [role="dialog"] > div) {
+    max-width: min(100%, calc(100dvw - 1.5rem));
+    box-sizing: border-box;
+  }
 }
 
 /* Make all grey fonts thin throughout the application (popups, standalone blocks, main menu, etc.) */

@@ -339,21 +339,21 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
           />
 
           {isPhoneUploadDevice ? (
-            <div className="space-y-3">
+            <div className="mx-auto flex min-h-[168px] w-full max-w-sm flex-col items-center justify-center gap-4 py-4">
               <button
                 type="button"
                 onClick={() => openScooterCamera()}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF7A50] px-4 py-3 text-xs font-black text-white shadow-md transition active:scale-[0.99] disabled:opacity-60"
+                className="flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-[#FF7A50] px-5 py-4 text-sm font-black text-white shadow-[0_14px_30px_rgba(255,122,80,0.24)] transition active:scale-[0.99] disabled:opacity-60"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-5 w-5" />
                 {tr('wizard.photos.takeBikePhoto')}
               </button>
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#CBD5E1] bg-[#F4F7F6] px-4 py-3 text-xs font-black text-[#1E293B] transition active:scale-[0.99] disabled:opacity-60"
+                className="flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl border border-[#CBD5E1] bg-[#F4F7F6] px-5 py-4 text-sm font-black text-[#1E293B] shadow-sm transition active:scale-[0.99] disabled:opacity-60"
               >
-                <ImagePlus className="h-4 w-4" />
+                <ImagePlus className="h-5 w-5" />
                 {tr('wizard.photos.uploadFromGallery')}
               </button>
               {isPreparingPhotoPreview && (

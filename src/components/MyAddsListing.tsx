@@ -212,7 +212,7 @@ export default function MyAddsListing({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[500] p-2 sm:p-5" id="cabinet-modal">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[500] px-2 pb-2 pt-[calc(env(safe-area-inset-top)+18px)] sm:p-5" id="cabinet-modal">
       <div className="bg-[#F4F7F6] w-full max-w-5xl h-full max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-scale-up border border-[#E2E8F0]">
 
         {/* Main Cabinet Top Nav Header */}

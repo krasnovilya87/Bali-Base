@@ -218,7 +218,7 @@ export default function CreateWizard({
   const [densityType, setDensityType] = useState<'cozy' | 'medium' | 'large'>(initialListing?.densityType || 'cozy');
   const [showKitchenTooltip, setShowKitchenTooltip] = useState<boolean>(false);
   const [vehicleModel, setVehicleModel] = useState<string>(initialListing?.vehicleModel || '');
-  const [vehicleModelQuantity, setVehicleModelQuantity] = useState<number | undefined>(initialListing?.vehicleModelQuantity || undefined);
+  const [vehicleModelQuantity, setVehicleModelQuantity] = useState<number | undefined>(initialListing?.vehicleModelQuantity || 1);
   const [vehicleColor, setVehicleColor] = useState<string>(initialListing?.vehicleColor || '');
   const [vehicleCondition, setVehicleCondition] = useState<string>(initialListing?.vehicleCondition || '');
   const [sellerType, setSellerType] = useState<string>(initialListing?.sellerType || '');
@@ -443,6 +443,9 @@ export default function CreateWizard({
       if (category === 'transport' && subCategory === 'scooters' && !vehicleModel) {
         return tr('wizard.validationScooterModel');
       }
+      if (category === 'transport' && subCategory === 'scooters' && !vehicleColor) {
+        return tr('wizard.validationScooterColor');
+      }
       if (!title.trim() && !(category === 'transport' && subCategory === 'scooters' && getScooterModelLabel(vehicleModel))) return tr('wizard.validationTitle');
       if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
         return tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH });
@@ -646,6 +649,10 @@ export default function CreateWizard({
 
     if (currentStepKey === 'title' && category === 'transport' && subCategory === 'scooters' && !vehicleModel) {
       showValidationPopup(tr('wizard.validationScooterModel'));
+      return;
+    }
+    if (currentStepKey === 'title' && category === 'transport' && subCategory === 'scooters' && !vehicleColor) {
+      showValidationPopup(tr('wizard.validationScooterColor'));
       return;
     }
     if (currentStepKey === 'title' && !title.trim() && !(category === 'transport' && subCategory === 'scooters' && getScooterModelLabel(vehicleModel))) {

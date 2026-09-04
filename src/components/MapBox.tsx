@@ -160,6 +160,26 @@ function MapViewController({
   }, [map, districtBounds, isSelectionActive, isFullscreen, mapResizeVersion]);
 
   useEffect(() => {
+    if (!map || isSelectionActive || selectionVariant !== 'point' || !tempPoint) return;
+
+    const focusSelectedPoint = () => {
+      google.maps.event.trigger(map, 'resize');
+      map.panTo(tempPoint);
+      if ((map.getZoom() ?? 0) < 13) {
+        map.setZoom(13);
+      }
+    };
+
+    const frame = window.requestAnimationFrame(focusSelectedPoint);
+    const timers = [120, 320, 620].map(delay => window.setTimeout(focusSelectedPoint, delay));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      timers.forEach(timer => window.clearTimeout(timer));
+    };
+  }, [map, isSelectionActive, selectionVariant, tempPoint, isFullscreen, selectionFitRequest, mapResizeVersion]);
+
+  useEffect(() => {
     if (!map || !isSelectionActive || selectionState !== 'fixed') return;
     if (selectionMode === 'area' && polygonPoints.length < 3) return;
     if (selectionMode === 'radius' && !tempPoint) return;

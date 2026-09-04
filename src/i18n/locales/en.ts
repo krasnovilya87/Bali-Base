@@ -1202,6 +1202,7 @@ const en: TranslationDictionary = {
   "wizard.icalAccepted": "Link accepted. Found 3 busy dates.",
   "wizard.validationTitle": "Please enter a listing title.",
   "wizard.validationScooterModel": "Please choose a scooter model.",
+  "wizard.validationScooterColor": "Please choose a scooter color.",
   "wizard.validationAddress": "Please enter the exact property address.",
   "wizard.validationPhotos": "Please assign at least one photo for each required category.",
   "wizard.validationYear": "Please choose or enter the approximate build/renovation year.",

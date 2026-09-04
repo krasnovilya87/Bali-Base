@@ -1207,6 +1207,7 @@ const ru: TranslationDictionary = {
   "booking.notesPlaceholder": "Добавьте заметки..."
   ,"wizard.validationPopupTitle": "Check the listing",
   "wizard.validationScooterModel": "Выберите модель скутера.",
+  "wizard.validationScooterColor": "Выберите цвет скутера.",
   "wizard.validationDescriptionMin": "Please add a description of at least {count} characters.",
   "wizard.validationObjectNotFound": "The object was not found on Google Maps. Choose an address from the suggestions or set the exact point on the map.",
   "wizard.validationMapPoint": "Укажите точку локации на карте.",

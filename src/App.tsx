@@ -2240,7 +2240,7 @@ export default function App() {
                     id="map-right-panel"
                   >
                     {/* Absolute overlay close button for map drawer */}
-                    <div className="absolute top-4 right-4 z-[220] flex flex-col gap-2">
+                    <div className={`absolute right-4 z-[220] flex flex-col gap-2 ${isMapFullscreen ? 'top-[calc(env(safe-area-inset-top)+22px)]' : 'top-4'}`}>
                       <button
                         onClick={() => {
                           setShowListingMap(false);

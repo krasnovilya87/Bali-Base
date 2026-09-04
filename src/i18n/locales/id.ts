@@ -1108,6 +1108,7 @@ const id: TranslationDictionary = {
   "booking.notesPlaceholder": "Tambahkan catatan...",
   "wizard.validationPopupTitle": "Check the listing",
   "wizard.validationScooterModel": "Please choose a scooter model.",
+  "wizard.validationScooterColor": "Please choose a scooter color.",
   "wizard.validationDescriptionMin": "Please add a description of at least {count} characters.",
   "wizard.validationObjectNotFound": "The object was not found on Google Maps. Choose an address from the suggestions or set the exact point on the map.",
   "wizard.validationMapPoint": "Please set the location point on the map.",
