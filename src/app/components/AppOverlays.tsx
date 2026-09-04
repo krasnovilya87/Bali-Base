@@ -62,10 +62,13 @@ type AppOverlaysProps = {
   setShowProfileModal: Dispatch<SetStateAction<boolean>>;
   setShowUsersModal: Dispatch<SetStateAction<boolean>>;
   onRequestDeliveryPoint?: () => void;
+  onRequestBookingDeliveryPoint?: () => void;
+  transportBookingReturnToken: number;
   setSortBy: Dispatch<SetStateAction<string>>;
   showAdminDashboard: boolean;
   showCreateWizard: boolean;
   showFiltersModal: boolean;
+  isMapFullscreen: boolean;
   showMapSelectModal: boolean;
   showMyAddsListing: boolean;
   showProfileModal: boolean;
@@ -131,10 +134,13 @@ export default function AppOverlays({
   setShowProfileModal,
   setShowUsersModal,
   onRequestDeliveryPoint,
+  onRequestBookingDeliveryPoint,
+  transportBookingReturnToken,
   setSortBy,
   showAdminDashboard,
   showCreateWizard,
   showFiltersModal,
+  isMapFullscreen,
   showMapSelectModal,
   showMyAddsListing,
   showProfileModal,
@@ -207,7 +213,7 @@ export default function AppOverlays({
         />
       )}
 
-      {selectedListingFresh && (
+      {selectedListingFresh && !isMapFullscreen && (
         <ListingDetails
           listing={selectedListingFresh}
           onClose={() => {
@@ -225,7 +231,7 @@ export default function AppOverlays({
           bookings={bookings}
           filters={filters}
           deliveryPoint={customPoint}
-          onRequestDeliveryPoint={() => setShowMapSelectModal(true)}
+          onRequestDeliveryPoint={onRequestBookingDeliveryPoint}
           initialCheckInDate={initialCheckInDate}
           initialCheckOutDate={initialCheckOutDate}
           onDatesChange={(checkIn, checkOut) => {
@@ -239,6 +245,8 @@ export default function AppOverlays({
             handleUpdateListing(updatedListing);
           }}
           onEditClick={canEditSelectedListing ? openEditWizard : undefined}
+          isMapFullscreen={isMapFullscreen}
+          transportBookingReturnToken={transportBookingReturnToken}
         />
       )}
 

@@ -11,7 +11,7 @@ import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords } from '../utils/geo';
+import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
 import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';
@@ -42,7 +42,9 @@ import { isListingVerified } from '../utils/listingVerification';
 import {
   getListingVehicleModel,
   listingHasAbs,
+  listingHasInsurance,
   listingHasKeyless,
+  listingHasSurfRack,
   SCOOTER_MODEL_OPTIONS,
   SCOOTER_MODELS_BY_GROUP
 } from '../utils/scooterFilters';
@@ -61,6 +63,10 @@ type DetailCharacteristic = {
 };
 
 type HelmetSize = 'none' | 'S' | 'M' | 'L' | 'XL';
+type TransportBookingNotice = {
+  messageKey: string;
+  showSearchAction?: boolean;
+};
 
 const NEARBY_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 183;
 const LISTING_NOTES_STORAGE_PREFIX = 'bali_base_listing_notes';
@@ -291,6 +297,8 @@ interface ListingDetailsProps {
   onEditClick?: (listing: Listing) => void;
   onRequireAuth?: (reasonKey?: string, afterAuth?: () => void) => boolean;
   activeLanguage?: LanguageCode;
+  isMapFullscreen?: boolean;
+  transportBookingReturnToken?: number;
 }
 
 export default function ListingDetails({
@@ -309,7 +317,9 @@ export default function ListingDetails({
   onListingChange,
   onEditClick,
   onRequireAuth,
-  activeLanguage = DEFAULT_LANGUAGE
+  activeLanguage = DEFAULT_LANGUAGE,
+  isMapFullscreen = false,
+  transportBookingReturnToken = 0
 }: ListingDetailsProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
@@ -336,6 +346,7 @@ export default function ListingDetails({
   const [needsSurfRack, setNeedsSurfRack] = useState<boolean>(false);
   const [needsInsurance, setNeedsInsurance] = useState<boolean>(false);
   const [deliveryPointRequestedFromBooking, setDeliveryPointRequestedFromBooking] = useState<boolean>(false);
+  const [transportBookingNotice, setTransportBookingNotice] = useState<TransportBookingNotice | null>(null);
   const [countdownText, setCountdownText] = useState<string>('');
   const [isCharacteristicsExpanded, setIsCharacteristicsExpanded] = useState<boolean>(false);
   const [isAmenitiesExpanded, setIsAmenitiesExpanded] = useState<boolean>(false);
@@ -517,6 +528,14 @@ export default function ListingDetails({
     setCheckInDate(initialCheckInDate);
     setCheckOutDate(initialCheckOutDate);
   }, [initialCheckInDate, initialCheckOutDate]);
+
+  useEffect(() => {
+    if (transportBookingReturnToken <= 0) return;
+
+    setDeliveryPointRequestedFromBooking(true);
+    setTransportBookingNotice(null);
+    setIsTransportBookingConfirmOpen(true);
+  }, [transportBookingReturnToken]);
 
   useEffect(() => {
     const deliveryDistrict = deliveryPoint ? findDistrictByMapPointSync(deliveryPoint) : '';
@@ -769,28 +788,58 @@ export default function ListingDetails({
   };
 
   const getHelmetSizeLabel = (size: HelmetSize) =>
-    size === 'none' ? tr('details.transportBooking.helmetNone') : size;
+    size === 'none' ? 'None' : size;
+
+  const getDeliveryAddressForBookingSummary = () => {
+    if (!deliveryAddress.trim()) return 'Not specified';
+    if (!deliveryPoint) return deliveryAddress.trim();
+
+    const coords = svgPointToLatLng(deliveryPoint);
+    const query = `${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  };
 
   const getTransportBookingSummary = () => {
     if (listing.category !== 'transport') return '';
 
     const lines = [
-      `${tr('details.transportBooking.deliveryAddress')}: ${deliveryAddress.trim() || tr('details.transportBooking.deliveryAddressEmpty')}`,
-      `${tr('details.transportBooking.deliveryTime')}: ${deliveryTime}`,
-      `${tr('details.transportBooking.helmetOne')}: ${getHelmetSizeLabel(helmetOneSize)}`,
-      `${tr('details.transportBooking.helmetTwo')}: ${getHelmetSizeLabel(helmetTwoSize)}`,
-      `${tr('filters.transport.features.surfRack')}: ${needsSurfRack ? tr('common.yes') : tr('common.no')}`,
-      `${tr('filters.transport.features.insurance')}: ${needsInsurance ? tr('common.yes') : tr('common.no')}`
+      `Delivery time: ${deliveryTime}`,
+      `Helmet 1: ${getHelmetSizeLabel(helmetOneSize)}`,
+      `Helmet 2: ${getHelmetSizeLabel(helmetTwoSize)}`,
+      `Surf Rack: ${needsSurfRack ? 'Yes' : 'No'}`,
+      `Insurance: ${needsInsurance ? 'Yes' : 'No'}`,
+      `Delivery address: ${getDeliveryAddressForBookingSummary()}`
     ];
 
-    return `${tr('details.transportBooking.requestDetails')}\n${lines.join('\n')}`;
+    return `Booking details:\n${lines.join('\n')}`;
+  };
+
+  const handleTransportBookingOptionToggle = (
+    option: 'surfRack' | 'insurance',
+    value: boolean,
+    setter: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (!value) {
+      setter(false);
+      return;
+    }
+
+    const isAvailable = option === 'surfRack'
+      ? listingHasSurfRack(listing)
+      : listingHasInsurance(listing);
+
+    if (isAvailable) {
+      setter(true);
+      return;
+    }
+
+    setTransportBookingNotice({
+      messageKey: 'details.transportBooking.optionUnavailableSearchAgain',
+      showSearchAction: true
+    });
   };
 
   const openTransportBookingConfirm = () => {
-    if (!checkInDate || !checkOutDate) {
-      setShowDateCalendar(true);
-      return;
-    }
     if (isListingUnavailableForDates(listing, bookings, checkInDate, checkOutDate)) {
       setUnavailableMessage(tr('details.unavailableForDates', { title: listing.title }));
       return;
@@ -816,16 +865,21 @@ export default function ListingDetails({
       ? `${stripListingRoomTypeFromTitle(listing.title)} - ${roomTypeLabel}`
       : listing.title;
     const transportBookingSummary = getTransportBookingSummary();
-    const templateMessage = tr('details.whatsappBookingMessage', {
-      bookingTitle,
-      checkIn: checkInDate,
-      checkOut: checkOutDate,
-      nights: diffDays,
-      total: formatBookingTotal(totalBudget)
-    }) + (transportBookingSummary ? `\n\n${transportBookingSummary}` : '');
-    const encodedMessage = encodeURIComponent(templateMessage);
+    const bookingMessage = [
+      'Bali Base.',
+      'Hello!',
+      `I would like to book [${bookingTitle}].`,
+      `Dates: [${checkInDate}] - [${checkOutDate}].`,
+      `Duration: [${diffDays} nights].`,
+      `Total price: [${formatBookingTotal(totalBudget)} IDR]`
+    ].join('\n');
+    const whatsappMessage = [bookingMessage, transportBookingSummary].filter(Boolean).join('\n\n');
     const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
-    const waUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+    const waSearchParams = new URLSearchParams({
+      phone: cleanNumber,
+      text: whatsappMessage
+    });
+    const waUrl = `https://api.whatsapp.com/send?${waSearchParams.toString()}`;
 
     // Save WhatsApp click details into local history for Users -> History tab
     try {
@@ -894,6 +948,20 @@ export default function ListingDetails({
   };
 
   const confirmTransportBooking = () => {
+    const datesMissing = !checkInDate || !checkOutDate;
+    const addressMissing = !deliveryAddress.trim();
+
+    if (datesMissing || addressMissing) {
+      const messageKey = datesMissing && addressMissing
+        ? 'details.transportBooking.validationDatesAndAddress'
+        : datesMissing
+          ? 'details.transportBooking.validationDates'
+          : 'details.transportBooking.validationAddress';
+
+      setTransportBookingNotice({ messageKey });
+      return;
+    }
+
     setIsTransportBookingConfirmOpen(false);
     placeWhatsAppBooking();
   };
@@ -1819,9 +1887,13 @@ export default function ListingDetails({
 
     return parts.join(' • ');
   };
+  const transportBookingLabelClass = 'mb-2 block text-[10px] font-black uppercase text-gray-400';
+  const transportBookingCardClass = 'rounded-2xl border border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]';
+  const compactBookingDate = (date: string) => formatBookingDate(date).replace(/\./g, '');
+  const hasDeliveryAddress = Boolean(deliveryAddress);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[400] lg:p-5 p-0 animate-fade-in" id="details-modal">
+    <div className={`fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center lg:p-5 p-0 animate-fade-in ${isMapFullscreen ? 'pointer-events-none opacity-0 z-[1]' : 'z-[400]'}`} id="details-modal">
       <div className="bg-white w-full h-full lg:max-w-5xl lg:max-h-[92vh] rounded-none lg:rounded-3xl overflow-hidden shadow-2xl flex flex-col relative animate-slide-up lg:animate-scale-up border-0 lg:border border-[#E5E7EB]">
 
         {/* Header actions */}
@@ -2723,7 +2795,7 @@ export default function ListingDetails({
 
         {isTransportBookingConfirmOpen && (
           <div className="fixed inset-0 z-[490] flex items-center justify-center bg-black/65 p-3 sm:p-5 backdrop-blur-xs">
-            <div className="pu flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl max-h-[92vh]">
+            <div className="pu flex w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl max-h-[92vh]">
               <div className="pu-header pu-window-header">
                 <div className="flex items-center gap-2.5">
                   <Calendar className="h-5 w-5 text-[#FF7A50]" />
@@ -2745,7 +2817,7 @@ export default function ListingDetails({
                   <img
                     src={listing.images[0]}
                     alt={listing.title}
-                    className="h-20 w-24 shrink-0 rounded-2xl object-cover"
+                    className="h-24 w-32 shrink-0 rounded-2xl object-cover"
                   />
                   <div className="min-w-0 flex-1 py-1">
                     <p className={`line-clamp-2 text-sm font-extrabold leading-tight text-[#1E293B] ${THEME.fonts.heading}`}>
@@ -2763,76 +2835,61 @@ export default function ListingDetails({
                   onClick={() => setShowDateCalendar(true)}
                   className="w-full text-left transition active:scale-[0.99]"
                 >
-                  <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
+                  <span className={transportBookingLabelClass}>
                     {tr('details.transportBooking.period')}
                   </span>
-                  <div className="flex flex-row items-center border-[0.5px] border-white/60 bg-white/32 p-1 rounded-full shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition relative min-w-0">
-                    <div className="flex min-w-0 flex-1 items-center gap-1 px-2 py-2 sm:gap-2 sm:px-4">
-                      <Calendar className="w-4 h-4 text-[#FF7A50] shrink-0" />
-                      <div className="text-left font-sans flex-1 min-w-0">
-                        <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
-                          {tr('details.transportBooking.dateRange', {
-                            from: formatBookingDate(checkInDate),
-                            to: formatBookingDate(checkOutDate)
-                          })}
-                        </span>
-                        <span className="mt-1 text-[#FF7A50] font-bold text-[10px] leading-[1.15] block truncate">
-                          {diffDays} {pluralizeDays(diffDays)}
-                        </span>
-                      </div>
+                  <div className={`${transportBookingCardClass} flex min-h-[48px] overflow-hidden transition hover:border-[#FF7A50]/60`}>
+                    <div className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-2.5">
+                      <Calendar className="h-4 w-4 shrink-0 text-[#FF7A50]" />
+                      <span className="block truncate text-sm font-extrabold leading-tight text-[#1E293B]">
+                        {compactBookingDate(checkInDate)} - {compactBookingDate(checkOutDate)}
+                      </span>
+                    </div>
+                    <div className="flex w-[96px] shrink-0 flex-col items-center justify-center bg-[#1E293B] px-3 text-center text-white sm:w-[108px]">
+                      <span className="text-base font-black leading-none">{diffDays}</span>
+                      <span className="mt-0.5 max-w-full truncate text-[10px] font-extrabold uppercase leading-none text-white/70">
+                        {pluralizeDays(diffDays)}
+                      </span>
                     </div>
                   </div>
                 </button>
 
-                <div className="space-y-2">
-                  <span className="block text-[10px] font-black uppercase text-gray-400">
-                    {tr('details.transportBooking.deliveryAddress')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={requestTransportBookingDeliveryPoint}
-                    className={`pl pl-interactive w-full rounded-2xl border p-4 text-left transition active:scale-[0.99] ${
-                      deliveryAddress
-                        ? 'selected border-[#FF7A50] bg-white shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
-                        : 'border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:border-[#FF7A50]/60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
-                          deliveryAddress ? 'bg-[#FF7A50] text-white' : 'bg-[#F4F7F6] text-[#2F7D69]'
-                        }`}>
-                          <MapPin className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <span className="block truncate text-xs font-extrabold text-[#1E293B]">
-                            {deliveryAddress || tr('details.transportBooking.chooseAddress')}
-                          </span>
-                          <span className="mt-0.5 block truncate text-[10px] font-bold text-gray-400">
-                            {tr('details.transportBooking.chooseAddressHint')}
-                          </span>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-[#FF7A50]" />
-                    </div>
-                  </button>
-                </div>
-
-                <div>
-                  <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
-                    {tr('details.transportBooking.deliveryTime')}
-                  </span>
-                  <div className="relative">
-                    <select
-                      value={deliveryTime}
-                      onChange={(event) => setDeliveryTime(event.target.value)}
-                      className="w-full appearance-none rounded-2xl border border-[#E5E7EB] bg-[#F4F7F6] px-4 py-3 pr-10 text-sm font-extrabold text-[#1E293B] outline-none transition focus:border-[#FF7A50] focus:bg-white"
+                <div className="grid grid-cols-[minmax(0,1fr)_118px] gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                  <div className="min-w-0">
+                    <span className={transportBookingLabelClass}>
+                      {tr('details.transportBooking.deliveryAddress')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={requestTransportBookingDeliveryPoint}
+                      className={`pl pl-interactive ${transportBookingCardClass} flex min-h-[48px] w-full items-center px-3.5 py-2.5 text-left transition active:scale-[0.99] hover:border-[#FF7A50]/60`}
                     >
-                      {DELIVERY_TIME_OPTIONS.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                    <ChevronRight className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-[#FF7A50]" />
+                      <span className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-black uppercase leading-none ${
+                        hasDeliveryAddress
+                          ? 'bg-[#2F7D69]/10 text-[#2F7D69]'
+                          : 'bg-[#FF3B30]/10 text-[#FF3B30]'
+                      }`}>
+                        {hasDeliveryAddress ? tr('details.transportBooking.addressStatusProvided') : tr('details.transportBooking.addressStatusMissing')}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="min-w-0">
+                    <span className={transportBookingLabelClass}>
+                      {tr('details.transportBooking.deliveryTime')}
+                    </span>
+                    <div className={`relative ${transportBookingCardClass} min-h-[48px]`}>
+                      <select
+                        value={deliveryTime}
+                        onChange={(event) => setDeliveryTime(event.target.value)}
+                        className="h-[48px] w-full appearance-none rounded-2xl bg-transparent px-3.5 pr-8 text-sm font-extrabold text-[#1E293B] outline-none transition focus:bg-white"
+                      >
+                        {DELIVERY_TIME_OPTIONS.map(time => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                      <ChevronRight className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-[#FF7A50]" />
+                    </div>
                   </div>
                 </div>
 
@@ -2842,10 +2899,10 @@ export default function ListingDetails({
                     { key: 'helmetTwo', value: helmetTwoSize, setter: setHelmetTwoSize, label: tr('details.transportBooking.helmetTwo') }
                   ].map(item => (
                     <div key={item.key} className="min-w-0">
-                      <span className="mb-2 block text-[10px] font-black uppercase text-gray-400">
+                      <span className={transportBookingLabelClass}>
                         {item.label}
                       </span>
-                      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-[#CBD5E1] bg-[#F4F7F6] p-1">
+                      <div className={`${transportBookingCardClass} grid min-h-[48px] grid-cols-5 gap-1 p-1`}>
                         {HELMET_SIZE_OPTIONS.map(size => {
                           const isSelected = item.value === size;
                           return (
@@ -2854,7 +2911,7 @@ export default function ListingDetails({
                               type="button"
                               onClick={() => item.setter(size)}
                               aria-pressed={isSelected}
-                              className={`min-h-10 rounded-xl px-1 text-xs font-extrabold transition active:scale-95 ${
+                              className={`min-h-9 rounded-xl px-1 text-xs font-extrabold transition active:scale-95 ${
                                 isSelected
                                   ? 'bg-[#FF7A50] text-white shadow-sm'
                                   : 'text-gray-400 hover:text-[#1E293B]'
@@ -2869,41 +2926,41 @@ export default function ListingDetails({
                   ))}
                 </div>
 
-                {[
-                  { key: 'surfRack', label: tr('filters.transport.features.surfRack'), value: needsSurfRack, setter: setNeedsSurfRack, Icon: Waves },
-                  { key: 'insurance', label: tr('filters.transport.features.insurance'), value: needsInsurance, setter: setNeedsInsurance, Icon: ShieldCheck }
-                ].map(item => (
-                  <div key={item.key} className={`pl pl-interactive flex items-center justify-between gap-3 rounded-2xl border p-4 transition ${
-                    item.value
-                      ? 'selected border-[#FF7A50] bg-white shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
-                      : 'border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]'
-                  }`}>
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
-                        item.value ? 'bg-[#FF7A50] text-white' : 'bg-[#F4F7F6] text-[#2F7D69]'
-                      }`}>
-                        <item.Icon className="h-4 w-4" />
-                      </span>
-                      <span className="truncate text-sm font-extrabold text-[#1E293B]">{item.label}</span>
-                    </div>
-                    <div className="grid w-28 grid-cols-2 rounded-2xl bg-[#F4F7F6] p-1">
-                      {[false, true].map(value => (
-                        <button
-                          key={`${item.key}-${value ? 'yes' : 'no'}`}
-                          type="button"
-                          onClick={() => item.setter(value)}
-                          className={`rounded-xl px-2 py-1.5 text-xs font-extrabold transition ${
-                            item.value === value
-                              ? 'bg-white text-[#FF7A50] shadow-sm'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          {value ? tr('common.yes') : tr('common.no')}
-                        </button>
-                      ))}
-                    </div>
+                <div>
+                  <span className={transportBookingLabelClass}>{tr('details.additionalTitle')}</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'surfRack', label: tr('filters.transport.features.surfRack'), value: needsSurfRack, setter: setNeedsSurfRack, Icon: Waves },
+                      { key: 'insurance', label: tr('filters.transport.features.insurance'), value: needsInsurance, setter: setNeedsInsurance, Icon: ShieldCheck }
+                    ].map(item => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => handleTransportBookingOptionToggle(item.key as 'surfRack' | 'insurance', !item.value, item.setter)}
+                        aria-pressed={item.value}
+                        className={`pl pl-interactive ${transportBookingCardClass} flex min-h-[48px] min-w-0 cursor-pointer select-none items-center justify-between gap-2 px-3 py-2.5 text-left transition ${
+                          item.value
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50]/12 shadow-[0_10px_22px_rgba(255,122,80,0.12)]'
+                            : 'hover:border-[#FF7A50]/60'
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <item.Icon className={`h-4 w-4 shrink-0 ${item.value ? 'text-[#FF7A50]' : 'text-[#64748B]'}`} />
+                          <span className="truncate text-xs font-extrabold text-[#1E293B] leading-tight">
+                            {item.label}
+                          </span>
+                        </span>
+                        <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
+                          item.value ? 'bg-[#FF7A50]' : 'bg-[#CBD5E1]'
+                        }`}>
+                          <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                            item.value ? 'translate-x-5' : 'translate-x-1'
+                          }`} />
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
 
               <div className="border-t border-[#E5E7EB] bg-white p-4">
@@ -2924,6 +2981,61 @@ export default function ListingDetails({
                     {orderPlaced ? tr('details.loading') : tr('details.transportBooking.confirm')}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {transportBookingNotice && (
+          <div className="fixed inset-0 z-[610] flex items-center justify-center bg-[#0F172A]/55 p-4 backdrop-blur-sm">
+            <div className="pu w-full max-w-sm overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white shadow-2xl">
+              <div className="pu-header pu-window-header">
+                <div className="flex items-center gap-2.5">
+                  <ShieldAlert className="h-5 w-5 text-[#FF7A50]" />
+                  <h3>{tr('details.transportBooking.title')}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTransportBookingNotice(null)}
+                  className="pu-close"
+                  title={tr('common.close')}
+                  aria-label={tr('common.close')}
+                >
+                  <X />
+                </button>
+              </div>
+              <div className="pu-body p-5">
+                <div className="rounded-2xl border border-[#FF7A50]/15 bg-[#FF7A50]/8 px-4 py-4 text-sm font-bold leading-relaxed text-[#1E293B]">
+                  {tr(transportBookingNotice.messageKey)}
+                </div>
+              </div>
+              <div className="pu-footer justify-end">
+                {transportBookingNotice.showSearchAction ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setTransportBookingNotice(null)}
+                      className="pu-button-secondary"
+                    >
+                      {tr('common.no')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransportBookingNotice(null)}
+                      className="pu-button-primary"
+                    >
+                      {tr('common.yes')}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setTransportBookingNotice(null)}
+                    className="pu-button-primary"
+                  >
+                    {tr('common.ok')}
+                  </button>
+                )}
               </div>
             </div>
           </div>

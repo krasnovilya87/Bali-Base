@@ -81,8 +81,8 @@ export default function MapSelectModal({
   };
 
   return (
-    <div className={`fixed inset-0 bg-gray-950/80 backdrop-blur-md z-[500] flex items-center justify-center p-4 select-none ${THEME.fonts.main}`}>
-      <div 
+    <div className={`fixed inset-0 bg-gray-950/80 backdrop-blur-md z-[1040] flex items-center justify-center p-4 select-none ${THEME.fonts.main}`}>
+      <div
         className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-gray-100 animate-scale-up max-h-[95vh]"
         onClick={(e) => e.stopPropagation()}
         id="map-select-modal-container"
@@ -113,11 +113,11 @@ export default function MapSelectModal({
 
         {/* Form area & Interactive Vector Map */}
         <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-4 items-stretch min-h-[300px]" ref={mapContainerRef}>
-          
+
 
 
           <div className="relative w-full aspect-[550/450] bg-[#2F7D69]/5 rounded-2xl border border-gray-200 overflow-hidden flex items-center justify-center select-none">
-            
+
             {/* Map Canvas */}
             <div className="absolute inset-0 w-full h-full">
               <svg
@@ -143,7 +143,7 @@ export default function MapSelectModal({
                   strokeWidth="1.5"
                   strokeDasharray="6,4"
                 />
-                
+
                 {/* Radius Overlay Circle */}
                 {tempPoint && (
                   <circle
@@ -177,7 +177,7 @@ export default function MapSelectModal({
                         textAnchor="middle"
                         className={`${THEME.fonts.main} font-bold uppercase transition-all duration-300`}
                         style={{
-                          fontSize: '8px', 
+                          fontSize: '8px',
                           letterSpacing: '0.05em',
                           fill: active ? THEME.colors.brandOrangeHover : '#475569',
                           fontWeight: active ? 'bold' : 'normal'
@@ -217,7 +217,7 @@ export default function MapSelectModal({
                 ~ {Math.round(tempRadius)} км (px)
               </span>
             </div>
-            
+
             <input
               type="range"
               min={30}
@@ -228,7 +228,7 @@ export default function MapSelectModal({
               disabled={!tempPoint}
               className="w-full accent-brand-orange cursor-pointer"
             />
-            
+
             <div className={`flex justify-between text-[10px] text-gray-400 ${THEME.fonts.mono}`}>
               <span>Локальный (30 км)</span>
               <span>Средний (120 км)</span>
@@ -249,7 +249,7 @@ export default function MapSelectModal({
           >
             Сбросить фильтр
           </button>
-          
+
           <div className="flex gap-2">
             <button
               onClick={onClose}

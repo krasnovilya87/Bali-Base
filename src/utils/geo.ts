@@ -41,7 +41,7 @@ const latLngToSvgPoint = (coords: GeoPoint): MapPoint => ({
   y: Math.round(-515.132 * coords.lat - 4214.91)
 });
 
-const svgPointToLatLng = (point: MapPoint): GeoPoint => ({
+export const svgPointToLatLng = (point: MapPoint): GeoPoint => ({
   lat: -((point.y + 4214.91) / 515.132),
   lng: (point.x + 51241.25) / 446.688
 });

@@ -714,6 +714,8 @@ export default function App() {
   const [isMapSelectionActive, setIsMapSelectionActive] = useState<boolean>(false);
   const [selectionFitRequest, setSelectionFitRequest] = useState<number>(0);
   const [returnToFiltersAfterDeliveryPoint, setReturnToFiltersAfterDeliveryPoint] = useState<boolean>(false);
+  const [returnToBookingAfterDeliveryPoint, setReturnToBookingAfterDeliveryPoint] = useState<boolean>(false);
+  const [transportBookingReturnToken, setTransportBookingReturnToken] = useState<number>(0);
   const [backSwipeOffset, setBackSwipeOffset] = useState<number>(0);
   const [isBackSwipeSettling, setIsBackSwipeSettling] = useState<boolean>(false);
 
@@ -1296,6 +1298,15 @@ export default function App() {
 
   const requestTransportDeliveryPoint = () => {
     setReturnToFiltersAfterDeliveryPoint(true);
+    setShowFiltersModal(false);
+    setShowListingMap(true);
+    setIsMapFullscreen(true);
+    setIsMapSelectionActive(true);
+  };
+
+  const requestTransportBookingDeliveryPoint = () => {
+    setReturnToFiltersAfterDeliveryPoint(false);
+    setReturnToBookingAfterDeliveryPoint(true);
     setShowFiltersModal(false);
     setShowListingMap(true);
     setIsMapFullscreen(true);
@@ -2222,9 +2233,10 @@ export default function App() {
                   <div
                     ref={mapPanelRef}
                     className={`overflow-hidden flex flex-col ${isMapFullscreen
-                      ? 'fixed inset-0 w-full h-full z-[300]'
+                      ? 'fixed inset-0 w-full h-full z-[2147483647]'
                       : 'relative w-full md:w-[calc(50%-12px)] h-[50vh] min-h-[400px] md:sticky md:top-[var(--map-sticky-top,154px)] md:h-[var(--map-sticky-height,calc(100dvh-174px))] md:min-h-0 md:flex-none z-[100]'
                       }`}
+                    style={isMapFullscreen ? { zIndex: 2147483647 } : undefined}
                     id="map-right-panel"
                   >
                     {/* Absolute overlay close button for map drawer */}
@@ -2234,6 +2246,10 @@ export default function App() {
                           setShowListingMap(false);
                           setIsMapFullscreen(false);
                           setIsMapSelectionActive(false);
+                          if (returnToBookingAfterDeliveryPoint) {
+                            setReturnToBookingAfterDeliveryPoint(false);
+                            setTransportBookingReturnToken(token => token + 1);
+                          }
                         }}
                         className="w-10 h-10 bg-[#F4F7F6] hover:bg-white text-[#1E293B] hover:text-[#FF7A50] rounded-full border-[0.5px] border-[#94A3B8]/30 shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 group"
                         title={tr('map.close')}
@@ -2302,6 +2318,10 @@ export default function App() {
                           if (returnToFiltersAfterDeliveryPoint) {
                             setReturnToFiltersAfterDeliveryPoint(false);
                             window.setTimeout(() => setShowFiltersModal(true), 120);
+                          }
+                          if (returnToBookingAfterDeliveryPoint) {
+                            setReturnToBookingAfterDeliveryPoint(false);
+                            setTransportBookingReturnToken(token => token + 1);
                           }
                         }}
                         initialPoint={customPoint}
@@ -2534,11 +2554,14 @@ export default function App() {
           setShowProfileModal={setShowProfileModal}
           setShowUsersModal={setShowUsersModal}
           onRequestDeliveryPoint={requestTransportDeliveryPoint}
+          onRequestBookingDeliveryPoint={requestTransportBookingDeliveryPoint}
+          transportBookingReturnToken={transportBookingReturnToken}
           setSortBy={setSortBy}
           onInitialBookingsOpened={() => setInitialBookingsListingId(null)}
           showAdminDashboard={showAdminDashboard}
           showCreateWizard={showCreateWizard}
           showFiltersModal={showFiltersModal}
+          isMapFullscreen={isMapFullscreen}
           showMapSelectModal={showMapSelectModal}
           showMyAddsListing={showMyAddsListing}
           showProfileModal={showProfileModal}
