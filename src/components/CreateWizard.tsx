@@ -100,8 +100,6 @@ const stepLabelKeyByStep: Record<WizardStepKey, string> = {
 };
 
 const MIN_DESCRIPTION_LENGTH = 20;
-const MIN_LISTING_PHOTO_WIDTH = 640;
-const MIN_LISTING_PHOTO_HEIGHT = 480;
 const DEFAULT_HOUSING_PRICE_PER_DAY = 450000;
 const DEFAULT_HOUSING_PRICE_PER_MONTH = 11000000;
 const DEFAULT_SCOOTER_PRICE_PER_DAY = 120000;
@@ -111,6 +109,14 @@ const UNIT_TYPE_SUBCATEGORIES = ['private_suite', 'entire_place'];
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
 type UnitType = typeof UNIT_TYPE_OPTIONS[number];
+type PhotoPublishState = {
+  photoUrls: string[];
+  realPhotoUrls: string[];
+  photoSlotAssignments: Partial<Record<string, string[]>>;
+};
+
+const isPublishablePhotoUrl = (url: string) =>
+  !url.startsWith('data:') && !url.startsWith('blob:');
 
 export default function CreateWizard({
   onClose,
@@ -246,6 +252,7 @@ export default function CreateWizard({
     isUploading,
     uploadError,
     uploadDiagnostic,
+    waitForPhotoUploads,
     dragActive,
     fileInputRef,
     cameraInputRef,
@@ -419,12 +426,6 @@ export default function CreateWizard({
     });
   };
 
-  const inspectListingImage = (url: string) => new Promise<{ width: number; height: number } | null>((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
-    image.onerror = () => resolve(null);
-    image.src = url;
-  });
   const wizardFlow = getWizardFlow(category, subCategory);
   const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
@@ -433,27 +434,6 @@ export default function CreateWizard({
   useEffect(() => {
     setStep(current => Math.min(current, wizardFlow.length));
   }, [wizardFlow.length]);
-
-  const validatePhotoQuality = async () => {
-    for (const photoUrl of photoUrls) {
-      if (photoUrl.startsWith('data:')) {
-        return tr('wizard.validationPhotoLocal');
-      }
-
-      const dimensions = await inspectListingImage(photoUrl);
-      if (!dimensions) {
-        return tr('wizard.validationPhotoBroken');
-      }
-      if (dimensions.width < MIN_LISTING_PHOTO_WIDTH || dimensions.height < MIN_LISTING_PHOTO_HEIGHT) {
-        return tr('wizard.validationPhotoQuality', {
-          width: MIN_LISTING_PHOTO_WIDTH,
-          height: MIN_LISTING_PHOTO_HEIGHT
-        });
-      }
-    }
-
-    return '';
-  };
 
   const validateMechanicalStep = async (targetStep: number) => {
     const targetStepKey = getWizardStepKey(targetStep, category, subCategory);
@@ -726,7 +706,11 @@ export default function CreateWizard({
     Math.abs(a.lng - b.lng) < 0.00001
   );
 
-  const buildListing = (id: string, googlePlaceIdOverride = ''): Listing => {
+  const buildListing = (
+    id: string,
+    googlePlaceIdOverride = '',
+    photoPublishState: PhotoPublishState = { photoUrls, realPhotoUrls, photoSlotAssignments }
+  ): Listing => {
     const dropPricePerDay = selectedDiscountPercent > 0
       ? Math.round(pricePerDay * (1 - selectedDiscountPercent / 100))
       : undefined;
@@ -741,16 +725,17 @@ export default function CreateWizard({
       ? `${baseTitle} · ${ROOM_TYPE_LABELS[roomType]}`
       : baseTitle;
     const cleanListingTitle = stripRoomTypeFromTitle(listingTitle);
+    const publishablePhotoUrls = photoPublishState.photoUrls.filter(isPublishablePhotoUrl);
     const assignedPhotoUrls = activePhotoSlotConfig
-      .flatMap(slot => photoSlotAssignments[slot.id] || [])
-      .filter(url => photoUrls.includes(url));
+      .flatMap(slot => photoPublishState.photoSlotAssignments[slot.id] || [])
+      .filter(url => publishablePhotoUrls.includes(url));
     const orderedPhotoUrls = [
       ...assignedPhotoUrls,
-      ...photoUrls.filter(url => !assignedPhotoUrls.includes(url))
+      ...publishablePhotoUrls.filter(url => !assignedPhotoUrls.includes(url))
     ];
     const savedPhotoSlotAssignments = activePhotoSlotConfig.reduce<Partial<Record<string, string[]>>>((acc, slot) => {
-      const urls = (photoSlotAssignments[slot.id] || [])
-        .filter(url => photoUrls.includes(url))
+      const urls = (photoPublishState.photoSlotAssignments[slot.id] || [])
+        .filter(url => publishablePhotoUrls.includes(url))
         .slice(0, slot.maxCount);
       if (urls.length) {
         acc[slot.id] = urls;
@@ -788,7 +773,7 @@ export default function CreateWizard({
       googlePlaceId: selectedGooglePlaceId || googlePlaceIdOverride || initialListing?.googlePlaceId || initialListing?.placeId,
       images: orderedPhotoUrls,
       photoSlotAssignments: savedPhotoSlotAssignments,
-      realPhotoUrls: realPhotoUrls.filter(url => orderedPhotoUrls.includes(url)),
+      realPhotoUrls: photoPublishState.realPhotoUrls.filter(url => orderedPhotoUrls.includes(url)),
       rating: initialListing?.rating || 4.9,
       reviewsCount: initialListing?.reviewsCount || 0,
       reviews: initialListing?.reviews || [],
@@ -864,6 +849,12 @@ export default function CreateWizard({
     };
   };
 
+  const hasRequiredPublishablePhotos = (photoPublishState: PhotoPublishState) =>
+    requiredPhotoSlots.every(slot =>
+      (photoPublishState.photoSlotAssignments[slot.id] || [])
+        .some(url => photoPublishState.photoUrls.includes(url) && isPublishablePhotoUrl(url))
+    );
+
   const handlePublishListing = async () => {
     if (isPublishing) return;
     setIsPublishing(true);
@@ -873,15 +864,13 @@ export default function CreateWizard({
       return;
     }
 
+    let photoPublishState: PhotoPublishState = { photoUrls, realPhotoUrls, photoSlotAssignments };
     if (isUploading) {
-      showValidationPopup(tr('wizard.validationPhotosUploading'), photosStep);
-      setIsPublishing(false);
-      return;
+      photoPublishState = await waitForPhotoUploads();
     }
 
-    const photoQualityMessage = await validatePhotoQuality();
-    if (photoQualityMessage) {
-      showValidationPopup(photoQualityMessage, photosStep);
+    if (!hasRequiredPublishablePhotos(photoPublishState)) {
+      showValidationPopup(tr('wizard.validationPhotos'), photosStep);
       setIsPublishing(false);
       return;
     }
@@ -901,7 +890,11 @@ export default function CreateWizard({
     const existingPrivateRoomListing = category === 'housing' && subCategory === 'private_room'
       ? findExistingPrivateRoomListing(resolvedGooglePlaceId)
       : undefined;
-    const baseListing = buildListing(initialListing?.id || existingPrivateRoomListing?.id || `house-${Date.now()}`, resolvedGooglePlaceId);
+    const baseListing = buildListing(
+      initialListing?.id || existingPrivateRoomListing?.id || `house-${Date.now()}`,
+      resolvedGooglePlaceId,
+      photoPublishState
+    );
     const publishCoords = confirmedLocationCoords || pickedCoords || baseListing.locationCoords;
     let listingForPublish: Listing = {
       ...baseListing,

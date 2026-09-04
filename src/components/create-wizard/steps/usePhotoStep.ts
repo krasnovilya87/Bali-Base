@@ -68,10 +68,18 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const optionalPhotoSlots = activePhotoSlotConfig.filter(slot => !slot.required);
 
   // STEP 6: Dropzone upload library with previews
-  const [photoUrls, setPhotoUrls] = useState<string[]>(
+  const [photoUrls, setPhotoUrlsState] = useState<string[]>(
     initialListing?.images?.length ? initialListing.images : []
   );
-  const [photoSlotAssignments, setPhotoSlotAssignments] = useState<Partial<Record<PhotoSlotId, string[]>>>(() => {
+  const photoUrlsRef = useRef(photoUrls);
+  const setPhotoUrls = (updater: React.SetStateAction<string[]>) => {
+    const next = typeof updater === 'function'
+      ? (updater as (value: string[]) => string[])(photoUrlsRef.current)
+      : updater;
+    photoUrlsRef.current = next;
+    setPhotoUrlsState(next);
+  };
+  const [photoSlotAssignments, setPhotoSlotAssignmentsState] = useState<Partial<Record<PhotoSlotId, string[]>>>(() => {
     if (!initialListing?.images?.length || !initialListing.photoSlotAssignments) return {};
     return activePhotoSlotConfig.reduce<Partial<Record<PhotoSlotId, string[]>>>((acc, slot) => {
       const assignedImages = (initialListing.photoSlotAssignments?.[slot.id] || [])
@@ -83,9 +91,26 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       return acc;
     }, {});
   });
-  const [realPhotoUrls, setRealPhotoUrls] = useState<string[]>(initialListing?.realPhotoUrls || []);
+  const photoSlotAssignmentsRef = useRef(photoSlotAssignments);
+  const setPhotoSlotAssignments = (updater: React.SetStateAction<Partial<Record<PhotoSlotId, string[]>>>) => {
+    const next = typeof updater === 'function'
+      ? (updater as (value: Partial<Record<PhotoSlotId, string[]>>) => Partial<Record<PhotoSlotId, string[]>>)(photoSlotAssignmentsRef.current)
+      : updater;
+    photoSlotAssignmentsRef.current = next;
+    setPhotoSlotAssignmentsState(next);
+  };
+  const [realPhotoUrls, setRealPhotoUrlsState] = useState<string[]>(initialListing?.realPhotoUrls || []);
+  const realPhotoUrlsRef = useRef(realPhotoUrls);
+  const setRealPhotoUrls = (updater: React.SetStateAction<string[]>) => {
+    const next = typeof updater === 'function'
+      ? (updater as (value: string[]) => string[])(realPhotoUrlsRef.current)
+      : updater;
+    realPhotoUrlsRef.current = next;
+    setRealPhotoUrlsState(next);
+  };
   const [draggedPhotoSlotId, setDraggedPhotoSlotId] = useState<PhotoSlotId | null>(null);
   const uploadSequenceRef = useRef(initialListing?.images?.length || 0);
+  const uploadPromisesRef = useRef<Set<Promise<void>>>(new Set());
 
   const getAssignedPhotoUrls = (slotId: PhotoSlotId) => photoSlotAssignments[slotId] || [];
 
@@ -129,6 +154,25 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
 
   const beginUpload = () => setActiveUploadCount(count => count + 1);
   const endUpload = () => setActiveUploadCount(count => Math.max(0, count - 1));
+  const trackPhotoUpload = (promise: Promise<void>) => {
+    uploadPromisesRef.current.add(promise);
+    promise.finally(() => {
+      uploadPromisesRef.current.delete(promise);
+    });
+    return promise;
+  };
+
+  const waitForPhotoUploads = async () => {
+    while (uploadPromisesRef.current.size > 0) {
+      await Promise.allSettled(Array.from(uploadPromisesRef.current));
+    }
+
+    return {
+      photoUrls: photoUrlsRef.current,
+      realPhotoUrls: realPhotoUrlsRef.current,
+      photoSlotAssignments: photoSlotAssignmentsRef.current
+    };
+  };
 
   const assignUploadedPhoto = (photoUrl: string, preferredSlotId?: PhotoSlotId | null) => {
     if (!isScooterPhotoFlow) return;
@@ -218,7 +262,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     return `${nameParts.join('-')}.${getUploadExtension(image, originalFile)}`;
   };
 
-  const uploadPhotoToStorage = async (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
+  const uploadPhotoToStorage = (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => trackPhotoUpload((async () => {
     beginUpload();
     setUploadError('');
     setUploadDiagnostic(null);
@@ -251,7 +295,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     } finally {
       endUpload();
     }
-  };
+  })());
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -316,7 +360,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     setUploadError('');
     setUploadDiagnostic(null);
 
-    void (async () => {
+    void trackPhotoUpload((async () => {
       let uploadableImage: Blob | File = file;
       try {
         uploadableImage = await resizeAndCompressListingImage(file);
@@ -343,7 +387,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       } finally {
         endUpload();
       }
-    })();
+    })());
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -381,6 +425,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     isUploading,
     uploadError,
     uploadDiagnostic,
+    waitForPhotoUploads,
     dragActive,
     fileInputRef,
     cameraInputRef,
