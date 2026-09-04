@@ -932,13 +932,8 @@ export default function ListingDetails({
     onAddBooking(newReq);
 
     setOrderPlaced(true);
-    setTimeout(() => {
-      try {
-        window.open(waUrl, '_blank');
-      } finally {
-        setOrderPlaced(false);
-      }
-    }, 1500);
+    window.location.href = waUrl;
+    setOrderPlaced(false);
   };
 
   const handleWhatsAppClick = () => {
