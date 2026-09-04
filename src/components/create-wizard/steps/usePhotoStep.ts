@@ -1,6 +1,5 @@
 ﻿import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
-import { useI18n } from '../../../i18nContext';
 import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
@@ -61,7 +60,6 @@ const getUploadExtension = (image: Blob | File, fallbackFile: File) => {
 };
 
 export const usePhotoStep = ({ initialListing, category, subCategory, uploadNamingContext }: UsePhotoStepParams) => {
-  const { tr } = useI18n();
   const isScooterPhotoFlow = category === 'transport' && subCategory === 'scooters';
   const activePhotoSlotConfig = isScooterPhotoFlow ? SCOOTER_PHOTO_SLOT_CONFIG : PHOTO_SLOT_CONFIG;
   const requiredPhotoSlots = activePhotoSlotConfig.filter(slot => slot.required);
@@ -145,6 +143,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const [activeUploadCount, setActiveUploadCount] = useState(0);
   const [uploadError, setUploadError] = useState<string>('');
   const [uploadDiagnostic, setUploadDiagnostic] = useState<PhotoUploadDiagnostic | null>(null);
+  const [isPreparingPhotoPreview, setIsPreparingPhotoPreview] = useState(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +153,15 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
 
   const beginUpload = () => setActiveUploadCount(count => count + 1);
   const endUpload = () => setActiveUploadCount(count => Math.max(0, count - 1));
+  const waitForPreviewIndicatorPaint = () =>
+    new Promise<void>((resolve) => {
+      if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0);
+        return;
+      }
+
+      window.requestAnimationFrame(() => resolve());
+    });
   const trackPhotoUpload = (promise: Promise<void>) => {
     uploadPromisesRef.current.add(promise);
     promise.finally(() => {
@@ -262,40 +270,49 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     return `${nameParts.join('-')}.${getUploadExtension(image, originalFile)}`;
   };
 
-  const uploadPhotoToStorage = (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => trackPhotoUpload((async () => {
-    beginUpload();
-    setUploadError('');
-    setUploadDiagnostic(null);
-    let uploadableImage: Blob | File = file;
-    try {
-      uploadableImage = await resizeAndCompressListingImage(file);
-      const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset, ++uploadSequenceRef.current);
-      const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
-        fileName: seoFileName,
-        fileType: uploadableImage.type || file.type || 'image/jpeg'
-      });
-      setPhotoUrls(prev => [...prev, uploadedUrl]);
-      if (source === 'camera') {
-        setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
-      }
-      assignUploadedPhoto(uploadedUrl, source === 'camera' ? cameraTargetSlotIdRef.current : null);
-    } catch (error) {
-      const diagnostic: PhotoUploadDiagnostic = {
-        fileName: file.name || 'unnamed file',
-        fileType: file.type || 'unknown',
-        fileSizeKb: Math.round(file.size / 1024),
-        uploadSizeKb: Math.round(uploadableImage.size / 1024),
-        compressed: uploadableImage !== file,
-        steps: error instanceof ImageUploadError ? error.diagnostics : [],
-        errorMessage: error instanceof Error ? error.message : String(error)
-      };
-      console.error('freeimage.host upload failed', diagnostic, error);
-      setUploadDiagnostic(diagnostic);
-      setUploadError(tr('wizard.photos.loadImageError'));
-    } finally {
-      endUpload();
+  const uploadPhotoToStorage = (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
+    const preferredSlotId = source === 'camera' ? cameraTargetSlotIdRef.current : null;
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPhotoUrls(prev => [...prev, localPreviewUrl]);
+    if (source === 'camera') {
+      setRealPhotoUrls(prev => prev.includes(localPreviewUrl) ? prev : [...prev, localPreviewUrl]);
     }
-  })());
+    assignUploadedPhoto(localPreviewUrl, preferredSlotId);
+
+    return trackPhotoUpload((async () => {
+      beginUpload();
+      setUploadError('');
+      setUploadDiagnostic(null);
+      let uploadableImage: Blob | File = file;
+      try {
+        uploadableImage = await resizeAndCompressListingImage(file);
+        const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset, ++uploadSequenceRef.current);
+        const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
+          fileName: seoFileName,
+          fileType: uploadableImage.type || file.type || 'image/jpeg'
+        });
+        replacePhotoUrl(localPreviewUrl, uploadedUrl);
+        if (source === 'camera') {
+          setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
+        }
+        URL.revokeObjectURL(localPreviewUrl);
+      } catch (error) {
+        const diagnostic: PhotoUploadDiagnostic = {
+          fileName: file.name || 'unnamed file',
+          fileType: file.type || 'unknown',
+          fileSizeKb: Math.round(file.size / 1024),
+          uploadSizeKb: Math.round(uploadableImage.size / 1024),
+          compressed: uploadableImage !== file,
+          steps: error instanceof ImageUploadError ? error.diagnostics : [],
+          errorMessage: error instanceof Error ? error.message : String(error)
+        };
+        console.error('freeimage.host upload failed', diagnostic, error);
+        setUploadDiagnostic(diagnostic);
+      } finally {
+        endUpload();
+      }
+    })());
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -313,8 +330,15 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const files = Array.from(e.dataTransfer.files as any).filter((file: any) => file.type.startsWith('image/'));
-      for (const [index, file] of (files as File[]).entries()) {
-        await uploadPhotoToStorage(file, 'files', index);
+      if (!files.length) return;
+      setIsPreparingPhotoPreview(true);
+      try {
+        await waitForPreviewIndicatorPaint();
+        for (const [index, file] of (files as File[]).entries()) {
+          void uploadPhotoToStorage(file, 'files', index);
+        }
+      } finally {
+        setIsPreparingPhotoPreview(false);
       }
     }
   };
@@ -322,13 +346,23 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const handleFileChoose = async (e: React.ChangeEvent<HTMLInputElement>, source: PhotoUploadSource = 'files') => {
     if (e.target.files && e.target.files[0]) {
       const files = Array.from(e.target.files as any).filter((file: any) => file.type.startsWith('image/'));
-      for (const [index, file] of (files as File[]).entries()) {
-        await uploadPhotoToStorage(file, source, index);
+      if (!files.length) {
+        e.target.value = '';
+        return;
       }
-      if (source === 'camera') {
-        cameraTargetSlotIdRef.current = null;
+      setIsPreparingPhotoPreview(true);
+      try {
+        await waitForPreviewIndicatorPaint();
+        for (const [index, file] of (files as File[]).entries()) {
+          void uploadPhotoToStorage(file, source, index);
+        }
+      } finally {
+        setIsPreparingPhotoPreview(false);
+        if (source === 'camera') {
+          cameraTargetSlotIdRef.current = null;
+        }
+        e.target.value = '';
       }
-      e.target.value = '';
     }
   };
 
@@ -350,11 +384,14 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     });
   };
 
-  const uploadCameraPhotoForSlot = (file: File, slotId?: PhotoSlotId | null) => {
+  const uploadCameraPhotoForSlot = async (file: File, slotId?: PhotoSlotId | null) => {
+    setIsPreparingPhotoPreview(true);
+    await waitForPreviewIndicatorPaint();
     const localPreviewUrl = URL.createObjectURL(file);
     setPhotoUrls(prev => [...prev, localPreviewUrl]);
     setRealPhotoUrls(prev => prev.includes(localPreviewUrl) ? prev : [...prev, localPreviewUrl]);
     assignUploadedPhoto(localPreviewUrl, slotId);
+    setIsPreparingPhotoPreview(false);
 
     beginUpload();
     setUploadError('');
@@ -383,7 +420,6 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
         };
         console.error('freeimage.host upload failed', diagnostic, error);
         setUploadDiagnostic(diagnostic);
-        setUploadError(tr('wizard.photos.loadImageError'));
       } finally {
         endUpload();
       }
@@ -392,6 +428,9 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
 
   const handleRemovePhoto = (index: number) => {
     const removedUrl = photoUrls[index];
+    if (removedUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(removedUrl);
+    }
     setPhotoUrls(photoUrls.filter((_, i) => i !== index));
     setPhotoSlotAssignments(prev => {
       const next: Partial<Record<PhotoSlotId, string[]>> = {};
@@ -423,6 +462,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     requiredPhotoAssignedCount,
     requiredPhotoTotalCount,
     isUploading,
+    isPreparingPhotoPreview,
     uploadError,
     uploadDiagnostic,
     waitForPhotoUploads,
