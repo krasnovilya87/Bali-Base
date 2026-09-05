@@ -274,8 +274,11 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     }
     assignUploadedPhoto(localPreviewUrl, preferredSlotId);
 
+    // Register the upload synchronously, before any async image processing
+    // starts, so Publish always waits for this file.
+    beginUpload();
+
     return trackPhotoUpload((async () => {
-      beginUpload();
       setUploadError('');
       setUploadDiagnostic(null);
       let uploadableImage: Blob | File = file;
