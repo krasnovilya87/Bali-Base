@@ -1,6 +1,18 @@
 import type { TranslationDictionary } from '../types';
 
 const de: TranslationDictionary = {
+  "wizard.publication.title": "Anzeige wird veröffentlicht",
+  "wizard.publication.hint": "Lassen Sie dieses Fenster bis zum Abschluss geöffnet.",
+  "wizard.publication.checking": "Anzeigendaten prüfen",
+  "wizard.publication.photos": "Fotos vorbereiten und hochladen",
+  "wizard.publication.nearby": "Orte in der Nähe suchen",
+  "wizard.publication.moderation": "Qualität der Anzeige prüfen",
+  "wizard.publication.saving": "In der Datenbank speichern",
+  "wizard.publication.finishing": "Veröffentlichung abschließen",
+  "wizard.publication.failed": "Veröffentlichung fehlgeschlagen",
+  "wizard.publication.photoFailed": "Einige Fotos konnten nicht verarbeitet oder hochgeladen werden. Gehen Sie zu den Fotos zurück, entfernen Sie diese und wählen Sie sie erneut aus.",
+  "wizard.publication.nearbyWarning": "Orte in der Nähe sind nicht verfügbar. Ihre Anzeige wird trotzdem gespeichert.",
+  "wizard.photoProcessingFailed": "Dieses Foto konnte nicht als WebP verarbeitet werden. Wählen Sie ein anderes Bild.",
   "brand.name": "Bali Base",
   "cover.badge": "Alles an einem Ort",
   "cover.subtitle": "Alles, was Sie auf Bali brauchen, direkt von Eigentümern zu fairen Preisen ohne Aggregatorgebühren",

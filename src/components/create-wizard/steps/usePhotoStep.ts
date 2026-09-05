@@ -1,5 +1,6 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
+import { useI18n } from '../../../i18nContext';
 import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
@@ -60,6 +61,7 @@ const getUploadExtension = (image: Blob | File, fallbackFile: File) => {
 };
 
 export const usePhotoStep = ({ initialListing, category, subCategory, uploadNamingContext }: UsePhotoStepParams) => {
+  const { tr } = useI18n();
   const isScooterPhotoFlow = category === 'transport' && subCategory === 'scooters';
   const activePhotoSlotConfig = isScooterPhotoFlow ? SCOOTER_PHOTO_SLOT_CONFIG : PHOTO_SLOT_CONFIG;
   const requiredPhotoSlots = activePhotoSlotConfig.filter(slot => slot.required);
@@ -109,6 +111,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const [draggedPhotoSlotId, setDraggedPhotoSlotId] = useState<PhotoSlotId | null>(null);
   const uploadSequenceRef = useRef(initialListing?.images?.length || 0);
   const uploadPromisesRef = useRef<Set<Promise<void>>>(new Set());
+  const photoErrorsRef = useRef(new Map<string, string>());
 
   const getAssignedPhotoUrls = (slotId: PhotoSlotId) => photoSlotAssignments[slotId] || [];
 
@@ -175,6 +178,10 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       await Promise.allSettled(Array.from(uploadPromisesRef.current));
     }
 
+    const failedPhoto = photoUrlsRef.current.find(url => photoErrorsRef.current.has(url));
+    if (failedPhoto) {
+      throw new Error(`${tr('wizard.publication.photoFailed')} ${photoErrorsRef.current.get(failedPhoto)}`);
+    }
     return {
       photoUrls: photoUrlsRef.current,
       realPhotoUrls: realPhotoUrlsRef.current,
@@ -203,58 +210,49 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     });
   };
 
-  const resizeAndCompressListingImage = (file: File): Promise<Blob | File> => {
-    return new Promise((resolve) => {
+  const resizeAndCompressListingImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
+          try {
           const canvas = document.createElement('canvas');
-          const maxWidth = 1200;
-          const maxHeight = 900;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = 1600;
+          canvas.height = 1200;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            resolve(file);
+            reject(new Error(tr('wizard.photoProcessingFailed')));
             return;
           }
 
-          ctx.drawImage(img, 0, 0, width, height);
+          const cropWidth = Math.min(img.naturalWidth, img.naturalHeight * 4 / 3);
+          const cropHeight = cropWidth * 3 / 4;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, (img.naturalWidth - cropWidth) / 2, (img.naturalHeight - cropHeight) / 2,
+            cropWidth, cropHeight, 0, 0, 1600, 1200);
           canvas.toBlob((blob) => {
-            if (blob) {
+            if (blob?.type === 'image/webp') {
               resolve(blob);
             } else {
-              resolve(file);
+              reject(new Error(tr('wizard.photoProcessingFailed')));
             }
-          }, 'image/jpeg', 0.82);
+          }, 'image/webp', 0.85);
+          } catch {
+            reject(new Error(tr('wizard.photoProcessingFailed')));
+          }
         };
-        img.onerror = () => resolve(file);
+        img.onerror = () => reject(new Error(tr('wizard.photoProcessingFailed')));
         img.src = event.target?.result as string;
       };
-      reader.onerror = () => resolve(file);
+      reader.onerror = () => reject(new Error(tr('wizard.photoProcessingFailed')));
       reader.readAsDataURL(file);
     });
   };
 
   const buildSeoPhotoFileName = (image: Blob | File, originalFile: File, batchOffset = 0, sequenceOverride?: number) => {
     if (!uploadNamingContext) {
-      return originalFile.name || `listing-photo-${getLocalUploadDate()}.${getUploadExtension(image, originalFile)}`;
+      return `${originalFile.name.replace(/\.[^.]+$/, '') || `listing-photo-${getLocalUploadDate()}`}.${getUploadExtension(image, originalFile)}`;
     }
 
     const sequenceNumber = String(sequenceOverride ?? photoUrls.length + batchOffset + 1).padStart(2, '0');
@@ -285,6 +283,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       setUploadDiagnostic(null);
       let uploadableImage: Blob | File = file;
       try {
+        await waitForPreviewIndicatorPaint();
         uploadableImage = await resizeAndCompressListingImage(file);
         const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset, ++uploadSequenceRef.current);
         const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
@@ -307,6 +306,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           errorMessage: error instanceof Error ? error.message : String(error)
         };
         console.error('freeimage.host upload failed', diagnostic, error);
+        photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         setUploadDiagnostic(diagnostic);
       } finally {
         endUpload();
@@ -400,6 +400,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     void trackPhotoUpload((async () => {
       let uploadableImage: Blob | File = file;
       try {
+        await waitForPreviewIndicatorPaint();
         uploadableImage = await resizeAndCompressListingImage(file);
         const seoFileName = buildSeoPhotoFileName(uploadableImage, file, 0, ++uploadSequenceRef.current);
         const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
@@ -419,6 +420,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           errorMessage: error instanceof Error ? error.message : String(error)
         };
         console.error('freeimage.host upload failed', diagnostic, error);
+        photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         setUploadDiagnostic(diagnostic);
       } finally {
         endUpload();
@@ -428,6 +430,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
 
   const handleRemovePhoto = (index: number) => {
     const removedUrl = photoUrls[index];
+    photoErrorsRef.current.delete(removedUrl);
     if (removedUrl?.startsWith('blob:')) {
       URL.revokeObjectURL(removedUrl);
     }

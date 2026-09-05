@@ -1,6 +1,18 @@
 import type { TranslationDictionary } from '../types';
 
 const ru: TranslationDictionary = {
+  "wizard.publication.title": "Публикация объявления",
+  "wizard.publication.hint": "Оставьте это окно открытым до завершения публикации.",
+  "wizard.publication.checking": "Проверка данных объявления",
+  "wizard.publication.photos": "Подготовка и загрузка фото",
+  "wizard.publication.nearby": "Поиск ближайших мест",
+  "wizard.publication.moderation": "Проверка качества объявления",
+  "wizard.publication.saving": "Сохранение в базе данных",
+  "wizard.publication.finishing": "Завершение публикации",
+  "wizard.publication.failed": "Не удалось опубликовать",
+  "wizard.publication.photoFailed": "Некоторые фото не удалось обработать или загрузить. Вернитесь к фото, удалите их и выберите заново.",
+  "wizard.publication.nearbyWarning": "Ближайшие места недоступны. Объявление всё равно будет сохранено.",
+  "wizard.photoProcessingFailed": "Не удалось подготовить фото в формате WebP. Выберите другое изображение.",
   "brand.name": "Bali Base",
   "listing.shareLink": "Поделиться ссылкой на объявление",
   "listing.linkCopied": "Ссылка скопирована",

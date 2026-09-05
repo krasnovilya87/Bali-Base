@@ -1,6 +1,18 @@
 import type { TranslationDictionary } from '../types';
 
 const id: TranslationDictionary = {
+  "wizard.publication.title": "Menerbitkan iklan Anda",
+  "wizard.publication.hint": "Biarkan jendela ini terbuka hingga penerbitan selesai.",
+  "wizard.publication.checking": "Memeriksa detail iklan",
+  "wizard.publication.photos": "Menyiapkan dan mengunggah foto",
+  "wizard.publication.nearby": "Mencari tempat terdekat",
+  "wizard.publication.moderation": "Memeriksa kualitas iklan",
+  "wizard.publication.saving": "Menyimpan ke basis data",
+  "wizard.publication.finishing": "Menyelesaikan penerbitan",
+  "wizard.publication.failed": "Penerbitan gagal",
+  "wizard.publication.photoFailed": "Beberapa foto gagal diproses atau diunggah. Kembali ke foto, hapus lalu pilih kembali.",
+  "wizard.publication.nearbyWarning": "Tempat terdekat tidak tersedia. Iklan Anda tetap akan disimpan.",
+  "wizard.photoProcessingFailed": "Foto tidak dapat diproses sebagai WebP. Pilih gambar lain.",
   "brand.name": "Bali Base",
   "cover.badge": "Semuanya di satu tempat",
   "cover.subtitle": "Semua kebutuhan Anda di Bali langsung dari pemilik dengan harga jujur tanpa biaya agregator",

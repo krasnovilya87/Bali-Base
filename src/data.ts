@@ -943,7 +943,11 @@ export const getStoredData = () => {
 
 export const saveStoredData = (listings: Listing[], bookings: BookingRequest[]) => {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(LEGACY_LISTINGS_CACHE_KEY);
-  localStorage.removeItem(LEGACY_BOOKINGS_CACHE_KEY);
-  localStorage.setItem(STATIC_LISTINGS_CACHE_KEY, JSON.stringify(listings.map(stripDynamicListingFields)));
+  try {
+    localStorage.removeItem(LEGACY_LISTINGS_CACHE_KEY);
+    localStorage.removeItem(LEGACY_BOOKINGS_CACHE_KEY);
+    localStorage.setItem(STATIC_LISTINGS_CACHE_KEY, JSON.stringify(listings.map(stripDynamicListingFields)));
+  } catch (error) {
+    console.warn('Could not update the local listing cache:', error);
+  }
 };

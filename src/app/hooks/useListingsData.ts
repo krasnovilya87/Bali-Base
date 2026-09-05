@@ -351,7 +351,8 @@ export const useListingsData = () => {
     saveUpdatedState(updatedListings, updated);
   };
 
-  const handlePublishListing = async (newListing: Listing) => {
+  const handlePublishListing = async (newListing: Listing, onProgress?: (stage: 'moderation' | 'saving' | 'finishing') => void) => {
+    onProgress?.('moderation');
     const collectionPath = getListingCollection(newListing);
     const listingId = uniqueListingDocumentId(
       newListing,
@@ -392,6 +393,7 @@ export const useListingsData = () => {
       };
     }
 
+    onProgress?.('saving');
     let listingForSave = sanitizeListingForFirestore({
       ...moderatedListing,
       id: listingId,
@@ -403,6 +405,7 @@ export const useListingsData = () => {
       removeListingAiIndex(newListing.id);
     }
     await setDocument(collectionPath, listingForSave.id, listingForSave);
+    onProgress?.('finishing');
     if (user?.uid) {
       try {
         await setDoc(doc(db, 'users', user.uid), {
@@ -415,10 +418,14 @@ export const useListingsData = () => {
       }
     }
 
-    const listingWithReviews = await refreshGoogleReviewsForListing(listingForSave, 'listing_create');
-    if (listingWithReviews.googleReviewsUpdatedAt) {
-      listingForSave = listingWithReviews;
-      await setDocument(collectionPath, listingForSave.id, listingForSave);
+    try {
+      const listingWithReviews = await refreshGoogleReviewsForListing(listingForSave, 'listing_create');
+      if (listingWithReviews.googleReviewsUpdatedAt) {
+        await setDocument(collectionPath, listingWithReviews.id, listingWithReviews);
+        listingForSave = listingWithReviews;
+      }
+    } catch (error) {
+      console.warn('Listing was saved, but Google reviews sync failed:', error);
     }
     syncListingAiIndex(listingForSave);
 

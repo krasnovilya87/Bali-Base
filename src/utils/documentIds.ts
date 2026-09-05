@@ -3,7 +3,7 @@ export function documentIdFromTitle(title: string): string {
     .trim()
     .replace(/\//g, '-')
     .replace(/\s+/g, ' ')
-    .slice(0, 140);
+    .slice(0, 128);
 
   return cleaned || `listing-${Date.now()}`;
 }
@@ -15,10 +15,14 @@ export function uniqueDocumentIdFromTitle(title: string, usedIds: Iterable<strin
   if (!used.has(baseId)) return baseId;
 
   let index = 2;
-  let nextId = `${baseId} ${index}`;
+  const withSuffix = (value: number) => {
+    const suffix = ` ${value}`;
+    return `${baseId.slice(0, 128 - suffix.length)}${suffix}`;
+  };
+  let nextId = withSuffix(index);
   while (used.has(nextId)) {
     index += 1;
-    nextId = `${baseId} ${index}`;
+    nextId = withSuffix(index);
   }
 
   return nextId;

@@ -1,6 +1,18 @@
 import type { TranslationDictionary } from '../types';
 
 const en: TranslationDictionary = {
+  "wizard.publication.title": "Publishing your listing",
+  "wizard.publication.hint": "Keep this window open until publication is complete.",
+  "wizard.publication.checking": "Checking listing details",
+  "wizard.publication.photos": "Preparing and uploading photos",
+  "wizard.publication.nearby": "Finding nearby places",
+  "wizard.publication.moderation": "Checking listing quality",
+  "wizard.publication.saving": "Saving to the database",
+  "wizard.publication.finishing": "Finalizing publication",
+  "wizard.publication.failed": "Publication failed",
+  "wizard.publication.photoFailed": "Some photos could not be prepared or uploaded. Go back to photos, remove them and select them again.",
+  "wizard.publication.nearbyWarning": "Nearby places are unavailable. Your listing will still be saved.",
+  "wizard.photoProcessingFailed": "Could not prepare this photo as WebP. Please select another image.",
   "brand.name": "Bali Base",
   "cover.badge": "Everything in one place",
   "cover.subtitle": "Everything you need in Bali directly from owners at honest prices with no aggregator fees",

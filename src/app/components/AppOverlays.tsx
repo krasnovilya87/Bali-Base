@@ -30,7 +30,7 @@ type AppOverlaysProps = {
   filters: FilterState;
   handleAddBooking: (booking: BookingRequest) => void;
   handleDeleteListing: (listingId: string) => void;
-  handlePublishListing: (newListing: Listing) => Promise<void>;
+  handlePublishListing: (newListing: Listing, onProgress?: (stage: 'moderation' | 'saving' | 'finishing') => void) => Promise<void>;
   handleToggleListingStatus: (id: string) => void;
   handleUpdateBooking: (booking: BookingRequest) => void;
   handleUpdateBookingStatus: (id: string, status: 'accepted' | 'declined') => void;

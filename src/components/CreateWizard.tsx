@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ClipboardPlus, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ClipboardPlus, Loader2, X } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { Listing } from '../types';
 import { isListingFresh } from '../utils/listingFreshness';
@@ -74,7 +74,7 @@ const getScooterSeoModel = (modelValue: string) => {
 
 interface CreateWizardProps {
   onClose: () => void;
-  onPublish: (newListing: Listing) => Promise<void>;
+  onPublish: (newListing: Listing, onProgress?: (stage: 'moderation' | 'saving' | 'finishing') => void) => Promise<void>;
   existingListings?: Listing[];
   initialListing?: Listing | null;
   currencySymbol: string;
@@ -141,6 +141,10 @@ export default function CreateWizard({
   const wizardBodyRef = useRef<HTMLDivElement | null>(null);
   const wizardOverlayRef = useRef<HTMLDivElement | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishStage, setPublishStage] = useState('checking');
+  const [publishError, setPublishError] = useState('');
+  const [nearbyWarning, setNearbyWarning] = useState(false);
+  const publicationStages = ['checking', 'photos', 'nearby', 'moderation', 'saving', 'finishing'];
   const [validationPopup, setValidationPopup] = useState<{ title: string; message: string } | null>(null);
   const [confirmedLocationCoords, setConfirmedLocationCoords] = useState<Listing['locationCoords']>(
     initialListing?.locationCoords
@@ -866,15 +870,20 @@ export default function CreateWizard({
   const handlePublishListing = async () => {
     if (isPublishing) return;
     setIsPublishing(true);
+    setPublishError('');
+    setNearbyWarning(false);
+    setPublishStage('checking');
 
+    try {
     if (!(await validateMechanicalListing())) {
       setIsPublishing(false);
       return;
     }
 
-    let photoPublishState: PhotoPublishState = { photoUrls, realPhotoUrls, photoSlotAssignments };
-    if (isUploading) {
-      photoPublishState = await waitForPhotoUploads();
+    setPublishStage('photos');
+    const photoPublishState = await waitForPhotoUploads();
+    if (photoPublishState.photoUrls.some(url => !isPublishablePhotoUrl(url))) {
+      throw new Error(tr('wizard.publication.photoFailed'));
     }
 
     if (!hasRequiredPublishablePhotos(photoPublishState)) {
@@ -913,9 +922,11 @@ export default function CreateWizard({
       nearbySpotsError: publishCoords ? undefined : 'Coordinates are missing'
     };
 
+    setPublishStage('nearby');
     if (publishCoords) {
       try {
         const nearbySpots = await calculateNearbySpotsOnce(publishCoords, baseListing.district);
+        if (!nearbySpots.length) setNearbyWarning(true);
         listingForPublish = {
           ...baseListing,
           locationCoords: publishCoords,
@@ -926,6 +937,7 @@ export default function CreateWizard({
         };
       } catch (error) {
         console.warn('Nearby spots calculation failed:', error);
+        setNearbyWarning(true);
         listingForPublish = {
           ...baseListing,
           locationCoords: publishCoords,
@@ -935,12 +947,13 @@ export default function CreateWizard({
       }
     }
 
-    try {
-      await onPublish(listingForPublish);
+    if (!publishCoords) setNearbyWarning(true);
+    setPublishStage('moderation');
+      await onPublish(listingForPublish, setPublishStage);
       onClose();
     } catch (error) {
       console.error('Failed to publish listing:', error);
-      showValidationPopup(tr('wizard.validationSaveFailed'));
+      setPublishError(error instanceof Error ? error.message : tr('wizard.validationSaveFailed'));
     } finally {
       setIsPublishing(false);
     }
@@ -1154,6 +1167,7 @@ export default function CreateWizard({
       className={`fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[500] ${isMapExpanded ? 'p-0 overflow-hidden' : 'p-2 sm:p-5 overflow-y-auto'}`}
       id="wizard-modal"
       onKeyDown={(event) => {
+        if (isPublishing || publishError) return;
         if (
           event.key === 'Enter'
           && step < 10
@@ -1255,11 +1269,48 @@ export default function CreateWizard({
               id="publish-wiz-btn"
             >
               <Check className="w-4 h-4" />
-              <span>{isPublishing ? 'Google Maps...' : tr('wizard.publish')}</span>
+              <span>{isPublishing ? tr('wizard.publication.title') : tr('wizard.publish')}</span>
             </button>
           )}
         </div>
       </div>
+
+      {(isPublishing || publishError) && (
+        <div className="fixed inset-0 z-[520] flex items-center justify-center bg-[#0F172A]/55 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="publication-title" tabIndex={-1}
+            ref={node => { if (node && !node.contains(document.activeElement)) node.focus(); }}
+            onKeyDown={event => { if (event.key === 'Tab') { event.preventDefault(); event.currentTarget.querySelector('button')?.focus(); } }}
+            className="pu w-full max-w-sm rounded-[1.5rem] border border-white/60 p-6 shadow-2xl outline-none">
+            <h4 id="publication-title" className="font-heading text-lg font-extrabold text-[#1E293B]">
+              {tr(publishError ? 'wizard.publication.failed' : 'wizard.publication.title')}
+            </h4>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">{tr('wizard.publication.hint')}</p>
+            <ol className="mt-5 space-y-3" aria-live="polite" aria-busy={isPublishing}>
+              {publicationStages.map((stage, index) => {
+                const current = publicationStages.indexOf(publishStage);
+                const done = index < current;
+                const active = index === current;
+                return (
+                  <li key={stage} aria-current={active ? 'step' : undefined} className={`flex items-center gap-3 text-sm ${active ? 'font-bold text-[#1E293B]' : done ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${done ? 'bg-emerald-50' : active ? 'bg-[#FF7A50]/10 text-[#E05A30]' : 'bg-slate-100'}`}>
+                      {done ? <Check className="h-4 w-4" /> : active ? publishError ? <AlertTriangle className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-xs">{index + 1}</span>}
+                    </span>
+                    {tr(`wizard.publication.${stage}`)}
+                  </li>
+                );
+              })}
+            </ol>
+            {nearbyWarning && <p className="mt-4 text-xs text-amber-700">{tr('wizard.publication.nearbyWarning')}</p>}
+            {publishError && (
+              <div className="mt-5">
+                <p role="alert" className="break-words text-sm text-red-600">{publishError}</p>
+                <button type="button" onClick={() => { setPublishError(''); if (publishStage === 'photos') setStep(photosStep); }}
+                  className="mt-4 w-full rounded-xl bg-[#FF7A50] px-4 py-3 text-sm font-bold text-white">{tr('common.back')}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {validationPopup && (
         <div className="fixed inset-0 z-[530] flex items-center justify-center bg-[#0F172A]/55 p-4 backdrop-blur-sm animate-fade-in">
