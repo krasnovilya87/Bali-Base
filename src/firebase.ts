@@ -27,6 +27,8 @@ export const db = initializeFirestore(app, {
 export const auth = getAuth();
 export const storage = getStorage(app);
 export const LISTINGS_COLLECTION = 'housing_for_rent_listing';
+export const TRANSPORT_FOR_RENT_COLLECTION = 'transport_for_rent';
+const LISTING_COLLECTIONS = [LISTINGS_COLLECTION, TRANSPORT_FOR_RENT_COLLECTION];
 
 // Test connection on boot as mandated in guidelines
 export async function testConnection() {
@@ -212,7 +214,7 @@ export function sanitizeListingForFirestore<T = any>(data: T): T {
 export async function setDocument<T = any>(path: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, path, docId);
-    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const dataForWrite = LISTING_COLLECTIONS.includes(path) ? sanitizeListingForFirestore(data) : data;
     const sanitizedData = cleanUndefined(dataForWrite);
     await setDoc(docRef, sanitizedData);
   } catch (err) {
@@ -223,7 +225,7 @@ export async function setDocument<T = any>(path: string, docId: string, data: an
 export async function addDocument<T = any>(path: string, data: any): Promise<string> {
   try {
     const docRef = collection(db, path);
-    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const dataForWrite = LISTING_COLLECTIONS.includes(path) ? sanitizeListingForFirestore(data) : data;
     const sanitizedData = cleanUndefined(dataForWrite);
     const addedDoc = await addDoc(docRef, sanitizedData);
     return addedDoc.id;
@@ -236,7 +238,7 @@ export async function addDocument<T = any>(path: string, data: any): Promise<str
 export async function updateDocument(path: string, docId: string, data: any): Promise<void> {
   try {
     const docRef = doc(db, path, docId);
-    const dataForWrite = path === LISTINGS_COLLECTION ? sanitizeListingForFirestore(data) : data;
+    const dataForWrite = LISTING_COLLECTIONS.includes(path) ? sanitizeListingForFirestore(data) : data;
     const sanitizedData = cleanUndefined(dataForWrite);
     await updateDoc(docRef, sanitizedData);
   } catch (err) {
@@ -254,19 +256,37 @@ export async function deleteDocument(path: string, docId: string): Promise<void>
 }
 
 export async function syncWithFirebase(): Promise<{ listings: any[], bookings: any[] }> {
-  let firebaseListings = await getCollection(LISTINGS_COLLECTION);
+  const firebaseListingsByCollection = await Promise.all(
+    LISTING_COLLECTIONS.map(async collectionPath => {
+      try {
+        return {
+          collectionPath,
+          listings: await getCollection(collectionPath)
+        };
+      } catch (error) {
+        console.warn(`Failed to fetch ${collectionPath}; continuing with other listing collections`, error);
+        return {
+          collectionPath,
+          listings: []
+        };
+      }
+    })
+  );
+  let firebaseListings = firebaseListingsByCollection.flatMap(item => item.listings);
   const firebaseBookings = await getCollection('bookings');
 
-  const listingsWithLegacyCoordinates = firebaseListings.filter(listing =>
-    listing?.id && hasLegacyListingCoordinates(listing)
-  );
-  if (listingsWithLegacyCoordinates.length > 0) {
-    console.log(`Sanitizing listing coordinates in Firestore: ${listingsWithLegacyCoordinates.length}`);
-    for (const listing of listingsWithLegacyCoordinates) {
-      await setDocument(LISTINGS_COLLECTION, listing.id, listing);
+  for (const item of firebaseListingsByCollection) {
+    const listingsWithLegacyCoordinates = item.listings.filter(listing =>
+      listing?.id && hasLegacyListingCoordinates(listing)
+    );
+    if (listingsWithLegacyCoordinates.length > 0) {
+      console.log(`Sanitizing listing coordinates in Firestore: ${listingsWithLegacyCoordinates.length}`);
+      for (const listing of listingsWithLegacyCoordinates) {
+        await setDocument(item.collectionPath, listing.id, listing);
+      }
     }
-    firebaseListings = firebaseListings.map(listing => sanitizeListingForFirestore(listing));
   }
+  firebaseListings = firebaseListings.map(listing => sanitizeListingForFirestore(listing));
 
   return {
     listings: firebaseListings,

@@ -10,6 +10,7 @@ interface TwoMonthCalendarProps {
   onClose: () => void;
   singleDateMode?: boolean;
   modalPlacement?: boolean;
+  bookingModalPlacement?: boolean;
   appOverlayPlacement?: boolean;
 }
 
@@ -20,6 +21,7 @@ export default function TwoMonthCalendar({
   onClose,
   singleDateMode = false,
   modalPlacement = false,
+  bookingModalPlacement = false,
   appOverlayPlacement = false
 }: TwoMonthCalendarProps) {
   const { language, tr } = useI18n();
@@ -448,6 +450,8 @@ export default function TwoMonthCalendar({
         ? isTouchCalendar
           ? 'fixed inset-x-2 top-[calc(env(safe-area-inset-top)+12px)] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[520] mx-auto w-auto max-w-[580px]'
           : 'fixed left-1/2 top-1/2 z-[520] w-[580px] max-h-[calc(100vh-2rem)] -translate-x-1/2 -translate-y-1/2'
+        : bookingModalPlacement
+        ? 'fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+22px)] z-[520] mx-auto w-auto max-w-[580px] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-64px)] sm:inset-auto sm:left-1/2 sm:top-[48%] sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-h-none'
         : modalPlacement
         ? 'fixed inset-x-0 bottom-0 z-[520] w-full max-h-[85vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[580px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-h-none'
         : 'absolute top-full left-1/2 mt-2 w-[calc(100vw-1rem)] max-w-[580px] -translate-x-1/2 sm:w-[580px] sm:-mt-1 md:-translate-x-1/3'

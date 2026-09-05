@@ -2777,6 +2777,7 @@ export default function ListingDetails({
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               modalPlacement
+              bookingModalPlacement={isTransportBookingConfirmOpen}
               onChange={(inD, outD) => {
                 setCheckInDate(inD);
                 setCheckOutDate(outD);

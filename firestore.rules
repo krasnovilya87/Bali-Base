@@ -65,6 +65,13 @@ service cloud.firestore {
       allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
     }
 
+    match /transport_for_rent/{listingId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId);
+      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
+    }
+
     match /bookings/{bookingId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(bookingId) && isValidBookingRequest(incoming());

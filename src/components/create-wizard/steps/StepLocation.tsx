@@ -102,6 +102,9 @@ const StepLocation: React.FC<StepLocationProps> = ({
               mapId="DEMO_MAP_ID"
               disableDefaultUI={true}
               gestureHandling="greedy"
+              options={{
+                clickableIcons: false
+              }}
               onClick={async (event) => {
                 if (!isPointSelectionActive || !event.detail?.latLng) return;
 

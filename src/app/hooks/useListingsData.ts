@@ -10,7 +10,8 @@ import {
   sanitizeListingForFirestore,
   setDocument,
   syncWithFirebase,
-  testConnection
+  testConnection,
+  TRANSPORT_FOR_RENT_COLLECTION
 } from '../../firebase';
 import { normalizeHousingListingForImport } from '../../components/admin-dashboard/importListingNormalizer';
 import { moderateListing } from '../../utils/aiModerationClient';
@@ -26,12 +27,36 @@ import { sanitizeMenuOverrides } from '../menu';
 import { t } from '../../i18n';
 import { deleteListingFromAiSearch, indexListingForAiSearch } from '../../utils/aiSearchClient';
 
-const getHousingListingCollection = (listing: Listing) => {
-  if (listing.category !== 'housing') {
-    throw new Error(`Listings from L1 "${listing.category}" are not stored in ${LISTINGS_COLLECTION}`);
+const getListingCollection = (listing: Listing) =>
+  listing.category === 'transport' ? TRANSPORT_FOR_RENT_COLLECTION : LISTINGS_COLLECTION;
+
+const normalizeDocumentIdPart = (value: string) =>
+  value
+    .trim()
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48);
+
+const uniqueTransportDocumentId = (listing: Listing, usedIds: Iterable<string>) => {
+  const model = normalizeDocumentIdPart(listing.vehicleModel || listing.title || 'transport');
+  const owner = normalizeDocumentIdPart(listing.ownerName || 'owner');
+  const baseId = [model, owner].filter(Boolean).join('-') || `transport-${Date.now()}`;
+  const used = new Set(usedIds);
+  let index = 1;
+  let nextId = `${baseId}-${index}`;
+  while (used.has(nextId)) {
+    index += 1;
+    nextId = `${baseId}-${index}`;
   }
-  return LISTINGS_COLLECTION;
+  return nextId;
 };
+
+const uniqueListingDocumentId = (listing: Listing, usedIds: Iterable<string>) =>
+  listing.category === 'transport'
+    ? uniqueTransportDocumentId(listing, usedIds)
+    : uniqueDocumentIdFromTitle(listing.title, usedIds);
 
 const mergeFirebaseListingsWithStaticListings = (firebaseListings: Listing[]) => {
   const firebaseIds = new Set(firebaseListings.map(listing => listing.id));
@@ -172,16 +197,16 @@ export const useListingsData = () => {
         const listingForSave = nextStatus === 'active' && nextItem.category === 'housing'
           ? normalizeHousingListingForImport(nextItem, 0)
           : nextItem;
-        const targetId = uniqueDocumentIdFromTitle(
-          listingForSave.title,
+        const targetId = uniqueListingDocumentId(
+          listingForSave,
           listings.filter(listing => listing.id !== item.id).map(listing => listing.id)
         );
         const finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
         if (targetId !== item.id) {
-          deleteDocument(LISTINGS_COLLECTION, item.id);
+          deleteDocument(getListingCollection(item), item.id);
           removeListingAiIndex(item.id);
         }
-        setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+        setDocument(getListingCollection(finalListing), targetId, finalListing);
         if (finalListing.status === 'active') {
           syncListingAiIndex(finalListing);
         } else {
@@ -226,16 +251,17 @@ export const useListingsData = () => {
   };
 
   const handleUpdateListing = async (updatedListing: Listing) => {
+    const collectionPath = getListingCollection(updatedListing);
     const listingForSave = updatedListing.category === 'housing'
       ? normalizeHousingListingForImport(updatedListing, 0)
       : updatedListing;
-    const targetId = uniqueDocumentIdFromTitle(
-      listingForSave.title,
+    const targetId = uniqueListingDocumentId(
+      listingForSave,
       listings.filter(listing => listing.id !== updatedListing.id).map(listing => listing.id)
     );
     let finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
     if (targetId !== updatedListing.id) {
-      await deleteDocument(LISTINGS_COLLECTION, updatedListing.id);
+      await deleteDocument(collectionPath, updatedListing.id);
       removeListingAiIndex(updatedListing.id);
     }
 
@@ -244,7 +270,7 @@ export const useListingsData = () => {
     );
     saveUpdatedState(optimisticListings, bookings);
 
-    await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+    await setDocument(collectionPath, targetId, finalListing);
     if (finalListing.status !== 'active') {
       removeListingAiIndex(targetId);
       return;
@@ -254,7 +280,7 @@ export const useListingsData = () => {
 
     finalListing = await refreshGoogleReviewsForListing(finalListing, 'listing_update');
     if (finalListing.googleReviewsUpdatedAt) {
-      await setDocument(LISTINGS_COLLECTION, targetId, finalListing);
+      await setDocument(collectionPath, targetId, finalListing);
       syncListingAiIndex(finalListing);
     }
 
@@ -268,7 +294,8 @@ export const useListingsData = () => {
     rememberDeletedListingId(id);
     const updated = listings.filter(item => item.id !== id);
     saveUpdatedState(updated, bookings);
-    deleteDocument(LISTINGS_COLLECTION, id).catch(err => {
+    const listingToDelete = listings.find(item => item.id === id);
+    deleteDocument(listingToDelete ? getListingCollection(listingToDelete) : LISTINGS_COLLECTION, id).catch(err => {
       console.error('Failed to delete listing from Firestore', err);
     });
     removeListingAiIndex(id);
@@ -319,15 +346,15 @@ export const useListingsData = () => {
     const updated = [newBooking, ...bookings];
     setDocument('bookings', newBooking.id, newBooking);
     if (touchedListing) {
-      setDocument(LISTINGS_COLLECTION, touchedListing.id, sanitizeListingForFirestore(touchedListing));
+      setDocument(getListingCollection(touchedListing), touchedListing.id, sanitizeListingForFirestore(touchedListing));
     }
     saveUpdatedState(updatedListings, updated);
   };
 
   const handlePublishListing = async (newListing: Listing) => {
-    const collectionPath = getHousingListingCollection(newListing);
-    const listingId = uniqueDocumentIdFromTitle(
-      newListing.title,
+    const collectionPath = getListingCollection(newListing);
+    const listingId = uniqueListingDocumentId(
+      newListing,
       listings.filter(listing => listing.id !== newListing.id).map(listing => listing.id)
     );
     let moderatedListing = newListing;
@@ -377,11 +404,15 @@ export const useListingsData = () => {
     }
     await setDocument(collectionPath, listingForSave.id, listingForSave);
     if (user?.uid) {
-      await setDoc(doc(db, 'users', user.uid), {
-        contactName: listingForSave.ownerName,
-        contactPhone: listingForSave.whatsappNumber,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          contactName: listingForSave.ownerName,
+          contactPhone: listingForSave.whatsappNumber,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (error) {
+        console.warn('Listing was saved, but contact profile sync failed:', error);
+      }
     }
 
     const listingWithReviews = await refreshGoogleReviewsForListing(listingForSave, 'listing_create');
