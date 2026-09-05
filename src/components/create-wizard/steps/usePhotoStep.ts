@@ -304,6 +304,18 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
         };
         console.error('freeimage.host upload failed', diagnostic, error);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
+        // A local object URL is only a temporary preview. Remove it so a
+        // failed conversion/upload can never be written to the listing.
+        setPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
+        setRealPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
+        setPhotoSlotAssignments(prev => {
+          const next: Partial<Record<PhotoSlotId, string[]>> = {};
+          activePhotoSlotConfig.forEach(slot => {
+            const urls = (prev[slot.id] || []).filter(url => url !== localPreviewUrl);
+            if (urls.length) next[slot.id] = urls;
+          });
+          return next;
+        });
         setUploadDiagnostic(diagnostic);
       } finally {
         endUpload();
@@ -418,6 +430,16 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
         };
         console.error('freeimage.host upload failed', diagnostic, error);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
+        setPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
+        setRealPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
+        setPhotoSlotAssignments(prev => {
+          const next: Partial<Record<PhotoSlotId, string[]>> = {};
+          activePhotoSlotConfig.forEach(slot => {
+            const urls = (prev[slot.id] || []).filter(url => url !== localPreviewUrl);
+            if (urls.length) next[slot.id] = urls;
+          });
+          return next;
+        });
         setUploadDiagnostic(diagnostic);
       } finally {
         endUpload();

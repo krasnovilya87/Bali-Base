@@ -506,7 +506,7 @@ export default function CreateWizard({
         showValidationPopup(message, stepToValidate);
         return false;
       }
-      if (getWizardStepKey(stepToValidate, category, subCategory) === 'title' && findDuplicateListingByTitleAndType()) {
+      if (category !== 'transport' && getWizardStepKey(stepToValidate, category, subCategory) === 'title' && findDuplicateListingByTitleAndType()) {
         showValidationPopup(tr('wizard.validationDuplicateTitleType'), stepToValidate);
         return false;
       }
@@ -667,7 +667,7 @@ export default function CreateWizard({
       showValidationPopup(tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH }));
       return;
     }
-    if (currentStepKey === 'title' && findDuplicateListingByTitleAndType()) {
+    if (currentStepKey === 'title' && category !== 'transport' && findDuplicateListingByTitleAndType()) {
       showValidationPopup(tr('wizard.validationDuplicateTitleType'));
       return;
     }
