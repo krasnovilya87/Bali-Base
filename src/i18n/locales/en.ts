@@ -1159,7 +1159,7 @@ const en: TranslationDictionary = {
   "wizard.description": "Property description:",
   "wizard.descriptionPlaceholder": "Describe the main features: distance to sea, fiber internet, quiet area or nearby infrastructure...",
   "wizard.roomTypeNotice": "Each room type creates a separate listing. Duplicate listings are not allowed.",
-  "wizard.photosUploading": "Uploading images...",
+  "wizard.photosUploading": "Uploading images to Free Image Host...",
   "wizard.photosDrop": "Drag photos here or click to choose",
   "wizard.photos.scooterPhotoTitle": "Scooter photo",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",

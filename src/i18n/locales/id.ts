@@ -922,7 +922,7 @@ const id: TranslationDictionary = {
   "wizard.step.ical": "iCal",
   "wizard.step.contacts": "Kontak",
   "wizard.step.publish": "Publikasi",
-  "wizard.photosUploading": "Mengunggah gambar...",
+  "wizard.photosUploading": "Mengunggah gambar ke Free Image Host...",
   "wizard.photosDrop": "Tarik foto ke sini atau klik untuk memilih",
   "wizard.photos.scooterPhotoTitle": "Foto skuter",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",

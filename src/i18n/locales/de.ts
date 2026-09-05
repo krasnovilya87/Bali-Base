@@ -885,7 +885,7 @@ const de: TranslationDictionary = {
   "wizard.step.ical": "iCal",
   "wizard.step.contacts": "Kontakte",
   "wizard.step.publish": "Veroeffentlichen",
-  "wizard.photosUploading": "Bilder hochladen...",
+  "wizard.photosUploading": "Bilder werden zu Free Image Host hochgeladen...",
   "wizard.photosDrop": "Fotos hierher ziehen oder klicken",
   "wizard.photos.scooterPhotoTitle": "Rollerfoto",
   "wizard.photos.realBikeRule": "Use real photos of this exact bike. Internet photos, catalog images, and photos of another bike are prohibited.",

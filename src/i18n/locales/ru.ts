@@ -440,7 +440,7 @@ const ru: TranslationDictionary = {
   "wizard.description": "Описание объекта:",
   "wizard.descriptionPlaceholder": "Опишите главные фичи: близость к морю, оптоволоконный интернет, тишина или близость к инфраструктуре...",
   "wizard.roomTypeNotice": "Для каждого типа комнаты создается отдельное объявление. Запрещено создавать одинаковые объявления.",
-  "wizard.photosUploading": "Загрузка изображений...",
+  "wizard.photosUploading": "Загрузка изображений на Free Image Host...",
   "wizard.photosDrop": "Перетащите сюда фото или нажмите для выбора",
   "wizard.photos.scooterPhotoTitle": "Фото скутера",
   "wizard.photos.realBikeRule": "Используйте реальные фотографии именно этого байка. Фото из интернета, каталожные изображения и фотографии другого байка запрещены.",
