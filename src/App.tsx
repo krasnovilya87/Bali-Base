@@ -2547,6 +2547,7 @@ export default function App() {
           setPrimaryL2={setPrimaryL2}
           setSelectedListing={setSelectedListing}
           setCurrentView={setCurrentView}
+          setIsMapFullscreen={setIsMapFullscreen}
           setShowAdminDashboard={setShowAdminDashboard}
           setShowCreateWizard={setShowCreateWizard}
           setShowFiltersModal={setShowFiltersModal}

@@ -54,6 +54,7 @@ type AppOverlaysProps = {
   setFilters: (filters: FilterState) => void;
   setSelectedListing: Dispatch<SetStateAction<Listing | null>>;
   setCurrentView: (view: 'cover' | 'menu' | 'app') => void;
+  setIsMapFullscreen: Dispatch<SetStateAction<boolean>>;
   setPrimaryL2: (subCategoryId: string) => void;
   setShowAdminDashboard: Dispatch<SetStateAction<boolean>>;
   setShowCreateWizard: Dispatch<SetStateAction<boolean>>;
@@ -127,6 +128,7 @@ export default function AppOverlays({
   setFilters,
   setSelectedListing,
   setCurrentView,
+  setIsMapFullscreen,
   setPrimaryL2,
   setShowAdminDashboard,
   setShowCreateWizard,
@@ -360,6 +362,7 @@ export default function AppOverlays({
           onViewClick={(listing) => {
             setShowMyAddsListing(false);
             setCurrentView('app');
+            setIsMapFullscreen(false);
             setCanEditSelectedListing(true);
             setReturnToMyAddsOnListingClose(true);
             setSelectedListing(listing);
