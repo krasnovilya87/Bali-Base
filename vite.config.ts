@@ -42,6 +42,7 @@ const adminRouteFallback = () => ({
 export default defineConfig(() => {
   return {
     appType: 'spa' as const,
+    worker: { format: 'es' },
     plugins: [adminRouteFallback(), react(), tailwindcss()],
     resolve: {
       alias: [
@@ -63,6 +64,7 @@ export default defineConfig(() => {
       },
     },
     optimizeDeps: {
+      exclude: ['@jsquash/webp'],
       noDiscovery: true,
       include: [
         '@lottiefiles/dotlottie-react',

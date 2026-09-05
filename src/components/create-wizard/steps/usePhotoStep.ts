@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
 import { useI18n } from '../../../i18nContext';
+import { encodeCanvasWebp } from '../../../utils/encodeCanvasWebp';
 import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
@@ -231,13 +232,9 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, (img.naturalWidth - cropWidth) / 2, (img.naturalHeight - cropHeight) / 2,
             cropWidth, cropHeight, 0, 0, 1600, 1200);
-          canvas.toBlob((blob) => {
-            if (blob?.type === 'image/webp') {
-              resolve(blob);
-            } else {
-              reject(new Error(tr('wizard.photoProcessingFailed')));
-            }
-          }, 'image/webp', 0.85);
+          void encodeCanvasWebp(canvas)
+            .then(resolve, () => reject(new Error(tr('wizard.photoProcessingFailed'))))
+            .finally(() => { canvas.width = 0; canvas.height = 0; });
           } catch {
             reject(new Error(tr('wizard.photoProcessingFailed')));
           }
