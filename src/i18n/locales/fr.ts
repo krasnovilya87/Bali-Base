@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from '../types';
 
 const fr: TranslationDictionary = {
+  "wizard.publication.permissionDenied": "La base de données a refusé l’enregistrement de cette annonce. Réessayez plus tard. Si le problème persiste, contactez l’assistance.",
   "wizard.publication.title": "Publication de votre annonce",
   "wizard.publication.hint": "Gardez cette fenêtre ouverte jusqu’à la fin de la publication.",
   "wizard.publication.checking": "Vérification des informations",

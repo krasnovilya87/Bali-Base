@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from '../types';
 
 const ru: TranslationDictionary = {
+  "wizard.publication.permissionDenied": "База данных отклонила сохранение объявления. Попробуйте позже. Если ошибка повторится, обратитесь в поддержку.",
   "wizard.publication.title": "Публикация объявления",
   "wizard.publication.hint": "Оставьте это окно открытым до завершения публикации.",
   "wizard.publication.checking": "Проверка данных объявления",

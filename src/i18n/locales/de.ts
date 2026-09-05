@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from '../types';
 
 const de: TranslationDictionary = {
+  "wizard.publication.permissionDenied": "Die Datenbank hat das Speichern dieser Anzeige verweigert. Versuchen Sie es später erneut. Wenn das Problem weiterhin besteht, kontaktieren Sie den Support.",
   "wizard.publication.title": "Anzeige wird veröffentlicht",
   "wizard.publication.hint": "Lassen Sie dieses Fenster bis zum Abschluss geöffnet.",
   "wizard.publication.checking": "Anzeigendaten prüfen",

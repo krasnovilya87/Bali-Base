@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from '../types';
 
 const id: TranslationDictionary = {
+  "wizard.publication.permissionDenied": "Basis data menolak akses untuk menyimpan iklan ini. Coba lagi nanti. Jika masalah berlanjut, hubungi dukungan.",
   "wizard.publication.title": "Menerbitkan iklan Anda",
   "wizard.publication.hint": "Biarkan jendela ini terbuka hingga penerbitan selesai.",
   "wizard.publication.checking": "Memeriksa detail iklan",

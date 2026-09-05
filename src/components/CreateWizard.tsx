@@ -953,7 +953,12 @@ export default function CreateWizard({
       onClose();
     } catch (error) {
       console.error('Failed to publish listing:', error);
-      setPublishError(error instanceof Error ? error.message : tr('wizard.validationSaveFailed'));
+      const errorCode = (error as { code?: string })?.code;
+      setPublishError(errorCode === 'permission-denied'
+        ? tr('wizard.publication.permissionDenied')
+        : error instanceof Error && error.message.startsWith(tr('wizard.publication.photoFailed'))
+          ? error.message
+          : tr('wizard.validationSaveFailed'));
     } finally {
       setIsPublishing(false);
     }

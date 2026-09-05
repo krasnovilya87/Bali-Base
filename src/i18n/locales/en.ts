@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from '../types';
 
 const en: TranslationDictionary = {
+  "wizard.publication.permissionDenied": "The database denied access to save this listing. Please try again later. If the problem persists, contact support.",
   "wizard.publication.title": "Publishing your listing",
   "wizard.publication.hint": "Keep this window open until publication is complete.",
   "wizard.publication.checking": "Checking listing details",
