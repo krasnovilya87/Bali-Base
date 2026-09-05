@@ -288,9 +288,9 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           fileType: uploadableImage.type || file.type || 'image/jpeg'
         });
         replacePhotoUrl(localPreviewUrl, uploadedUrl);
-        if (source === 'camera') {
-          setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
-        }
+        // Keep the final hosted image URL for every upload source. The local
+        // object URL is only a temporary preview and must never be published.
+        setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
         URL.revokeObjectURL(localPreviewUrl);
       } catch (error) {
         const diagnostic: PhotoUploadDiagnostic = {

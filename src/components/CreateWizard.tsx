@@ -755,7 +755,8 @@ export default function CreateWizard({
       return acc;
     }, {});
     const locationCoords = confirmedLocationCoords || pickedCoords || initialListing?.locationCoords;
-    const canKeepNearbySpots = coordsMatch(initialListing?.locationCoords, locationCoords);
+    const canKeepNearbySpots = (category === 'housing' || category === 'investments')
+      && coordsMatch(initialListing?.locationCoords, locationCoords);
     const resolvedDistrict = locationCoords
       ? findDistrictByCoordsSync(locationCoords.lat, locationCoords.lng) || district
       : district;
@@ -912,18 +913,19 @@ export default function CreateWizard({
       resolvedGooglePlaceId,
       photoPublishState
     );
+    const shouldCalculateNearby = category === 'housing' || category === 'investments';
     const publishCoords = confirmedLocationCoords || pickedCoords || baseListing.locationCoords;
     let listingForPublish: Listing = {
       ...baseListing,
       locationCoords: publishCoords,
       nearbySpots: undefined,
       nearbySpotsUpdatedAt: undefined,
-      nearbySpotsStatus: publishCoords ? 'pending' : 'empty',
-      nearbySpotsError: publishCoords ? undefined : 'Coordinates are missing'
+      nearbySpotsStatus: shouldCalculateNearby ? (publishCoords ? 'pending' : 'empty') : undefined,
+      nearbySpotsError: shouldCalculateNearby ? (publishCoords ? undefined : 'Coordinates are missing') : undefined
     };
 
-    setPublishStage('nearby');
-    if (publishCoords) {
+    setPublishStage(shouldCalculateNearby ? 'nearby' : 'moderation');
+    if (shouldCalculateNearby && publishCoords) {
       try {
         const nearbySpots = await calculateNearbySpotsOnce(publishCoords, baseListing.district);
         if (!nearbySpots.length) setNearbyWarning(true);
@@ -947,7 +949,7 @@ export default function CreateWizard({
       }
     }
 
-    if (!publishCoords) setNearbyWarning(true);
+    if (shouldCalculateNearby && !publishCoords) setNearbyWarning(true);
     setPublishStage('moderation');
       await onPublish(listingForPublish, setPublishStage);
       onClose();
