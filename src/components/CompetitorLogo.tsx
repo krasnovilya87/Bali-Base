@@ -4,12 +4,12 @@ import { Listing } from '../types';
 type CompetitorPlatform = NonNullable<Listing['competitorPlatform']>;
 
 const LOGO_URLS: Partial<Record<CompetitorPlatform, string>> = {
-  Booking: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2FBooking.com_logo.svg?alt=media&token=eb07b7cd-05a1-4884-99ef-a298eb71f7f7',
-  Traveloka: '/logo/traveloka-cropped.svg',
-  'Trip.com': 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2FTrip.com_logo.svg?alt=media&token=cec6be0b-7c7e-4c4f-a94e-ac2fea6a3bba',
-  Agoda: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2Fagoda-1.svg?alt=media&token=e6c21cbd-6032-4cc5-a8fb-28aa52a18c16',
-  Airbnb: 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2Fairbnb.svg?alt=media&token=4f5fcd34-6254-4185-a21a-5715a6c2b221',
-  'Only Facebook': 'https://firebasestorage.googleapis.com/v0/b/bali-base-90ca8.firebasestorage.app/o/logo%2Ffacebook.svg?alt=media&token=d3cb3de1-29a6-4cc7-8d55-5bb0c0074610'
+  Booking: '/logo/Booking.com_logo.svg',
+  Traveloka: '/logo/Traveloka.svg',
+  'Trip.com': '/logo/Trip.com_logo.svg',
+  Agoda: '/logo/agoda-1.svg',
+  Airbnb: '/logo/airbnb.svg',
+  'Only Facebook': '/logo/facebook.svg'
 };
 
 const TEXT_BADGE_CLASSES: Partial<Record<CompetitorPlatform, string>> = {

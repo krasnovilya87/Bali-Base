@@ -53,7 +53,7 @@
     </style>
   </head>
   <body>
-    <section id="static-cover" class="static-cover" aria-label="Bali Base">
+    <section id="static-cover" class="static-cover static-cover--hidden" aria-label="Bali Base">
       <div class="static-cover__inner">
         <div>
           <div class="static-cover__badge">
@@ -83,6 +83,9 @@
         const cover = document.getElementById('static-cover');
         const isRootRoute = window.location.pathname.replace(/\/+$/, '') === '';
         const isMobile = window.matchMedia('(max-width: 640px)').matches;
+        const userAgent = navigator.userAgent || '';
+        const isMobileSafari = isMobile && /Version\/[\d.]+.*Mobile.*Safari/i.test(userAgent);
+        const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
         const isCreateWizardDeepLink = new URLSearchParams(window.location.search).get('create') === '1';
         const staticTranslations = {
           EN: {
@@ -154,7 +157,7 @@
           document.body.scrollTop = 0;
         };
 
-        if (!cover || !isRootRoute || !isMobile || isCreateWizardDeepLink) {
+        if (!cover || !isRootRoute || !isMobileSafari || isStandaloneApp || isCreateWizardDeepLink) {
           cover?.remove();
           resetScroll();
           window.requestAnimationFrame(resetScroll);
@@ -162,6 +165,7 @@
           return;
         }
 
+        cover.classList.remove('static-cover--hidden');
         document.documentElement.classList.add('static-cover-visible');
         const setStaticCoverHeight = () => {
           document.documentElement.style.setProperty('--static-cover-vh', `${window.innerHeight * 0.01}px`);
