@@ -11,7 +11,7 @@ import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { findDistrictByCoordsSync, findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
+import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
 import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';

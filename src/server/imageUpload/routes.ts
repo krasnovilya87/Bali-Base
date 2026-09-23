@@ -10,6 +10,7 @@ type FreeImageHostResponse = {
   status_txt?: string;
   image?: {
     url?: string;
+    display_url?: string;
   };
   error?: {
     message?: string;
@@ -41,9 +42,7 @@ const parseFreeImageResponse = async (response: Response) => {
     data = null;
   }
 
-  // display_url is Free Image Host's medium (500px) rendition, not the
-  // original upload. Persist only the direct original URL.
-  const uploadedUrl = data?.image?.url;
+  const uploadedUrl = data?.image?.url || data?.image?.display_url;
   if (response.ok && uploadedUrl) {
     return {
       url: normalizeImageUrl(uploadedUrl),
