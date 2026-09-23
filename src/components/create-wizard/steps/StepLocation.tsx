@@ -9,6 +9,7 @@ import { useI18n } from '../../../i18nContext';
 type LatLng = { lat: number; lng: number };
 
 type StepLocationProps = {
+  isRequired: boolean;
   apiKey: string;
   hasValidKey: boolean;
   isMapExpanded: boolean;
@@ -32,6 +33,7 @@ type StepLocationProps = {
 };
 
 const StepLocation: React.FC<StepLocationProps> = ({
+  isRequired,
   apiKey,
   hasValidKey,
   isMapExpanded,
@@ -144,7 +146,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
           <div className="relative">
             <input
               type="text"
-              placeholder={tr('wizard.locationSearch')}
+              placeholder={tr(isRequired ? 'wizard.locationSearch' : 'wizard.locationSearchOptional')}
               value={address}
               onChange={event => handleAddressChange(event.target.value)}
               onKeyDown={handleInputKeyDown}

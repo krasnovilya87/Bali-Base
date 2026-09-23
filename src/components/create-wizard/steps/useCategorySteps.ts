@@ -18,6 +18,7 @@ type SubcategorySourceItem = {
   label: string;
   icon: string;
   customImage?: string;
+  dividerBefore?: boolean;
 };
 
 type UseCategoryStepsParams = {
@@ -70,7 +71,8 @@ export const useCategorySteps = ({
         id: sub.id,
         label: displayLabel,
         icon: displayIcon,
-        customImage: displayCustomImage
+        customImage: displayCustomImage,
+        dividerBefore: sub.dividerBefore
       };
     });
   }, [category, menuOverrides, subcategoriesMapToUse, tr]);

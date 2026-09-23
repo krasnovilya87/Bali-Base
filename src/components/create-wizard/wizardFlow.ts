@@ -33,9 +33,15 @@ const transportScooterFlow: WizardStepKey[] = [
   'preview'
 ];
 
+const usefulFlow: WizardStepKey[] = housingForRentFlow.filter(step => step !== 'features');
+
 export const getWizardFlow = (category: string, subCategory: string): WizardStepKey[] => {
   if (category === 'transport' && subCategory === 'scooters') {
     return transportScooterFlow;
+  }
+
+  if (category === 'useful') {
+    return usefulFlow;
   }
 
   return housingForRentFlow;

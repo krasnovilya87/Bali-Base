@@ -16,7 +16,7 @@ import {
   getDocsFromServer,
   persistentLocalCache
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, listAll } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from './config/firebaseConfig';
 
 // Initialize Firebase
@@ -302,23 +302,12 @@ export async function uploadFileToStorage(file: File | Blob, path: string): Prom
 }
 
 export async function getDailyAuthImageUrl(): Promise<string | null> {
-  try {
-    const folderRef = ref(storage, 'bali_img');
-    const result = await listAll(folderRef);
-    const images = result.items
-      .filter(item => /\.(avif|webp|jpe?g|png)$/i.test(item.name))
-      .sort((a, b) => a.fullPath.localeCompare(b.fullPath));
+  const imageNumbers = Array.from({ length: 43 }, (_, index) => index + 1)
+    .filter(imageNumber => imageNumber !== 2 && imageNumber !== 37);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const daySeed = Array.from(todayKey).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const dailyImageNumber = imageNumbers[daySeed % imageNumbers.length];
 
-    if (images.length === 0) return null;
-
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const daySeed = Array.from(todayKey).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const dailyImageRef = images[daySeed % images.length];
-
-    return await getDownloadURL(dailyImageRef);
-  } catch (error) {
-    console.warn('Failed to load daily auth image from Firebase Storage.', error);
-    return null;
-  }
+  return `/img_auth/${dailyImageNumber}.webp`;
 }
 

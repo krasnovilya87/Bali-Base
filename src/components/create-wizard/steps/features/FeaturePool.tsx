@@ -15,7 +15,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
   return (
     <>
                   {/* 8. Бассейн */}
-                  <div className="pl p-5 rounded-3xl space-y-4 font-sans">
+                  <div className="pl p-5 rounded-3xl space-y-2.5 font-sans">
                     <div className="flex justify-between items-center text-left">
                       <span className="text-xs font-bold text-gray-500 tracking-wider block">💦 {tr('wizard.features.pool')}</span>
                       <span className="text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-full animate-fade-in">
@@ -23,7 +23,7 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                       </span>
                     </div>
 
-                    <div className="pt-2 relative">
+                    <div className="pt-0.5 relative">
                       <Polzunok
                         min={0}
                         max={2}

@@ -21,6 +21,11 @@ import { useAuth } from '../auth/AuthContext';
 import { db } from '../firebase';
 import { formatPhoneInput } from '../utils/phone';
 import { getScooterModelLabel, isScooterGeneratedDescription } from './create-wizard/configs/scooterWizardConfig';
+import { getMissingClassifiedSpecialFieldKey } from '../config/classifiedSpecial';
+import type { ClassifiedSpecialValue } from '../config/classifiedSpecial';
+import { AFISHA_PUBLICATION_DAYS, EVENT_COMMON_FIELD_IDS } from '../config/eventSpecial';
+import { getLifeFields, LIFE_EXPENSE_PER_PERSON_KEY, LIFE_FIELDS, LIFE_WEEKDAYS, normalizeLifeSubCategory } from '../config/lifeSpecial';
+import { INVESTMENT_SUBTYPES } from '../config/investmentSpecial';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -234,6 +239,54 @@ export default function CreateWizard({
   const [surfRack, setSurfRack] = useState<boolean>(Boolean(initialListing?.surfRack || initialListing?.amenities?.includes('surf_rack')));
   const [insurance, setInsurance] = useState<boolean>(Boolean(initialListing?.insurance));
   const [freeDeliveryDistricts, setFreeDeliveryDistricts] = useState<string[]>(initialListing?.freeDeliveryDistricts || []);
+  const [serviceFormats, setServiceFormats] = useState<string[]>(initialListing?.serviceFormats || []);
+  const [serviceSubcategory, setServiceSubcategory] = useState(initialListing?.serviceSubcategory || '');
+  const [serviceLicensed, setServiceLicensed] = useState(!!initialListing?.serviceLicensed);
+  const [serviceCertified, setServiceCertified] = useState(!!initialListing?.serviceCertified);
+  const [serviceDistricts, setServiceDistricts] = useState<string[]>(initialListing?.serviceDistricts || []);
+  const [serviceLanguages, setServiceLanguages] = useState<string[]>(initialListing?.serviceLanguages || []);
+  const [serviceProviderType, setServiceProviderType] = useState<string>(initialListing?.serviceProviderType || 'private_specialist');
+  const [serviceExperienceYears, setServiceExperienceYears] = useState<number>(
+    Math.max(0, Math.min(5, initialListing?.serviceExperienceYears || 0))
+  );
+  const [servicePriceType, setServicePriceType] = useState<string>(initialListing?.servicePriceType || 'fixed');
+  const [serviceAvailability, setServiceAvailability] = useState<string[]>(initialListing?.serviceAvailability || []);
+  const [serviceUrgentAvailable, setServiceUrgentAvailable] = useState<boolean>(Boolean(initialListing?.serviceUrgentAvailable));
+  const [serviceFreeConsultation, setServiceFreeConsultation] = useState<boolean>(Boolean(initialListing?.serviceFreeConsultation));
+  const [classifiedCondition, setClassifiedCondition] = useState<Listing['classifiedCondition'] | ''>(initialListing?.classifiedCondition || 'good');
+  const [classifiedFulfillment, setClassifiedFulfillment] = useState<string[]>(initialListing?.classifiedFulfillment || []);
+  const [classifiedUrgentSale, setClassifiedUrgentSale] = useState<boolean>(Boolean(initialListing?.classifiedUrgentSale));
+  const [classifiedAudience, setClassifiedAudience] = useState<Listing['classifiedAudience'] | ''>(initialListing?.classifiedAudience || '');
+  const [classifiedLevel, setClassifiedLevel] = useState<Listing['classifiedLevel'] | ''>(initialListing?.classifiedLevel || '');
+  const [classifiedProductType, setClassifiedProductType] = useState<string>(initialListing?.classifiedProductType || '');
+  const [classifiedAttributes, setClassifiedAttributes] = useState<Record<string, ClassifiedSpecialValue>>(
+    initialListing?.category === 'investments' ? initialListing.investmentAttributes || {} : initialListing?.classifiedAttributes || {}
+  );
+  const classifiedSubCategoryRef = useRef(subCategory);
+
+  useEffect(() => {
+    if (classifiedSubCategoryRef.current === subCategory) return;
+    classifiedSubCategoryRef.current = subCategory;
+    if (category === 'investments') {
+      setClassifiedAttributes({});
+      return;
+    }
+    if (category !== 'ads' && category !== 'afisha' && category !== 'life') return;
+    if (category === 'life') {
+      setClassifiedAttributes({});
+      return;
+    }
+    if (category === 'ads') {
+      setClassifiedProductType('');
+      setClassifiedAttributes({});
+      return;
+    }
+    setClassifiedAttributes(current => Object.fromEntries(
+      Object.entries(current).filter(([fieldId]) => (
+        EVENT_COMMON_FIELD_IDS.has(fieldId)
+      ))
+    ));
+  }, [category, subCategory]);
 
   const currentYear = new Date().getFullYear();
   const recentYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -247,6 +300,7 @@ export default function CreateWizard({
     requiredPhotoSlots,
     optionalPhotoSlots,
     isScooterPhotoFlow,
+    isServicePhotoFlow,
     draggedPhotoSlotId,
     setDraggedPhotoSlotId,
     getAssignedPhotoUrls,
@@ -269,7 +323,8 @@ export default function CreateWizard({
     handleGalleryChoose,
     openCameraForSlot,
     uploadCameraPhotoForSlot,
-    handleRemovePhoto
+    handleRemovePhoto,
+    setMainPhoto
   } = usePhotoStep({
     initialListing,
     category,
@@ -418,6 +473,22 @@ export default function CreateWizard({
     setFreeDeliveryDistricts(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
   };
 
+  const toggleServiceFormat = (value: string) => {
+    setServiceFormats(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
+  };
+
+  const toggleServiceDistrict = (value: string) => {
+    setServiceDistricts(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
+  };
+
+  const toggleServiceLanguage = (value: string) => {
+    setServiceLanguages(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
+  };
+
+  const toggleServiceAvailability = (value: string) => {
+    setServiceAvailability(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
+  };
+
   const handlePhoneChange = (value: string, e164Number?: string) => {
     setWhatsappInput(value);
     setWhatsappNumber(e164Number || '');
@@ -432,7 +503,13 @@ export default function CreateWizard({
   };
 
   const wizardFlow = getWizardFlow(category, subCategory);
-  const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
+  const isLifeCommunityListing = category === 'life' && subCategory !== 'life_jobs';
+  const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
+  const stepLabels = wizardFlow.map(key => tr(
+    isLifeCommunityListing && key === 'pricing'
+        ? 'wizard.step.lifeExpenses'
+      : stepLabelKeyByStep[key]
+  ));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
   const photosStep = Math.max(1, wizardFlow.indexOf('photos') + 1);
 
@@ -442,6 +519,10 @@ export default function CreateWizard({
 
   const validateMechanicalStep = async (targetStep: number) => {
     const targetStepKey = getWizardStepKey(targetStep, category, subCategory);
+
+    if (targetStepKey === 'subcategory' && category === 'life' && !LIFE_FIELDS[normalizeLifeSubCategory(subCategory)]) {
+      return tr('filters.life.selectCategory');
+    }
 
     if (targetStepKey === 'title') {
       if (category === 'transport' && subCategory === 'scooters' && !vehicleModel) {
@@ -462,11 +543,15 @@ export default function CreateWizard({
       }
     }
 
-    if (targetStepKey === 'location') {
+    if (targetStepKey === 'location' && isLocationRequired) {
       if (!pickedCoords && !address.trim()) return tr('wizard.validationMapPoint');
     }
 
     if (targetStepKey === 'photos') {
+      if (category === 'services') {
+        if (photoUrls.length < 1) return tr('wizard.validationServicePhotos');
+        return '';
+      }
       if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
         return tr('wizard.validationPhotos');
       }
@@ -476,13 +561,97 @@ export default function CreateWizard({
       return tr('wizard.validationYear');
     }
 
+    if (targetStepKey === 'features' && category === 'investments') {
+      const subtype = String(classifiedAttributes.investment_subtype || '');
+      if (!(INVESTMENT_SUBTYPES[subCategory] || []).some(option => option.value === subtype)) {
+        return tr('investments.validation.subtype');
+      }
+    }
+
+    if (targetStepKey === 'features' && category === 'life') {
+      const missingField = getLifeFields(subCategory).find(field => (
+        typeof classifiedAttributes[field.id] !== 'string' || !field.options.some(option => option.value === classifiedAttributes[field.id])
+      ));
+      if (missingField) return tr('filters.life.required', { field: tr(missingField.labelKey) });
+
+      if (subCategory !== 'life_jobs') {
+        const date = classifiedAttributes.life_meeting_date;
+        if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00`))) {
+          return tr('filters.life.required', { field: tr('filters.life.meeting.date') });
+        }
+        const time = classifiedAttributes.life_meeting_time;
+        if (typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+          return tr('filters.life.required', { field: tr('filters.life.meeting.time') });
+        }
+        const format = classifiedAttributes.life_meeting_format;
+        if (format !== 'once' && format !== 'one_time' && format !== 'regular' && format !== 'regularly') {
+          return tr('filters.life.required', { field: tr('filters.life.meeting.format') });
+        }
+        const weekdays = classifiedAttributes.life_meeting_weekdays;
+        if ((format === 'regular' || format === 'regularly') && (!Array.isArray(weekdays) || !weekdays.some(day => LIFE_WEEKDAYS.some(option => option.value === day)))) {
+          return tr('filters.life.required', { field: tr('filters.life.meeting.weekdays') });
+        }
+        const maxParticipants = classifiedAttributes.life_participants_max;
+        if (typeof maxParticipants !== 'number' || !Number.isSafeInteger(maxParticipants) || maxParticipants < 1) {
+          return tr('filters.life.meeting.invalidParticipants');
+        }
+      }
+    }
+
+    if (targetStepKey === 'features' && category === 'ads') {
+      if (!classifiedCondition) {
+        return tr('filters.classified.special.validation', { field: tr('filters.classified.condition') });
+      }
+      const missingFieldKey = getMissingClassifiedSpecialFieldKey(
+        subCategory,
+        classifiedProductType,
+        classifiedAttributes,
+        classifiedLevel
+      );
+      if (missingFieldKey) {
+        return tr('filters.classified.special.validation', { field: tr(missingFieldKey) });
+      }
+    }
+
+    if (targetStepKey === 'features' && category === 'afisha') {
+      if (!AFISHA_PUBLICATION_DAYS[String(classifiedAttributes.afisha_publication_term || '')]) {
+        return tr('filters.event.publicationRequired');
+      }
+      const duration = classifiedAttributes.afisha_festival_duration;
+      if (duration !== undefined && (typeof duration !== 'number' || !Number.isInteger(duration) || duration < 1 || duration > 365)) {
+        return tr('filters.event.invalidDuration');
+      }
+      if (['registration', 'ticket'].includes(String(classifiedAttributes.afisha_admission || ''))) {
+        try {
+          const url = new URL(String(classifiedAttributes.afisha_registration_url || ''));
+          if (!['http:', 'https:'].includes(url.protocol)) return tr('filters.event.registrationUrlRequired');
+        } catch {
+          return tr('filters.event.registrationUrlRequired');
+        }
+      }
+    }
+
+    if (targetStepKey === 'features' && category === 'life' && subCategory === 'life_jobs') {
+      const experience = classifiedAttributes.life_job_experience;
+      if (experience !== undefined && experience !== 'none' && (
+        typeof experience !== 'string' || !/^[1-9]\d*$/.test(experience) || Number(experience) > 80
+      )) return tr('filters.life.job.invalidExperience');
+    }
+
     if (targetStepKey === 'pricing') {
+      if (isLifeCommunityListing) {
+        const amount = classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY];
+        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) {
+          return tr('wizard.validationLifeExpensesPerPerson');
+        }
+        return '';
+      }
       if (!Number.isFinite(pricePerDay) || pricePerDay <= 0) return tr('wizard.validationPriceDay');
-      if (pricePerMonth !== undefined && pricePerMonth < 0) return tr('wizard.validationPriceMonth');
+      if (category !== 'services' && pricePerMonth !== undefined && pricePerMonth < 0) return tr('wizard.validationPriceMonth');
     }
 
     if (targetStepKey === 'contact') {
-      if (category === 'transport' && subCategory === 'scooters') {
+      if ((category === 'transport' && subCategory === 'scooters') || category === 'services') {
         if (!sellerType) return tr('wizard.validationSellerType');
         if (sellerType === 'private' && ownerName.trim().length < 2) return tr('wizard.validationOwnerName');
         if (sellerType === 'company' && sellerCompanyName.trim().length < 2 && sellerGoogleMapsUrl.trim().length < 3) {
@@ -675,7 +844,7 @@ export default function CreateWizard({
       showValidationPopup(tr('wizard.validationGoogleObjectRequired'));
       return;
     }
-    if (currentStepKey === 'location' && !pickedCoords) {
+    if (currentStepKey === 'location' && isLocationRequired && !pickedCoords) {
       const foundCoords = await triggerDirectSearch(address);
       if (!foundCoords) {
         showValidationPopup(tr('wizard.validationMapPoint'));
@@ -794,15 +963,15 @@ export default function CreateWizard({
       isVerified: initialListing?.isVerified ?? false,
       isNew: isListingFresh({ yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
       status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
-      pricePerDay,
-      pricePerMonth,
-      listingDepositAmount: listingDepositAmount > 0 ? listingDepositAmount : undefined,
-      bookingComPrice: competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,
-      competitorPlatform: competitorPlatform !== 'Only Facebook' ? competitorPlatform as Listing['competitorPlatform'] : undefined,
-      competitorUrl: competitorUrl || undefined,
-      hasDropPrice: selectedDiscountPercent > 0,
-      dropPricePerDay,
-      dropPricePerMonth,
+      pricePerDay: isLifeCommunityListing ? Number(classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY]) || 0 : pricePerDay,
+      pricePerMonth: category === 'services' || isLifeCommunityListing ? undefined : pricePerMonth,
+      listingDepositAmount: category === 'services' || isLifeCommunityListing ? undefined : listingDepositAmount > 0 ? listingDepositAmount : undefined,
+      bookingComPrice: category !== 'services' && !isLifeCommunityListing && competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,
+      competitorPlatform: category !== 'services' && !isLifeCommunityListing && competitorPlatform !== 'Only Facebook' ? competitorPlatform as Listing['competitorPlatform'] : undefined,
+      competitorUrl: category !== 'services' && !isLifeCommunityListing ? competitorUrl || undefined : undefined,
+      hasDropPrice: !isLifeCommunityListing && selectedDiscountPercent > 0,
+      dropPricePerDay: isLifeCommunityListing ? undefined : dropPricePerDay,
+      dropPricePerMonth: isLifeCommunityListing ? undefined : dropPricePerMonth,
       roomsTotal: subCategory === 'private_room' ? 1 : roomsTotal,
       bedroomsCount: subCategory === 'private_room' ? 1 : roomsTotal,
       wallMaterial: initialListing?.wallMaterial || 'concrete',
@@ -828,24 +997,44 @@ export default function CreateWizard({
       vehicleModelQuantity: category === 'transport' && subCategory === 'scooters' ? vehicleModelQuantity : initialListing?.vehicleModelQuantity,
       vehicleColor: category === 'transport' && subCategory === 'scooters' ? vehicleColor || undefined : initialListing?.vehicleColor,
       vehicleCondition: category === 'transport' && subCategory === 'scooters' ? vehicleCondition as Listing['vehicleCondition'] || undefined : initialListing?.vehicleCondition,
-      sellerType: category === 'transport' && subCategory === 'scooters' ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
-      sellerGoogleMapsUrl: category === 'transport' && subCategory === 'scooters' && sellerType === 'company'
+      sellerType: ((category === 'transport' && subCategory === 'scooters') || category === 'services') ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
+      sellerGoogleMapsUrl: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company'
         ? buildSellerGoogleMapsUrl(sellerCompanyName, sellerGoogleMapsUrl, sellerGooglePlaceId)
         : initialListing?.sellerGoogleMapsUrl,
-      sellerGooglePlaceId: category === 'transport' && subCategory === 'scooters' && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
+      sellerGooglePlaceId: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
       keyless: category === 'transport' && subCategory === 'scooters' ? keyless : initialListing?.keyless,
       abs: category === 'transport' && subCategory === 'scooters' ? abs : initialListing?.abs,
       surfRack: category === 'transport' && subCategory === 'scooters' ? surfRack : initialListing?.surfRack,
       insurance: category === 'transport' && subCategory === 'scooters' ? insurance : initialListing?.insurance,
       freeDeliveryToDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts.length > 0 : initialListing?.freeDeliveryToDistricts,
       freeDeliveryDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts : initialListing?.freeDeliveryDistricts,
+      serviceFormats: category === 'services' ? serviceFormats : initialListing?.serviceFormats,
+      serviceSubcategory: category === 'services' ? serviceSubcategory.startsWith(subCategory + '.') ? serviceSubcategory : undefined : initialListing?.serviceSubcategory,
+      serviceLicensed: category === 'services' ? subCategory === 'health' && serviceLicensed : initialListing?.serviceLicensed,
+      serviceCertified: category === 'services' ? subCategory === 'health' && serviceCertified : initialListing?.serviceCertified,
+      serviceDistricts: category === 'services' ? serviceDistricts : initialListing?.serviceDistricts,
+      serviceLanguages: category === 'services' ? serviceLanguages : initialListing?.serviceLanguages,
+      serviceProviderType: category === 'services' ? serviceProviderType as Listing['serviceProviderType'] : initialListing?.serviceProviderType,
+      serviceExperienceYears: category === 'services' ? serviceExperienceYears || undefined : initialListing?.serviceExperienceYears,
+      servicePriceType: category === 'services' ? servicePriceType as Listing['servicePriceType'] : initialListing?.servicePriceType,
+      serviceAvailability: category === 'services' ? serviceAvailability : initialListing?.serviceAvailability,
+      serviceUrgentAvailable: category === 'services' ? serviceUrgentAvailable : initialListing?.serviceUrgentAvailable,
+      serviceFreeConsultation: category === 'services' ? serviceFreeConsultation : initialListing?.serviceFreeConsultation,
+      classifiedCondition: category === 'ads' ? classifiedCondition || undefined : initialListing?.classifiedCondition,
+      classifiedFulfillment: category === 'ads' ? classifiedFulfillment : initialListing?.classifiedFulfillment,
+      classifiedUrgentSale: category === 'ads' ? classifiedUrgentSale : initialListing?.classifiedUrgentSale,
+      classifiedAudience: category === 'ads' ? classifiedAudience || undefined : initialListing?.classifiedAudience,
+      classifiedLevel: category === 'ads' ? classifiedLevel || undefined : initialListing?.classifiedLevel,
+      classifiedProductType: category === 'ads' ? classifiedProductType || undefined : initialListing?.classifiedProductType,
+      classifiedAttributes: category === 'ads' || category === 'afisha' || category === 'life' ? classifiedAttributes : initialListing?.classifiedAttributes,
+      investmentAttributes: category === 'investments' ? classifiedAttributes : initialListing?.investmentAttributes,
       yearBuilt: rawYear,
       interiorStyle,
       housingType,
       area: subCategory === 'private_room' ? undefined : area,
       distanceToSeaMinutes: initialListing?.distanceToSeaMinutes || 8,
       whatsappNumber,
-      ownerName: category === 'transport' && subCategory === 'scooters' && sellerType === 'company'
+      ownerName: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company'
         ? sellerCompanyName || ownerName || sellerGoogleMapsUrl
         : ownerName,
       ownerAvatar: initialListing?.ownerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&q=80',
@@ -863,6 +1052,9 @@ export default function CreateWizard({
   };
 
   const hasRequiredPublishablePhotos = (photoPublishState: PhotoPublishState) =>
+    category === 'services'
+      ? photoPublishState.photoUrls.some(url => isPublishablePhotoUrl(url))
+      :
     requiredPhotoSlots.every(slot =>
       (photoPublishState.photoSlotAssignments[slot.id] || [])
         .some(url => photoPublishState.photoUrls.includes(url) && isPublishablePhotoUrl(url))
@@ -1010,8 +1202,9 @@ export default function CreateWizard({
       toggleFreeDeliveryDistrict
     },
     locationState: {
+      isRequired: isLocationRequired,
       apiKey: API_KEY,
-      hasValidKey,
+      hasValidKey: hasValidKey && category !== 'life',
       isMapExpanded,
       setIsMapExpanded,
       pickedCoords,
@@ -1032,6 +1225,7 @@ export default function CreateWizard({
       handleSelectSuggestion
     },
     photoState: {
+      category,
       dragActive,
       handleDrag,
       handleDrop,
@@ -1049,6 +1243,7 @@ export default function CreateWizard({
       requiredPhotoSlots,
       optionalPhotoSlots,
       isScooterPhotoFlow,
+      isServicePhotoFlow,
       setDraggedPhotoSlotId,
       draggedPhotoSlotId,
       getPhotoSlot,
@@ -1059,11 +1254,21 @@ export default function CreateWizard({
       handleGalleryChoose,
       openCameraForSlot,
       uploadCameraPhotoForSlot,
-      handleRemovePhoto
+      handleRemovePhoto,
+      setMainPhoto
     },
     featureState: {
       category,
       subCategory,
+      title,
+      setTitle,
+      description,
+      setDescription,
+      isGeneratedScooterDescription: isScooterGeneratedDescription,
+      roomType,
+      setRoomType,
+      unitType,
+      setUnitType,
       yearBuilt,
       recentYears,
       setYearBuilt,
@@ -1118,9 +1323,58 @@ export default function CreateWizard({
       insurance,
       setInsurance,
       freeDeliveryDistricts,
-      toggleFreeDeliveryDistrict
+      toggleFreeDeliveryDistrict,
+      serviceFormats,
+      serviceSubcategory,
+      setServiceSubcategory,
+      serviceLicensed,
+      setServiceLicensed,
+      serviceCertified,
+      setServiceCertified,
+      toggleServiceFormat,
+      serviceDistricts,
+      toggleServiceDistrict,
+      serviceLanguages,
+      toggleServiceLanguage,
+      serviceProviderType,
+      setServiceProviderType,
+      serviceExperienceYears,
+      setServiceExperienceYears,
+      servicePriceType,
+      setServicePriceType,
+      serviceAvailability,
+      toggleServiceAvailability,
+      serviceUrgentAvailable,
+      setServiceUrgentAvailable,
+      serviceFreeConsultation,
+      setServiceFreeConsultation,
+      classifiedCondition,
+      setClassifiedCondition,
+      classifiedFulfillment,
+      setClassifiedFulfillment,
+      classifiedUrgentSale,
+      setClassifiedUrgentSale,
+      classifiedAudience,
+      setClassifiedAudience,
+      classifiedLevel,
+      setClassifiedLevel,
+      classifiedProductType,
+      setClassifiedProductType,
+      classifiedAttributes,
+      setClassifiedAttributes
     },
     pricingState: {
+      category,
+      subCategory,
+      lifeExpensePerPerson: typeof classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY] === 'number'
+        ? classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY] as number
+        : undefined,
+      setLifeExpensePerPerson: (amount: number | undefined) => setClassifiedAttributes(current => {
+        const next = { ...current };
+        if (amount !== undefined) next[LIFE_EXPENSE_PER_PERSON_KEY] = amount;
+        else delete next[LIFE_EXPENSE_PER_PERSON_KEY];
+        return next;
+      }),
       pricePerDay,
       setPricePerDay,
       pricePerMonth,
@@ -1207,16 +1461,22 @@ export default function CreateWizard({
 
         <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
           <div className="relative h-8 pt-0.5 pb-0.5 sm:h-auto sm:pt-1 sm:pb-1">
-            <div className="absolute left-3 right-3 top-2 h-px rounded-full bg-[#CBD5E1] sm:top-4" />
             <div
-              className="absolute left-3 top-2 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
-              style={{ width: `calc((100% - 24px) * ${stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0})` }}
+              className="absolute top-2 h-px rounded-full bg-[#CBD5E1] sm:top-4"
+              style={{ left: `${50 / stepLabels.length}%`, right: `${50 / stepLabels.length}%` }}
+            />
+            <div
+              className="absolute top-2 h-px rounded-full bg-[#FF7A50] transition-all duration-300 sm:top-4"
+              style={{
+                left: `${50 / stepLabels.length}%`,
+                width: `${(100 - (100 / stepLabels.length)) * (stepLabels.length > 1 ? (step - 1) / (stepLabels.length - 1) : 0)}%`
+              }}
             />
             <div className="absolute inset-x-0 -bottom-1 block truncate px-10 text-center text-[10px] font-normal leading-none text-[#94A3B8] sm:hidden">
               {stepLabels[step - 1]}
             </div>
             <div
-              className="relative grid w-full -translate-y-[6px] gap-0 sm:translate-y-0 sm:gap-3"
+              className="relative grid w-full -translate-y-[6px] gap-0 sm:translate-y-0"
               style={{ gridTemplateColumns: `repeat(${stepLabels.length}, minmax(0, 1fr))` }}
             >
               {stepLabels.map((label, index) => {

@@ -64,7 +64,13 @@ const getUploadExtension = (image: Blob | File, fallbackFile: File) => {
 export const usePhotoStep = ({ initialListing, category, subCategory, uploadNamingContext }: UsePhotoStepParams) => {
   const { tr } = useI18n();
   const isScooterPhotoFlow = category === 'transport' && subCategory === 'scooters';
-  const activePhotoSlotConfig = isScooterPhotoFlow ? SCOOTER_PHOTO_SLOT_CONFIG : PHOTO_SLOT_CONFIG;
+  const isServicePhotoFlow = category === 'services';
+  const isUncategorizedPhotoFlow = category === 'afisha' || category === 'life';
+  const activePhotoSlotConfig = isScooterPhotoFlow
+    ? SCOOTER_PHOTO_SLOT_CONFIG
+    : isServicePhotoFlow || isUncategorizedPhotoFlow
+      ? []
+      : PHOTO_SLOT_CONFIG;
   const requiredPhotoSlots = activePhotoSlotConfig.filter(slot => slot.required);
   const optionalPhotoSlots = activePhotoSlotConfig.filter(slot => !slot.required);
 
@@ -467,6 +473,17 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     setRealPhotoUrls(prev => prev.filter(url => url !== removedUrl));
   };
 
+  const setMainPhoto = (index: number) => {
+    const targetUrl = photoUrls[index];
+    if (!targetUrl || index === 0) return;
+
+    setPhotoUrls(prev => [targetUrl, ...prev.filter((_, photoIndex) => photoIndex !== index)]);
+    setRealPhotoUrls(prev => targetUrl && prev.includes(targetUrl)
+      ? [targetUrl, ...prev.filter(url => url !== targetUrl)]
+      : prev
+    );
+  };
+
   return {
     photoUrls,
     realPhotoUrls,
@@ -475,6 +492,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     requiredPhotoSlots,
     optionalPhotoSlots,
     isScooterPhotoFlow,
+    isServicePhotoFlow,
     draggedPhotoSlotId,
     setDraggedPhotoSlotId,
     getAssignedPhotoUrls,
@@ -499,6 +517,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'gallery'),
     openCameraForSlot,
     uploadCameraPhotoForSlot,
-    handleRemovePhoto
+    handleRemovePhoto,
+    setMainPhoto
   };
 };

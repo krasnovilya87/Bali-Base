@@ -5,6 +5,7 @@ import { LANGUAGES, LanguageCode } from '../../i18n';
 
 const MODEL = 'gemini-flash-lite-latest';
 const MAX_TEXT_LENGTH = 4000;
+const MAX_OUTPUT_TOKENS = 800;
 
 const getLanguageName = (language: LanguageCode) =>
   LANGUAGES.find(item => item.code === language)?.name || 'English';
@@ -69,7 +70,10 @@ export const translateTextWithGemini = async (text: string, language: LanguageCo
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: buildPrompt(sourceText, targetLanguage),
-    config: { temperature: 0.2 }
+    config: {
+      temperature: 0.2,
+      maxOutputTokens: MAX_OUTPUT_TOKENS
+    }
   });
   const translatedText = response.text?.trim() || '';
 

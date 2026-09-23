@@ -144,6 +144,32 @@ export interface Listing {
   freeDeliveryToAddress?: boolean;
   freeDeliveryToDistricts?: boolean;
   freeDeliveryDistricts?: string[];
+
+  // Classified attributes
+  classifiedCondition?: 'new' | 'like_new' | 'good' | 'fair' | 'needs_repair' | 'for_parts';
+  classifiedFulfillment?: string[];
+  classifiedUrgentSale?: boolean;
+  classifiedAudience?: 'men' | 'women' | 'unisex' | 'kids';
+  classifiedLevel?: 'beginner' | 'intermediate' | 'advanced' | 'professional';
+  classifiedProductType?: string;
+  classifiedAttributes?: Record<string, string | number | boolean | string[]>;
+
+  // Investment attributes
+  investmentAttributes?: Record<string, string | number | boolean | string[]>;
+
+  // Service attributes
+  serviceFormats?: string[];
+  serviceDistricts?: string[];
+  serviceLanguages?: string[];
+  serviceProviderType?: 'private_specialist' | 'team' | 'company';
+  serviceSubcategory?: string;
+  serviceLicensed?: boolean;
+  serviceCertified?: boolean;
+  serviceExperienceYears?: number;
+  servicePriceType?: 'fixed' | 'from' | 'hourly' | 'per_lesson' | 'project' | 'negotiable';
+  serviceAvailability?: string[];
+  serviceUrgentAvailable?: boolean;
+  serviceFreeConsultation?: boolean;
   
   // Construction metrics
   yearBuilt: number | 'other';
@@ -205,6 +231,17 @@ export interface SearchState {
 }
 
 export interface FilterState {
+  serviceSubcategories?: string[];
+  serviceFilterCategory?: string;
+  serviceLicensedOnly?: boolean;
+  serviceCertifiedOnly?: boolean;
+  serviceFormats?: string[];
+  serviceLanguages?: string[];
+  serviceExperienceMin?: number;
+  servicePriceTypes?: string[];
+  serviceAvailability?: string[];
+  serviceUrgentOnly?: boolean;
+  serviceFreeConsultationOnly?: boolean;
   // Shared
   priceMin: number;
   priceMax: number;
@@ -252,4 +289,25 @@ export interface FilterState {
   insuranceOnly: boolean;
   freeDeliveryToAddressOnly: boolean;
   freeDeliveryToDistrictOnly: boolean;
+
+  // Classified specifics
+  classifiedCondition: string[];
+  classifiedFulfillment: string[];
+  classifiedAudience: string[];
+  classifiedLevel: string[];
+  classifiedProductType: string[];
+  classifiedSpecialSubCategory: string;
+  classifiedSpecialOptions: Record<string, string[]>;
+  classifiedSpecialNumberRanges: Record<string, { min?: number; max?: number }>;
+  classifiedSpecialText: Record<string, string>;
+  classifiedSpecialDateRanges: Record<string, { from?: string; to?: string }>;
+  classifiedUrgentOnly: boolean;
+  classifiedPublishedWithin: string;
+
+  // Investment specifics
+  investmentSubtypes: string[];
+  investmentOptions: Record<string, string[]>;
+  investmentNumberRanges: Record<string, { min?: number; max?: number }>;
+  investmentText: Record<string, string>;
+  investmentPublishedWithin: string;
 }

@@ -42,6 +42,26 @@ service cloud.firestore {
         && (data.pricePerDay is int || data.pricePerDay is float) && data.pricePerDay >= 0;
     }
 
+    function isManualReviewWarning(data) {
+      return (data.category == 'life' && data.subCategory == 'life_warnings')
+        || (data.category == 'afisha' && data.subCategory == 'afisha_warnings');
+    }
+
+    function canOwnerCreateListing(data) {
+      return !isManualReviewWarning(data) || (data.status == 'moderation' && data.isApproved == false);
+    }
+
+    function canOwnerUpdateListing(before, after) {
+      return !isManualReviewWarning(before) && canOwnerCreateListing(after)
+        || isManualReviewWarning(before) && isManualReviewWarning(after) && after.status == 'moderation' && after.isApproved == false;
+    }
+
+    function canUpdateListing(before, after) {
+      return after.ownerId == before.ownerId
+        && ((isOwner(before.ownerId) && canOwnerUpdateListing(before, after))
+          || (isAdmin() && isManualReviewWarning(before)));
+    }
+
     function isValidBookingRequest(data) {
       return data.id is string && data.id.size() <= 128
         && data.listingId is string && data.listingId.size() <= 128
@@ -53,22 +73,22 @@ service cloud.firestore {
 
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId);
-      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
+      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
       allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
     }
 
     match /housing_for_rent_listing/{listingId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId);
-      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
+      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
       allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
     }
 
     match /transport_for_rent/{listingId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId);
-      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(existing().ownerId) && incoming().ownerId == existing().ownerId;
+      allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
+      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
       allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
     }
 

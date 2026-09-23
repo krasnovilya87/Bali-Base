@@ -17,6 +17,7 @@ import {
 import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 import { uploadImageToFreeImageHost } from '../../utils/imageUpload';
 import { AiSearchUsageStats, loadAiSearchUsageStats } from '../../utils/aiSearchClient';
+import { getAfishaExpirationDate } from '../../config/eventSpecial';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -364,7 +365,7 @@ export function useAdminDashboardController({
       investments: { label: 'Investments', desc: 'Villas, land and ready businesses in Bali with strong ROI', image: '' },
       services: { label: 'Services', desc: 'Guides, nannies, chefs, cleaning and massage directly', image: '' },
       ads: { label: 'Ads', desc: 'Item rentals, appliances and shared living', image: '' },
-      afisha: { label: 'Events', desc: 'Upcoming concerts, parties and festivals in Bali', image: '' },
+      afisha: { label: 'Events', desc: 'Community posts and local connections in Bali', image: '' },
       life: { label: 'Life', desc: 'Community chats, visa tips, contacts and mutual help', image: '' },
       useful: { label: 'Useful Information', desc: 'Helpful guides, visa information, Balinese names and life hacks', image: '' }
     };
@@ -383,7 +384,8 @@ export function useAdminDashboardController({
       scooters: { label: 'Scooters', icon: '🛵' },
       motorcycles: { label: 'Motorcycles', icon: '🏍' },
       cars: { label: 'Cars', icon: '🚗' },
-      villas: { label: 'Villas & apartments', icon: '🏢' },
+      villas: { label: 'Residential real estate', icon: '🏢' },
+      commercial_real_estate: { label: 'Commercial real estate', icon: '🏬' },
       land: { label: 'Land plots', icon: '🏝' },
       business: { label: 'Ready business', icon: '💼' },
       household_services: { label: 'Household services', icon: '🧰' },
@@ -400,11 +402,39 @@ export function useAdminDashboardController({
       trans_sale: { label: 'Transport sale', icon: '🛵' },
       clothes: { label: 'Clothes and personal items', icon: '👕' },
       house_furn: { label: 'Home and interior', icon: '🏡' },
-      festivals: { label: 'Festivals & parties', icon: '🎉' },
-      seminars: { label: 'Business seminars', icon: '💼' },
-      exhibitions: { label: 'Exhibitions & kids', icon: '🎨' },
-      meetings: { label: 'Meetups & sport', icon: '💬' },
-      buddies: { label: 'Travel buddies & trips', icon: '🛵' }
+      parties: { label: 'Parties', icon: '🎉' },
+      live_music: { label: 'Concerts', icon: '🎤' },
+      festivals: { label: 'Festivals', icon: '🎪' },
+      exhibitions: { label: 'Exhibitions and art', icon: '🎨' },
+      cinema_theatre: { label: 'Cinema and theatre', icon: '🎭' },
+      sports_events: { label: 'Sports events', icon: '🏆' },
+      workshops: { label: 'Workshops', icon: '🛠️' },
+      yoga_wellness: { label: 'Yoga and wellness', icon: '🧘' },
+      seminars: { label: 'Business and networking', icon: '🤝' },
+      family_events: { label: 'Kids and family events', icon: '🧸' },
+      markets_fairs: { label: 'Markets and fairs', icon: '🛍️' },
+      tours: { label: 'Tours and excursions', icon: '🗺️' },
+      afisha_other: { label: 'Other', icon: '⭐' },
+      life_company: { label: 'Looking for company', icon: '🛵' },
+      life_jobs: { label: 'Vacancies', icon: '💼' },
+      life_family: { label: 'Family and kids', icon: '👨‍👩‍👧' },
+      life_sport: { label: 'Sport', icon: '🎾' },
+      life_hobbies: { label: 'Hobbies', icon: '🎲' },
+      life_animals: { label: 'Animals', icon: '🐾' },
+      life_help: { label: 'Help', icon: '🤝' },
+      life_lost_found: { label: 'Lost and found', icon: '🔑' },
+      life_warnings: { label: 'Warnings', icon: '⚠️' },
+      life_other: { label: 'Other', icon: '⭐' },
+      useful_before_trip: { label: 'Before your trip', icon: '🧳' },
+      useful_visas_documents: { label: 'Visas and documents', icon: '🛂' },
+      useful_bali_areas: { label: 'Bali areas', icon: '🗺️' },
+      useful_housing_daily_life: { label: 'Housing and daily life', icon: '🏠' },
+      useful_transport: { label: 'Transport', icon: '🛵' },
+      useful_money_connectivity: { label: 'Money and connectivity', icon: '💳' },
+      useful_health: { label: 'Health', icon: '🩺' },
+      useful_laws_safety: { label: 'Laws and safety', icon: '⚖️' },
+      useful_work_business: { label: 'Work and business', icon: '💼' },
+      useful_emergency_help: { label: 'Emergency help', icon: '🆘' }
     };
     const currentOver = menuOverrides?.l2?.[l2SelectedId] || {};
     setL2Label(currentOver.label || l2Defaults[l2SelectedId]?.label || '');
@@ -421,9 +451,9 @@ export function useAdminDashboardController({
       investments: 'villas',
       services: 'household_services',
       ads: 'electronics',
-      afisha: 'festivals',
-      life: 'meetings',
-      useful: ''
+      afisha: 'parties',
+      life: 'life_company',
+      useful: 'useful_before_trip'
     };
     setL2SelectedId((subs as any)[l2ParentId] || '');
   }, [l2ParentId]);
@@ -871,7 +901,9 @@ export function useAdminDashboardController({
   const moderationItems = listings.filter(l => l.status === 'moderation');
 
   const handleActivateAllListings = async () => {
-    const inactiveListings = listings.filter(l => l.status !== 'active');
+    const inactiveListings = listings.filter(l => l.status !== 'active'
+      && !(l.category === 'life' && l.subCategory === 'life_warnings')
+      && !(l.category === 'afisha' && l.subCategory === 'afisha_warnings'));
     if (!inactiveListings.length) {
       showToast('All listings are already active.');
       return;
@@ -881,7 +913,10 @@ export function useAdminDashboardController({
     for (const [index, listing] of inactiveListings.entries()) {
       const nextListing = listing.category === 'housing'
         ? normalizeHousingListingForImport({ ...listing, status: 'active' }, index)
-        : { ...listing, status: 'active' as const };
+        : { ...listing, status: 'active' as const,
+            expirationDate: listing.category === 'afisha'
+              ? getAfishaExpirationDate(listing.classifiedAttributes?.afisha_publication_term)
+              : listing.expirationDate };
       const id = uniqueDocumentIdFromTitle(nextListing.title, usedIds);
       usedIds.add(id);
       if (id !== listing.id) {
@@ -916,6 +951,9 @@ export function useAdminDashboardController({
         ...matched,
         status: 'active',
         isApproved: true,
+        expirationDate: matched.category === 'afisha'
+          ? getAfishaExpirationDate(matched.classifiedAttributes?.afisha_publication_term)
+          : matched.expirationDate,
         isVerified: matched.isVerified ?? false
       };
       onUpdateListing(updated);

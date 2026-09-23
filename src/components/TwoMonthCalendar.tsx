@@ -9,6 +9,8 @@ interface TwoMonthCalendarProps {
   onChange: (checkIn: string, checkOut: string) => void;
   onClose: () => void;
   singleDateMode?: boolean;
+  singleDateTitle?: string;
+  singleDateSummary?: (date: string) => string;
   modalPlacement?: boolean;
   bookingModalPlacement?: boolean;
   appOverlayPlacement?: boolean;
@@ -20,6 +22,8 @@ export default function TwoMonthCalendar({
   onChange,
   onClose,
   singleDateMode = false,
+  singleDateTitle,
+  singleDateSummary,
   modalPlacement = false,
   bookingModalPlacement = false,
   appOverlayPlacement = false
@@ -513,7 +517,7 @@ export default function TwoMonthCalendar({
         )}
         {singleDateMode && (
           <>
-            <h3 className="text-center text-sm font-bold text-gray-950">{tr('calendar.discountUntil')}</h3>
+            <h3 className="text-center text-sm font-bold text-gray-950">{singleDateTitle || tr('calendar.discountUntil')}</h3>
             <button
               type="button"
               onClick={(e) => {
@@ -576,7 +580,7 @@ export default function TwoMonthCalendar({
                 localCheckIn
                   ? (
                     <span className="font-extrabold text-gray-950">
-                      {tr('calendar.discountFor', { days: Math.max(1, Math.ceil(
+                      {singleDateSummary ? singleDateSummary(localCheckIn) : tr('calendar.discountFor', { days: Math.max(1, Math.ceil(
                         (new Date(`${localCheckIn}T23:59:59`).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
                       )) })}
                     </span>

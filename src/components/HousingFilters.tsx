@@ -7,6 +7,17 @@ import { isListingVerified } from '../utils/listingVerification';
 import { snapRangeValue } from '../utils/range';
 import { useI18n } from '../i18nContext';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
+import { ADS_L3_SUBCATEGORIES } from '../app/menu';
+import {
+  CLASSIFIED_CATALOG_SUBCATEGORIES,
+  CLASSIFIED_FULFILLMENT_OPTIONS,
+  CLASSIFIED_PUBLICATION_PERIOD_OPTIONS,
+  listingMatchesClassifiedCondition,
+  listingMatchesClassifiedFulfillment,
+  listingMatchesClassifiedProductType,
+  listingMatchesClassifiedPublicationPeriod,
+  listingMatchesClassifiedSpecialAttributes
+} from '../utils/classifiedFilters';
 import {
   SCOOTER_COLOR_OPTIONS,
   SCOOTER_CONDITION_OPTIONS,
@@ -26,6 +37,16 @@ import {
   yearMeetsMinimum
 } from '../utils/scooterFilters';
 import { findDistrictByMapPointSync } from '../utils/geo';
+import ClassifiedSpecialFilters from './classified/ClassifiedSpecialFilters';
+import { ClassifiedConditionFilterSlider } from './classified/ClassifiedConditionSlider';
+import { EventSpecialFilters } from './afisha/EventParameters';
+import { listingMatchesEventAttributes } from '../utils/eventFilters';
+import { listingMatchesServiceFilters } from '../utils/serviceFilters';
+import ServiceSubcategoryChoices from './ServiceSubcategoryChoices';
+import { getLifeFields, listingMatchesLifeAttributes, normalizeLifeSubCategory } from '../config/lifeSpecial';
+import { LifeSpecialFilters } from './life/LifeParameters';
+import InvestmentFilters from './investments/InvestmentFilters';
+import { listingMatchesInvestmentFilters } from '../utils/investmentFilters';
 // @ts-ignore
 import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
 // @ts-ignore
@@ -43,6 +64,11 @@ const getVehicleColorSwatch = (color: string) => ({
   brown: '#92400E',
   exclusive: '#A855F7'
 }[color] || '#E5E7EB');
+
+const categoryIconFile = (icon: string) => Array.from(icon)
+  .map(character => character.codePointAt(0)?.toString(16))
+  .filter(codePoint => codePoint && codePoint !== 'fe0f')
+  .join('-');
 
 interface HousingFiltersProps {
   listings: Listing[];
@@ -80,10 +106,13 @@ export default function HousingFilters({
   const { tr } = useI18n();
   const { favoriteIds } = useFavoriteListings();
   const isHousingCategory = category === 'housing';
+  const adsL3Options = category === 'ads'
+    ? Object.values(ADS_L3_SUBCATEGORIES).find(options => options.some(option => option.id === subCategory)) || []
+    : [];
   const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
   const minBound = 0;
   const subCategoryOrder = ['entire_place', 'private_suite', 'private_room'];
-  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : [subCategory]))
+  const activeSubCategories = Array.from(new Set(selectedSubCategories.length > 0 ? selectedSubCategories : category === 'life' && !subCategory ? [] : [subCategory]))
     .sort((a, b) => {
       const aIndex = subCategoryOrder.indexOf(a);
       const bIndex = subCategoryOrder.indexOf(b);
@@ -98,7 +127,7 @@ export default function HousingFilters({
     return dailyPrice * selectedDayCount;
   };
   const relevantListings = listings.filter(
-    item => item.category === category && (activeSubCategories.length === 0 || activeSubCategories.includes(item.subCategory))
+    item => item.category === category && (activeSubCategories.length === 0 || activeSubCategories.includes(category === 'life' ? normalizeLifeSubCategory(item.subCategory) : item.subCategory))
   );
   const maxRelevantPrice = Math.max(...relevantListings.map(getItemFilterPrice), 0);
   const maxBound = Math.max(30000000, selectedDayCount * 1000000, Math.ceil(maxRelevantPrice / 1000000) * 1000000);
@@ -107,14 +136,46 @@ export default function HousingFilters({
   const pricePeriodLabel = selectedDayCount === 1
     ? tr('filters.forOneDay')
     : tr('filters.forSelectedDays', { count: selectedDayCount });
+  const normalizedFilters: FilterState = {
+    ...filters,
+    serviceFilterCategory: subCategory,
+    serviceSubcategories: filters.serviceFilterCategory === subCategory ? filters.serviceSubcategories : [],
+    serviceLicensedOnly: subCategory === 'health' && filters.serviceFilterCategory === subCategory && filters.serviceLicensedOnly,
+    serviceCertifiedOnly: subCategory === 'health' && filters.serviceFilterCategory === subCategory && filters.serviceCertifiedOnly,
+    serviceExperienceMin: Math.max(0, Math.min(5, Math.floor(filters.serviceExperienceMin || 0))),
+    classifiedCondition: Array.isArray(filters.classifiedCondition) ? filters.classifiedCondition : [],
+    classifiedFulfillment: Array.isArray(filters.classifiedFulfillment) ? filters.classifiedFulfillment : [],
+    classifiedAudience: Array.isArray(filters.classifiedAudience) ? filters.classifiedAudience : [],
+    classifiedLevel: Array.isArray(filters.classifiedLevel) ? filters.classifiedLevel : [],
+    classifiedProductType: Array.isArray(filters.classifiedProductType) ? filters.classifiedProductType : [],
+    classifiedSpecialSubCategory: filters.classifiedSpecialSubCategory || '',
+    classifiedSpecialOptions: filters.classifiedSpecialOptions || {},
+    classifiedSpecialNumberRanges: filters.classifiedSpecialNumberRanges || {},
+    classifiedSpecialText: filters.classifiedSpecialText || {},
+    classifiedSpecialDateRanges: filters.classifiedSpecialDateRanges || {},
+    investmentSubtypes: filters.investmentSubtypes || [],
+    investmentOptions: filters.investmentOptions || {},
+    investmentNumberRanges: filters.investmentNumberRanges || {},
+    investmentText: filters.investmentText || {},
+    investmentPublishedWithin: filters.investmentPublishedWithin || 'all',
+    classifiedUrgentOnly: Boolean(filters.classifiedUrgentOnly),
+    classifiedPublishedWithin: filters.classifiedPublishedWithin || 'all'
+  };
+  if (category === 'ads' && normalizedFilters.classifiedSpecialSubCategory !== subCategory) {
+    normalizedFilters.classifiedProductType = [];
+    normalizedFilters.classifiedSpecialOptions = {};
+    normalizedFilters.classifiedSpecialNumberRanges = {};
+    normalizedFilters.classifiedSpecialText = {};
+    normalizedFilters.classifiedSpecialDateRanges = {};
+  }
 
   // Align filters within bounds or fallback to default
   const [localFilters, setLocalFilters] = useState<FilterState>({
-    ...filters,
-    priceMin: filters.priceMin < minBound ? minBound : filters.priceMin,
-      priceMax: filters.priceMax > maxBound || filters.priceMax === 30000000 ? maxBound : filters.priceMax,
-    distanceToSeaMin: filters.distanceToSeaMin !== undefined ? filters.distanceToSeaMin : 0,
-    areaMin: filters.areaMin !== undefined ? filters.areaMin : 5
+    ...normalizedFilters,
+    priceMin: normalizedFilters.priceMin < minBound ? minBound : normalizedFilters.priceMin,
+      priceMax: normalizedFilters.priceMax > maxBound || normalizedFilters.priceMax === 30000000 ? maxBound : normalizedFilters.priceMax,
+    distanceToSeaMin: normalizedFilters.distanceToSeaMin !== undefined ? normalizedFilters.distanceToSeaMin : 0,
+    areaMin: normalizedFilters.areaMin !== undefined ? normalizedFilters.areaMin : 5
   });
 
   const [activeDrag, setActiveDrag] = useState<'min' | 'max' | null>(null);
@@ -125,7 +186,9 @@ export default function HousingFilters({
   const priceDragStartValue = useRef<number>(minBound);
   const latestPriceDragValue = useRef<number>(minBound);
   const activeSubCategoryIndex = Math.max(0, activeSubCategories.indexOf(subCategory));
-  const hasSubCategorySwitcher = isHousingCategory && activeSubCategories.length > 1 && !!onSubCategoryChange;
+  const hasSubCategorySwitcher = ['housing', 'transport', 'afisha'].includes(category)
+    && activeSubCategories.length > 1
+    && !!onSubCategoryChange;
   const roomOnlyAmenityOptions = subCategory === 'private_room'
     ? [
       { value: 'room_fridge', label: 'In-room fridge', icon: '🧊', type: 'amenity' },
@@ -270,7 +333,24 @@ export default function HousingFilters({
       surfRackOnly: false,
       insuranceOnly: false,
       freeDeliveryToAddressOnly: false,
-      freeDeliveryToDistrictOnly: false
+      freeDeliveryToDistrictOnly: false,
+      classifiedCondition: [],
+      classifiedFulfillment: [],
+      classifiedAudience: [],
+      classifiedLevel: [],
+      classifiedProductType: [],
+      classifiedSpecialSubCategory: '',
+      classifiedSpecialOptions: {},
+      classifiedSpecialNumberRanges: {},
+      classifiedSpecialText: {},
+      classifiedSpecialDateRanges: {},
+      classifiedUrgentOnly: false,
+      classifiedPublishedWithin: 'all',
+      investmentSubtypes: [],
+      investmentOptions: {},
+      investmentNumberRanges: {},
+      investmentText: {},
+      investmentPublishedWithin: 'all'
     };
     setLocalFilters(defaultFilters);
   };
@@ -419,11 +499,12 @@ export default function HousingFilters({
   const getMatchingListingsCount = () => {
     return listings.filter(item => {
       if (item.category !== category) return false;
-      if (activeSubCategories.length > 0 && !activeSubCategories.includes(item.subCategory)) return false;
+      if (activeSubCategories.length > 0 && !activeSubCategories.includes(category === 'life' ? normalizeLifeSubCategory(item.subCategory) : item.subCategory)) return false;
 
-      // Pricing check matched to localFilters in real-time
-      const price = getItemFilterPrice(item);
-      if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
+      if (category !== 'life' || subCategory === 'life_jobs') {
+        const price = getItemFilterPrice(item);
+        if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
+      }
 
       if (category === 'transport' && item.subCategory === 'scooters') {
         if (localFilters.vehicleModel.length > 0 && !localFilters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
@@ -437,6 +518,43 @@ export default function HousingFilters({
         if (localFilters.insuranceOnly && !listingHasInsurance(item)) return false;
         if (localFilters.freeDeliveryToAddressOnly && deliveryPoint && !listingOffersFreeDeliveryToAddress(item, findDistrictByMapPointSync(deliveryPoint) || undefined)) return false;
       }
+
+      if (category === 'ads') {
+        if (!listingMatchesClassifiedCondition(item, localFilters.classifiedCondition)) return false;
+        if (!listingMatchesClassifiedFulfillment(item, localFilters.classifiedFulfillment)) return false;
+        if (localFilters.classifiedSpecialSubCategory === item.subCategory) {
+          if (!listingMatchesClassifiedProductType(item, localFilters.classifiedProductType)) return false;
+          if (!listingMatchesClassifiedSpecialAttributes(
+            item,
+            localFilters.classifiedSpecialOptions,
+            localFilters.classifiedSpecialNumberRanges,
+            localFilters.classifiedSpecialText,
+            localFilters.classifiedSpecialDateRanges,
+            CLASSIFIED_CATALOG_SUBCATEGORIES.has(item.subCategory)
+          )) return false;
+        }
+        if (!listingMatchesClassifiedPublicationPeriod(item, localFilters.classifiedPublishedWithin)) return false;
+      }
+
+      if (category === 'services' && !listingMatchesServiceFilters(item, localFilters, subCategory)) return false;
+
+      if (category === 'investments' && !listingMatchesInvestmentFilters(item, localFilters)) return false;
+
+      if (category === 'afisha') {
+        if (!listingMatchesEventAttributes(
+          item,
+          localFilters.classifiedSpecialOptions,
+          subCategory,
+          localFilters.classifiedSpecialText
+        )) return false;
+      }
+
+      if (category === 'life' && subCategory && !listingMatchesLifeAttributes(
+        item,
+        localFilters.classifiedSpecialOptions,
+        subCategory,
+        localFilters.classifiedSpecialText
+      )) return false;
 
       if (isHousingCategory && item.distanceToSeaMinutes !== undefined) {
         if (item.distanceToSeaMinutes < (localFilters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > localFilters.distanceToSeaMax) {
@@ -733,8 +851,30 @@ export default function HousingFilters({
             </div>
           </div>
 
+          <div className="flex flex-col gap-8">
+          {category === 'afisha' && (
+            <div className={`${sectionCardClass} order-2`}>
+              <EventSpecialFilters
+                subCategory={subCategory}
+                filters={localFilters}
+                setFilters={setLocalFilters}
+              />
+            </div>
+          )}
+
+          {category === 'life' && getLifeFields(subCategory).length > 0 && (
+            <div className={`${sectionCardClass} order-2`}>
+              <LifeSpecialFilters
+                subCategory={subCategory}
+                filters={localFilters}
+                setFilters={setLocalFilters}
+              />
+            </div>
+          )}
+
           {/* DRAGGABLE HISTOGRAM SECTION (PRICE) */}
-          <div className={sectionCardClass}>
+          {(category !== 'life' || subCategory === 'life_jobs') && (
+          <div className={`${sectionCardClass} order-1`}>
             {/* PRICING DUAL-SLIDER HISTOGRAM */}
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
@@ -828,6 +968,122 @@ export default function HousingFilters({
                 ])}
               </div>
             </div>
+          </div>
+          )}
+          {category === 'investments' && (
+            <div className={`${sectionCardClass} order-2`}>
+              <InvestmentFilters subCategory={subCategory} filters={localFilters} setFilters={setLocalFilters} listings={relevantListings} />
+            </div>
+          )}
+          {category === 'ads' && (
+            <div className={`${sectionCardClass} order-2`}>
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.classified.subCategory')}</span>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                  {adsL3Options.map(option => {
+                    const isSelected = subCategory === option.id;
+                    const optionLabel = tr(`subcategory.${option.id}`);
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) return;
+                          setLocalFilters(current => ({
+                            ...current,
+                            classifiedSpecialSubCategory: option.id,
+                            classifiedProductType: [],
+                            classifiedSpecialOptions: {},
+                            classifiedSpecialNumberRanges: {},
+                            classifiedSpecialText: {},
+                            classifiedSpecialDateRanges: {}
+                          }));
+                          onSubCategoryChange?.(option.id);
+                        }}
+                        title={optionLabel}
+                        aria-label={optionLabel}
+                        aria-pressed={isSelected}
+                        className={`pl pl-interactive relative flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-lg border bg-white p-2 transition cursor-pointer select-none ${
+                          isSelected
+                            ? 'selected border-[#FF7A50] ring-2 ring-[#FF7A50]/20 shadow-[0_10px_18px_rgba(255,122,80,0.12)]'
+                            : 'border-[#E5E7EB] hover:border-[#FF7A50]'
+                        }`}
+                      >
+                        <img
+                          src={option.customImage || `/category-icons/${categoryIconFile(option.icon)}.svg`}
+                          alt=""
+                          loading="lazy"
+                          className="h-12 w-14 shrink-0 object-contain"
+                          aria-hidden="true"
+                        />
+                        <span className="min-h-6 break-words text-center text-[10px] font-extrabold leading-3 text-[#1E293B]">
+                          {optionLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <ClassifiedSpecialFilters
+                key={subCategory}
+                subCategory={subCategory}
+                filters={localFilters}
+                setFilters={setLocalFilters}
+              />
+              <ClassifiedConditionFilterSlider
+                selected={localFilters.classifiedCondition}
+                onChange={classifiedCondition => setLocalFilters(current => ({ ...current, classifiedCondition }))}
+              />
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.classified.fulfillment')}</span>
+                <div className="flex flex-wrap gap-2">
+                  {CLASSIFIED_FULFILLMENT_OPTIONS.map(value => {
+                    const isActive = localFilters.classifiedFulfillment.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => toggleArrayFilter('classifiedFulfillment', value)}
+                        aria-pressed={isActive}
+                        className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                        }`}
+                      >
+                        {tr(`filters.classified.fulfillment.${value}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <span className={sectionTitleClass}>{tr('filters.classified.published')}</span>
+                <div className="flex flex-wrap gap-2">
+                  {CLASSIFIED_PUBLICATION_PERIOD_OPTIONS.map(value => {
+                    const isActive = localFilters.classifiedPublishedWithin === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setLocalFilters({ ...localFilters, classifiedPublishedWithin: value })}
+                        aria-pressed={isActive}
+                        className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                          isActive
+                            ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                            : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                        }`}
+                      >
+                        {tr(`filters.classified.published.${value}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           </div>
 
           {isScootersCategory && (
@@ -1108,6 +1364,77 @@ export default function HousingFilters({
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {category === 'services' && (
+            <div className="mt-5 space-y-5">
+              <ServiceSubcategoryChoices
+                subCategory={subCategory}
+                selected={localFilters.serviceSubcategories || []}
+                multiple
+                onChange={values => setLocalFilters(current => ({ ...current, serviceFilterCategory: subCategory, serviceSubcategories: values }))}
+                licensed={!!localFilters.serviceLicensedOnly}
+                certified={!!localFilters.serviceCertifiedOnly}
+                onLicenseChange={value => setLocalFilters(current => ({ ...current, serviceFilterCategory: subCategory, serviceLicensedOnly: value }))}
+                onCertificatesChange={value => setLocalFilters(current => ({ ...current, serviceFilterCategory: subCategory, serviceCertifiedOnly: value }))}
+              />
+              {([
+                { key: 'serviceFormats', label: 'wizard.services.format', prefix: 'wizard.services.format', options: ['provider_place', 'client_visit', 'online', 'specified_place'] },
+                { key: 'serviceLanguages', label: 'wizard.services.languages', prefix: 'wizard.services.language', options: ['ru', 'en', 'id', 'other'] },
+                { key: 'servicePriceTypes', label: 'wizard.services.priceType', prefix: 'wizard.services.priceType', options: ['fixed', 'from', 'hourly', 'per_lesson', 'project', 'negotiable'] },
+                { key: 'serviceAvailability', label: 'wizard.services.availability', prefix: 'wizard.services.availability', options: ['appointment', 'today', '24_7'] }
+              ] as const).map(group => (
+                <fieldset key={group.key} className="min-w-0 space-y-3">
+                  <legend className={sectionTitleClass}>{tr(group.label)}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {group.options.map(value => (
+                      <button
+                          key={value}
+                          type="button"
+                          className={`pl pl-interactive transport-pill inline-flex min-h-10 max-w-full items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${(localFilters[group.key] ?? []).includes(value) ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]' : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'}`}
+                          aria-pressed={(localFilters[group.key] ?? []).includes(value)}
+                          onClick={() => setLocalFilters(current => {
+                            const selected = current[group.key] ?? [];
+                            return { ...current, [group.key]: selected.includes(value) ? selected.filter(option => option !== value) : [...selected, value] };
+                          })}
+                        >
+                        <span className="min-w-0 break-words">{tr(`${group.prefix}.${value}`)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+              <fieldset className="min-w-0 space-y-3">
+                <legend className={sectionTitleClass}>{tr('filters.services.experienceMin')}</legend>
+                <div className="flex justify-end">
+                  <span className="pl inline-flex rounded-lg bg-[#FF7A50]/10 px-2.5 py-1 text-xs font-semibold text-[#FF7A50]">{localFilters.serviceExperienceMin || 0}</span>
+                </div>
+                <Polzunok
+                  min={0}
+                  max={5}
+                  step={1}
+                  value={localFilters.serviceExperienceMin || 0}
+                  onChange={value => setLocalFilters({ ...localFilters, serviceExperienceMin: value })}
+                />
+                {renderSliderScaleLabels(['0', '1', '2', '3', '4', '5'])}
+              </fieldset>
+              <div className="flex flex-wrap gap-2">
+              {([
+                ['serviceUrgentOnly', 'wizard.services.urgent'],
+                ['serviceFreeConsultationOnly', 'wizard.services.freeConsultation']
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={!!localFilters[key]}
+                  onClick={() => setLocalFilters(current => ({ ...current, [key]: !current[key] }))}
+                  className={`pl pl-interactive transport-pill inline-flex min-h-10 max-w-full items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${localFilters[key] ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]' : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'}`}
+                >
+                  <span className="min-w-0 break-words">{tr(label)}</span>
+                </button>
+              ))}
               </div>
             </div>
           )}

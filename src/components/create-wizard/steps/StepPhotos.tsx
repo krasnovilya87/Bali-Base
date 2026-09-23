@@ -11,6 +11,7 @@ import {
 type MaybePromise<T> = T | Promise<T>;
 
 type StepPhotosProps = {
+  category: string;
   dragActive: boolean;
   handleDrag: (event: React.DragEvent) => void;
   handleDrop: (event: React.DragEvent) => MaybePromise<void>;
@@ -48,15 +49,18 @@ type StepPhotosProps = {
   requiredPhotoSlots: PhotoSlotConfig[];
   optionalPhotoSlots: PhotoSlotConfig[];
   isScooterPhotoFlow: boolean;
+  isServicePhotoFlow?: boolean;
   setDraggedPhotoSlotId: React.Dispatch<React.SetStateAction<PhotoSlotId | null>>;
   draggedPhotoSlotId: PhotoSlotId | null;
   getAssignedPhotoUrls: (slotId: PhotoSlotId) => string[];
   getPhotoSlot: (photoUrl: string) => PhotoSlotConfig | undefined;
   assignPhotoToSlot: (photoUrl: string, slotId: PhotoSlotId | 'extra') => void;
   handleRemovePhoto: (index: number) => void;
+  setMainPhoto?: (index: number) => void;
 };
 
 const StepPhotos: React.FC<StepPhotosProps> = ({
+  category,
   dragActive,
   handleDrag,
   handleDrop,
@@ -79,14 +83,17 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   requiredPhotoSlots,
   optionalPhotoSlots,
   isScooterPhotoFlow,
+  isServicePhotoFlow = false,
   setDraggedPhotoSlotId,
   draggedPhotoSlotId,
   getAssignedPhotoUrls,
   getPhotoSlot,
   assignPhotoToSlot,
-  handleRemovePhoto
+  handleRemovePhoto,
+  setMainPhoto
 }) => {
   const { tr } = useI18n();
+  const isUncategorizedPhotoFlow = category === 'afisha' || category === 'life';
   const [isPhoneUploadDevice, setIsPhoneUploadDevice] = useState(false);
   const [activeCameraSlotId, setActiveCameraSlotId] = useState<PhotoSlotId | null>(null);
   const [cameraError, setCameraError] = useState('');
@@ -518,7 +525,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
       )}
 
       <div className="space-y-2 pt-2">
-        {photoUrls.length > 0 && (
+        {photoUrls.length > 0 && !isServicePhotoFlow && !isUncategorizedPhotoFlow && (
           <>
             <PhotoCategoryPanel
               requiredSlots={requiredPhotoSlots}
@@ -535,6 +542,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
           {photoUrls.map((url, index) => {
             const slot = getPhotoSlot(url);
             const selectValue = slot ? slot.id : 'extra';
+            const isMainServicePhoto = isServicePhotoFlow && index === 0;
 
             return (
               <div key={`${url}-${index}`} className="space-y-2">
@@ -566,9 +574,22 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                     <span className="text-xs font-bold leading-none">x</span>
                   </Del>
 
-                  <span className={`${slot ? 'bg-[#FF7A50] text-white' : 'bg-black/55 text-white'} absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] text-[8px] font-black px-1.5 py-0.5 rounded tracking-wider truncate`}>
-                    {slot ? `${slot.index + 1}. ${tr(slot.shortLabelKey)}` : tr('wizard.extraPhoto')}
-                  </span>
+                  {!isUncategorizedPhotoFlow && (
+                    <span className={`${slot ? 'bg-[#FF7A50] text-white' : 'bg-black/55 text-white'} absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] text-[8px] font-black px-1.5 py-0.5 rounded tracking-wider truncate`}>
+                      {isServicePhotoFlow
+                        ? isMainServicePhoto ? tr('wizard.photos.mainPhoto') : tr('wizard.photos.servicePhoto')
+                        : slot ? `${slot.index + 1}. ${tr(slot.shortLabelKey)}` : tr('wizard.extraPhoto')}
+                    </span>
+                  )}
+                  {isServicePhotoFlow && !isMainServicePhoto && setMainPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setMainPhoto(index)}
+                      className="absolute bottom-1.5 right-1.5 z-10 rounded-full bg-white/90 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-[#1E293B] shadow transition active:scale-95"
+                    >
+                      {tr('wizard.photos.makeMain')}
+                    </button>
+                  )}
                   {realPhotoUrls.includes(url) && (
                     <span className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow">
                       <ShieldCheck className="h-2.5 w-2.5" />
@@ -577,6 +598,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                   )}
                 </div>
 
+                {!isServicePhotoFlow && !isUncategorizedPhotoFlow && (
                 <details className="group sm:hidden relative">
                   <summary className="flex min-h-9 w-full list-none items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-white px-2.5 py-2 text-[11px] font-bold text-[#1E293B] marker:hidden [&::-webkit-details-marker]:hidden">
                     <span className="truncate">
@@ -629,6 +651,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                     </button>
                   </div>
                 </details>
+                )}
               </div>
             );
           })}

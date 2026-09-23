@@ -162,13 +162,16 @@ export function ListingsTab(props: AdminTabProps) {
                               </span>
                             </td>
                             <td className="p-4 pr-6 text-right space-x-1.5 whitespace-nowrap">
-                              <button
-                                onClick={() => onToggleStatus(l.id)}
-                                className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] cursor-pointer"
-                                title={tr('admin.listings.toggleStatus')}
-                              >
-                                {l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
-                              </button>
+                              {!(((l.category === 'life' && l.subCategory === 'life_warnings')
+                                || (l.category === 'afisha' && l.subCategory === 'afisha_warnings')) && !l.isApproved) && (
+                                <button
+                                  onClick={() => onToggleStatus(l.id)}
+                                  className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] cursor-pointer"
+                                  title={tr('admin.listings.toggleStatus')}
+                                >
+                                  {l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
+                                </button>
+                              )}
                               <Del
                                 title={tr('myListings.deleteTitle')}
                                 message={tr('myListings.deleteBody', { title: l.title })}

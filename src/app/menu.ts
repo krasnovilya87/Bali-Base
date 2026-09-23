@@ -20,14 +20,19 @@ import menuL2EntirePlace from '../assets/images/menu_l2_entire_place.webp';
 import menuL2PrivateSuite from '../assets/images/menu_l2_private_suite.webp';
 // @ts-ignore
 import menuL2PrivateRoom from '../assets/images/menu_l2_private_room.webp';
+import marketTransportScooter from '../assets/images/market_transport_scooter.webp';
 // @ts-ignore
-import menuL2Scooters from '../assets/images/menu_l2_scooters_firebase.webp';
+import marketTransportMotorcycle from '../assets/images/market_transport_motorcycle.webp';
 // @ts-ignore
-import menuL2Motorcycles from '../assets/images/menu_l2_motorcycles_firebase.webp';
+import marketTransportCar from '../assets/images/market_transport_car.webp';
 // @ts-ignore
-import menuL2Cars from '../assets/images/menu_l2_cars_firebase.webp';
+import marketTransportBicycle from '../assets/images/market_transport_bicycle.webp';
+// @ts-ignore
+import marketTransportYacht from '../assets/images/market_transport_yacht.webp';
 // @ts-ignore
 import menuL2Villas from '../assets/images/menu_l2_villas.webp';
+// @ts-ignore
+import menuL2CommercialRealEstate from '../assets/images/menu_l2_commercial_real_estate.png';
 // @ts-ignore
 import menuL2Land from '../assets/images/menu_l2_land.webp';
 // @ts-ignore
@@ -59,29 +64,130 @@ import menuL2Clothes from '../assets/images/menu_l2_clothes.webp';
 // @ts-ignore
 import menuL2HouseFurn from '../assets/images/menu_l2_house_furn.webp';
 // @ts-ignore
-import menuL2Festivals from '../assets/images/menu_l2_festivals.webp';
-// @ts-ignore
-import menuL2Seminars from '../assets/images/menu_l2_seminars.webp';
-// @ts-ignore
 import menuL2Exhibitions from '../assets/images/menu_l2_exhibitions.webp';
 // @ts-ignore
-import menuL2Meetings from '../assets/images/menu_l2_meetings.webp';
 // @ts-ignore
 import menuL2Buddies from '../assets/images/menu_l2_buddies.webp';
+// @ts-ignore
+import afishaParties from '../assets/images/menu_l2_afisha_parties.png';
+// @ts-ignore
+import afishaConcerts from '../assets/images/menu_l2_afisha_live_music.png';
+// @ts-ignore
+import afishaFestivals from '../assets/images/menu_l2_afisha_festivals.png';
+// @ts-ignore
+import afishaExhibitions from '../assets/images/menu_l2_afisha_exhibitions.png';
+// @ts-ignore
+import afishaCinema from '../assets/images/menu_l2_afisha_cinema_theatre.png';
+// @ts-ignore
+import afishaSports from '../assets/images/menu_l2_afisha_sports_events.png';
+// @ts-ignore
+import afishaWorkshops from '../assets/images/menu_l2_afisha_workshops.png';
+// @ts-ignore
+import afishaYoga from '../assets/images/menu_l2_afisha_yoga_wellness.png';
+// @ts-ignore
+import afishaBusiness from '../assets/images/menu_l2_afisha_business_networking.png';
+// @ts-ignore
+import afishaFamily from '../assets/images/menu_l2_afisha_family_events.png';
+// @ts-ignore
+import afishaMarkets from '../assets/images/menu_l2_afisha_markets_fairs.png';
+// @ts-ignore
+import afishaTours from '../assets/images/menu_l2_afisha_tours.png';
+// @ts-ignore
+import afishaOther from '../assets/images/menu_l2_afisha_other.png';
 
-export const SUBCATEGORIES_MAP: Record<string, Array<{ id: string; label: string; icon: string; customImage?: string }>> = {
+export type MenuSubcategory = { id: string; label: string; icon: string; customImage?: string; dividerBefore?: boolean };
+
+export const ADS_L3_SUBCATEGORIES: Record<string, MenuSubcategory[]> = {
+  electronics: [
+    { id: 'phones', label: 'Phones', icon: '📱' },
+    { id: 'tablets', label: 'Tablets', icon: '📱' },
+    { id: 'computers', label: 'Computers', icon: '💻' },
+    { id: 'photo_video_gear', label: 'Photo and video', icon: '📷' },
+    { id: 'audio', label: 'Audio', icon: '🎧' },
+    { id: 'home_appliances', label: 'Home appliances', icon: '🔌' },
+    { id: 'electronics_accessories', label: 'Accessories', icon: '🔋' },
+    { id: 'electronics_other', label: 'Other', icon: '⭐' }
+  ],
+  ads_transport: [
+    { id: 'ads_scooters', label: 'Scooters', icon: '🛵', customImage: marketTransportScooter },
+    { id: 'ads_motorcycles', label: 'Motorcycles', icon: '🏍', customImage: marketTransportMotorcycle },
+    { id: 'ads_cars', label: 'Cars', icon: '🚗', customImage: marketTransportCar },
+    { id: 'bicycles', label: 'Bicycles', icon: '🚲', customImage: marketTransportBicycle },
+    { id: 'water_transport', label: 'Water transport', icon: '🚤', customImage: marketTransportYacht },
+    { id: 'transport_parts', label: 'Parts', icon: '⚙️' }
+  ],
+  home_living: [
+    { id: 'furniture', label: 'Furniture', icon: '🛋️' },
+    { id: 'kitchenware', label: 'Kitchenware', icon: '🍽️' },
+    { id: 'home_equipment', label: 'Home equipment', icon: '🧺' },
+    { id: 'decor', label: 'Decor', icon: '🪴' },
+    { id: 'textiles', label: 'Textiles', icon: '🧵' },
+    { id: 'tools', label: 'Tools', icon: '🧰' },
+    { id: 'home_other', label: 'Other', icon: '⭐' }
+  ],
+  clothes_items: [
+    { id: 'mens_clothing', label: "Men's clothing", icon: '👕' },
+    { id: 'womens_clothing', label: "Women's clothing", icon: '👗' },
+    { id: 'shoes', label: 'Shoes', icon: '👟' },
+    { id: 'bags', label: 'Bags', icon: '👜' },
+    { id: 'fashion_accessories', label: 'Accessories', icon: '⌚' },
+    { id: 'beauty_care_items', label: 'Beauty and care', icon: '✨' },
+    { id: 'clothes_other', label: 'Other', icon: '⭐' }
+  ],
+  sport_hobby: [
+    { id: 'surfing', label: 'Surfing', icon: '🏄' },
+    { id: 'fitness', label: 'Fitness', icon: '🏋️' },
+    { id: 'yoga', label: 'Yoga', icon: '🧘' },
+    { id: 'padel', label: 'Padel', icon: '🎾' },
+    { id: 'tennis', label: 'Tennis', icon: '🎾' },
+    { id: 'swimming', label: 'Swimming', icon: '🏊' },
+    { id: 'martial_arts', label: 'Martial arts', icon: '🥋' },
+    { id: 'diving', label: 'Diving', icon: '🤿' },
+    { id: 'snorkeling', label: 'Snorkeling', icon: '🤿' },
+    { id: 'cycling', label: 'Cycling', icon: '🚴' },
+    { id: 'football', label: 'Football', icon: '⚽' },
+    { id: 'badminton', label: 'Badminton', icon: '🏸' },
+    { id: 'skateboarding', label: 'Skateboarding', icon: '🛹' },
+    { id: 'volleyball', label: 'Volleyball', icon: '🏐' },
+    { id: 'running', label: 'Running', icon: '🏃' },
+    { id: 'trekking_hiking', label: 'Trekking and hiking', icon: '🥾' },
+    { id: 'golf', label: 'Golf', icon: '⛳' },
+    { id: 'musical_instruments', label: 'Musical instruments', icon: '🎸', dividerBefore: true },
+    { id: 'drawing_painting', label: 'Drawing and painting', icon: '🎨' },
+    { id: 'handmade_crafts', label: 'Handmade and crafts', icon: '🧶' },
+    { id: 'board_games_puzzles', label: 'Board games and puzzles', icon: '🧩' },
+    { id: 'camping_travel', label: 'Camping and travel', icon: '⛺' },
+    { id: 'gardening_plants', label: 'Gardening and plants', icon: '🪴' },
+    { id: 'cooking', label: 'Cooking', icon: '🍳' },
+    { id: 'collecting', label: 'Collecting', icon: '🗂️' },
+    { id: 'sport_hobby_other', label: 'Other', icon: '⭐' }
+  ],
+  kids_goods: [
+    { id: 'strollers_car_seats', label: 'Strollers and car seats', icon: '🧸' },
+    { id: 'kids_clothing', label: 'Clothing', icon: '👕' },
+    { id: 'toys', label: 'Toys', icon: '🧸' },
+    { id: 'kids_furniture', label: 'Furniture', icon: '🛏️' },
+    { id: 'kids_other', label: 'Other', icon: '⭐' }
+  ],
+  other_ads: [
+    { id: 'other_ads', label: 'Other', icon: '⭐' }
+  ]
+};
+
+export const SUBCATEGORIES_MAP: Record<string, MenuSubcategory[]> = {
   housing: [
     { id: 'entire_place', label: 'Private villa / house', icon: '🏡', customImage: menuL2EntirePlace },
     { id: 'private_suite', label: 'Apartments', icon: '🏢', customImage: menuL2PrivateSuite },
     { id: 'private_room', label: 'Private room', icon: '🛌', customImage: menuL2PrivateRoom }
   ],
   transport: [
-    { id: 'scooters', label: 'Scooters', icon: '🛵', customImage: menuL2Scooters },
-    { id: 'motorcycles', label: 'Motorcycles', icon: '🏍', customImage: menuL2Motorcycles },
-    { id: 'cars', label: 'Cars', icon: '🚗', customImage: menuL2Cars }
+    { id: 'scooters', label: 'Scooters', icon: '🛵', customImage: marketTransportScooter },
+    { id: 'motorcycles', label: 'Motorcycles', icon: '🏍', customImage: marketTransportMotorcycle },
+    { id: 'cars', label: 'Cars', icon: '🚗', customImage: marketTransportCar }
   ],
   investments: [
-    { id: 'villas', label: 'Villas & apartments', icon: '🏢', customImage: menuL2Villas },
+    { id: 'villas', label: 'Residential real estate', icon: '🏢', customImage: menuL2Villas },
+    { id: 'commercial_real_estate', label: 'Commercial real estate', icon: '🏬', customImage: menuL2CommercialRealEstate },
     { id: 'land', label: 'Land plots', icon: '🏝', customImage: menuL2Land },
     { id: 'business', label: 'Ready business', icon: '💼', customImage: menuL2Business }
   ],
@@ -94,25 +200,57 @@ export const SUBCATEGORIES_MAP: Record<string, Array<{ id: string; label: string
     { id: 'photo_video', label: 'Photo & video', icon: '📷', customImage: menuL2PhotoVideo },
     { id: 'consultations', label: 'Consultations', icon: '💡', customImage: menuL2ForLiving },
     { id: 'service_business', label: 'Business', icon: '💼', customImage: menuL2Business },
-    { id: 'service_transport', label: 'Transport', icon: '🛵', customImage: menuL2TransSaleScooter },
+    { id: 'service_transport', label: 'Transport services', icon: '🛵', customImage: menuL2TransSaleScooter },
     { id: 'other_services', label: 'Other services', icon: '⭐', customImage: menuL2OtherServices }
   ],
   ads: [
-    { id: 'electronics', label: 'Electronics & photo', icon: '🔌', customImage: menuL2Electronics },
-    { id: 'trans_sale', label: 'Transport for sale', icon: '🛵', customImage: menuL2TransSaleScooter },
-    { id: 'clothes', label: 'Clothes and personal items', icon: '👕', customImage: menuL2Clothes },
-    { id: 'house_furn', label: 'Home and interior', icon: '🏡', customImage: menuL2HouseFurn }
+    { id: 'electronics', label: 'Electronics', icon: '🔌', customImage: menuL2Electronics },
+    { id: 'ads_transport', label: 'Transport', icon: '🛵', customImage: marketTransportScooter },
+    { id: 'home_living', label: 'Home and living', icon: '🏡', customImage: menuL2HouseFurn },
+    { id: 'clothes_items', label: 'Clothing and items', icon: '👕', customImage: menuL2Clothes },
+    { id: 'sport_hobby', label: 'Sport and hobbies', icon: '🏄‍♂️', customImage: menuL2ForLeisure },
+    { id: 'kids_goods', label: 'Kids goods', icon: '🧸', customImage: menuL2Exhibitions },
+    { id: 'other_ads', label: 'Other', icon: '⭐', customImage: menuL2OtherServices }
   ],
   afisha: [
-    { id: 'festivals', label: 'Festivals & parties', icon: '🎉', customImage: menuL2Festivals },
-    { id: 'seminars', label: 'Business seminars', icon: '💼', customImage: menuL2Seminars },
-    { id: 'exhibitions', label: 'Exhibitions & kids', icon: '🎨', customImage: menuL2Exhibitions }
+    { id: 'parties', label: 'Parties', icon: '🎉', customImage: afishaParties },
+    { id: 'live_music', label: 'Concerts', icon: '🎤', customImage: afishaConcerts },
+    { id: 'festivals', label: 'Festivals', icon: '🎪', customImage: afishaFestivals },
+    { id: 'exhibitions', label: 'Exhibitions and art', icon: '🎨', customImage: afishaExhibitions },
+    { id: 'cinema_theatre', label: 'Cinema and theatre', icon: '🎭', customImage: afishaCinema },
+    { id: 'sports_events', label: 'Sports events', icon: '🏆', customImage: afishaSports },
+    { id: 'workshops', label: 'Workshops', icon: '🛠️', customImage: afishaWorkshops },
+    { id: 'yoga_wellness', label: 'Yoga and wellness', icon: '🧘', customImage: afishaYoga },
+    { id: 'seminars', label: 'Business and networking', icon: '🤝', customImage: afishaBusiness },
+    { id: 'family_events', label: 'Kids and family events', icon: '🧸', customImage: afishaFamily },
+    { id: 'markets_fairs', label: 'Markets and fairs', icon: '🛍️', customImage: afishaMarkets },
+    { id: 'tours', label: 'Tours and excursions', icon: '🗺️', customImage: afishaTours },
+    { id: 'afisha_other', label: 'Other', icon: '⭐', customImage: afishaOther }
   ],
   life: [
-    { id: 'meetings', label: 'Meetups & sport', icon: '💬', customImage: menuL2Meetings },
-    { id: 'buddies', label: 'Travel buddies & trips', icon: '🛵', customImage: menuL2Buddies }
+    { id: 'life_company', label: 'Looking for company', icon: '🛵', customImage: menuL2Buddies },
+    { id: 'life_jobs', label: 'Vacancies', icon: '💼' },
+    { id: 'life_family', label: 'Family and kids', icon: '👨‍👩‍👧' },
+    { id: 'life_sport', label: 'Sport', icon: '🎾' },
+    { id: 'life_hobbies', label: 'Hobbies', icon: '🎲' },
+    { id: 'life_animals', label: 'Animals', icon: '🐾' },
+    { id: 'life_help', label: 'Help', icon: '🤝' },
+    { id: 'life_lost_found', label: 'Lost and found', icon: '🔑' },
+    { id: 'life_warnings', label: 'Warnings', icon: '⚠️' },
+    { id: 'life_other', label: 'Other', icon: '⭐' }
   ],
-  useful: []
+  useful: [
+    { id: 'useful_before_trip', label: 'Before your trip', icon: '🧳' },
+    { id: 'useful_visas_documents', label: 'Visas and documents', icon: '🛂' },
+    { id: 'useful_bali_areas', label: 'Bali areas', icon: '🗺️' },
+    { id: 'useful_housing_daily_life', label: 'Housing and daily life', icon: '🏠' },
+    { id: 'useful_transport', label: 'Transport', icon: '🛵' },
+    { id: 'useful_money_connectivity', label: 'Money and connectivity', icon: '💳' },
+    { id: 'useful_health', label: 'Health', icon: '🩺' },
+    { id: 'useful_laws_safety', label: 'Laws and safety', icon: '⚖️' },
+    { id: 'useful_work_business', label: 'Work and business', icon: '💼' },
+    { id: 'useful_emergency_help', label: 'Emergency help', icon: '🆘' }
+  ]
 };
 
 export const L1_CATEGORIES = [
@@ -150,7 +288,7 @@ export const L1_CATEGORIES = [
   },
   {
     id: 'ads',
-    label: 'Classifieds',
+    label: 'Market',
     image: menuAds,
     desc: 'Rent things, household appliances and shared living',
     l2: 'electronics',
@@ -160,8 +298,8 @@ export const L1_CATEGORIES = [
     id: 'afisha',
     label: 'Events',
     image: menuAfisha,
-    desc: 'Upcoming concerts, parties and festivals in Bali',
-    l2: 'festivals',
+    desc: 'Events, concerts and activities in Bali',
+    l2: 'parties',
     icon: '🎉'
   },
   {
@@ -169,7 +307,7 @@ export const L1_CATEGORIES = [
     label: 'Life',
     image: menuLife,
     desc: 'Community chats, visa tips, contacts and mutual help',
-    l2: 'meetings',
+    l2: 'life_company',
     icon: '💬'
   },
   {
@@ -177,7 +315,7 @@ export const L1_CATEGORIES = [
     label: 'Useful',
     image: menuUseful,
     desc: 'Useful guides, visa information, Balinese names and life hacks',
-    l2: '',
+    l2: 'useful_before_trip',
     icon: '🧭'
   }
 ];

@@ -14,6 +14,8 @@ import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDis
 import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
+import { getInvestmentAttributeEntries } from '../utils/investmentFilters';
+import { getInvestmentEvidenceFieldId, INVESTMENT_SUBTYPES } from '../config/investmentSpecial';
 import { buildGoogleMapsReviewsUrl, buildGoogleMapsWriteReviewUrl } from '../utils/googleMapsReviewLinks';
 import { isListingUnavailableForDates } from '../utils/bookingAvailability';
 import { DEFAULT_LANGUAGE, LanguageCode } from '../i18n';
@@ -50,6 +52,7 @@ import {
 } from '../utils/scooterFilters';
 import { ROOM_TYPE_LABELS } from './create-wizard/constants';
 import { getScooterModelLabel } from './create-wizard/configs/scooterWizardConfig';
+import { formatLifeExpensePerPerson, getLifeExpensePerPerson, LIFE_WEEKDAYS } from '../config/lifeSpecial';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
@@ -942,6 +945,39 @@ export default function ListingDetails({
     nextAction();
   };
 
+  const contactLifeAuthor = () => {
+    const openAuthorChat = () => {
+      const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
+      const params = new URLSearchParams({
+        phone: cleanNumber,
+        text: tr('details.life.contactMessage', { title: listing.title })
+      });
+
+      try {
+        const history = JSON.parse(localStorage.getItem('bali_base_whatsapp_history') || '[]');
+        const recentHistory = Array.isArray(history) ? history.filter((item: { id?: string }) => item.id !== listing.id) : [];
+        recentHistory.unshift({
+          id: listing.id,
+          category: listing.category,
+          title: listing.title,
+          district: listing.district,
+          pricePerDay: listing.pricePerDay,
+          image: listing.images[0] || '',
+          whatsappNumber: listing.whatsappNumber,
+          clickedAt: new Date().toISOString()
+        });
+        localStorage.setItem('bali_base_whatsapp_history', JSON.stringify(recentHistory));
+      } catch (error) {
+        console.error('Error saving WhatsApp click history:', error);
+      }
+
+      window.location.href = `https://api.whatsapp.com/send?${params.toString()}`;
+    };
+
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.contactAuthor', openAuthorChat)) return;
+    openAuthorChat();
+  };
+
   const confirmTransportBooking = () => {
     const datesMissing = !checkInDate || !checkOutDate;
     const addressMissing = !deliveryAddress.trim();
@@ -1337,6 +1373,14 @@ export default function ListingDetails({
   const isPrivateSuiteListing = listing.subCategory === 'private_suite';
   const isHousingListing = listing.category === 'housing';
   const isTransportListing = listing.category === 'transport';
+  const isServicesListing = listing.category === 'services';
+  const isInvestmentListing = listing.category === 'investments';
+  const isLifeListing = listing.category === 'life';
+  const isLifeCommunityListing = isLifeListing && listing.subCategory !== 'life_jobs';
+  const lifeExpensePerPerson = isLifeCommunityListing ? getLifeExpensePerPerson(listing) : null;
+  const lifeExpenseDisplay = lifeExpensePerPerson === null
+    ? tr('details.life.notSpecified')
+    : formatLifeExpensePerPerson(lifeExpensePerPerson, currencyRate, currencySymbol);
   const isHotelListing = listing.housingType === 'Hotel (privet room)' || (listing.housingType || '').toLowerCase().includes('hotel');
   const problemRoomTypeLabel = isPrivateRoomListing && listing.roomType
     ? detailLabelMaps.roomType[listing.roomType] || ROOM_TYPE_LABELS[listing.roomType] || listing.roomType
@@ -1757,6 +1801,37 @@ export default function ListingDetails({
     });
   }
 
+  if (isInvestmentListing) {
+    const subtype = String(listing.investmentAttributes?.investment_subtype || '');
+    const subtypeOption = (INVESTMENT_SUBTYPES[listing.subCategory] || []).find(option => option.value === subtype);
+    addDetailCharacteristic(Boolean(subtypeOption), {
+      key: 'investment_subtype',
+      icon: '🏷️',
+      label: tr('investments.subtype'),
+      value: subtypeOption ? tr(subtypeOption.labelKey) : undefined
+    });
+
+    getInvestmentAttributeEntries(listing).forEach(({ field, value }) => {
+      const values = Array.isArray(value) ? value : [value];
+      const formattedValue = field.id === 'land_area' && typeof value === 'number'
+        ? `${value.toLocaleString()} ${tr('investments.unit.sqm')} = ${(value / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} are`
+        : values.map(item => {
+        if (typeof item === 'boolean') return tr(`investments.option.${item ? 'yes' : 'no'}`);
+        const option = field.options?.find(candidate => candidate.value === String(item));
+        return option ? tr(option.labelKey) : String(item);
+      }).join(', ');
+      const evidence = field.financial
+        ? String(listing.investmentAttributes?.[getInvestmentEvidenceFieldId(field.id)] || '')
+        : '';
+      addDetailCharacteristic(true, {
+        key: field.id,
+        icon: field.financial ? '📊' : '🏷️',
+        label: tr(field.labelKey),
+        value: `${formattedValue}${field.unitKey && field.id !== 'land_area' ? ` ${tr(field.unitKey)}` : ''}${evidence ? ` · ${tr(`investments.option.${evidence}`)}` : ''}`
+      });
+    });
+  }
+
   const housingDetailCharacteristics = isHousingListing
     ? buildHousingCharacteristics(listing, tr).filter(item => item.key !== 'distanceToSeaMinutes')
     : detailCharacteristics;
@@ -1886,6 +1961,62 @@ export default function ListingDetails({
   const transportBookingCardClass = 'rounded-2xl border border-[#E5E7EB] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]';
   const compactBookingDate = (date: string) => formatBookingDate(date).replace(/\./g, '');
   const hasDeliveryAddress = Boolean(deliveryAddress);
+
+  const getLifeAttribute = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = listing.classifiedAttributes?.[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    }
+    return '';
+  };
+  const lifeDate = getLifeAttribute('life_meeting_date', 'life_date');
+  const parsedLifeDate = /^\d{4}-\d{2}-\d{2}$/.test(lifeDate) ? new Date(`${lifeDate}T00:00:00`) : null;
+  const formattedLifeDate = parsedLifeDate && !Number.isNaN(parsedLifeDate.getTime())
+    ? new Intl.DateTimeFormat({ EN: 'en-US', ID: 'id-ID', RU: 'ru-RU', FR: 'fr-FR', DE: 'de-DE' }[activeLanguage], {
+      day: 'numeric', month: 'long'
+    }).format(parsedLifeDate)
+    : lifeDate;
+  const lifeFormat = getLifeAttribute('life_meeting_format', 'life_meeting_frequency', 'afisha_meeting_frequency');
+  const selectedLifeWeekdays = listing.classifiedAttributes?.life_meeting_weekdays;
+  const lifeWeekdays = (lifeFormat === 'regular' || lifeFormat === 'regularly') && Array.isArray(selectedLifeWeekdays)
+    ? LIFE_WEEKDAYS.filter(day => selectedLifeWeekdays.includes(day.value)).map(day => tr(day.labelKey)).join(', ')
+    : '';
+  const currentParticipants = getLifeAttribute('life_participants_current');
+  const totalParticipants = getLifeAttribute('life_participants_total', 'life_participants_max');
+  const lifeRows = [
+    { key: 'date', value: formattedLifeDate },
+    { key: 'time', value: getLifeAttribute('life_meeting_time', 'life_time', 'afisha_time_period') },
+    { key: 'meetingPlace', value: listing.district },
+    { key: 'format', value: ({ once: tr('details.life.oneTime'), one_time: tr('details.life.oneTime'), regularly: tr('details.life.regular'), regular: tr('details.life.regular') } as Record<string, string>)[lifeFormat] || lifeFormat },
+    ...(lifeWeekdays ? [{ key: 'weekdays', value: lifeWeekdays }] : []),
+    { key: 'participants', value: currentParticipants && totalParticipants
+      ? tr('details.life.participantsOf', { current: currentParticipants, total: totalParticipants })
+      : getLifeAttribute('life_participants') || totalParticipants || currentParticipants }
+  ];
+  const renderLifeSummary = (showTitle = true, showExpense = true) => (
+    <div className="space-y-4">
+      {showTitle && <h3 className="text-base font-bold leading-snug text-[#1E293B]">{listing.title}</h3>}
+      <dl className="space-y-2.5 text-sm">
+        {lifeRows.map(row => (
+          <div key={row.key} className="flex items-start justify-between gap-4">
+            <dt className="shrink-0 font-semibold text-[#5F6978]">{tr(`details.life.${row.key}`)}</dt>
+            <dd className={`min-w-0 text-right font-medium ${row.value ? 'text-[#1E293B]' : 'text-gray-400'}`}>
+              {row.value || tr('details.life.notSpecified')}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {showExpense && (
+        <div className="border-t border-[#E5E7EB]/70 pt-4 text-center">
+          <span className="block text-[13px] font-bold text-[#1E293B]">{tr('details.life.expensesPerPerson')}</span>
+          <strong className={`mt-2 block font-mono text-3xl font-black ${lifeExpensePerPerson === null ? 'text-gray-400' : 'text-[#FF7A50]'}`}>
+            {lifeExpenseDisplay}
+          </strong>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className={`fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center lg:p-5 p-0 animate-fade-in ${isMapFullscreen ? 'pointer-events-none opacity-0 z-[1]' : 'z-[400]'}`} id="details-modal">
@@ -2054,8 +2185,14 @@ export default function ListingDetails({
                   </div>
                 </div>
 
-                {/* Pricing stack completely corresponding to ListingCard */}
-                <div className="pt-2 sm:pt-2.5 lg:pt-0 pb-1">
+                {isLifeCommunityListing ? (
+                  <div className="space-y-1 pb-1 pt-2 sm:pt-2.5 lg:pt-0">
+                    <span className="block text-[13px] font-bold text-[#1E293B]">{tr('details.life.expensesPerPerson')}</span>
+                    <span className={`block font-mono text-[21px] font-bold sm:text-base lg:text-xl ${lifeExpensePerPerson === null ? 'text-gray-400' : 'text-text-dark'}`}>
+                      {lifeExpenseDisplay}
+                    </span>
+                  </div>
+                ) : <div className="pt-2 sm:pt-2.5 lg:pt-0 pb-1">
                   {stayDays && (
                     <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-[13px] font-bold text-text-dark ${THEME.fonts.heading}`}>
                       {tr('details.totalFor', { count: stayDays, unit: pluralizeDays(stayDays) })}
@@ -2118,7 +2255,10 @@ export default function ListingDetails({
                       </div>
                     )}
 
-                    <div className="mt-1 flex min-w-0 items-center gap-2 self-start max-w-full">
+                  </div>
+                </div>}
+
+                <div className="mt-2 flex min-w-0 items-center gap-2 self-start max-w-full">
                       {listing.ownerAvatar ? (
                         <img
                           src={listing.ownerAvatar}
@@ -2139,9 +2279,8 @@ export default function ListingDetails({
                           {ownerDisplayName}
                         </p>
                       </div>
-                    </div>
-                  </div>
                 </div>
+                {isLifeCommunityListing && <div className="mt-5 lg:hidden">{renderLifeSummary(false, false)}</div>}
               </div>
 
               <div className="space-y-2">
@@ -2182,6 +2321,7 @@ export default function ListingDetails({
                 </div>
 
                 {/* Icons / Characteristics specs grid - Square plates */}
+                {!isServicesListing && !isLifeListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
                     {isTransportListing ? tr('details.characteristicsTransportTitle') : tr('details.characteristicsTitle')}
@@ -2306,9 +2446,10 @@ export default function ListingDetails({
 
                   </div>
                 </div>
+                )}
 
                 {/* Amenities checkboxes - visual styled exactly like filters */}
-                {!isTransportListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.amenitiesTitle')}</h3>
 
@@ -2410,7 +2551,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Exact Surrounding spots list */}
-                {!isTransportListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
                     {tr('details.nearbyTitle')}
@@ -2570,8 +2711,22 @@ export default function ListingDetails({
 
             </div>
 
-            {/* Right Sticky Reservation & WhatsApp Box (Hidden on Mobile, Sticky on Desktop) */}
+            {/* Desktop action panel */}
             <div className="hidden lg:flex min-h-full flex-col">
+              {isLifeCommunityListing ? (
+                <div className="sticky top-6 space-y-5 rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xl">
+                  {renderLifeSummary()}
+                  <button
+                    type="button"
+                    onClick={contactLifeAuthor}
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2F7D69] px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F7D69]"
+                  >
+                    <Send className="h-4 w-4" />
+                    {tr('details.life.contactAuthor')}
+                  </button>
+                  <p className="text-center text-xs leading-relaxed text-[#5F6978]">{tr('details.life.directAuthorNote')}</p>
+                </div>
+              ) : (
               <div className="sticky top-6 bg-white p-6 rounded-3xl border border-[#E5E7EB] shadow-xl space-y-4">
                 {/* Total cost and nights details */}
                 <div className="text-center space-y-2">
@@ -2705,6 +2860,7 @@ export default function ListingDetails({
                   *{tr('details.directDealNote')}
                 </p>
               </div>
+              )}
 
               <div className="mt-auto flex justify-end pt-4">
                 <button
@@ -2723,8 +2879,20 @@ export default function ListingDetails({
           </div>
         </div>
 
-        {/* Sticky bottom mobile checkout panel */}
-        <div className="lg:hidden bg-white border-t border-[#E5E7EB] px-[30px] pt-[11px] pb-[26px] z-40">
+        {/* Mobile action panel */}
+        {isLifeCommunityListing ? (
+          <div className="z-40 border-t border-[#E5E7EB] bg-white px-5 pb-[26px] pt-3 lg:hidden">
+            <button
+              type="button"
+              onClick={contactLifeAuthor}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2F7D69] px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F7D69]"
+            >
+              <Send className="h-4 w-4" />
+              {tr('details.life.contactAuthor')}
+            </button>
+            <p className="mt-2 text-center text-xs text-[#5F6978]">{tr('details.life.directAuthorNote')}</p>
+          </div>
+        ) : <div className="lg:hidden bg-white border-t border-[#E5E7EB] px-[30px] pt-[11px] pb-[26px] z-40">
           {unavailableMessage && (
             <div className="mb-3 rounded-2xl border border-[#FF7A50]/25 bg-[#FF7A50]/10 px-3 py-3 text-center">
               <p className="text-xs font-bold leading-relaxed text-[#1E293B]">
@@ -2769,7 +2937,7 @@ export default function ListingDetails({
               <span>{orderPlaced ? tr('details.loading') : tr('details.book')}</span>
             </button>
           </div>
-        </div>
+        </div>}
 
         {showDateCalendar && (
           <div className={isTransportBookingConfirmOpen ? '' : 'lg:hidden'}>

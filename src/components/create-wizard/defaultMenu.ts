@@ -4,13 +4,14 @@ import menuL2Scooters from '../../assets/images/menu_l2_scooters_firebase.webp';
 import menuL2Motorcycles from '../../assets/images/menu_l2_motorcycles_firebase.webp';
 // @ts-ignore
 import menuL2Cars from '../../assets/images/menu_l2_cars_firebase.webp';
+import { SUBCATEGORIES_MAP } from '../../app/menu';
 
 export const defaultCategoriesList = [
   { id: 'housing', label: 'Жилье', icon: '🏡', desc: 'Виллы, апартаменты, дома' },
   { id: 'transport', label: 'Транспорт', icon: '🛵', desc: 'Скутеры, байки, авто' },
   { id: 'investments', label: 'Инвестиции', icon: '🏢', desc: 'Виллы, земля, готовые бизнесы на Бали с высокой окупаемостью' },
   { id: 'services', label: 'Услуги', icon: '🧑‍💼', desc: 'Серфинг, визы, трансферы' },
-  { id: 'ads', label: 'Объявления', icon: '📢', desc: 'Продажа личных вещей' },
+  { id: 'ads', label: 'Market', icon: '📢', desc: 'Продажа личных вещей' },
   { id: 'afisha', label: 'Афиша', icon: '🎉', desc: 'Мероприятия и встречи' },
   { id: 'life', label: 'Жизнь', icon: '💬', desc: 'Попутчики, тусовка, спорт' },
   { id: 'useful', label: 'Полезное', icon: '🧭', desc: 'Гайды, советы, разное' }
@@ -28,7 +29,8 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'cars', label: 'Автомобили', icon: '🚗', customImage: menuL2Cars }
   ],
   investments: [
-    { id: 'villas', label: 'Виллы & Апартаменты', icon: '🏢' },
+    { id: 'villas', label: 'Жилая недвижимость', icon: '🏢' },
+    { id: 'commercial_real_estate', label: 'Коммерческая недвижимость', icon: '🏬' },
     { id: 'land', label: 'Участки Земли', icon: '🏝' },
     { id: 'business', label: 'Готовый Бизнес', icon: '💼' }
   ],
@@ -45,19 +47,37 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'other_services', label: 'Другие услуги', icon: '⭐' }
   ],
   ads: [
-    { id: 'electronics', label: 'Электроника & Фото', icon: '🔌' },
-    { id: 'trans_sale', label: 'Транспорт продажа', icon: '🛵' },
-    { id: 'clothes', label: 'Одежда и личные вещи', icon: '👕' },
-    { id: 'house_furn', label: 'Дом и интерьер', icon: '🏡' }
+    { id: 'electronics', label: 'Электроника', icon: '🔌' },
+    { id: 'ads_transport', label: 'Транспорт', icon: '🛵' },
+    { id: 'home_living', label: 'Дом и быт', icon: '🏡' },
+    { id: 'clothes_items', label: 'Одежда и вещи', icon: '👕' },
+    { id: 'sport_hobby', label: 'Спорт и хобби', icon: '🏄‍♂️' },
+    { id: 'kids_goods', label: 'Детские товары', icon: '🧸' },
+    { id: 'other_ads', label: 'Другое', icon: '⭐' }
   ],
-  afisha: [
-    { id: 'festivals', label: 'Фестивали & Вечеринки', icon: '🎉' },
-    { id: 'seminars', label: 'Бизнес-семинары', icon: '💼' },
-    { id: 'exhibitions', label: 'Выставки & Детские', icon: '🎨' }
-  ],
+  afisha: SUBCATEGORIES_MAP.afisha,
   life: [
-    { id: 'meetings', label: 'Встречи & Воркаут', icon: '💬' },
-    { id: 'buddies', label: 'Попутчики & Поездки', icon: '🛵' }
+    { id: 'life_company', label: 'Looking for company', icon: '🛵' },
+    { id: 'life_jobs', label: 'Vacancies', icon: '💼' },
+    { id: 'life_family', label: 'Family and kids', icon: '👨‍👩‍👧' },
+    { id: 'life_sport', label: 'Sport', icon: '🎾' },
+    { id: 'life_hobbies', label: 'Hobbies', icon: '🎲' },
+    { id: 'life_animals', label: 'Animals', icon: '🐾' },
+    { id: 'life_help', label: 'Help', icon: '🤝' },
+    { id: 'life_lost_found', label: 'Lost and found', icon: '🔑' },
+    { id: 'life_warnings', label: 'Warnings', icon: '⚠️' },
+    { id: 'life_other', label: 'Other', icon: '⭐' }
   ],
-  useful: []
+  useful: [
+    { id: 'useful_before_trip', label: 'Before your trip', icon: '🧳' },
+    { id: 'useful_visas_documents', label: 'Visas and documents', icon: '🛂' },
+    { id: 'useful_bali_areas', label: 'Bali areas', icon: '🗺️' },
+    { id: 'useful_housing_daily_life', label: 'Housing and daily life', icon: '🏠' },
+    { id: 'useful_transport', label: 'Transport', icon: '🛵' },
+    { id: 'useful_money_connectivity', label: 'Money and connectivity', icon: '💳' },
+    { id: 'useful_health', label: 'Health', icon: '🩺' },
+    { id: 'useful_laws_safety', label: 'Laws and safety', icon: '⚖️' },
+    { id: 'useful_work_business', label: 'Work and business', icon: '💼' },
+    { id: 'useful_emergency_help', label: 'Emergency help', icon: '🆘' }
+  ]
 };

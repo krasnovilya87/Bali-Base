@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { GoogleGenAI } from '@google/genai';
 import type { AiModerationCheck, AiModerationResult, Listing } from '../../types';
 import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
+import { AI_MODERATION_LIMITS } from './limits';
 
 const MODEL = 'gemini-flash-lite-latest';
 const MIN_DESCRIPTION_LENGTH = 20;
@@ -224,7 +225,7 @@ const toModerationPayload = (listing: Listing, placeCategorySignal?: PlaceCatego
     address: listing.address,
     hasCoordinates: Boolean(listing.locationCoords),
     imagesCount: listing.images?.length || 0,
-    imageUrls: (listing.images || []).slice(0, 8),
+    imageUrls: (listing.images || []).slice(0, AI_MODERATION_LIMITS.maxPhotoUrlsPerRequest),
     pricePerDay: listing.pricePerDay,
     pricePerMonth: listing.pricePerMonth,
     competitorPlatform: listing.competitorPlatform,
@@ -286,6 +287,47 @@ const parseModerationJson = (text: string) => {
 const normalizeSeverity = (value: unknown): AiModerationCheck['severity'] => {
   if (value === 'low' || value === 'medium' || value === 'high') return value;
   return 'medium';
+};
+
+const getProviderStatus = (error: unknown) => {
+  const value = error as { status?: unknown; statusCode?: unknown; code?: unknown };
+  const status = Number(value?.status || value?.statusCode || value?.code);
+  return Number.isFinite(status) ? status : undefined;
+};
+
+const isNetworkError = (error: unknown) => {
+  const status = getProviderStatus(error);
+  if (status === 429) return false;
+  if (status && status >= 400) return false;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /fetch failed|network|socket|timeout|econnreset|etimedout|enotfound|eai_again/i.test(message);
+};
+
+const generateModerationContent = async (ai: GoogleGenAI, prompt: string) => {
+  try {
+    return await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: AI_MODERATION_LIMITS.maxOutputTokens,
+        responseMimeType: 'application/json'
+      }
+    });
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+
+    return ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: AI_MODERATION_LIMITS.maxOutputTokens,
+        responseMimeType: 'application/json'
+      }
+    });
+  }
 };
 
 const applyDeterministicChecks = (
@@ -353,14 +395,7 @@ export const moderateListingWithGemini = async (listing: Listing): Promise<AiMod
 
   const placeCategorySignal = await readPlaceCategorySignal(listing);
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: buildPrompt(listing, placeCategorySignal),
-    config: {
-      temperature: 0.1,
-      responseMimeType: 'application/json'
-    }
-  });
+  const response = await generateModerationContent(ai, buildPrompt(listing, placeCategorySignal));
   const text = response.text?.trim() || '';
 
   if (!text) {

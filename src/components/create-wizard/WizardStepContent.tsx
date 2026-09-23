@@ -28,7 +28,7 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
     case 'category':
       return <StepCategory categoriesList={categoryState.categoriesList} category={categoryState.category} onSelectCategory={categoryState.handleSelectCategory} setStep={categoryState.setStep} />;
     case 'subcategory':
-      return <StepSubcategory subcategories={categoryState.subcategories} subCategory={categoryState.subCategory} setSubCategory={categoryState.setSubCategory} setStep={categoryState.setStep} />;
+      return <StepSubcategory category={categoryState.category} subcategories={categoryState.subcategories} subCategory={categoryState.subCategory} setSubCategory={categoryState.setSubCategory} setStep={categoryState.setStep} />;
     case 'title':
       return (
         <StepTitle
@@ -52,14 +52,12 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           setVehicleModelQuantity={categoryState.setVehicleModelQuantity}
           vehicleColor={categoryState.vehicleColor}
           setVehicleColor={categoryState.setVehicleColor}
-          // location helpers for link parsing and suggestions
           mapSuggestions={locationState.mapSuggestions}
           showSuggestionsDropdown={locationState.showSuggestionsDropdown}
           setShowSuggestionsDropdown={locationState.setShowSuggestionsDropdown}
           handleAddressChange={locationState.handleAddressChange}
           triggerDirectSearch={locationState.triggerDirectSearch}
           handleSelectSuggestion={locationState.handleSelectSuggestion}
-          setAddress={locationState.setAddress}
           setPickedCoords={locationState.setPickedCoords}
           isSearchingMap={locationState.isSearchingMap}
         />

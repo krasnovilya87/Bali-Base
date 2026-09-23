@@ -15,6 +15,11 @@ import FeatureAmenities from './features/FeatureAmenities';
 import FeatureCleaning from './features/FeatureCleaning';
 import FeaturePreferences from './features/FeaturePreferences';
 import FeatureScooterParameters from './features/FeatureScooterParameters';
+import FeatureServicesParameters from './features/FeatureServicesParameters';
+import FeatureClassifiedParameters from './features/FeatureClassifiedParameters';
+import FeatureEventParameters from './features/FeatureEventParameters';
+import FeatureInvestmentParameters from './features/FeatureInvestmentParameters';
+import { LifeWizardParameters } from '../../life/LifeParameters';
 
 type StepFeaturesProps = Record<string, any>;
 
@@ -42,19 +47,42 @@ const StepFeatures: React.FC<StepFeaturesProps> = (props) => {
     return <FeatureScooterParameters {...props} />;
   }
 
-  return (
+  if (category === 'services') {
+    return <FeatureServicesParameters {...props} />;
+  }
+
+  if (category === 'ads') {
+    return <FeatureClassifiedParameters {...props} />;
+  }
+
+  if (category === 'afisha') {
+    return <FeatureEventParameters {...props} />;
+  }
+
+  if (category === 'life') {
+    return <LifeWizardParameters subCategory={subCategory} attributes={props.classifiedAttributes} setAttributes={props.setClassifiedAttributes} />;
+  }
+
+  if (category === 'investments') {
+    return <FeatureInvestmentParameters {...props} />;
+  }
+
+  if (category === 'housing') return (
     <div className="space-y-6 animate-fade-in">
       <FeatureYearBuilt {...props} />
-
-      {category === 'housing' && (
-        <div className="space-y-6 pt-1">
-          {housingFeatureSections.map((Section, index) => (
-            <Section key={index} {...props} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-6 pt-1">
+        {housingFeatureSections.map((Section, index) => (
+          <Section key={index} {...props} />
+        ))}
+      </div>
     </div>
   );
+
+  if (category === 'transport') {
+    return <FeatureYearBuilt {...props} />;
+  }
+
+  return null;
 };
 
 export default StepFeatures;

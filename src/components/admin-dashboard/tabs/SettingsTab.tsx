@@ -460,6 +460,7 @@ export function SettingsTab(props: AdminTabProps) {
                               { id: 'motorcycles', label: `🏍 ${tr('subcategory.motorcycles')}` },
                               { id: 'cars', label: `🚗 ${tr('subcategory.cars')}` },
                               { id: 'villas', label: `🏢 ${tr('subcategory.villas')}` },
+                              { id: 'commercial_real_estate', label: `🏬 ${tr('subcategory.commercial_real_estate')}` },
                               { id: 'land', label: `🏝 ${tr('subcategory.land')}` },
                               { id: 'business', label: `💼 ${tr('subcategory.business')}` },
                               { id: 'household_services', label: `🧰 ${tr('subcategory.household_services')}` },
@@ -476,16 +477,44 @@ export function SettingsTab(props: AdminTabProps) {
                               { id: 'trans_sale', label: `🛵 ${tr('subcategory.trans_sale')}` },
                               { id: 'clothes', label: `👕 ${tr('subcategory.clothes')}` },
                               { id: 'house_furn', label: `🏡 ${tr('subcategory.house_furn')}` },
-                              { id: 'festivals', label: `🎉 ${tr('subcategory.festivals')}` },
-                              { id: 'seminars', label: `💼 ${tr('subcategory.seminars')}` },
+                              { id: 'parties', label: `🎉 ${tr('subcategory.parties')}` },
+                              { id: 'live_music', label: `🎤 ${tr('subcategory.live_music')}` },
+                              { id: 'festivals', label: `🎪 ${tr('subcategory.festivals')}` },
                               { id: 'exhibitions', label: `🎨 ${tr('subcategory.exhibitions')}` },
-                              { id: 'meetings', label: `💬 ${tr('subcategory.meetings')}` },
-                              { id: 'buddies', label: `🛵 ${tr('subcategory.buddies')}` }
+                              { id: 'cinema_theatre', label: `🎭 ${tr('subcategory.cinema_theatre')}` },
+                              { id: 'sports_events', label: `🏆 ${tr('subcategory.sports_events')}` },
+                              { id: 'workshops', label: `🛠️ ${tr('subcategory.workshops')}` },
+                              { id: 'yoga_wellness', label: `🧘 ${tr('subcategory.yoga_wellness')}` },
+                              { id: 'seminars', label: `🤝 ${tr('subcategory.seminars')}` },
+                              { id: 'family_events', label: `🧸 ${tr('subcategory.family_events')}` },
+                              { id: 'markets_fairs', label: `🛍️ ${tr('subcategory.markets_fairs')}` },
+                              { id: 'tours', label: `🗺️ ${tr('subcategory.tours')}` },
+                              { id: 'afisha_other', label: `⭐ ${tr('subcategory.afisha_other')}` },
+                              { id: 'life_company', label: `🛵 ${tr('subcategory.life_company')}` },
+                              { id: 'life_jobs', label: `💼 ${tr('subcategory.life_jobs')}` },
+                              { id: 'life_family', label: `👨‍👩‍👧 ${tr('subcategory.life_family')}` },
+                              { id: 'life_sport', label: `🎾 ${tr('subcategory.life_sport')}` },
+                              { id: 'life_hobbies', label: `🎲 ${tr('subcategory.life_hobbies')}` },
+                              { id: 'life_animals', label: `🐾 ${tr('subcategory.life_animals')}` },
+                              { id: 'life_help', label: `🤝 ${tr('subcategory.life_help')}` },
+                              { id: 'life_lost_found', label: `🔑 ${tr('subcategory.life_lost_found')}` },
+                              { id: 'life_warnings', label: `⚠️ ${tr('subcategory.life_warnings')}` },
+                              { id: 'life_other', label: `⭐ ${tr('subcategory.life_other')}` },
+                              { id: 'useful_before_trip', label: `🧳 ${tr('subcategory.useful_before_trip')}` },
+                              { id: 'useful_visas_documents', label: `🛂 ${tr('subcategory.useful_visas_documents')}` },
+                              { id: 'useful_bali_areas', label: `🗺️ ${tr('subcategory.useful_bali_areas')}` },
+                              { id: 'useful_housing_daily_life', label: `🏠 ${tr('subcategory.useful_housing_daily_life')}` },
+                              { id: 'useful_transport', label: `🛵 ${tr('subcategory.useful_transport')}` },
+                              { id: 'useful_money_connectivity', label: `💳 ${tr('subcategory.useful_money_connectivity')}` },
+                              { id: 'useful_health', label: `🩺 ${tr('subcategory.useful_health')}` },
+                              { id: 'useful_laws_safety', label: `⚖️ ${tr('subcategory.useful_laws_safety')}` },
+                              { id: 'useful_work_business', label: `💼 ${tr('subcategory.useful_work_business')}` },
+                              { id: 'useful_emergency_help', label: `🆘 ${tr('subcategory.useful_emergency_help')}` }
                             ].filter(item => {
                               // Filter subcategories matching the parent
                               if (l2ParentId === 'housing') return ['entire_place', 'private_suite', 'private_room'].includes(item.id);
                               if (l2ParentId === 'transport') return ['scooters', 'motorcycles', 'cars'].includes(item.id);
-                              if (l2ParentId === 'investments') return ['villas', 'land', 'business'].includes(item.id);
+                              if (l2ParentId === 'investments') return ['villas', 'commercial_real_estate', 'land', 'business'].includes(item.id);
                               if (l2ParentId === 'services') return [
                                 'household_services',
                                 'beauty_care',
@@ -499,8 +528,20 @@ export function SettingsTab(props: AdminTabProps) {
                                 'other_services'
                               ].includes(item.id);
                               if (l2ParentId === 'ads') return ['electronics', 'trans_sale', 'clothes', 'house_furn'].includes(item.id);
-                              if (l2ParentId === 'afisha') return ['festivals', 'seminars', 'exhibitions'].includes(item.id);
-                              if (l2ParentId === 'life') return ['meetings', 'buddies'].includes(item.id);
+                              if (l2ParentId === 'afisha') return [
+                                'parties', 'live_music', 'festivals', 'exhibitions', 'cinema_theatre',
+                                'sports_events', 'workshops', 'yoga_wellness', 'seminars',
+                                'family_events', 'markets_fairs', 'tours', 'afisha_other'
+                              ].includes(item.id);
+                              if (l2ParentId === 'life') return [
+                                'life_company', 'life_jobs', 'life_family', 'life_sport', 'life_hobbies',
+                                'life_animals', 'life_help', 'life_lost_found', 'life_warnings', 'life_other'
+                              ].includes(item.id);
+                              if (l2ParentId === 'useful') return [
+                                'useful_before_trip', 'useful_visas_documents', 'useful_bali_areas',
+                                'useful_housing_daily_life', 'useful_transport', 'useful_money_connectivity',
+                                'useful_health', 'useful_laws_safety', 'useful_work_business', 'useful_emergency_help'
+                              ].includes(item.id);
                               return false;
                             })).map((sub: any) => (
                               <button

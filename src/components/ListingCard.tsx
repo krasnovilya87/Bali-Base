@@ -14,6 +14,7 @@ import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
+import { formatLifeExpensePerPerson, getLifeExpensePerPerson } from '../config/lifeSpecial';
 import {
   getListingVehicleModel,
   listingHasAbs,
@@ -337,7 +338,28 @@ export default function ListingCard({
       case 'service_transport': return '🛵 Транспорт';
       case 'other_services': return '⭐ Другие услуги';
       case 'electronics': return '🔌 Гаджеты';
-      case 'festivals': return '📅 Афиша: Фестиваль';
+      case 'life_jobs': return `💼 ${tr('subcategory.life_jobs')}`;
+      case 'afisha_company':
+      case 'afisha_hobbies':
+      case 'afisha_animals':
+      case 'afisha_help':
+      case 'afisha_lost_found':
+      case 'afisha_warnings':
+      case 'afisha_other':
+        return tr(`subcategory.${listing.subCategory}`);
+      case 'parties':
+      case 'live_music':
+      case 'festivals':
+      case 'exhibitions':
+      case 'cinema_theatre':
+      case 'sports_events':
+      case 'workshops':
+      case 'yoga_wellness':
+      case 'seminars':
+      case 'family_events':
+      case 'markets_fairs':
+      case 'tours':
+        return `📅 ${tr(`subcategory.${listing.subCategory}`)}`;
       default: return '🏷 Объявление';
     }
   };
@@ -549,6 +571,8 @@ export default function ListingCard({
     competitorPrice: activeCompetitorPrice,
     directPrice: activeBasePrice
   });
+  const isLifeCommunityListing = listing.category === 'life' && listing.subCategory !== 'life_jobs';
+  const lifeExpensePerPerson = isLifeCommunityListing ? getLifeExpensePerPerson(listing) : null;
 
   return (
     <div
@@ -691,8 +715,16 @@ export default function ListingCard({
           </p>
         </div>
 
-        {/* Pricing stack matching user specifications */}
-        <div className="pt-0.5 sm:pt-1 pb-1">
+        {isLifeCommunityListing ? (
+          <div className="space-y-1 pb-1 pt-0.5 sm:pt-1">
+            <span className="block text-[10px] font-bold text-text-dark sm:text-xs">{tr('details.life.expensesPerPerson')}</span>
+            <span className={`block break-words font-mono text-[14px] font-bold leading-tight sm:text-base lg:text-lg ${lifeExpensePerPerson === null ? 'text-gray-400' : 'text-text-dark'}`}>
+              {lifeExpensePerPerson === null
+                ? tr('details.life.notSpecified')
+                : formatLifeExpensePerPerson(lifeExpensePerPerson, currencyRate, currencySymbol)}
+            </span>
+          </div>
+        ) : <div className="pt-0.5 sm:pt-1 pb-1">
           {stayDays && (
             <div className={`mb-1 text-[10px] sm:text-xs lg:text-xs font-bold text-text-dark ${THEME.fonts.heading}`}>
               {tr('listing.totalFor')} {stayDays} {pluralizeDays(stayDays)}:
@@ -756,7 +788,7 @@ export default function ListingCard({
               </div>
             )}
           </div>
-        </div>
+        </div>}
 
         {actions && (
           <div className="mt-3 pt-3 border-t border-gray-100">

@@ -1,11 +1,9 @@
 import React from 'react';
-import { Check, ChevronDown, Key, Shield, ShieldCheck, Waves } from 'lucide-react';
+import { Check, Key, Shield, ShieldCheck, Waves } from 'lucide-react';
 import { useI18n } from '../../../../i18nContext';
 import { getDistrictNamesFromGeoJSONSync, sortDistrictsByPopularity } from '../../../../utils/geo';
-import {
-  SCOOTER_WIZARD_CONDITION_OPTIONS,
-  getScooterWizardYearOptions
-} from '../../configs/scooterWizardConfig';
+import { SCOOTER_WIZARD_CONDITION_OPTIONS } from '../../configs/scooterWizardConfig';
+import Polzunok from '../../../Polzunok';
 // @ts-ignore
 import scooterConditionSprite from '../../../../assets/images/scooter-condition-sprite.png';
 
@@ -50,26 +48,49 @@ const FeatureScooterParameters: React.FC<FeatureScooterParametersProps> = ({
   const { tr } = useI18n();
   const currentYear = new Date().getFullYear();
   const districtOptions = sortDistrictsByPopularity(getDistrictNamesFromGeoJSONSync());
-  const yearOptions = getScooterWizardYearOptions(currentYear);
+  const yearOptions = [
+    String(currentYear),
+    String(currentYear - 1),
+    String(currentYear - 2),
+    String(currentYear - 3),
+    'other'
+  ];
+  const yearSliderValue = Math.max(0, yearOptions.includes(yearBuilt) ? yearOptions.indexOf(yearBuilt) : 4);
+  const yearLabel = yearBuilt === 'other' || !yearBuilt
+    ? tr('wizard.features.year.other')
+    : yearBuilt;
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="space-y-2">
-        <span className={fieldTitleClass}>{tr('filters.transport.year')}</span>
-        <div className="relative">
-          <select
-            value={yearBuilt}
-            onChange={event => setYearBuilt(event.target.value)}
-            className="w-full appearance-none rounded-2xl border-0 bg-white px-4 py-3 pr-10 text-xs font-extrabold text-[#1E293B] focus:outline-none focus:ring-0"
-          >
-            <option value="">{tr('wizard.features.year.select')}</option>
-            {yearOptions.map(value => (
-              <option key={value} value={value}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className={fieldTitleClass}>{tr('filters.transport.year')}</span>
+          <span className="pl inline-flex rounded-lg bg-[#FF7A50]/10 px-2.5 py-1 text-xs font-semibold text-[#FF7A50]">
+            {yearLabel}
+          </span>
+        </div>
+        <div className="pt-2">
+          <Polzunok
+            min={0}
+            max={4}
+            step={1}
+            value={yearSliderValue}
+            onChange={index => setYearBuilt(yearOptions[index] || 'other')}
+          />
+          <div className="relative mt-1.5 h-4 px-0.5 text-[10.5px] font-semibold text-[#1E293B]">
+            {yearOptions.map((value, index) => (
+              <span
+                key={value}
+                className="absolute top-0 whitespace-nowrap"
+                style={{
+                  left: `${index / (yearOptions.length - 1) * 100}%`,
+                  transform: index === 0 ? 'translateX(0)' : index === yearOptions.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)'
+                }}
+              >
                 {value === 'other' ? tr('wizard.features.year.other') : value}
-              </option>
+              </span>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+          </div>
         </div>
       </div>
 

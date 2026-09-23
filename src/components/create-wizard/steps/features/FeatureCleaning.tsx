@@ -20,7 +20,7 @@ const FeatureCleaning: React.FC<FeatureSectionProps> = (props) => {
   return (
     <>
                   {/* 13. Периодичность уборки */}
-                  <div className="pl p-5 rounded-3xl space-y-4">
+                  <div className="pl p-5 rounded-3xl space-y-2.5">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">🧹 {tr('wizard.features.cleaning')}</span>
                       <span className="text-xs font-bold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
@@ -28,7 +28,7 @@ const FeatureCleaning: React.FC<FeatureSectionProps> = (props) => {
                       </span>
                     </div>
 
-                    <div className="pt-2 relative">
+                    <div className="pt-0.5 relative">
                       <Polzunok
                         min={0}
                         max={4}

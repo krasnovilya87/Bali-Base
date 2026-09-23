@@ -13,6 +13,7 @@ import { I18nProvider } from './i18nContext';
 import { CURRENCIES, CurrencyKey } from './app/currency';
 import { getDeviceLanguage } from './app/language';
 import {
+  ADS_L3_SUBCATEGORIES,
   getMenuCategoryImage,
   getMenuSubcategoryImage,
   L1_CATEGORIES,
@@ -35,11 +36,13 @@ import { getDistrictNamesFromGeoJSONSync } from './utils/geo';
 import { LISTING_SHARE_PARAM } from './utils/listingShare';
 import { AiSearchIntent, requestAiSearchIntent, requestAiVectorSearch } from './utils/aiSearchClient';
 import { parseLocalAiSearchQuery } from './utils/localAiSearchParser';
+import { isAfishaListingExpired } from './utils/eventFilters';
+import { normalizeLifeSubCategory } from './config/lifeSpecial';
 
 import {
   Compass, Search, Globe, PlusCircle, HelpCircle, Star,
   Calendar, MapPin, Tag, ChevronDown, BookOpen, Sparkles, Filter, ListOrdered, Layers, Image, Menu, Map, X,
-  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid, LockKeyhole, Mic
+  Maximize, Minimize, Heart, MessageSquare, List, UserRound, LayoutGrid, LockKeyhole, Mic, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const DISTRICT_MENU_GROUPS = [
@@ -55,6 +58,7 @@ const AUTH_RETURN_CONTEXT_STORAGE_KEY = 'bali_base_auth_return_context';
 const INITIAL_VIEW_STORAGE_KEY = 'bali_base_initial_view';
 const ADMIN_ROUTE = '/adm';
 const ADMIN_EMAILS = ['krasnovilya87@gmail.com'];
+const SINGLE_SELECT_L2_CATEGORIES = new Set(['services', 'ads', 'life', 'investments', 'useful']);
 
 type AppView = 'cover' | 'menu' | 'app';
 type CreateWizardDeepLink = {
@@ -74,6 +78,24 @@ type AuthReturnContext = {
 };
 
 const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
+const getSelectableSubcategoryIdsForL1 = (catId: string) => {
+  if (catId === 'ads') {
+    return Object.values(ADS_L3_SUBCATEGORIES).flat().map(sub => sub.id);
+  }
+  return getL2IdsForL1(catId);
+};
+const getFirstAdsL3Id = (l2Id: string) => ADS_L3_SUBCATEGORIES[l2Id]?.[0]?.id || '';
+const getAdsL2IdForL3 = (l3Id: string) =>
+  Object.entries(ADS_L3_SUBCATEGORIES).find(([, items]) => items.some(item => item.id === l3Id))?.[0] || '';
+const getDefaultSubcategorySelection = (catId: string) => {
+  if (catId === 'ads') {
+    const firstL2 = getL2IdsForL1(catId)[0] || '';
+    const firstL3 = getFirstAdsL3Id(firstL2);
+    return firstL3 ? [firstL3] : [];
+  }
+  return isSingleSelectL2Category(catId) ? [] : getL2IdsForL1(catId);
+};
+const isSingleSelectL2Category = (catId: string) => SINGLE_SELECT_L2_CATEGORIES.has(catId);
 
 const readCreateWizardDeepLink = (): CreateWizardDeepLink | null => {
   if (typeof window === 'undefined') return null;
@@ -131,6 +153,23 @@ const getDefaultFilters = (): FilterState => ({
   insuranceOnly: false,
   freeDeliveryToAddressOnly: false,
   freeDeliveryToDistrictOnly: false,
+  classifiedCondition: [],
+  classifiedFulfillment: [],
+  classifiedAudience: [],
+  classifiedLevel: [],
+  classifiedProductType: [],
+  classifiedSpecialSubCategory: '',
+  classifiedSpecialOptions: {},
+  classifiedSpecialNumberRanges: {},
+  classifiedSpecialText: {},
+  classifiedSpecialDateRanges: {},
+  classifiedUrgentOnly: false,
+  classifiedPublishedWithin: 'all',
+  investmentSubtypes: [],
+  investmentOptions: {},
+  investmentNumberRanges: {},
+  investmentText: {},
+  investmentPublishedWithin: 'all',
   favoritesOnly: false
 });
 
@@ -151,14 +190,19 @@ const readStoredMenuSelection = () => {
     const currentL1 = typeof parsed.currentL1 === 'string' && parsed.currentL1 in SUBCATEGORIES_MAP
       ? parsed.currentL1
       : defaultSelection.currentL1;
-    const validL2Ids = new Set(getL2IdsForL1(currentL1));
+    const validL2Ids = new Set(getSelectableSubcategoryIdsForL1(currentL1));
     const currentL2 = Array.isArray(parsed.currentL2)
       ? parsed.currentL2.filter((id): id is string => typeof id === 'string' && validL2Ids.has(id))
       : [];
+    const normalizedCurrentL2 = isSingleSelectL2Category(currentL1) && currentL2.length > 1
+      ? []
+      : currentL2;
 
     return {
       currentL1,
-      currentL2: currentL2.length > 0 ? currentL2 : getL2IdsForL1(currentL1)
+      currentL2: normalizedCurrentL2.length > 0
+        ? normalizedCurrentL2
+        : getDefaultSubcategorySelection(currentL1)
     };
   } catch {
     return defaultSelection;
@@ -357,9 +401,15 @@ export default function App() {
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
   const [isTopHeaderHidden, setIsTopHeaderHidden] = useState<boolean>(false);
   const [isMobileNavHidden, setIsMobileNavHidden] = useState<boolean>(false);
+  const [isMobileFiltersDocked, setIsMobileFiltersDocked] = useState<boolean>(false);
+  const [isMobileL2Expanded, setIsMobileL2Expanded] = useState<boolean>(false);
+  const [canScrollL2Left, setCanScrollL2Left] = useState<boolean>(false);
+  const [canScrollL2Right, setCanScrollL2Right] = useState<boolean>(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const lastPageScrollYRef = useRef(0);
+  const l2ScrollRef = useRef<HTMLDivElement | null>(null);
   const filtersBarRef = useRef<HTMLElement | null>(null);
+  const filtersBarInitialTopRef = useRef<number | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
   const mapFrameRef = useRef({ top: 154, height: 420 });
@@ -410,11 +460,13 @@ export default function App() {
     if (!listingId) return;
 
     const sharedListing = listings.find(item => item.id === listingId);
-    if (!sharedListing) return;
+    if (!sharedListing || isAfishaListingExpired(sharedListing)) return;
 
     setCurrentView('app');
     setCurrentL1(sharedListing.category);
-    setCurrentL2([sharedListing.subCategory]);
+    setCurrentL2([sharedListing.category === 'life'
+      ? normalizeLifeSubCategory(sharedListing.subCategory)
+      : sharedListing.subCategory]);
     setSelectedListing(sharedListing);
   }, [listings, selectedListing]);
 
@@ -451,13 +503,39 @@ export default function App() {
     if (currentView !== 'app') {
       setIsTopHeaderHidden(false);
       setIsMobileNavHidden(false);
+      setIsMobileFiltersDocked(false);
+      filtersBarInitialTopRef.current = null;
       lastPageScrollYRef.current = window.scrollY;
       return;
     }
 
+    const measureFiltersBarStart = () => {
+      const filtersBar = filtersBarRef.current;
+      if (!filtersBar) return;
+      filtersBarInitialTopRef.current = filtersBar.getBoundingClientRect().top + window.scrollY;
+    };
+
     const handlePageScroll = () => {
       const currentScrollY = window.scrollY;
       const delta = currentScrollY - lastPageScrollYRef.current;
+
+      if (window.innerWidth >= 768) {
+        setIsMobileNavHidden(false);
+        setIsMobileFiltersDocked(false);
+        lastPageScrollYRef.current = currentScrollY;
+        return;
+      }
+
+      const filtersBar = filtersBarRef.current;
+      const filtersBarInitialTop = filtersBarInitialTopRef.current;
+      if (filtersBar && filtersBarInitialTop !== null) {
+        const filtersBarHeight = filtersBar.offsetHeight;
+        if (currentScrollY >= filtersBarInitialTop + filtersBarHeight) {
+          setIsMobileFiltersDocked(true);
+        } else if (currentScrollY <= filtersBarInitialTop) {
+          setIsMobileFiltersDocked(false);
+        }
+      }
 
       if (currentScrollY <= 2) {
         setIsTopHeaderHidden(false);
@@ -472,11 +550,24 @@ export default function App() {
       lastPageScrollYRef.current = currentScrollY;
     };
 
+    const handleViewportResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileNavHidden(false);
+        setIsMobileFiltersDocked(false);
+      } else if (filtersBarInitialTopRef.current === null) {
+        measureFiltersBarStart();
+      }
+      lastPageScrollYRef.current = window.scrollY;
+    };
+
+    measureFiltersBarStart();
     lastPageScrollYRef.current = window.scrollY;
     window.addEventListener('scroll', handlePageScroll, { passive: true });
+    window.addEventListener('resize', handleViewportResize);
 
     return () => {
       window.removeEventListener('scroll', handlePageScroll);
+      window.removeEventListener('resize', handleViewportResize);
     };
   }, [currentView]);
 
@@ -545,6 +636,46 @@ export default function App() {
   const [activeLanguage, setActiveLanguage] = useState<LanguageCode>(() => getDeviceLanguage());
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
+  const updateL2ScrollControls = React.useCallback(() => {
+    const viewport = l2ScrollRef.current;
+    if (!viewport) return;
+
+    const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    setCanScrollL2Left(viewport.scrollLeft > 2);
+    setCanScrollL2Right(viewport.scrollLeft < maxScrollLeft - 2);
+  }, []);
+  const scrollL2Menu = (direction: -1 | 1) => {
+    const viewport = l2ScrollRef.current;
+    if (!viewport) return;
+
+    viewport.scrollBy({
+      left: direction * Math.max(240, viewport.clientWidth * 0.72),
+      behavior: 'smooth'
+    });
+  };
+
+  useEffect(() => {
+    const viewport = l2ScrollRef.current;
+    if (!viewport || typeof window === 'undefined') return;
+
+    viewport.scrollLeft = 0;
+    const frameId = window.requestAnimationFrame(updateL2ScrollControls);
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateL2ScrollControls)
+      : null;
+
+    resizeObserver?.observe(viewport);
+    if (viewport.firstElementChild instanceof HTMLElement) {
+      resizeObserver?.observe(viewport.firstElementChild);
+    }
+    window.addEventListener('resize', updateL2ScrollControls);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateL2ScrollControls);
+    };
+  }, [activeLanguage, currentL1, isMobileL2Expanded, menuOverrides, updateL2ScrollControls]);
   const { favoriteIds } = useFavoriteListings();
   const ownerListingIds = useMemo(() => {
     if (!user?.uid) return new Set<string>();
@@ -686,7 +817,9 @@ export default function App() {
     if (listing) {
       setCurrentView('app');
       setCurrentL1(listing.category);
-      setCurrentL2([listing.subCategory]);
+      setCurrentL2([listing.category === 'life'
+        ? normalizeLifeSubCategory(listing.subCategory)
+        : listing.subCategory]);
       setSelectedListing(listing);
     }
   }, [listings, loading, user]);
@@ -1127,7 +1260,8 @@ export default function App() {
   const selectL1 = (catId: string) => {
     setCurrentL1(prevL1 => {
       if (prevL1 !== catId) {
-        setCurrentL2(getL2IdsForL1(catId));
+        setCurrentL2(getDefaultSubcategorySelection(catId));
+        setIsMobileL2Expanded(false);
       }
       return catId;
     });
@@ -1144,6 +1278,17 @@ export default function App() {
   };
 
   const toggleL2 = (subCategoryId: string) => {
+    if (currentL1 === 'ads') {
+      const firstL3Id = getFirstAdsL3Id(subCategoryId);
+      setCurrentL2(firstL3Id ? [firstL3Id] : []);
+      return;
+    }
+
+    if (isSingleSelectL2Category(currentL1)) {
+      setCurrentL2([subCategoryId]);
+      return;
+    }
+
     setCurrentL2(prev => {
       if (prev.includes(subCategoryId)) {
         return prev.length > 1 ? prev.filter(id => id !== subCategoryId) : prev;
@@ -1155,12 +1300,17 @@ export default function App() {
   const setPrimaryL2 = (subCategoryId: string) => {
     setCurrentL2(prev => {
       if (!subCategoryId) return prev;
+      if (currentL1 === 'ads') return [subCategoryId];
       if (!prev.includes(subCategoryId)) return [subCategoryId, ...prev];
       return [subCategoryId, ...prev.filter(id => id !== subCategoryId)];
     });
   };
 
   const primaryL2 = currentL2[0] || '';
+  const activeAdsL2 = currentL1 === 'ads'
+    ? getAdsL2IdForL3(primaryL2) || getL2IdsForL1('ads')[0] || ''
+    : '';
+  const isAdsCategory = currentL1 === 'ads';
   const selectedDistrictLabel = districtSearch.length > 2
     ? `${districtSearch.slice(0, 2).join(', ')} +${districtSearch.length - 2}`
     : districtSearch.join(', ');
@@ -1545,7 +1695,12 @@ export default function App() {
 
                   {/* Create Listing Wizard trigger button */}
                   <button
-                    onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      requireAuth('auth.reason.createListing', () => setShowCreateWizard(true));
+                    }}
                     className="hidden px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer md:flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn-menu"
                   >
@@ -1782,7 +1937,12 @@ export default function App() {
 
                   {/* Create Listing Wizard trigger button */}
                   <button
-                    onClick={() => requireAuth('auth.reason.createListing', () => setShowCreateWizard(true))}
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      requireAuth('auth.reason.createListing', () => setShowCreateWizard(true));
+                    }}
                     className="hidden px-2.5 py-2 sm:px-3 sm:py-2 bg-[#FF7A50] hover:bg-[#E05A30] text-white rounded-xl font-bold font-sans transition hover:shadow-md cursor-pointer md:flex items-center gap-1 active:scale-95 shrink-0 text-[12px] sm:text-xs"
                     id="create-l-btn"
                   >
@@ -1846,14 +2006,22 @@ export default function App() {
             </nav>
 
             {/* LEVEL 2: SUBCATEGORY SELECTIONS ROW */}
-            <nav className="relative z-[230] shrink-0 select-none overflow-x-auto bg-[#F4F7F6] py-1.5 sm:overflow-hidden md:py-2">
-              <div className="max-w-7xl mx-auto px-3 sm:px-4 flex flex-row justify-center items-center w-max min-w-full gap-3 sm:gap-4">
+            <nav className="relative z-[230] shrink-0 select-none bg-[#F4F7F6] py-1.5 md:py-2">
+              <div className="relative mx-auto w-full max-w-7xl px-1.5 sm:px-6">
+              <div
+                ref={l2ScrollRef}
+                onScroll={updateL2ScrollControls}
+                className={`scrollbar-none scroll-smooth ${isMobileL2Expanded ? 'overflow-visible' : 'overflow-x-auto'}`}
+              >
+                <div className={`mx-auto flex min-w-full items-center gap-3 sm:gap-4 ${isMobileL2Expanded ? 'w-full flex-wrap justify-center px-3 pr-10 sm:px-4 md:pr-4' : 'w-max flex-row justify-center px-12'}`}>
 
                 {(SUBCATEGORIES_MAP[currentL1] || []).map(sub => {
                   const displayLabel = tr(`subcategory.${sub.id}`);
                   const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon;
                   const displayCustomImage = getMenuSubcategoryImage(sub, menuOverrides);
-                  const isSelected = currentL2.includes(sub.id);
+                  const isSelected = currentL1 === 'ads'
+                    ? activeAdsL2 === sub.id
+                    : currentL2.includes(sub.id);
 
                   return (
                     <button
@@ -1890,6 +2058,37 @@ export default function App() {
                   );
                 })}
 
+                </div>
+              </div>
+              {!isMobileL2Expanded && canScrollL2Left && (
+                <button
+                  type="button"
+                  onClick={() => scrollL2Menu(-1)}
+                  className="absolute left-1.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:left-6"
+                  aria-label={tr('menu.scrollSubcategoriesLeft')}
+                >
+                  <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
+                </button>
+              )}
+              {!isMobileL2Expanded && canScrollL2Right && (
+                <button
+                  type="button"
+                  onClick={() => scrollL2Menu(1)}
+                  className="absolute right-7 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:right-6"
+                  aria-label={tr('menu.scrollSubcategoriesRight')}
+                >
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsMobileL2Expanded(prev => !prev)}
+                className="absolute right-1.5 top-1/2 z-10 flex h-9 w-4 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/45 text-[#1E293B]/70 shadow-[0_1px_7px_rgba(15,23,42,0.10)] backdrop-blur-[2px] transition active:scale-95 md:hidden"
+                aria-label={tr(isMobileL2Expanded ? 'menu.collapseSubcategories' : 'menu.expandSubcategories')}
+                aria-expanded={isMobileL2Expanded}
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isMobileL2Expanded ? 'rotate-180' : ''}`} strokeWidth={2} />
+              </button>
               </div>
             </nav>
 
@@ -1899,7 +2098,13 @@ export default function App() {
             />
 
             {/* LEVEL 4: STICKY SUB-BAR DISTRICTS AND CALENDARS */}
-            <section ref={filtersBarRef} className={`sticky top-[env(safe-area-inset-top)] z-[240] shrink-0 select-none border-b-[0.5px] border-white/45 bg-[#F4F7F6]/20 px-2 py-2.5 backdrop-blur-[2px] transition-[transform,opacity] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-3 md:top-0 md:translate-y-0 md:opacity-100 ${isMobileNavHidden ? 'pointer-events-none -translate-y-[calc(100%+env(safe-area-inset-top))] opacity-0' : 'translate-y-0 opacity-100'}`}>
+            <section
+              ref={filtersBarRef}
+              className={`${isMobileFiltersDocked
+                ? `sticky top-[env(safe-area-inset-top)] transition-[transform,opacity] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${isMobileNavHidden ? 'pointer-events-none -translate-y-[calc(100%+env(safe-area-inset-top))] opacity-0' : 'translate-y-0 opacity-100'}`
+                : 'relative'
+                } z-[240] shrink-0 select-none border-b-[0.5px] border-white/45 bg-[#F4F7F6]/20 px-2 py-2.5 backdrop-blur-[2px] sm:px-4 sm:py-3 md:pointer-events-auto md:sticky md:top-0 md:translate-y-0 md:opacity-100`}
+            >
               <div className="max-w-7xl w-full mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
 
                 {/* SORTING: CIRCULAR TRIGGER BUTTON (left of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -1955,7 +2160,7 @@ export default function App() {
                 </div>
 
                 {/* UNIFIED SEARCH BLOCK: Р“РґРµ? | РљРѕРіРґР°? (Centered in the middle block) */}
-                <div className="flex flex-row items-center border-[0.5px] border-white/60 bg-white/32 p-1 rounded-full shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] hover:shadow-sm transition relative min-w-0 flex-1 sm:flex-none">
+                <div className={`flex flex-row items-center border-[0.5px] border-white/60 bg-white/32 p-1 rounded-full shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] hover:shadow-sm transition relative min-w-0 flex-1 sm:flex-none ${isAdsCategory ? 'sm:min-w-[302px]' : ''}`}>
 
                   {/* 1. Р“Р”Р•? */}
                   <div
@@ -1965,11 +2170,11 @@ export default function App() {
                       setShowSortDropdown(false);
                       setShowCalendar(false);
                     }}
-                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 relative cursor-pointer min-w-0 sm:min-w-[140px] flex-1 sm:flex-none"
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 relative cursor-pointer min-w-0 sm:min-w-[140px] flex-1 ${isAdsCategory ? 'justify-center text-center' : 'sm:flex-none'}`}
                     id="where-trigger-btn"
                   >
                     <MapPin className="w-4 h-4 text-[#FF7A50] shrink-0" />
-                    <div className="text-left font-sans flex-1 min-w-0">
+                    <div className={`font-sans flex-1 min-w-0 ${isAdsCategory ? 'text-center' : 'text-left'}`}>
                       {customPolygon ? (
                         <div>
                           <span className="text-[#1E293B] font-bold text-[13px] sm:text-xs leading-[1.2] block truncate">
@@ -2069,33 +2274,37 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Separator 1 */}
-                  <div className="w-[1px] h-5 bg-[#E5E7EB]" />
+                  {!isAdsCategory && (
+                    <>
+                      {/* Separator 1 */}
+                      <div className="w-[1px] h-5 bg-[#E5E7EB]" />
 
-                  {/* 2. РљРћР“Р”Рђ? */}
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowCalendar(!showCalendar);
-                      setShowDistrictDropdown(false);
-                      setShowSortDropdown(false);
-                    }}
-                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 relative cursor-pointer min-w-0 sm:min-w-[160px] flex-1 sm:flex-none"
-                  >
-                    <Calendar className="w-4 h-4 text-[#FF7A50] shrink-0" />
-                    <div className="text-left font-sans flex-1 min-w-0">
-                      {checkInDate ? (
-                        <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
-                          {formatReservationDates(checkInDate, checkOutDate)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 font-normal text-[13px] sm:text-xs uppercase tracking-wider leading-none block truncate">
-                          {tr('date.when')}
-                        </span>
-                      )}
-                    </div>
+                      {/* 2. РљРћР“Р”Рђ? */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCalendar(!showCalendar);
+                          setShowDistrictDropdown(false);
+                          setShowSortDropdown(false);
+                        }}
+                        className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 relative cursor-pointer min-w-0 sm:min-w-[160px] flex-1 sm:flex-none"
+                      >
+                        <Calendar className="w-4 h-4 text-[#FF7A50] shrink-0" />
+                        <div className="text-left font-sans flex-1 min-w-0">
+                          {checkInDate ? (
+                            <span className="text-[#1E293B] font-bold text-[13px] sm:text-sm leading-none block truncate">
+                              {formatReservationDates(checkInDate, checkOutDate)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 font-normal text-[13px] sm:text-xs uppercase tracking-wider leading-none block truncate">
+                              {tr('date.when')}
+                            </span>
+                          )}
+                        </div>
 
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* FILTERS: CIRCULAR BUTTON with symbol only (right of "Р“РґРµ? | РљРѕРіРґР°?") */}
@@ -2157,26 +2366,29 @@ export default function App() {
                   </div>
 
                   {currentL1 === 'useful' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
                       {MOCK_GUIDES.map(guide => (
                         <div
                           key={guide.id}
-                          className="bg-white p-5 rounded-3xl border [border-width:0.5px] border-[#94A3B8]/20 flex flex-col sm:flex-row gap-5 items-start transition duration-200"
+                          className="group pl-card overflow-hidden rounded-xl bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:rounded-2xl"
                         >
-                          <img
-                            src={guide.image}
-                            alt="Guide preview"
-                            className="w-full sm:w-28 h-28 aspect-square rounded-2xl object-cover border border-gray-100 shrink-0 select-none pb-0!"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="space-y-2 flex-1">
-                            <span className="text-[10px] font-sans font-extrabold text-[#2F7D69] bg-[#2F7D69]/10 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                          <div className="aspect-[4/3] w-full overflow-hidden bg-gray-50 sm:aspect-video">
+                            <img
+                              src={guide.image}
+                              alt={guide.title}
+                              className="h-full w-full select-none object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-4">
+                            <span className="w-fit rounded-md bg-[#2F7D69]/10 px-2 py-0.5 font-sans text-[8px] font-extrabold uppercase tracking-wider text-[#2F7D69] sm:px-2.5 sm:text-[10px]">
                               {guide.category}
                             </span>
-                            <h4 className="font-sans font-bold text-sm sm:text-base text-gray-900 leading-snug">
+                            <h4 className="line-clamp-2 font-sans text-xs font-bold leading-snug text-gray-900 sm:text-sm">
                               {guide.title}
                             </h4>
-                            <p className="text-xs text-[#5F6978] leading-relaxed font-sans">
+                            <p className="line-clamp-3 font-sans text-[10px] leading-relaxed text-[#5F6978] sm:text-xs">
                               {guide.description}
                             </p>
                           </div>
@@ -2613,7 +2825,7 @@ export default function App() {
           reason={authModalReason}
         />
 
-        {showCalendar && (
+        {showCalendar && !isAdsCategory && (
           <>
             <div
               className="fixed inset-0 z-[500] bg-transparent cursor-default"

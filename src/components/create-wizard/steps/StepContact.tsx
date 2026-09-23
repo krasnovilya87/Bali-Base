@@ -44,23 +44,24 @@ const StepContact: React.FC<StepContactProps> = ({
 }) => {
   const { tr } = useI18n();
   const isScooterWizard = category === 'transport' && subCategory === 'scooters';
-  const isCompanySeller = isScooterWizard && sellerType === 'company';
+  const supportsSellerType = isScooterWizard || category === 'services';
+  const isCompanySeller = supportsSellerType && sellerType === 'company';
   const [companySuggestions, setCompanySuggestions] = useState<any[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [isSearchingCompany, setIsSearchingCompany] = useState(false);
   const companySearchTimer = useRef<any>(null);
 
   useEffect(() => {
-    if (!isScooterWizard || sellerType) return;
+    if (!supportsSellerType || sellerType) return;
     setSellerType('private');
-  }, [isScooterWizard, sellerType, setSellerType]);
+  }, [sellerType, setSellerType, supportsSellerType]);
 
   useEffect(() => {
-    if (!hasValidKey || !isScooterWizard) return;
+    if (!hasValidKey || !supportsSellerType) return;
     ensureGoogleMapsLibraries(apiKey, ['places']).catch(error => {
       console.warn('Google Maps company search preload failed:', error);
     });
-  }, [apiKey, hasValidKey, isScooterWizard]);
+  }, [apiKey, hasValidKey, supportsSellerType]);
 
   const formatOwnerName = (value: string) =>
     value.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) =>
@@ -172,7 +173,7 @@ const StepContact: React.FC<StepContactProps> = ({
       <h3 className="text-sm font-bold font-sans text-[#1E293B] tracking-wider block ml-1">{tr('wizard.contacts')}</h3>
 
       <div className="flex flex-col gap-4 pt-2">
-        {isScooterWizard && (
+        {supportsSellerType && (
           <div className="space-y-2">
             <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">{tr('filters.transport.sellerType')}</span>
             <div className="grid grid-cols-2 gap-2.5">

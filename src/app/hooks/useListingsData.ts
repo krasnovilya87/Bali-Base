@@ -26,6 +26,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
 import { t } from '../../i18n';
 import { deleteListingFromAiSearch, indexListingForAiSearch } from '../../utils/aiSearchClient';
+import { getAfishaExpirationDate } from '../../config/eventSpecial';
 
 const getListingCollection = (listing: Listing) =>
   listing.category === 'transport' ? TRANSPORT_FOR_RENT_COLLECTION : LISTINGS_COLLECTION;
@@ -187,6 +188,10 @@ export const useListingsData = () => {
   };
 
   const handleToggleListingStatus = (id: string) => {
+    const listingToToggle = listings.find(item => item.id === id);
+    if (listingToToggle && ((listingToToggle.category === 'life' && listingToToggle.subCategory === 'life_warnings')
+      || (listingToToggle.category === 'afisha' && listingToToggle.subCategory === 'afisha_warnings'))
+      && !listingToToggle.isApproved && listingToToggle.status !== 'active') return;
     const updated = listings.map(item => {
       if (item.id === id) {
         const nextStatus = item.status === 'active' ? 'paused' : 'active';
@@ -368,14 +373,19 @@ export const useListingsData = () => {
       const rejectionReason = failedRule
         ? t('EN', failedRule.rejectionReasonKey)
         : t('EN', 'admin.reject.reason.other');
-      const shouldPublish = aiModeration.status === 'passed';
+      const requiresManualReview = (newListing.category === 'life' && newListing.subCategory === 'life_warnings')
+        || (newListing.category === 'afisha' && newListing.subCategory === 'afisha_warnings');
+      const shouldPublish = aiModeration.status === 'passed' && !requiresManualReview;
       moderatedListing = {
         ...newListing,
         aiModeration,
         isApproved: shouldPublish,
         isVerified: newListing.isVerified ?? false,
         status: shouldPublish ? 'active' : 'moderation',
-        rejectionReason: shouldPublish ? undefined : rejectionReason,
+        expirationDate: newListing.category === 'afisha'
+          ? shouldPublish ? getAfishaExpirationDate(newListing.classifiedAttributes?.afisha_publication_term) : undefined
+          : newListing.expirationDate,
+        rejectionReason: aiModeration.status === 'passed' ? undefined : rejectionReason,
         rejectionComment: undefined
       };
     } catch (error) {
@@ -389,7 +399,8 @@ export const useListingsData = () => {
         },
         isApproved: false,
         isVerified: newListing.isVerified ?? false,
-        status: 'moderation'
+        status: 'moderation',
+        expirationDate: newListing.category === 'afisha' ? undefined : newListing.expirationDate
       };
     }
 

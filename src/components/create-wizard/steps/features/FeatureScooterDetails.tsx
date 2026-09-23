@@ -7,6 +7,11 @@ import {
   SCOOTER_WIZARD_MODEL_OPTIONS,
   getScooterModelDescription
 } from '../../configs/scooterWizardConfig';
+import {
+  SCOOTER_MODEL_GROUPS,
+  getScooterModelsForGroup,
+  type ScooterModelGroup
+} from '../../../../utils/scooterFilters';
 
 type FeatureScooterDetailsProps = {
   title: string;
@@ -41,7 +46,9 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
   setVehicleColor
 }) => {
   const { tr } = useI18n();
+  const [activeModelGroup, setActiveModelGroup] = React.useState<ScooterModelGroup>('all');
   const selectedModelLabel = SCOOTER_WIZARD_MODEL_OPTIONS.find(model => model.value === vehicleModel)?.label || tr('wizard.transport.selectedModel');
+  const visibleModels = getScooterModelsForGroup(activeModelGroup);
 
   const selectModel = (value: string, label: string) => {
     setVehicleModel(value);
@@ -57,8 +64,28 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
     <div className="space-y-5 animate-fade-in">
       <div className="space-y-3">
         <span className={fieldTitleClass}>{tr('wizard.transport.model')}</span>
+        <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+          {SCOOTER_MODEL_GROUPS.map(group => {
+            const isActive = activeModelGroup === group.value;
+            return (
+              <button
+                key={group.value}
+                type="button"
+                onClick={() => setActiveModelGroup(group.value)}
+                aria-pressed={isActive}
+                className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                  isActive
+                    ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
+                    : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                }`}
+              >
+                {tr(group.labelKey)}
+              </button>
+            );
+          })}
+        </div>
         <div className="flex flex-wrap gap-2">
-          {SCOOTER_WIZARD_MODEL_OPTIONS.map(model => {
+          {visibleModels.map(model => {
             const isActive = vehicleModel === model.value;
             return (
               <button

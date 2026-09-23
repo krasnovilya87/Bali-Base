@@ -25,6 +25,10 @@ type StepPricingProps = {
   interactiveDays: number;
   setInteractiveDays: React.Dispatch<React.SetStateAction<number>>;
   hideCompetitorFields?: boolean;
+  category?: string;
+  subCategory?: string;
+  lifeExpensePerPerson?: number;
+  setLifeExpensePerPerson?: (amount: number | undefined) => void;
 };
 
 const platformOptions = [
@@ -58,11 +62,17 @@ const StepPricing: React.FC<StepPricingProps> = ({
   selectedDiscountPercent,
   interactiveDays,
   setInteractiveDays,
-  hideCompetitorFields = false
+  hideCompetitorFields = false,
+  category = '',
+  subCategory = '',
+  lifeExpensePerPerson,
+  setLifeExpensePerPerson
 }) => {
   const { tr } = useI18n();
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const platformDropdownRef = useRef<HTMLDivElement>(null);
+  const isServicePricing = category === 'services';
+  const isLifeCommunityPricing = category === 'life' && subCategory !== 'life_jobs';
 
   useEffect(() => {
     if (!isPlatformOpen) return;
@@ -77,12 +87,36 @@ const StepPricing: React.FC<StepPricingProps> = ({
     return () => window.removeEventListener('pointerdown', handlePointerDown);
   }, [isPlatformOpen]);
 
+  if (isLifeCommunityPricing) {
+    return (
+      <div className="animate-fade-in space-y-2 pt-2">
+        <label htmlFor="life-expense-per-person" className="block text-xs font-semibold text-[#1E293B]">
+          {tr('wizard.lifeExpensesPerPerson')}
+        </label>
+        <div className="flex max-w-sm items-center rounded-lg border border-[#E5E7EB] bg-white focus-within:border-[#FF7A50] focus-within:ring-2 focus-within:ring-[#FF7A50]/15">
+          <input
+            id="life-expense-per-person"
+            type="text"
+            inputMode="numeric"
+            value={typeof lifeExpensePerPerson === 'number' ? formatPriceWithSpaces(lifeExpensePerPerson) : ''}
+            onChange={event => {
+              const digits = event.target.value.replace(/\D/g, '');
+              setLifeExpensePerPerson?.(digits ? Number(digits) : undefined);
+            }}
+            className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm font-semibold text-[#1E293B] outline-none"
+          />
+          <span className="shrink-0 px-3 text-sm font-semibold text-[#5F6978]">Rp</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+      <div className={`grid grid-cols-1 gap-4 pt-2 ${isServicePricing ? 'sm:grid-cols-1' : 'sm:grid-cols-3'}`}>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
-            {tr('wizard.priceDay')}
+            {tr(isServicePricing ? 'wizard.servicePrice' : 'wizard.priceDay')}
           </label>
           <input
             type="text"
@@ -96,6 +130,8 @@ const StepPricing: React.FC<StepPricingProps> = ({
           />
         </div>
 
+        {!isServicePricing && (
+        <>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
             {tr('wizard.priceMonth')}
@@ -127,9 +163,11 @@ const StepPricing: React.FC<StepPricingProps> = ({
             className="w-full bg-white border-0 p-2.5 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-0"
           />
         </div>
+        </>
+        )}
       </div>
 
-      {!hideCompetitorFields && (
+      {!hideCompetitorFields && !isServicePricing && (
         <div className="pl p-5 rounded-3xl space-y-4 relative z-[8000]">
           <div className="flex flex-col sm:flex-row gap-5 items-stretch">
             <div className="flex-1 space-y-3">
@@ -247,6 +285,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
         </div>
       )}
 
+      {!isServicePricing && (
       <div className="relative z-0">
         <PricingGraph
           pricePerDay={pricePerDay}
@@ -256,6 +295,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
           setInteractiveDays={setInteractiveDays}
         />
       </div>
+      )}
     </div>
   );
 };

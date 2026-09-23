@@ -1,4 +1,5 @@
 import type { AiModerationResult, Listing } from '../types';
+import { auth } from '../firebase';
 
 const getModerationEndpoint = () => {
   const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL ||
@@ -8,9 +9,17 @@ const getModerationEndpoint = () => {
 };
 
 export const moderateListing = async (listing: Listing): Promise<AiModerationResult> => {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) {
+    throw new Error('Sign in is required before AI moderation.');
+  }
+
   const response = await fetch(getModerationEndpoint(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({ listing })
   });
   const payload = await response.json().catch(() => null);

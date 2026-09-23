@@ -691,6 +691,7 @@ export const MOCK_OTHER_LISTINGS: Listing[] = [
     isNew: true,
     status: 'active',
     pricePerDay: 50000, // Shared organization cost
+    classifiedAttributes: { life_expense_per_person: 500000 },
     hasDropPrice: false,
     yearBuilt: 2026,
     whatsappNumber: '+6285511223344',

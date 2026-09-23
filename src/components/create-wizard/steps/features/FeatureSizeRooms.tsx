@@ -22,7 +22,7 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
   return (
     <>
       {subCategory === 'private_room' ? null : subCategory === 'private_suite' ? (
-        <div className="pl p-5 rounded-3xl space-y-4">
+        <div className="pl p-5 rounded-3xl space-y-2.5">
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">📐 {tr('wizard.features.area')}</span>
             <span className="text-xs font-bold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg font-sans">
@@ -30,7 +30,7 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
             </span>
           </div>
 
-          <div className="pt-2 relative">
+          <div className="pt-0.5 relative">
             <Polzunok
               min={5}
               max={55}
@@ -46,7 +46,7 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
           </div>
         </div>
       ) : (
-        <div className="pl p-5 rounded-3xl space-y-4">
+        <div className="pl p-5 rounded-3xl space-y-2.5">
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block font-bold">🏢 {tr('wizard.features.roomsTotal')}</span>
             <span className="text-xs font-bold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg font-sans">
@@ -54,7 +54,7 @@ const FeatureSizeRooms: React.FC<FeatureSectionProps> = (props) => {
             </span>
           </div>
 
-          <div className="pt-2 relative">
+          <div className="pt-0.5 relative">
             <Polzunok
               min={1}
               max={9}

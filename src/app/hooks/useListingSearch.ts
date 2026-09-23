@@ -1,10 +1,18 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MOCK_GUIDES } from '../../data';
 import { BookingRequest, FilterState, Listing } from '../../types';
 import { findDistrictByCoordsSync, findDistrictByMapPointSync, getDefaultDistrictCoordsSync, getListingCoords, isPointInPolygon } from '../../utils/geo';
 import { isListingUnavailableForDates } from '../../utils/bookingAvailability';
 import { isListingFresh } from '../../utils/listingFreshness';
 import { isListingVerified } from '../../utils/listingVerification';
+import {
+  CLASSIFIED_CATALOG_SUBCATEGORIES,
+  listingMatchesClassifiedCondition,
+  listingMatchesClassifiedFulfillment,
+  listingMatchesClassifiedProductType,
+  listingMatchesClassifiedPublicationPeriod,
+  listingMatchesClassifiedSpecialAttributes
+} from '../../utils/classifiedFilters';
 import {
   getListingVehicleColor,
   getListingVehicleCondition,
@@ -18,6 +26,10 @@ import {
   yearMeetsMinimum
 } from '../../utils/scooterFilters';
 import { normalizeVehicleModelSearchQuery } from '../../utils/vehicleModelNormalizer';
+import { listingMatchesEventAttributes } from '../../utils/eventFilters';
+import { listingMatchesServiceFilters } from '../../utils/serviceFilters';
+import { listingMatchesLifeAttributes, normalizeLifeSubCategory } from '../../config/lifeSpecial';
+import { listingMatchesInvestmentFilters } from '../../utils/investmentFilters';
 
 type MapPoint = { x: number; y: number };
 export type SearchGuide = (typeof MOCK_GUIDES)[number];
@@ -88,12 +100,18 @@ export const useListingSearch = ({
   checkInDate,
   checkOutDate
 }: UseListingSearchParams) => {
+  const [expiryRefresh, setExpiryRefresh] = useState(0);
+  useEffect(() => {
+    if (currentL1 !== 'afisha') return;
+    const timer = window.setInterval(() => setExpiryRefresh(current => current + 1), 30000);
+    return () => window.clearInterval(timer);
+  }, [currentL1]);
   const selectedDayCount = getSelectedDayCount(checkInDate, checkOutDate);
   const defaultPriceMax = 30000000;
   const currentPriceCeiling = useMemo(() => {
     const categoryPrices = listings
       .filter(item => item.status === 'active' && item.category === currentL1)
-      .filter(item => currentL2.length === 0 || currentL2.includes(item.subCategory))
+      .filter(item => currentL2.length === 0 || currentL2.includes(currentL1 === 'life' ? normalizeLifeSubCategory(item.subCategory) : item.subCategory))
       .map(item => getComparablePrice(item, selectedDayCount));
 
     return Math.max(defaultPriceMax, selectedDayCount * 1000000, ...categoryPrices);
@@ -110,7 +128,7 @@ export const useListingSearch = ({
     if (item.status !== 'active') return false;
     if (item.category !== currentL1) return false;
     if (isListingUnavailableForDates(item, bookings, checkInDate, checkOutDate)) return false;
-    if (currentL2.length > 0 && !currentL2.includes(item.subCategory)) return false;
+    if (currentL2.length > 0 && !currentL2.includes(currentL1 === 'life' ? normalizeLifeSubCategory(item.subCategory) : item.subCategory)) return false;
     if (filters.favoritesOnly && !favoriteIds.has(item.id)) return false;
 
     if (currentL1 !== 'transport') {
@@ -141,8 +159,10 @@ export const useListingSearch = ({
       if (!inTitle && !inDesc && !inDistrict && !inVehicleModel) return false;
     }
 
-    const comparablePrice = getComparablePrice(item, selectedDayCount);
-    if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
+    if (currentL1 !== 'life' || currentL2[0] === 'life_jobs') {
+      const comparablePrice = getComparablePrice(item, selectedDayCount);
+      if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
+    }
 
     if (currentL1 === 'transport' && item.subCategory === 'scooters') {
       if (filters.vehicleModel.length > 0 && !filters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
@@ -156,6 +176,43 @@ export const useListingSearch = ({
       if (filters.insuranceOnly && !listingHasInsurance(item)) return false;
       if (filters.freeDeliveryToAddressOnly && customPoint && !listingOffersFreeDeliveryToAddress(item, findDistrictByMapPointSync(customPoint) || undefined)) return false;
     }
+
+    if (currentL1 === 'ads') {
+      if (!listingMatchesClassifiedCondition(item, filters.classifiedCondition)) return false;
+      if (!listingMatchesClassifiedFulfillment(item, filters.classifiedFulfillment)) return false;
+      if (filters.classifiedSpecialSubCategory === item.subCategory) {
+        if (!listingMatchesClassifiedProductType(item, filters.classifiedProductType)) return false;
+        if (!listingMatchesClassifiedSpecialAttributes(
+          item,
+          filters.classifiedSpecialOptions,
+          filters.classifiedSpecialNumberRanges,
+          filters.classifiedSpecialText,
+          filters.classifiedSpecialDateRanges,
+          CLASSIFIED_CATALOG_SUBCATEGORIES.has(item.subCategory)
+        )) return false;
+      }
+      if (!listingMatchesClassifiedPublicationPeriod(item, filters.classifiedPublishedWithin)) return false;
+    }
+
+    if (currentL1 === 'services' && !listingMatchesServiceFilters(item, filters, currentL2[0] || '')) return false;
+
+    if (currentL1 === 'investments' && !listingMatchesInvestmentFilters(item, filters)) return false;
+
+    if (currentL1 === 'afisha') {
+      if (!listingMatchesEventAttributes(
+        item,
+        filters.classifiedSpecialOptions,
+        currentL2[0] || '',
+        filters.classifiedSpecialText
+      )) return false;
+    }
+
+    if (currentL1 === 'life' && currentL2[0] && !listingMatchesLifeAttributes(
+      item,
+      filters.classifiedSpecialOptions,
+      currentL2[0],
+      filters.classifiedSpecialText
+    )) return false;
 
     if (currentL1 === 'housing' && item.distanceToSeaMinutes !== undefined) {
       if (item.distanceToSeaMinutes < (filters.distanceToSeaMin || 0) || item.distanceToSeaMinutes > filters.distanceToSeaMax) {
@@ -231,6 +288,7 @@ export const useListingSearch = ({
     customRadius,
     districtSearch,
     effectivePriceMax,
+    expiryRefresh,
     favoriteIds,
     filters,
     listings,

@@ -113,15 +113,15 @@ export const useLocationStep = ({
   const debounceTimer = useRef<any>(null);
 
   useEffect(() => {
-    if (!hasValidKey) return;
+    if (!hasValidKey || category === 'life' || step < 3) return;
 
     ensureGoogleMapsLibraries(apiKey, ['places']).catch(error => {
       console.warn('Google Maps preload failed, falling back to Nominatim:', error);
     });
-  }, [apiKey, hasValidKey]);
+  }, [apiKey, category, hasValidKey, step]);
 
   const getGooglePlacesLibrary = async () => {
-    if (!hasValidKey || !(globalThis as any).google?.maps) return null;
+    if (!hasValidKey || category === 'life' || !(globalThis as any).google?.maps) return null;
 
     const maps = (globalThis as any).google.maps;
     if (!maps.places && maps.importLibrary) {
@@ -211,7 +211,9 @@ export const useLocationStep = ({
   };
 
   const fetchSuggestions = async (query: string) => {
-    const { searchText } = await resolveGoogleMapsLink(query);
+    const searchText = category === 'life'
+      ? getGoogleMapsSearchText(query)
+      : (await resolveGoogleMapsLink(query)).searchText;
     if (!searchText || searchText.trim().length < 3) {
       setMapSuggestions([]);
       setShowSuggestionsDropdown(false);
@@ -259,7 +261,7 @@ export const useLocationStep = ({
   };
 
   const handleSelectSuggestion = async (sug: any): Promise<{ lat: number; lng: number } | null> => {
-    if (sug.source === 'google' && sug.place_id) {
+    if (category !== 'life' && sug.source === 'google' && sug.place_id) {
       const place = await getGooglePlaceDetails(sug.place_id);
       const location = place?.geometry?.location;
       const lat = typeof location?.lat === 'function' ? location.lat() : location?.lat;
@@ -347,7 +349,9 @@ export const useLocationStep = ({
   };
 
   const triggerDirectSearch = async (query: string) => {
-    const { placeId, searchText } = await resolveGoogleMapsLink(query);
+    const { placeId, searchText } = category === 'life'
+      ? { placeId: '', searchText: getGoogleMapsSearchText(query) }
+      : await resolveGoogleMapsLink(query);
     if (placeId) {
       const coords = await handleSelectSuggestion({ source: 'google', place_id: placeId });
       if (coords) return coords;
