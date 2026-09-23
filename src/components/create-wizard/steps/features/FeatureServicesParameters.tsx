@@ -2,6 +2,7 @@ import React from 'react';
 import { getDistrictNamesFromGeoJSONSync, sortDistrictsByPopularity } from '../../../../utils/geo';
 import { useI18n } from '../../../../i18nContext';
 import ServiceSubcategoryChoices from '../../../ServiceSubcategoryChoices';
+import ServiceLanguageChoices from '../../../ServiceLanguageChoices';
 import Polzunok from '../../../Polzunok';
 
 type FeatureServicesParametersProps = {
@@ -31,7 +32,6 @@ type FeatureServicesParametersProps = {
 };
 
 const serviceFormatOptions = ['provider_place', 'client_visit', 'online', 'specified_place'];
-const serviceLanguageOptions = ['ru', 'en', 'id', 'other'];
 const servicePriceTypeOptions = ['fixed', 'from', 'hourly', 'per_lesson', 'project', 'negotiable'];
 const serviceAvailabilityOptions = ['appointment', 'today', '24_7'];
 
@@ -148,7 +148,7 @@ const FeatureServicesParameters: React.FC<FeatureServicesParametersProps> = ({
 
       <section className="space-y-3">
         <span className={fieldTitleClass}>{tr('wizard.services.languages')}</span>
-        {renderMultiChoice(serviceLanguageOptions, serviceLanguages, toggleServiceLanguage, 'wizard.services.language')}
+        <ServiceLanguageChoices selected={serviceLanguages} onToggle={toggleServiceLanguage} />
       </section>
 
       <section className="space-y-5">

@@ -43,6 +43,7 @@ import { EventSpecialFilters } from './afisha/EventParameters';
 import { listingMatchesEventAttributes } from '../utils/eventFilters';
 import { listingMatchesServiceFilters } from '../utils/serviceFilters';
 import ServiceSubcategoryChoices from './ServiceSubcategoryChoices';
+import ServiceLanguageChoices from './ServiceLanguageChoices';
 import { getLifeFields, listingMatchesLifeAttributes, normalizeLifeSubCategory } from '../config/lifeSpecial';
 import { LifeSpecialFilters } from './life/LifeParameters';
 import InvestmentFilters from './investments/InvestmentFilters';
@@ -1388,22 +1389,37 @@ export default function HousingFilters({
               ] as const).map(group => (
                 <fieldset key={group.key} className="min-w-0 space-y-3">
                   <legend className={sectionTitleClass}>{tr(group.label)}</legend>
-                  <div className="flex flex-wrap gap-2">
-                    {group.options.map(value => (
-                      <button
-                          key={value}
-                          type="button"
-                          className={`pl pl-interactive transport-pill inline-flex min-h-10 max-w-full items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${(localFilters[group.key] ?? []).includes(value) ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]' : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'}`}
-                          aria-pressed={(localFilters[group.key] ?? []).includes(value)}
-                          onClick={() => setLocalFilters(current => {
-                            const selected = current[group.key] ?? [];
-                            return { ...current, [group.key]: selected.includes(value) ? selected.filter(option => option !== value) : [...selected, value] };
-                          })}
-                        >
-                        <span className="min-w-0 break-words">{tr(`${group.prefix}.${value}`)}</span>
-                      </button>
-                    ))}
-                  </div>
+                  {group.key === 'serviceLanguages' ? (
+                    <ServiceLanguageChoices
+                      selected={localFilters.serviceLanguages ?? []}
+                      onToggle={value => setLocalFilters(current => {
+                        const selected = current.serviceLanguages ?? [];
+                        return {
+                          ...current,
+                          serviceLanguages: selected.includes(value)
+                            ? selected.filter(option => option !== value)
+                            : [...selected, value]
+                        };
+                      })}
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {group.options.map(value => (
+                        <button
+                            key={value}
+                            type="button"
+                            className={`pl pl-interactive transport-pill inline-flex min-h-10 max-w-full items-center rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${(localFilters[group.key] ?? []).includes(value) ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]' : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'}`}
+                            aria-pressed={(localFilters[group.key] ?? []).includes(value)}
+                            onClick={() => setLocalFilters(current => {
+                              const selected = current[group.key] ?? [];
+                              return { ...current, [group.key]: selected.includes(value) ? selected.filter(option => option !== value) : [...selected, value] };
+                            })}
+                          >
+                          <span className="min-w-0 break-words">{tr(`${group.prefix}.${value}`)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </fieldset>
               ))}
               <fieldset className="min-w-0 space-y-3">
