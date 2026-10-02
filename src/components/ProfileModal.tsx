@@ -8,7 +8,7 @@ import { CURRENCIES, CurrencyKey } from '../app/currency';
 import { LANGUAGE_STORAGE_KEY } from '../app/language';
 import { LANGUAGES, LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
-import { uploadImageToFreeImageHost } from '../utils/imageUpload';
+import { uploadImageToImageKit } from '../utils/imageUpload';
 import { formatPhoneInput } from '../utils/phone';
 import PhoneInput from './PhoneInput';
 
@@ -155,7 +155,7 @@ export default function ProfileModal({
     try {
       let nextPhotoURL = photoURL;
       if (photoFile) {
-        nextPhotoURL = await uploadImageToFreeImageHost(photoFile);
+        nextPhotoURL = await uploadImageToImageKit(photoFile);
       }
 
       const cleanEmail = email.trim();

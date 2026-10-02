@@ -15,7 +15,7 @@ import {
   writeSupportTickets
 } from '../../utils/supportTickets';
 import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
-import { uploadImageToFreeImageHost } from '../../utils/imageUpload';
+import { uploadImageToImageKit } from '../../utils/imageUpload';
 import { AiSearchUsageStats, loadAiSearchUsageStats } from '../../utils/aiSearchClient';
 import { getAfishaExpirationDate } from '../../config/eventSpecial';
 
@@ -152,7 +152,7 @@ export function useAdminDashboardController({
   const [l2CustomImage, setL2CustomImage] = useState<string>('');
   const [l2IconType, setL2IconType] = useState<'emoji' | 'image'>('emoji');
   
-  const [uploadMethod, setUploadMethod] = useState<'freeimage' | 'base64'>('freeimage');
+  const [uploadMethod, setUploadMethod] = useState<'imagekit' | 'base64'>('imagekit');
   const [isMenuSaving, setIsMenuSaving] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [jsonImportCollection, setJsonImportCollection] = useState<string>(LISTINGS_COLLECTION);
@@ -538,12 +538,12 @@ export function useAdminDashboardController({
       showToast('Optimizing image...');
       const { blob, dataUrl } = await resizeAndCompressImage(file, type);
       
-      if (uploadMethod === 'freeimage') {
+      if (uploadMethod === 'imagekit') {
         try {
-          return await uploadImageToFreeImageHost(blob);
+          return await uploadImageToImageKit(blob);
         } catch (e: any) {
-          console.error('freeimage.host upload failed, falling back to Base64', e);
-          showToast(tr('admin.settings.freeimageUploadFallback'));
+          console.error('ImageKit upload failed, falling back to Base64', e);
+          showToast(tr('admin.settings.imagekitUploadFallback'));
         }
       }
       

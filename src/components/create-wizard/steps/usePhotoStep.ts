@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Listing } from '../../../types';
 import { useI18n } from '../../../i18nContext';
-import { encodeCanvasWebp } from '../../../utils/encodeCanvasWebp';
-import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToFreeImageHost } from '../../../utils/imageUpload';
+import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToImageKit } from '../../../utils/imageUpload';
 import {
   PHOTO_SLOT_CONFIG,
   SCOOTER_PHOTO_SLOT_CONFIG,
@@ -33,6 +32,9 @@ type PhotoUploadDiagnostic = {
   steps: ImageUploadDiagnosticStep[];
   errorMessage: string;
 };
+
+const MAX_LISTING_PHOTO_SIZE_MB = 15;
+const MAX_LISTING_PHOTO_SIZE_BYTES = MAX_LISTING_PHOTO_SIZE_MB * 1024 * 1024;
 
 const slugifyPhotoNamePart = (value?: string) => {
   const slug = (value || '')
@@ -217,40 +219,12 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     });
   };
 
-  const resizeAndCompressListingImage = (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-          const canvas = document.createElement('canvas');
-          canvas.width = 1600;
-          canvas.height = 1200;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error(tr('wizard.photoProcessingFailed')));
-            return;
-          }
+  const isPhotoWithinSizeLimit = (file: File) => {
+    if (file.size <= MAX_LISTING_PHOTO_SIZE_BYTES) return true;
 
-          const cropWidth = Math.min(img.naturalWidth, img.naturalHeight * 4 / 3);
-          const cropHeight = cropWidth * 3 / 4;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, (img.naturalWidth - cropWidth) / 2, (img.naturalHeight - cropHeight) / 2,
-            cropWidth, cropHeight, 0, 0, 1600, 1200);
-          void encodeCanvasWebp(canvas)
-            .then(resolve, () => reject(new Error(tr('wizard.photoProcessingFailed'))))
-            .finally(() => { canvas.width = 0; canvas.height = 0; });
-          } catch {
-            reject(new Error(tr('wizard.photoProcessingFailed')));
-          }
-        };
-        img.onerror = () => reject(new Error(tr('wizard.photoProcessingFailed')));
-        img.src = event.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error(tr('wizard.photoProcessingFailed')));
-      reader.readAsDataURL(file);
-    });
+    setUploadError(tr('wizard.photos.fileTooLarge', { size: MAX_LISTING_PHOTO_SIZE_MB }));
+    setUploadDiagnostic(null);
+    return false;
   };
 
   const buildSeoPhotoFileName = (image: Blob | File, originalFile: File, batchOffset = 0, sequenceOverride?: number) => {
@@ -272,6 +246,8 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   };
 
   const uploadPhotoToStorage = (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
+    if (!isPhotoWithinSizeLimit(file)) return;
+
     const preferredSlotId = source === 'camera' ? cameraTargetSlotIdRef.current : null;
     const localPreviewUrl = URL.createObjectURL(file);
     setPhotoUrls(prev => [...prev, localPreviewUrl]);
@@ -287,9 +263,8 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       let uploadableImage: Blob | File = file;
       try {
         await waitForPreviewIndicatorPaint();
-        uploadableImage = await resizeAndCompressListingImage(file);
         const seoFileName = buildSeoPhotoFileName(uploadableImage, file, batchOffset, ++uploadSequenceRef.current);
-        const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
+        const uploadedUrl = await uploadImageToImageKit(uploadableImage, {
           fileName: seoFileName,
           fileType: uploadableImage.type || file.type || 'image/jpeg'
         });
@@ -308,7 +283,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           steps: error instanceof ImageUploadError ? error.diagnostics : [],
           errorMessage: error instanceof Error ? error.message : String(error)
         };
-        console.error('freeimage.host upload failed', diagnostic, error);
+        console.error('ImageKit upload failed', diagnostic, error);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         // A local object URL is only a temporary preview. Remove it so a
         // failed conversion/upload can never be written to the listing.
@@ -400,6 +375,8 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   };
 
   const uploadCameraPhotoForSlot = async (file: File, slotId?: PhotoSlotId | null) => {
+    if (!isPhotoWithinSizeLimit(file)) return;
+
     setIsPreparingPhotoPreview(true);
     await waitForPreviewIndicatorPaint();
     const localPreviewUrl = URL.createObjectURL(file);
@@ -416,9 +393,8 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       let uploadableImage: Blob | File = file;
       try {
         await waitForPreviewIndicatorPaint();
-        uploadableImage = await resizeAndCompressListingImage(file);
         const seoFileName = buildSeoPhotoFileName(uploadableImage, file, 0, ++uploadSequenceRef.current);
-        const uploadedUrl = await uploadImageToFreeImageHost(uploadableImage, {
+        const uploadedUrl = await uploadImageToImageKit(uploadableImage, {
           fileName: seoFileName,
           fileType: uploadableImage.type || file.type || 'image/jpeg'
         });
@@ -434,7 +410,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           steps: error instanceof ImageUploadError ? error.diagnostics : [],
           errorMessage: error instanceof Error ? error.message : String(error)
         };
-        console.error('freeimage.host upload failed', diagnostic, error);
+        console.error('ImageKit upload failed', diagnostic, error);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         setPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
         setRealPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
