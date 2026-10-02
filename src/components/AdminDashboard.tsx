@@ -24,6 +24,7 @@ export default function AdminDashboard({
   onUpdateListing,
   onDeleteListing,
   onSelectListing,
+  onEditListing,
   onClose,
   currencySymbol,
   currencyRate,
@@ -67,7 +68,7 @@ export default function AdminDashboard({
     onUpdateMenuOverrides,
   });
   return (
-    <div className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-[500] flex items-center justify-center p-2 sm:p-4 select-none font-sans animate-fade-in">
+    <div className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-sm z-[390] flex items-center justify-center p-2 sm:p-4 select-none font-sans animate-fade-in">
       
       {/* Toast Alert Indicator Panel */}
       {toastMessage && (
@@ -114,6 +115,7 @@ export default function AdminDashboard({
                 currencySymbol={currencySymbol}
                 currencyRate={currencyRate}
                 onSelectListing={onSelectListing}
+                onEditListing={onEditListing}
               />
             )}
             {activeTab === 'messages' && <MessagesTab {...tabProps} />}

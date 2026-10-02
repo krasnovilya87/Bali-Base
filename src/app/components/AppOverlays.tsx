@@ -17,6 +17,7 @@ import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { auth } from '../../firebase';
 
 type AppOverlaysProps = {
+  adminEditingListingId: string | null;
   activeCurrency: CurrencyKey;
   activeLanguage: LanguageCode;
   bookings: BookingRequest[];
@@ -44,6 +45,7 @@ type AppOverlaysProps = {
   selectedListing: Listing | null;
   setActiveCurrency: Dispatch<SetStateAction<CurrencyKey>>;
   setActiveLanguage: Dispatch<SetStateAction<LanguageCode>>;
+  setAdminEditingListingId: Dispatch<SetStateAction<string | null>>;
   setCheckInDate: Dispatch<SetStateAction<string>>;
   setCheckOutDate: Dispatch<SetStateAction<string>>;
   setCustomPoint: Dispatch<SetStateAction<{ x: number; y: number } | null>>;
@@ -76,6 +78,7 @@ type AppOverlaysProps = {
   initialCheckInDate: string;
   initialCheckOutDate: string;
   initialBookingsListingId: string | null;
+  isAdminRoute: boolean;
   checkInDate: string;
   checkOutDate: string;
   onInitialBookingsOpened: () => void;
@@ -89,6 +92,7 @@ type AppOverlaysProps = {
 };
 
 export default function AppOverlays({
+  adminEditingListingId,
   activeCurrency,
   activeLanguage,
   bookings,
@@ -116,6 +120,7 @@ export default function AppOverlays({
   selectedListing,
   setActiveCurrency,
   setActiveLanguage,
+  setAdminEditingListingId,
   setCheckInDate,
   setCheckOutDate,
   setCustomPoint,
@@ -148,6 +153,7 @@ export default function AppOverlays({
   initialCheckInDate,
   initialCheckOutDate,
   initialBookingsListingId,
+  isAdminRoute,
   checkInDate,
   checkOutDate,
   onInitialBookingsOpened,
@@ -192,6 +198,13 @@ export default function AppOverlays({
     startEditing();
   };
 
+  const openAdminEditWizard = (listing: Listing) => {
+    setSelectedListing(null);
+    setEditingListing(listing);
+    setAdminEditingListingId(listing.id);
+    setShowCreateWizard(true);
+  };
+
   return (
     <>
       {showFiltersModal && (
@@ -218,6 +231,7 @@ export default function AppOverlays({
           listing={selectedListingFresh}
           onClose={() => {
             setCanEditSelectedListing(false);
+            setAdminEditingListingId(null);
             setRejectionPopupListing(null);
             if (returnToMyAddsOnListingClose) {
               setShowMyAddsListing(true);
@@ -244,7 +258,11 @@ export default function AppOverlays({
             setSelectedListing(updatedListing);
             handleUpdateListing(updatedListing);
           }}
-          onEditClick={canEditSelectedListing ? openEditWizard : undefined}
+          onEditClick={adminEditingListingId === selectedListingFresh.id
+            ? openAdminEditWizard
+            : canEditSelectedListing && !selectedListingFresh.adminEditLocked
+              ? openEditWizard
+              : undefined}
           isMapFullscreen={isMapFullscreen}
           transportBookingReturnToken={transportBookingReturnToken}
         />
@@ -307,14 +325,39 @@ export default function AppOverlays({
       {showCreateWizard && (
         <CreateWizard
           onClose={() => {
+            const wasAdminEditing = Boolean(adminEditingListingId);
             setShowCreateWizard(false);
             onClearCreateWizardDeepLink();
-            if (editingListing) {
+            if (editingListing && !wasAdminEditing) {
               setShowMyAddsListing(true);
             }
+            if (wasAdminEditing && !isAdminRoute) {
+              setShowAdminDashboard(true);
+            }
+            setAdminEditingListingId(null);
             setEditingListing(null);
           }}
-          onPublish={handlePublishListing}
+          onPublish={async (updatedListing, onProgress) => {
+            if (adminEditingListingId && editingListing?.id === adminEditingListingId) {
+              onProgress?.('saving');
+              await handleUpdateListing({
+                ...editingListing,
+                ...updatedListing,
+                id: editingListing.id,
+                ownerId: editingListing.ownerId,
+                status: editingListing.status,
+                isApproved: editingListing.isApproved,
+                aiModeration: editingListing.aiModeration,
+                adminEditLocked: true,
+                adminEditedAt: new Date().toISOString(),
+                adminEditedBy: auth.currentUser?.email || auth.currentUser?.uid || 'admin'
+              });
+              onProgress?.('finishing');
+              return;
+            }
+
+            await handlePublishListing(updatedListing, onProgress);
+          }}
           initialListing={editingListing}
           existingListings={listings}
           currencySymbol={currencySymbol}
@@ -353,10 +396,12 @@ export default function AppOverlays({
             openCreateWizard();
           }}
           onEditClick={(listing) => {
+            if (listing.adminEditLocked) return;
             openEditWizard(listing);
           }}
           onViewClick={(listing) => {
             setShowMyAddsListing(false);
+            setAdminEditingListingId(null);
             setCanEditSelectedListing(true);
             setReturnToMyAddsOnListingClose(true);
             setSelectedListing(listing);
@@ -374,10 +419,15 @@ export default function AppOverlays({
           onUpdateListing={handleUpdateListing}
           onDeleteListing={handleDeleteListing}
           onSelectListing={(listing) => {
+            setAdminEditingListingId(listing.id);
             setCanEditSelectedListing(false);
             setReturnToMyAddsOnListingClose(false);
             setSelectedListing(listing);
             setShowAdminDashboard(false);
+          }}
+          onEditListing={(listing) => {
+            setShowAdminDashboard(false);
+            openAdminEditWizard(listing);
           }}
           onClose={() => setShowAdminDashboard(false)}
           currencySymbol={currencySymbol}

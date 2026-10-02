@@ -11,7 +11,7 @@ import DetailMap, { DetailMapPlace } from './DetailMap';
 import TwoMonthCalendar from './TwoMonthCalendar';
 import CompetitorLogo from './CompetitorLogo';
 import { calculateGraphDailyPrice, calculateGraphTotalPrice, calculateSavingsDisplay } from '../utils/pricing';
-import { findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
+import { findDistrictByCoordsSync, findDistrictByMapPointSync, getHaversineDistance, getListingCoords, svgPointToLatLng } from '../utils/geo';
 import { buildListingSubtitle, stripListingRoomTypeFromTitle } from '../utils/listingSubtitle';
 import { buildHousingAmenities, buildHousingCharacteristics, buildMissingHousingAmenities } from '../utils/housingFieldMeta';
 import { getInvestmentAttributeEntries } from '../utils/investmentFilters';
@@ -597,7 +597,7 @@ export default function ListingDetails({
 
   useEffect(() => {
     if (!activeMapCategory) {
-      const selectedSpot = selectedNearbyIndex !== null ? nearbySpots[selectedNearbyIndex] : null;
+      const selectedSpot = selectedNearbyIndex !== null ? displayNearbySpots[selectedNearbyIndex] : null;
       const selectedMapPlace = selectedSpot?.position
         ? [{
           id: selectedSpot.placeId || `${listing.id}-nearby-${selectedNearbyIndex}`,
@@ -1245,9 +1245,13 @@ export default function ListingDetails({
       </>
     );
   };
-  const displayNearbySpots = nearbySpots.length > 0 ? nearbySpots.map(translateNearbySpot) : getFallbackNearbyPills();
+  const fallbackNearbySpots = getFallbackNearbyPills();
+  const translatedNearbySpots = nearbySpots.map(translateNearbySpot);
+  const displayNearbySpots = fallbackNearbySpots.map(fallbackSpot =>
+    translatedNearbySpots.find(spot => spot.emoji === fallbackSpot.emoji) || fallbackSpot
+  );
   const activeNearbyRoute = selectedNearbyIndex !== null
-    ? nearbySpots[selectedNearbyIndex]?.route || null
+    ? displayNearbySpots[selectedNearbyIndex]?.route || null
     : null;
   const detailMapSelectedPlaceIndex = selectedNearbyIndex !== null && !activeMapCategory ? 0 : null;
   const mapSpotFilters: Array<{ id: MapSpotCategory; label: string; Icon: React.ComponentType<{ className?: string }> }> = [

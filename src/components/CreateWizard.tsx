@@ -505,6 +505,7 @@ export default function CreateWizard({
   const wizardFlow = getWizardFlow(category, subCategory);
   const isLifeCommunityListing = category === 'life' && subCategory !== 'life_jobs';
   const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
+  const supportsSellerType = category === 'housing' || (category === 'transport' && subCategory === 'scooters') || category === 'services';
   const stepLabels = wizardFlow.map(key => tr(
     isLifeCommunityListing && key === 'pricing'
         ? 'wizard.step.lifeExpenses'
@@ -651,7 +652,7 @@ export default function CreateWizard({
     }
 
     if (targetStepKey === 'contact') {
-      if ((category === 'transport' && subCategory === 'scooters') || category === 'services') {
+      if (supportsSellerType) {
         if (!sellerType) return tr('wizard.validationSellerType');
         if (sellerType === 'private' && ownerName.trim().length < 2) return tr('wizard.validationOwnerName');
         if (sellerType === 'company' && sellerCompanyName.trim().length < 2 && sellerGoogleMapsUrl.trim().length < 3) {
@@ -997,11 +998,11 @@ export default function CreateWizard({
       vehicleModelQuantity: category === 'transport' && subCategory === 'scooters' ? vehicleModelQuantity : initialListing?.vehicleModelQuantity,
       vehicleColor: category === 'transport' && subCategory === 'scooters' ? vehicleColor || undefined : initialListing?.vehicleColor,
       vehicleCondition: category === 'transport' && subCategory === 'scooters' ? vehicleCondition as Listing['vehicleCondition'] || undefined : initialListing?.vehicleCondition,
-      sellerType: ((category === 'transport' && subCategory === 'scooters') || category === 'services') ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
-      sellerGoogleMapsUrl: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company'
+      sellerType: supportsSellerType ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
+      sellerGoogleMapsUrl: supportsSellerType && sellerType === 'company'
         ? buildSellerGoogleMapsUrl(sellerCompanyName, sellerGoogleMapsUrl, sellerGooglePlaceId)
         : initialListing?.sellerGoogleMapsUrl,
-      sellerGooglePlaceId: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
+      sellerGooglePlaceId: supportsSellerType && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
       keyless: category === 'transport' && subCategory === 'scooters' ? keyless : initialListing?.keyless,
       abs: category === 'transport' && subCategory === 'scooters' ? abs : initialListing?.abs,
       surfRack: category === 'transport' && subCategory === 'scooters' ? surfRack : initialListing?.surfRack,
@@ -1034,7 +1035,7 @@ export default function CreateWizard({
       area: subCategory === 'private_room' ? undefined : area,
       distanceToSeaMinutes: initialListing?.distanceToSeaMinutes || 8,
       whatsappNumber,
-      ownerName: ((category === 'transport' && subCategory === 'scooters') || category === 'services') && sellerType === 'company'
+      ownerName: supportsSellerType && sellerType === 'company'
         ? sellerCompanyName || ownerName || sellerGoogleMapsUrl
         : ownerName,
       ownerAvatar: initialListing?.ownerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&q=80',

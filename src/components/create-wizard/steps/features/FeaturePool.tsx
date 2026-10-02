@@ -63,8 +63,6 @@ const FeaturePool: React.FC<FeatureSectionProps> = (props) => {
                             }
                           } else {
                             setPoolType('infinity');
-                            // Always make the slider slide to shared (position 1) when clicked as requested
-                            setTerritoryType('shared');
                           }
                         }}
                         className="pl pl-muted-option pl-interactive p-3 rounded-2xl w-full flex items-center justify-between cursor-pointer select-none"

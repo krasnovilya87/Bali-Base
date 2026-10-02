@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPin } from 'lucide-react';
 import { ROOM_TYPE_LABELS, UNIT_TYPE_OPTIONS } from '../constants';
 import { useI18n } from '../../../i18nContext';
 import { getGoogleMapsSearchText, isGoogleMapsLink } from './useLocationStep';
@@ -114,13 +115,16 @@ const StepTitle: React.FC<StepTitleProps> = ({
       ) : (
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-xs">
-            <label className="font-semibold block text-[#1E293B]">{tr('wizard.objectName')}</label>
+            <label className="font-semibold block text-[#1E293B]">
+              {tr(category === 'housing' ? 'wizard.housingObjectName' : 'wizard.objectName')}
+            </label>
             <span className={`font-mono font-bold ${getSeoLengthVerdict(title.length).color}`}>{title.length} / 60</span>
           </div>
           <div className="relative">
             <input
               type="text"
               value={title}
+              placeholder={category === 'housing' ? tr('wizard.housingObjectNamePlaceholder') : undefined}
               onPaste={async event => {
                 const paste = (event.clipboardData || (window as any).clipboardData).getData('text');
                 if (category === 'housing' && isGoogleMapsLink(paste)) {
@@ -155,21 +159,35 @@ const StepTitle: React.FC<StepTitleProps> = ({
             />
             {showSuggestionsDropdown && mapSuggestions && mapSuggestions.length > 0 && (
               <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-56 overflow-auto">
-                {mapSuggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      handleSelectSuggestion?.(suggestion);
-                      const placeName = suggestion.name || suggestion.structured_formatting?.main_text || suggestion.display_name || '';
-                      setTitle(placeName);
-                      setShowSuggestionsDropdown?.(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-xs"
-                  >
-                    <div className="truncate">{suggestion.name || suggestion.structured_formatting?.main_text || suggestion.display_name}</div>
-                  </button>
-                ))}
+                {mapSuggestions.map((suggestion, index) => {
+                  const placeName = suggestion.name || suggestion.structured_formatting?.main_text || suggestion.display_name || '';
+                  const secondLine = suggestion.structured_formatting?.secondary_text
+                    || suggestion.formatted_address
+                    || (suggestion.display_name !== placeName ? suggestion.display_name : '');
+
+                  return (
+                    <button
+                      key={suggestion.place_id || index}
+                      type="button"
+                      onClick={() => {
+                        handleSelectSuggestion?.(suggestion);
+                        setTitle(placeName);
+                        setShowSuggestionsDropdown?.(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-[#FF7A50]/5 border-b-[0.5px] border-slate-100 last:border-b-0 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                    >
+                      <span className="font-sans font-bold text-[#1E293B] text-[11px] truncate flex items-center gap-1.5 w-full">
+                        <MapPin className="w-3 h-3 text-[#FF7A50] shrink-0" />
+                        <span className="truncate">{placeName}</span>
+                      </span>
+                      {secondLine && (
+                        <span className="font-sans text-[10px] text-[#5F6978] truncate pl-4.5 block w-full">
+                          {secondLine}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
                 {isSearchingMap && <div className="px-3 py-2 text-xs text-gray-500">{tr('wizard.searching')}</div>}
               </div>
             )}

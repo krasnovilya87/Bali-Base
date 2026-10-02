@@ -52,14 +52,14 @@ service cloud.firestore {
     }
 
     function canOwnerUpdateListing(before, after) {
-      return !isManualReviewWarning(before) && canOwnerCreateListing(after)
-        || isManualReviewWarning(before) && isManualReviewWarning(after) && after.status == 'moderation' && after.isApproved == false;
+      return (!('adminEditLocked' in before) || before.adminEditLocked != true)
+        && (!isManualReviewWarning(before) && canOwnerCreateListing(after)
+          || isManualReviewWarning(before) && isManualReviewWarning(after) && after.status == 'moderation' && after.isApproved == false);
     }
 
     function canUpdateListing(before, after) {
       return after.ownerId == before.ownerId
-        && ((isOwner(before.ownerId) && canOwnerUpdateListing(before, after))
-          || (isAdmin() && isManualReviewWarning(before)));
+        && (isAdmin() || (isOwner(before.ownerId) && canOwnerUpdateListing(before, after)));
     }
 
     function isValidBookingRequest(data) {

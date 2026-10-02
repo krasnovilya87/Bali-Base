@@ -44,7 +44,7 @@ const StepContact: React.FC<StepContactProps> = ({
 }) => {
   const { tr } = useI18n();
   const isScooterWizard = category === 'transport' && subCategory === 'scooters';
-  const supportsSellerType = isScooterWizard || category === 'services';
+  const supportsSellerType = category === 'housing' || isScooterWizard || category === 'services';
   const isCompanySeller = supportsSellerType && sellerType === 'company';
   const [companySuggestions, setCompanySuggestions] = useState<any[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);

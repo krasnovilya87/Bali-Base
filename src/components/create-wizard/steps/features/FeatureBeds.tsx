@@ -13,7 +13,7 @@ const FeatureBeds: React.FC<FeatureSectionProps> = (props) => {
                   {/* 6. Конфигурация кроватей */}
                   <div className="space-y-3">
                     <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">🛌 {tr('wizard.features.beds')}</span>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-4 gap-2">
                       {[
                         { value: 'queen_size', label: 'Queen size', icon: '🛏️', section: tr('wizard.features.beds.bedroom') },
                         { value: 'king_size', label: 'King size', icon: '👑', section: tr('wizard.features.beds.bedroom') },
@@ -37,7 +37,7 @@ const FeatureBeds: React.FC<FeatureSectionProps> = (props) => {
                               }
                             }}
                             title={isLimitReached ? tr('wizard.features.beds.max', { count: maxBeds }) : undefined}
-                            className={`pl pl-interactive wizard-choice-tile p-4 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer min-h-[120px] relative ${isActive
+                            className={`pl pl-interactive wizard-choice-tile p-2 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer min-h-[112px] relative ${isActive
                               ? 'wizard-choice-tile--active'
                               : isLimitReached
                                 ? 'bg-white border-[#E5E7EB] text-gray-300 opacity-50 cursor-not-allowed'

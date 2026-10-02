@@ -41,6 +41,7 @@ export interface AdminDashboardProps {
   onUpdateListing: (listing: Listing) => void;
   onDeleteListing: (listingId: string) => void;
   onSelectListing: (listing: Listing) => void;
+  onEditListing: (listing: Listing) => void;
   onClose: () => void;
   currencySymbol: string;
   currencyRate: number;

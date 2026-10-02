@@ -343,23 +343,25 @@ export default function MyAddsListing({
                       </div>
 
                       <div className="absolute right-2 top-2 z-30 flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => onEditClick?.(item)}
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-500 shadow-md transition hover:scale-105 hover:text-[#E05A30] active:scale-95"
-                          title={tr('myListings.edit')}
-                          aria-label={tr('myListings.edit')}
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                        </button>
+                        {!item.adminEditLocked && (
+                          <button
+                            type="button"
+                            onClick={() => onEditClick?.(item)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-500 shadow-md transition hover:scale-105 hover:text-[#E05A30] active:scale-95"
+                            title={tr('myListings.edit')}
+                            aria-label={tr('myListings.edit')}
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onToggleStatus(item.id)}
-                          disabled={item.status === 'rejected' || item.status === 'moderation'}
+                          disabled={item.adminEditLocked || item.status === 'rejected' || item.status === 'moderation'}
                           className={`flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-md transition active:scale-95 ${
                             item.status === 'active'
                               ? 'text-[#E05A30] hover:scale-105'
-                              : item.status === 'rejected' || item.status === 'moderation'
+                              : item.adminEditLocked || item.status === 'rejected' || item.status === 'moderation'
                                 ? 'cursor-not-allowed text-slate-400'
                                 : 'text-emerald-650 hover:scale-105'
                           }`}
@@ -652,21 +654,23 @@ export default function MyAddsListing({
 
                     {/* Toggle listing activation status & Delete listing */}
                     <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 shrink-0 justify-end lg:static">
-                      <button
-                        onClick={() => onEditClick?.(item)}
-                        className="p-2 rounded-xl border border-slate-200 bg-[#F4F7F6]/90 text-gray-600 hover:text-[#E05A30] hover:bg-[#F4F7F6] transition active:scale-95 flex items-center justify-center cursor-pointer"
-                        title={tr('myListings.edit')}
-                        aria-label={tr('myListings.edit')}
-                      >
-                        <Settings className="w-3.5 h-3.5" />
-                      </button>
+                      {!item.adminEditLocked && (
+                        <button
+                          onClick={() => onEditClick?.(item)}
+                          className="p-2 rounded-xl border border-slate-200 bg-[#F4F7F6]/90 text-gray-600 hover:text-[#E05A30] hover:bg-[#F4F7F6] transition active:scale-95 flex items-center justify-center cursor-pointer"
+                          title={tr('myListings.edit')}
+                          aria-label={tr('myListings.edit')}
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       <button
                         onClick={() => onToggleStatus(item.id)}
-                        disabled={item.status === 'rejected' || item.status === 'moderation'}
-                        className={`p-2 rounded-xl border transition active:scale-95 flex items-center justify-center cursor-pointer ${item.status === 'active'
+                        disabled={item.adminEditLocked || item.status === 'rejected' || item.status === 'moderation'}
+                        className={`p-2 rounded-xl border transition active:scale-95 flex items-center justify-center cursor-pointer ${item.status === 'active' && !item.adminEditLocked
                           ? 'bg-rose-50 border-rose-100 text-[#E05A30] hover:bg-rose-100'
-                          : item.status === 'rejected' || item.status === 'moderation'
+                          : item.adminEditLocked || item.status === 'rejected' || item.status === 'moderation'
                             ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                           : 'bg-emerald-50 border-emerald-100 text-emerald-650 hover:bg-emerald-100'
                           }`}
@@ -794,13 +798,15 @@ export default function MyAddsListing({
                     </button>
 
                     {/* BUTTON 5: Edit details button */}
-                    <button
-                      onClick={() => onEditClick?.(item)}
-                      className="hidden pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-2.5 py-2 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>{tr('myListings.edit')}</span>
-                    </button>
+                    {!item.adminEditLocked && (
+                      <button
+                        onClick={() => onEditClick?.(item)}
+                        className="hidden pl pl-interactive !bg-[#F4F7F6]/75 hover:!bg-[#F4F7F6]/80 border border-slate-200/70 px-2.5 py-2 text-gray-600 hover:text-[#E05A30] rounded-xl text-[11px] font-sans font-bold active:scale-95 items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>{tr('myListings.edit')}</span>
+                      </button>
+                    )}
 
                     {/* BUTTON 6: Promote button (🚀 Highlighted, distinctive design) */}
                     <button

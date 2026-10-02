@@ -198,6 +198,9 @@ export interface Listing {
   nearbySpotsUpdatedAt?: string;
   nearbySpotsStatus?: 'pending' | 'ready' | 'empty' | 'error';
   nearbySpotsError?: string;
+  adminEditLocked?: boolean;
+  adminEditedAt?: string;
+  adminEditedBy?: string;
 }
 
 export interface BookingRequest {

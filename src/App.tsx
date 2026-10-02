@@ -381,6 +381,7 @@ export default function App() {
   const [showCreateWizard, setShowCreateWizard] = useState<boolean>(() => Boolean(initialCreateWizardDeepLink));
   const [createWizardDeepLink, setCreateWizardDeepLink] = useState<CreateWizardDeepLink | null>(initialCreateWizardDeepLink);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [adminEditingListingId, setAdminEditingListingId] = useState<string | null>(null);
   const [showMyAddsListing, setShowMyAddsListing] = useState<boolean>(false);
   const [initialBookingsListingId, setInitialBookingsListingId] = useState<string | null>(null);
   const [showUsersDropdown, setShowUsersDropdown] = useState<boolean>(false);
@@ -1514,7 +1515,14 @@ export default function App() {
               onUpdateListing={handleUpdateListing}
               onDeleteListing={handleDeleteListing}
               onSelectListing={(listing) => {
+                setAdminEditingListingId(listing.id);
                 setSelectedListing(listing);
+              }}
+              onEditListing={(listing) => {
+                setSelectedListing(null);
+                setEditingListing(listing);
+                setAdminEditingListingId(listing.id);
+                setShowCreateWizard(true);
               }}
               onClose={closeAdminRoute}
               currencySymbol={CURRENCIES[activeCurrency].symbol}
@@ -2716,6 +2724,7 @@ export default function App() {
         )}
 
         <AppOverlays
+          adminEditingListingId={adminEditingListingId}
           activeCurrency={activeCurrency}
           activeLanguage={activeLanguage}
           bookings={bookings}
@@ -2738,6 +2747,7 @@ export default function App() {
           initialCheckInDate={checkInDate}
           initialCheckOutDate={checkOutDate}
           initialBookingsListingId={initialBookingsListingId}
+          isAdminRoute={isAdminRoute}
           checkInDate={checkInDate}
           checkOutDate={checkOutDate}
           listings={listings}
@@ -2746,6 +2756,7 @@ export default function App() {
           selectedListing={selectedListing}
           setActiveCurrency={setActiveCurrency}
           setActiveLanguage={setActiveLanguage}
+          setAdminEditingListingId={setAdminEditingListingId}
           onRequireAuth={requestAuth}
           onSelectedListingClose={closeSelectedListing}
           setCheckInDate={setCheckInDate}
