@@ -143,59 +143,49 @@ export const useLocationStep = ({
 
   const fetchGoogleSuggestions = async (query: string) => {
     const places = await getGooglePlacesLibrary();
-    if (!places?.AutocompleteService) return [];
+    if (!places?.Place?.searchByText) return [];
 
-    const service = new places.AutocompleteService();
     const searchText = getGoogleMapsSearchText(query);
-    const input = /\bbali\b/i.test(searchText) ? searchText : `${searchText} Bali`;
-
-    return new Promise<any[]>((resolve) => {
-      service.getPlacePredictions(
-        {
-          input,
-          componentRestrictions: { country: 'id' },
-          bounds: getBaliBounds(),
-          strictBounds: false
-        },
-        (predictions: any[] | null, status: string) => {
-          const okStatus = (globalThis as any).google?.maps?.places?.PlacesServiceStatus?.OK || 'OK';
-          if (status !== okStatus || !predictions) {
-            resolve([]);
-            return;
-          }
-
-          resolve(predictions.map(prediction => ({
-            source: 'google',
-            place_id: prediction.place_id,
-            name: prediction.structured_formatting?.main_text || prediction.description,
-            display_name: prediction.description,
-            description: prediction.description,
-            structured_formatting: prediction.structured_formatting,
-            type: prediction.types?.[0] || 'Google Places'
-          })));
-        }
-      );
+    const baliBounds = getBaliBounds();
+    const { places: results = [] } = await places.Place.searchByText({
+      textQuery: searchText,
+      fields: ['id', 'displayName', 'formattedAddress', 'types'],
+      ...(baliBounds ? { locationRestriction: baliBounds } : {}),
+      maxResultCount: 5,
+      region: 'id'
     });
+
+    return results.map((place: any) => ({
+      source: 'google',
+      place_id: place.id,
+      name: place.displayName || place.formattedAddress,
+      display_name: place.formattedAddress || place.displayName,
+      description: place.formattedAddress || place.displayName,
+      formatted_address: place.formattedAddress,
+      type: place.types?.[0] || 'Google Places'
+    }));
   };
 
   const getGooglePlaceDetails = async (placeId: string) => {
     const places = await getGooglePlacesLibrary();
-    if (!places?.PlacesService) return null;
+    if (!places?.Place) return null;
 
-    const service = new places.PlacesService(document.createElement('div'));
-
-    return new Promise<any | null>((resolve) => {
-      service.getDetails(
-        {
-          placeId,
-          fields: ['name', 'formatted_address', 'geometry', 'address_components', 'types']
-        },
-        (place: any | null, status: string) => {
-          const okStatus = (globalThis as any).google?.maps?.places?.PlacesServiceStatus?.OK || 'OK';
-          resolve(status === okStatus ? place : null);
-        }
-      );
+    const place = new places.Place({ id: placeId });
+    await place.fetchFields({
+      fields: ['displayName', 'formattedAddress', 'location', 'addressComponents', 'types']
     });
+
+    return {
+      name: place.displayName,
+      formatted_address: place.formattedAddress,
+      geometry: { location: place.location },
+      address_components: (place.addressComponents || []).map((component: any) => ({
+        long_name: component.longText,
+        short_name: component.shortText,
+        types: component.types
+      })),
+      types: place.types
+    };
   };
 
   const detectDistrictFromGooglePlace = async (place: any, lat: number, lng: number) => {

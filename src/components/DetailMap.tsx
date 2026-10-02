@@ -371,7 +371,7 @@ export default function DetailMap({ listing, currencySymbol, currencyRate, mapPl
         </div>
       ) : (
         <div className="w-full h-full relative bg-[#F4F7F6]">
-          <APIProvider apiKey={API_KEY} version="weekly">
+          <APIProvider apiKey={API_KEY} version="weekly" libraries={['places']}>
             <Map
               key={coordsKey}
               defaultCenter={coords}

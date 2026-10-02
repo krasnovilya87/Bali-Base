@@ -69,11 +69,8 @@ const StepContact: React.FC<StepContactProps> = ({
     );
 
   const getPlacesLibrary = async () => {
-    if (!hasValidKey || !(globalThis as any).google?.maps) return null;
-    const maps = (globalThis as any).google.maps;
-    if (!maps.places && maps.importLibrary) {
-      await maps.importLibrary('places');
-    }
+    if (!hasValidKey) return null;
+    const maps = await ensureGoogleMapsLibraries(apiKey, ['places']);
     return maps.places || null;
   };
 
@@ -94,36 +91,33 @@ const StepContact: React.FC<StepContactProps> = ({
       return;
     }
 
-    const places = await getPlacesLibrary();
-    if (!places?.AutocompleteService) return;
-
     setIsSearchingCompany(true);
-    const service = new places.AutocompleteService();
-    const input = /\bbali\b/i.test(searchText) ? searchText : `${searchText} Bali`;
+    try {
+      const places = await getPlacesLibrary();
+      if (!places?.Place?.searchByText) return;
 
-    service.getPlacePredictions(
-      {
-        input,
-        componentRestrictions: { country: 'id' },
-        bounds: getBaliBounds(),
-        strictBounds: false
-      },
-      (predictions: any[] | null, status: string) => {
-        const okStatus = (globalThis as any).google?.maps?.places?.PlacesServiceStatus?.OK || 'OK';
-        setIsSearchingCompany(false);
-        if (status !== okStatus || !predictions) {
-          setCompanySuggestions([]);
-          setShowCompanySuggestions(false);
-          return;
-        }
-        setCompanySuggestions(predictions.map(prediction => ({
-          placeId: prediction.place_id,
-          name: prediction.structured_formatting?.main_text || prediction.description,
-          description: prediction.description
-        })));
-        setShowCompanySuggestions(true);
-      }
-    );
+      const baliBounds = getBaliBounds();
+      const { places: results = [] } = await places.Place.searchByText({
+        textQuery: searchText,
+        fields: ['id', 'displayName', 'formattedAddress'],
+        ...(baliBounds ? { locationRestriction: baliBounds } : {}),
+        maxResultCount: 5,
+        region: 'id'
+      });
+
+      setCompanySuggestions(results.map((place: any) => ({
+        placeId: place.id,
+        name: place.displayName || place.formattedAddress,
+        description: place.formattedAddress || place.displayName
+      })));
+      setShowCompanySuggestions(results.length > 0);
+    } catch (error) {
+      console.warn('Google Maps company search failed:', error);
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+    } finally {
+      setIsSearchingCompany(false);
+    }
   };
 
   const handleCompanyInputChange = (value: string) => {

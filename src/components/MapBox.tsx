@@ -1609,7 +1609,7 @@ export default function MapBox({
               </div>
             </div>
           ) : (
-            <APIProvider apiKey={API_KEY} version="weekly">
+            <APIProvider apiKey={API_KEY} version="weekly" libraries={['places']}>
               <Map
                 defaultCenter={centerCoords}
                 defaultZoom={11}

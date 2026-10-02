@@ -97,7 +97,7 @@ const StepLocation: React.FC<StepLocationProps> = ({
     >
       <div className="w-full h-full relative bg-[#E5E7EB] overflow-hidden flex-grow animate-fade-in">
         {hasValidKey ? (
-          <APIProvider apiKey={apiKey} libraries={['places']}>
+          <APIProvider apiKey={apiKey} version="weekly" libraries={['places']}>
             <GMap
               defaultZoom={13}
               defaultCenter={pickedCoords || districtCenter}
