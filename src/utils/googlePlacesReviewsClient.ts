@@ -1,6 +1,13 @@
 import type { Listing } from '../types';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db, getDocument } from '../firebase';
+import { ensureGoogleMapsLibraries } from './googleMapsLoader';
+
+const GOOGLE_MAPS_API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
 
 type GooglePlacesRefreshResponse = {
   status: string;
@@ -13,15 +20,6 @@ type GooglePlacesRefreshResponse = {
   } | null;
   warning?: string;
   error?: string;
-};
-
-const getGooglePlacesReviewsApiUrl = () => {
-  const apiBaseUrl =
-    (import.meta as any).env?.VITE_API_BASE_URL ||
-    (globalThis as any).BALI_BASE_API_URL ||
-    '';
-
-  return `${String(apiBaseUrl).replace(/\/$/, '')}/api/google-places/reviews/refresh`;
 };
 
 export const applyGoogleReviewsCacheToListing = (
@@ -93,36 +91,42 @@ export const requestListingCreateGoogleReviewsRefresh = async ({
   if (!placeId || (googleReviewsUpdatedAt && purpose === 'listing_create')) return null;
 
   try {
-    const response = await fetch(getGooglePlacesReviewsApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        listingId,
-        placeId,
-        purpose
-      })
+    const maps = await ensureGoogleMapsLibraries(GOOGLE_MAPS_API_KEY, ['places']);
+    if (!maps.places?.Place) return null;
+
+    const place = new maps.places.Place({ id: placeId });
+    await place.fetchFields({
+      fields: ['id', 'rating', 'userRatingCount', 'reviews']
     });
 
-    if (!response.ok) {
-      const message = await response.text();
-      console.warn('Google Places reviews refresh failed:', response.status, message);
-      return null;
-    }
+    const updatedAt = new Date().toISOString();
+    const reviews = (place.reviews || []).slice(0, 5).map((review: any, index: number) => ({
+      id: review.name || `google-review-${listingId}-${index}`,
+      authorName: review.authorAttribution?.displayName || 'Google user',
+      avatar: review.authorAttribution?.photoURI || '',
+      rating: Number(review.rating || 0),
+      date: review.publishTime instanceof Date
+        ? review.publishTime.toISOString()
+        : String(review.publishTime || updatedAt),
+      text: typeof review.text === 'string' ? review.text : '',
+      textLanguageCode: review.textLanguageCode,
+      originalText: typeof review.originalText === 'string' ? review.originalText : undefined,
+      originalLanguageCode: review.originalTextLanguageCode,
+      relativePublishTimeDescription: review.relativePublishTimeDescription
+    }));
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const message = await response.text();
-      console.warn('Google Places reviews refresh returned a non-JSON response:', message.slice(0, 300));
-      return null;
-    }
-
-    const result = await response.json() as GooglePlacesRefreshResponse;
-    if (result.warning || result.error) {
-      console.warn('Google Places reviews refresh warning:', result.warning || result.error);
-    }
-    return result;
+    return {
+      status: purpose === 'listing_update' ? 'updated' : 'refreshed',
+      cache: {
+        rating: typeof place.rating === 'number' ? place.rating : null,
+        reviews,
+        reviewsCount: typeof place.userRatingCount === 'number' ? place.userRatingCount : reviews.length,
+        updatedAt,
+        placeId: place.id || placeId
+      }
+    };
   } catch (error) {
-    console.warn('Google Places reviews refresh request was skipped:', error);
+    console.warn('Google Places reviews refresh failed:', error);
     return null;
   }
 };

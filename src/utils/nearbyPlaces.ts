@@ -44,19 +44,27 @@ const SPORT_STORE_KEYWORDS = [
 
 const SPORT_STORE_TYPES = ['store', 'shopping_mall', 'shoe_store', 'clothing_store', 'bicycle_store'];
 
+type NearbyPlace = {
+  id?: string;
+  displayName?: string | null;
+  location?: google.maps.LatLng | null;
+  rating?: number | null;
+  types?: string[];
+};
+
 const normalizePlaceName = (value: string) =>
   value.toLowerCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
 
-const isSportVenue = (place: google.maps.places.PlaceResult) => {
-  const name = normalizePlaceName(place.name || '');
+const isSportVenue = (place: NearbyPlace) => {
+  const name = normalizePlaceName(place.displayName || '');
   const types = place.types || [];
   const hasStoreType = types.some(type => SPORT_STORE_TYPES.includes(type));
   const hasStoreName = SPORT_STORE_KEYWORDS.some(keyword => name.includes(normalizePlaceName(keyword)));
   return !hasStoreType && !hasStoreName;
 };
 
-const isAllowedSupermarket = (place: google.maps.places.PlaceResult) => {
-  const name = normalizePlaceName(place.name || '');
+const isAllowedSupermarket = (place: NearbyPlace) => {
+  const name = normalizePlaceName(place.displayName || '');
   return SUPERMARKET_NAMES.some(allowed => name.includes(normalizePlaceName(allowed)));
 };
 
@@ -65,64 +73,68 @@ const isDistrict = (district: string | undefined, names: string[]) => {
   return names.some(name => normalized.includes(normalizePlaceName(name)));
 };
 
-const searchNearbyPlaces = (
-  service: google.maps.places.PlacesService,
+const searchNearbyPlaces = async (
+  placesLibrary: any,
   origin: LatLng,
   request: {
     keyword: string;
     radius: number;
     type?: string;
-    filter?: (place: google.maps.places.PlaceResult) => boolean;
+    filter?: (place: NearbyPlace) => boolean;
   }
-) => new Promise<google.maps.places.PlaceResult[]>((resolve) => {
-  service.nearbySearch(
-    {
-      location: origin,
-      radius: request.radius,
-      type: request.type as any,
-      keyword: request.keyword
+): Promise<NearbyPlace[]> => {
+  if (!placesLibrary?.Place?.searchNearby) return [];
+
+  const fallbackTypeByKeyword: Record<string, string> = {
+    gym: 'gym',
+    beach: 'beach',
+    yoga: 'yoga_studio'
+  };
+  const includedType = request.type || fallbackTypeByKeyword[request.keyword];
+  const { places = [] } = await placesLibrary.Place.searchNearby({
+    fields: ['id', 'displayName', 'location', 'rating', 'types'],
+    locationRestriction: {
+      center: origin,
+      radius: request.radius
     },
-    (results, status) => {
-      if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
-        resolve([]);
-        return;
-      }
+    ...(includedType ? { includedTypes: [includedType] } : {}),
+    maxResultCount: 20,
+    rankPreference: placesLibrary.SearchNearbyRankPreference?.DISTANCE || 'DISTANCE',
+    region: 'id'
+  });
 
-      const filtered = results
-        .filter(place => Boolean(place.name && place.geometry?.location))
-        .filter(place => request.filter ? request.filter(place) : true)
-        .slice(0, 5);
-      resolve(filtered);
-    }
-  );
-});
+  return places
+    .filter((place: NearbyPlace) => Boolean(place.displayName && place.location))
+    .filter((place: NearbyPlace) => request.filter ? request.filter(place) : true)
+    .slice(0, 5);
+};
 
-const getPlacePosition = (place: google.maps.places.PlaceResult): LatLng | null => {
-  const location = place.geometry?.location;
+const getPlacePosition = (place: NearbyPlace): LatLng | null => {
+  const location = place.location;
   if (!location) return null;
   return { lat: location.lat(), lng: location.lng() };
 };
 
-const getPlaceDedupeKey = (place: google.maps.places.PlaceResult) => {
-  if (place.place_id) return place.place_id;
+const getPlaceDedupeKey = (place: NearbyPlace) => {
+  if (place.id) return place.id;
 
   const position = getPlacePosition(place);
   return [
-    normalizePlaceName(place.name || ''),
+    normalizePlaceName(place.displayName || ''),
     position?.lat.toFixed(5) || '',
     position?.lng.toFixed(5) || ''
   ].join('|');
 };
 
-const dedupePlaces = (places: google.maps.places.PlaceResult[]) => {
-  const byKey = new Map<string, google.maps.places.PlaceResult>();
+const dedupePlaces = (places: NearbyPlace[]) => {
+  const byKey = new Map<string, NearbyPlace>();
   places.forEach(place => byKey.set(getPlaceDedupeKey(place), place));
   return Array.from(byKey.values());
 };
 
 const sortPlacesByStraightDistance = (
   origin: LatLng,
-  places: google.maps.places.PlaceResult[]
+  places: NearbyPlace[]
 ) => places
   .slice()
   .sort((a, b) => {
@@ -135,46 +147,35 @@ const sortPlacesByStraightDistance = (
   });
 
 const searchSupermarketPlaces = async (
-  service: google.maps.places.PlacesService,
+  placesLibrary: any,
   origin: LatLng
 ) => {
-  const commonRequest = searchNearbyPlaces(service, origin, {
+  const commonRequest = searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'supermarket',
     type: 'supermarket',
     radius: 5000,
     filter: isAllowedSupermarket
   });
 
-  const brandRequests = SUPERMARKET_NAMES.map(name =>
-    searchNearbyPlaces(service, origin, {
-      keyword: name,
-      type: 'supermarket',
-      radius: 5000,
-      filter: isAllowedSupermarket
-    })
-  );
-
-  const resultGroups = await Promise.all([commonRequest, ...brandRequests]);
-  return sortPlacesByStraightDistance(origin, dedupePlaces(resultGroups.flat()));
+  const results = await commonRequest;
+  return sortPlacesByStraightDistance(origin, dedupePlaces(results));
 };
 
 const makeSyntheticPlace = (
   name: string,
   position: LatLng
-): google.maps.places.PlaceResult => ({
-  name,
-  geometry: {
-    location: new google.maps.LatLng(position.lat, position.lng)
-  }
+): NearbyPlace => ({
+  displayName: name,
+  location: new google.maps.LatLng(position.lat, position.lng)
 });
 
 const findFastestByBike = (
   origin: LatLng,
-  places: google.maps.places.PlaceResult[]
-) => new Promise<{ place: google.maps.places.PlaceResult; durationText: string; durationValue: number } | null>((resolve) => {
+  places: NearbyPlace[]
+) => new Promise<{ place: NearbyPlace; durationText: string; durationValue: number } | null>((resolve) => {
   const destinations = places
     .slice(0, 5)
-    .map(place => place.place_id ? { placeId: place.place_id } : place.geometry?.location)
+    .map(place => place.id ? { placeId: place.id } : place.location)
     .filter(Boolean) as Array<google.maps.Place | google.maps.LatLng>;
 
   if (destinations.length === 0) {
@@ -195,7 +196,7 @@ const findFastestByBike = (
         return;
       }
 
-      let best: { place: google.maps.places.PlaceResult; durationText: string; durationValue: number } | null = null;
+      let best: { place: NearbyPlace; durationText: string; durationValue: number } | null = null;
       response?.rows?.[0]?.elements?.forEach((element, index) => {
         if (element.status !== 'OK' || !element.duration?.value) return;
         const candidate = {
@@ -215,12 +216,12 @@ const findFastestByBike = (
 
 const findClosestByStraightDistance = (
   origin: LatLng,
-  places: google.maps.places.PlaceResult[]
-): { place: google.maps.places.PlaceResult; durationText: string; durationValue: number } | null => {
-  let best: { place: google.maps.places.PlaceResult; durationText: string; durationValue: number } | null = null;
+  places: NearbyPlace[]
+): { place: NearbyPlace; durationText: string; durationValue: number } | null => {
+  let best: { place: NearbyPlace; durationText: string; durationValue: number } | null = null;
 
   places.forEach(place => {
-    const location = place.geometry?.location;
+    const location = place.location;
     if (!location) return;
     const destination = { lat: location.lat(), lng: location.lng() };
     const km = getHaversineDistance(origin, destination);
@@ -242,22 +243,22 @@ const findClosestByStraightDistance = (
 const toNearbySpot = (
   emoji: string,
   title: string,
-  fastest: { place: google.maps.places.PlaceResult; durationText: string } | null
+  fastest: { place: NearbyPlace; durationText: string } | null
 ): ListingNearbySpot | null => {
-  const location = fastest?.place.geometry?.location;
-  if (!fastest?.place.name || !location) return null;
+  const location = fastest?.place.location;
+  if (!fastest?.place.displayName || !location) return null;
 
   return {
     emoji,
     title,
-    desc: fastest.place.name,
+    desc: fastest.place.displayName,
     time: fastest.durationText ? `${fastest.durationText} \u043d\u0430 \u0431\u0430\u0439\u043a\u0435` : '',
     position: {
       lat: location.lat(),
       lng: location.lng()
     },
-    placeId: fastest.place.place_id,
-    rating: fastest.place.rating
+    placeId: fastest.place.id,
+    rating: fastest.place.rating ?? undefined
   };
 };
 
@@ -328,21 +329,21 @@ const attachRoutesToNearbySpots = async (
 );
 
 const getStandardSpots = async (
-  service: google.maps.places.PlacesService,
+  placesLibrary: any,
   origin: LatLng
 ) => {
-  const restaurantPlaces = await searchNearbyPlaces(service, origin, {
+  const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(service, origin);
-  const gymPlaces = await searchNearbyPlaces(service, origin, {
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
+  const gymPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'gym',
     radius: 2000,
     filter: isSportVenue
   });
-  const beachPlaces = await searchNearbyPlaces(service, origin, {
+  const beachPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'beach',
     radius: 5000
   });
@@ -363,16 +364,16 @@ const getStandardSpots = async (
 };
 
 const getUbudSpots = async (
-  service: google.maps.places.PlacesService,
+  placesLibrary: any,
   origin: LatLng
 ) => {
-  const restaurantPlaces = await searchNearbyPlaces(service, origin, {
+  const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(service, origin);
-  const yogaPlaces = await searchNearbyPlaces(service, origin, {
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
+  const yogaPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'yoga',
     radius: 2000,
     filter: isSportVenue
@@ -395,15 +396,15 @@ const getUbudSpots = async (
 };
 
 const getKintamaniSpots = async (
-  service: google.maps.places.PlacesService,
+  placesLibrary: any,
   origin: LatLng
 ) => {
-  const restaurantPlaces = await searchNearbyPlaces(service, origin, {
+  const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(service, origin);
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
   const hotSprings = makeSyntheticPlace('Batur Natural Hot Spring', { lat: -8.2412, lng: 115.4067 });
   const mountBatur = makeSyntheticPlace('Mount Batur', { lat: -8.2423, lng: 115.3754 });
 
@@ -428,14 +429,14 @@ export const calculateNearbySpotsOnce = async (
 ): Promise<ListingNearbySpot[]> => {
   if (!origin) return [];
 
-  await ensureGoogleMapsLibraries(GOOGLE_MAPS_API_KEY, ['places']);
-  const service = new google.maps.places.PlacesService(document.createElement('div'));
+  const maps = await ensureGoogleMapsLibraries(GOOGLE_MAPS_API_KEY, ['places']);
+  const placesLibrary = maps.places;
 
   const spots = isDistrict(district, ['ubud'])
-    ? await getUbudSpots(service, origin)
+    ? await getUbudSpots(placesLibrary, origin)
     : isDistrict(district, ['kintamani', 'kintomani'])
-      ? await getKintamaniSpots(service, origin)
-      : await getStandardSpots(service, origin);
+      ? await getKintamaniSpots(placesLibrary, origin)
+      : await getStandardSpots(placesLibrary, origin);
 
   return attachRoutesToNearbySpots(origin, spots);
 };
