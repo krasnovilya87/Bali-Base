@@ -1,6 +1,4 @@
-const IMAGEKIT_PROXY_ENDPOINT = '/api/image-upload/imagekit';
-const IMAGEKIT_CLOUD_RUN_PROXY_ENDPOINT =
-  'https://bali-base-api-516937970438.asia-southeast1.run.app/api/image-upload/imagekit';
+const IMAGEKIT_WORKER_UPLOAD_ENDPOINT = 'https://media.balibase.id/upload';
 
 type ImageKitProxyResponse = {
   ok?: boolean;
@@ -115,7 +113,7 @@ const uploadBinarySourceViaProxy = async (
   let response: Response;
 
   try {
-    response = await fetch(IMAGEKIT_PROXY_ENDPOINT, {
+    response = await fetch(IMAGEKIT_WORKER_UPLOAD_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',
@@ -164,7 +162,7 @@ const uploadBase64SourceViaProxy = async (
   source: string,
   diagnostics: ImageUploadDiagnosticStep[],
   metadata?: { fileName?: string; fileType?: string },
-  endpoint = IMAGEKIT_PROXY_ENDPOINT,
+  endpoint = IMAGEKIT_WORKER_UPLOAD_ENDPOINT,
   phase = 'proxy-upload'
 ) => {
   let response: Response;
@@ -258,15 +256,6 @@ export const uploadImageToImageKit = async (
       );
     } catch (proxyError) {
       finalError = proxyError;
-      return await tryVerifiedUpload(() =>
-        uploadBase64SourceViaProxy(
-          base64Source,
-          diagnostics,
-          metadata,
-          IMAGEKIT_CLOUD_RUN_PROXY_ENDPOINT,
-          'cloud-run-proxy-upload'
-        )
-      );
     }
   } catch (proxyError) {
     finalError = proxyError;

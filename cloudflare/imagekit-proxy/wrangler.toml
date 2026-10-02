@@ -1,0 +1,8 @@
+name = "wild-hill-55ef"
+main = "src/index.js"
+compatibility_date = "2026-10-02"
+workers_dev = false
+
+routes = [
+  { pattern = "media.balibase.id", custom_domain = true }
+]
