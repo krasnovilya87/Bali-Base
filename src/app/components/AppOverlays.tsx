@@ -88,6 +88,7 @@ type AppOverlaysProps = {
     category?: string;
     subCategory?: string;
     stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
+    photoTransferSessionId?: string;
   } | null;
 };
 
@@ -368,6 +369,7 @@ export default function AppOverlays({
           initialCategory={createWizardDeepLink?.category}
           initialSubCategory={createWizardDeepLink?.subCategory}
           initialStepKey={createWizardDeepLink?.stepKey}
+          initialPhotoTransferSessionId={createWizardDeepLink?.photoTransferSessionId}
         />
       )}
 

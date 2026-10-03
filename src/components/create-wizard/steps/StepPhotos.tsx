@@ -50,6 +50,9 @@ type StepPhotosProps = {
   optionalPhotoSlots: PhotoSlotConfig[];
   isScooterPhotoFlow: boolean;
   isServicePhotoFlow?: boolean;
+  phoneUploadQrUrl?: string;
+  phoneTransferStatus?: 'idle' | 'creating' | 'waiting' | 'received' | 'error';
+  isPhoneTransferMode?: boolean;
   setDraggedPhotoSlotId: React.Dispatch<React.SetStateAction<PhotoSlotId | null>>;
   draggedPhotoSlotId: PhotoSlotId | null;
   getAssignedPhotoUrls: (slotId: PhotoSlotId) => string[];
@@ -84,6 +87,9 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   optionalPhotoSlots,
   isScooterPhotoFlow,
   isServicePhotoFlow = false,
+  phoneUploadQrUrl = '',
+  phoneTransferStatus = 'idle',
+  isPhoneTransferMode = false,
   setDraggedPhotoSlotId,
   draggedPhotoSlotId,
   getAssignedPhotoUrls,
@@ -101,6 +107,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   const [extraPhotoNumber, setExtraPhotoNumber] = useState(() => requiredPhotoSlots.length + 1);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const canUsePhoneUpload = isPhoneUploadDevice || isPhoneTransferMode;
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
@@ -112,20 +119,6 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
     return () => query.removeEventListener('change', update);
   }, []);
 
-  const currentPageUrl = typeof window === 'undefined' ? '' : window.location.href;
-  const phoneUploadTargetUrl = currentPageUrl
-    ? (() => {
-      const url = new URL(currentPageUrl);
-      url.searchParams.set('create', '1');
-      url.searchParams.set('category', 'transport');
-      url.searchParams.set('subcategory', 'scooters');
-      url.searchParams.set('step', 'photos');
-      return url.toString();
-    })()
-    : '';
-  const phoneUploadQrUrl = currentPageUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(phoneUploadTargetUrl)}`
-    : '';
   const nextRequiredSlot = useMemo(
     () => requiredPhotoSlots.find(slot => getAssignedPhotoUrls(slot.id).length < slot.maxCount),
     [requiredPhotoSlots, photoUrls, photoSlotAssignments]
@@ -299,9 +292,9 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
           <button
             key={slot.id}
             type="button"
-            onClick={() => allowSlotActions && isPhoneUploadDevice && openScooterCamera(slot.id)}
+            onClick={() => allowSlotActions && canUsePhoneUpload && openScooterCamera(slot.id)}
             aria-label={tr(slot.labelKey)}
-            className={`block text-left disabled:opacity-60 ${allowSlotActions && isPhoneUploadDevice ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`block text-left disabled:opacity-60 ${allowSlotActions && canUsePhoneUpload ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl border transition ${isDone
               ? 'border-emerald-200 bg-emerald-50'
@@ -345,7 +338,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
             className="hidden"
           />
 
-          {isPhoneUploadDevice ? (
+          {canUsePhoneUpload ? (
             <div className="mx-auto flex min-h-[236px] w-full max-w-[420px] flex-col items-center justify-center gap-5 py-6">
               <button
                 type="button"
@@ -382,6 +375,23 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                   alt={tr('wizard.photos.continueOnPhone')}
                   className="h-36 w-36 rounded-2xl border border-[#E5E7EB] bg-white p-2"
                 />
+              )}
+              {phoneTransferStatus === 'creating' && (
+                <div className="flex items-center gap-2 text-[11px] font-bold text-[#5F6978]">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>{tr('wizard.photos.phoneTransferPreparing')}</span>
+                </div>
+              )}
+              {phoneTransferStatus === 'received' && (
+                <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700">
+                  <Check className="h-4 w-4" />
+                  <span>{tr('wizard.photos.phoneTransferReceived')}</span>
+                </div>
+              )}
+              {phoneTransferStatus === 'error' && (
+                <p className="rounded-2xl bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">
+                  {tr('wizard.photos.phoneTransferError')}
+                </p>
               )}
               <p className="max-w-sm text-[11px] font-semibold leading-relaxed text-[#5F6978]">
                 {tr('wizard.photos.phoneOnly')}

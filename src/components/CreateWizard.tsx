@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, ClipboardPlus, Loader2, X } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { Listing } from '../types';
@@ -26,6 +27,12 @@ import type { ClassifiedSpecialValue } from '../config/classifiedSpecial';
 import { AFISHA_PUBLICATION_DAYS, EVENT_COMMON_FIELD_IDS } from '../config/eventSpecial';
 import { getLifeFields, LIFE_EXPENSE_PER_PERSON_KEY, LIFE_FIELDS, LIFE_WEEKDAYS, normalizeLifeSubCategory } from '../config/lifeSpecial';
 import { INVESTMENT_SUBTYPES } from '../config/investmentSpecial';
+import {
+  closePhonePhotoTransferSession,
+  completePhonePhotoTransferSession,
+  createPhonePhotoTransferSession,
+  readPhonePhotoTransferSession
+} from '../utils/phonePhotoTransfer';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -90,6 +97,7 @@ interface CreateWizardProps {
   initialCategory?: string;
   initialSubCategory?: string;
   initialStepKey?: WizardStepKey;
+  initialPhotoTransferSessionId?: string;
 }
 
 const stepLabelKeyByStep: Record<WizardStepKey, string> = {
@@ -135,7 +143,8 @@ export default function CreateWizard({
   initialListing,
   initialCategory,
   initialSubCategory,
-  initialStepKey
+  initialStepKey,
+  initialPhotoTransferSessionId
 }: CreateWizardProps) {
   const { tr } = useI18n();
   const { user } = useAuth();
@@ -151,6 +160,15 @@ export default function CreateWizard({
   const [nearbyWarning, setNearbyWarning] = useState(false);
   const publicationStages = ['checking', 'photos', 'nearby', 'moderation', 'saving', 'finishing'];
   const [validationPopup, setValidationPopup] = useState<{ title: string; message: string } | null>(null);
+  const isPhonePhotoTransfer = Boolean(initialPhotoTransferSessionId);
+  const [phoneTransferSessionId, setPhoneTransferSessionId] = useState(initialPhotoTransferSessionId || '');
+  const [phoneTransferStatus, setPhoneTransferStatus] = useState<'idle' | 'creating' | 'waiting' | 'received' | 'error'>(
+    initialPhotoTransferSessionId ? 'waiting' : 'idle'
+  );
+  const [phoneUploadQrUrl, setPhoneUploadQrUrl] = useState('');
+  const [isSendingPhonePhotos, setIsSendingPhonePhotos] = useState(false);
+  const [isPhoneTransferComplete, setIsPhoneTransferComplete] = useState(false);
+  const [phoneTransferSubmitError, setPhoneTransferSubmitError] = useState('');
   const [confirmedLocationCoords, setConfirmedLocationCoords] = useState<Listing['locationCoords']>(
     initialListing?.locationCoords
   );
@@ -323,6 +341,7 @@ export default function CreateWizard({
     handleGalleryChoose,
     openCameraForSlot,
     uploadCameraPhotoForSlot,
+    applyTransferredPhotos,
     handleRemovePhoto,
     setMainPhoto
   } = usePhotoStep({
@@ -513,6 +532,118 @@ export default function CreateWizard({
   ));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
   const photosStep = Math.max(1, wizardFlow.indexOf('photos') + 1);
+
+  useEffect(() => {
+    if (isPhonePhotoTransfer || !isScooterPhotoFlow || currentStepKey !== 'photos' || phoneTransferSessionId) return;
+
+    let cancelled = false;
+    setPhoneTransferStatus('creating');
+    createPhonePhotoTransferSession()
+      .then(sessionId => {
+        if (cancelled) return;
+        setPhoneTransferSessionId(sessionId);
+        setPhoneTransferStatus('waiting');
+      })
+      .catch(() => {
+        if (!cancelled) setPhoneTransferStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStepKey, isPhonePhotoTransfer, isScooterPhotoFlow, phoneTransferSessionId]);
+
+  useEffect(() => {
+    if (!phoneTransferSessionId || isPhonePhotoTransfer || typeof window === 'undefined') {
+      setPhoneUploadQrUrl('');
+      return;
+    }
+
+    let cancelled = false;
+    const targetUrl = new URL(window.location.href);
+    targetUrl.search = '';
+    targetUrl.hash = '';
+    targetUrl.searchParams.set('create', '1');
+    targetUrl.searchParams.set('category', 'transport');
+    targetUrl.searchParams.set('subcategory', 'scooters');
+    targetUrl.searchParams.set('step', 'photos');
+    targetUrl.searchParams.set('photoTransferSession', phoneTransferSessionId);
+
+    QRCode.toDataURL(targetUrl.toString(), {
+      width: 220,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#0F172A', light: '#FFFFFF' }
+    }).then(dataUrl => {
+      if (!cancelled) setPhoneUploadQrUrl(dataUrl);
+    }).catch(() => {
+      if (!cancelled) setPhoneTransferStatus('error');
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPhonePhotoTransfer, phoneTransferSessionId]);
+
+  useEffect(() => {
+    if (isPhonePhotoTransfer || !phoneTransferSessionId || typeof window === 'undefined') return;
+
+    let stopped = false;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const result = await readPhonePhotoTransferSession(phoneTransferSessionId);
+        if (stopped) return;
+        if (result.status === 'ready' && result.payload) {
+          applyTransferredPhotos(result.payload);
+          setPhoneTransferStatus('received');
+          stopped = true;
+          await closePhonePhotoTransferSession(phoneTransferSessionId).catch(() => undefined);
+          return;
+        }
+        setPhoneTransferStatus('waiting');
+      } catch {
+        if (!stopped) setPhoneTransferStatus('error');
+      }
+
+      if (!stopped) timer = window.setTimeout(poll, 2000);
+    };
+
+    timer = window.setTimeout(poll, 2000);
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [isPhonePhotoTransfer, phoneTransferSessionId]);
+
+  const handleCompletePhonePhotoTransfer = async () => {
+    if (!phoneTransferSessionId || isSendingPhonePhotos) return;
+    setPhoneTransferSubmitError('');
+    setIsSendingPhonePhotos(true);
+
+    try {
+      const state = await waitForPhotoUploads();
+      if (requiredPhotoSlots.some(slot => !(state.photoSlotAssignments[slot.id] || []).length)) {
+        showValidationPopup(tr('wizard.validationPhotos'));
+        return;
+      }
+      if (state.photoUrls.some(url => !isPublishablePhotoUrl(url))) {
+        throw new Error(tr('wizard.publication.photoFailed'));
+      }
+      await completePhonePhotoTransferSession(phoneTransferSessionId, {
+        photoUrls: state.photoUrls,
+        realPhotoUrls: state.realPhotoUrls,
+        photoSlotAssignments: Object.fromEntries(
+          Object.entries(state.photoSlotAssignments).filter(([, urls]) => Array.isArray(urls) && urls.length > 0)
+        ) as Record<string, string[]>
+      });
+      setIsPhoneTransferComplete(true);
+    } catch (error) {
+      setPhoneTransferSubmitError(error instanceof Error ? error.message : tr('wizard.photos.phoneTransferError'));
+    } finally {
+      setIsSendingPhonePhotos(false);
+    }
+  };
 
   useEffect(() => {
     setStep(current => Math.min(current, wizardFlow.length));
@@ -1245,6 +1376,9 @@ export default function CreateWizard({
       optionalPhotoSlots,
       isScooterPhotoFlow,
       isServicePhotoFlow,
+      phoneUploadQrUrl,
+      phoneTransferStatus,
+      isPhoneTransferMode: isPhonePhotoTransfer,
       setDraggedPhotoSlotId,
       draggedPhotoSlotId,
       getPhotoSlot,
@@ -1460,7 +1594,7 @@ export default function CreateWizard({
           </button>
         </div>
 
-        <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
+        {!isPhonePhotoTransfer && !isPhoneTransferComplete && <div className="pu-header px-4 sm:px-5 py-4 shrink-0 border-b border-[#E5E7EB]">
           <div className="relative h-8 pt-0.5 pb-0.5 sm:h-auto sm:pt-1 sm:pb-1">
             <div
               className="absolute top-2 h-px rounded-full bg-[#CBD5E1] sm:top-4"
@@ -1503,13 +1637,41 @@ export default function CreateWizard({
               })}
             </div>
           </div>
-        </div>
+        </div>}
 
         <div ref={wizardBodyRef} className={`pu-body flex-grow min-h-[55vh] text-[#1E293B] ${step === 4 ? 'p-0 overflow-hidden h-[55vh]' : 'p-5 sm:p-7 overflow-y-auto space-y-6 max-h-[64vh]'}`}>
-          <WizardStepContent {...wizardStepContentProps} />
+          {isPhoneTransferComplete ? (
+            <div className="flex min-h-[48vh] flex-col items-center justify-center gap-4 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <Check className="h-8 w-8" />
+              </span>
+              <h4 className="text-lg font-extrabold text-[#1E293B]">{tr('wizard.photos.phoneTransferCompleteTitle')}</h4>
+              <p className="max-w-sm text-sm font-semibold leading-relaxed text-[#5F6978]">
+                {tr('wizard.photos.phoneTransferCompleteHint')}
+              </p>
+            </div>
+          ) : (
+            <WizardStepContent {...wizardStepContentProps} />
+          )}
         </div>
 
-        <div className="pu-footer p-4 border-t border-[#E5E7EB] flex items-center justify-between shrink-0">
+        {!isPhoneTransferComplete && <div className={`pu-footer p-4 border-t border-[#E5E7EB] flex items-center shrink-0 ${isPhonePhotoTransfer ? 'justify-end' : 'justify-between'}`}>
+          {isPhonePhotoTransfer ? (
+            <div className="w-full space-y-2">
+              {phoneTransferSubmitError && (
+                <p className="text-center text-xs font-bold text-rose-600">{phoneTransferSubmitError}</p>
+              )}
+              <button
+                type="button"
+                disabled={isSendingPhonePhotos || isUploading || isPreparingPhotoPreview}
+                onClick={handleCompletePhonePhotoTransfer}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF7A50] px-6 py-3 text-sm font-extrabold text-white shadow-md transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-65"
+              >
+                {isSendingPhonePhotos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                <span>{tr('common.ok')}</span>
+              </button>
+            </div>
+          ) : <>
           <button
             disabled={step === 1}
             onClick={() => setStep(prev => Math.max(1, prev - 1))}
@@ -1540,7 +1702,8 @@ export default function CreateWizard({
               <span>{isPublishing ? tr('wizard.publication.title') : tr('wizard.publish')}</span>
             </button>
           )}
-        </div>
+          </>}
+        </div>}
       </div>
 
       {(isPublishing || publishError) && (
