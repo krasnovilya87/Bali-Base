@@ -62,6 +62,18 @@ service cloud.firestore {
         && (isAdmin() || (isOwner(before.ownerId) && canOwnerUpdateListing(before, after)));
     }
 
+    function isValidPhonePhotoPayload(payload) {
+      return payload is map
+        && payload.keys().hasOnly(['photoUrls', 'realPhotoUrls', 'photoSlotAssignments'])
+        && payload.photoUrls is list
+        && payload.photoUrls.size() > 0
+        && payload.photoUrls.size() <= 30
+        && payload.realPhotoUrls is list
+        && payload.realPhotoUrls.size() <= 30
+        && payload.photoSlotAssignments is map
+        && payload.photoSlotAssignments.keys().size() <= 30;
+    }
+
     function isValidBookingRequest(data) {
       return data.id is string && data.id.size() <= 128
         && data.listingId is string && data.listingId.size() <= 128
@@ -133,6 +145,47 @@ service cloud.firestore {
         && incoming().email is string
         && incoming().email.size() <= 254;
       allow delete: if false;
+    }
+
+    match /photo_upload_sessions/{sessionId} {
+      allow create: if isSignedIn()
+        && isValidId(sessionId)
+        && incoming().keys().hasOnly([
+          'ownerId',
+          'transferSecret',
+          'status',
+          'createdAtMs',
+          'expiresAtMs'
+        ])
+        && incoming().ownerId == request.auth.uid
+        && incoming().transferSecret is string
+        && incoming().transferSecret.size() >= 32
+        && incoming().transferSecret.size() <= 128
+        && incoming().status == 'pending'
+        && incoming().createdAtMs is int
+        && incoming().expiresAtMs is int
+        && incoming().expiresAtMs > request.time.toMillis()
+        && incoming().expiresAtMs <= request.time.toMillis() + 3600000;
+      allow get: if isOwner(existing().ownerId);
+      allow list: if false;
+      allow update: if existing().status == 'pending'
+        && existing().expiresAtMs > request.time.toMillis()
+        && incoming().ownerId == existing().ownerId
+        && incoming().transferSecret == existing().transferSecret
+        && incoming().createdAtMs == existing().createdAtMs
+        && incoming().expiresAtMs == existing().expiresAtMs
+        && incoming().status == 'ready'
+        && incoming().submittedSecret is string
+        && incoming().submittedSecret == existing().transferSecret
+        && incoming().completedAtMs is int
+        && isValidPhonePhotoPayload(incoming().payload)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status',
+          'payload',
+          'submittedSecret',
+          'completedAtMs'
+        ]);
+      allow delete: if isOwner(existing().ownerId);
     }
 
     match /configs/{configId} {

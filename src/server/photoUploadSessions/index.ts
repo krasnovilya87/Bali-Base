@@ -1,1 +1,0 @@
-export { createPhotoUploadSessionsRouter } from './routes';

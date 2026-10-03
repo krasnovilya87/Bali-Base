@@ -1,4 +1,5 @@
-import { auth } from '../firebase';
+import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 export type PhonePhotoTransferPayload = {
   photoUrls: string[];
@@ -6,61 +7,89 @@ export type PhonePhotoTransferPayload = {
   photoSlotAssignments: Record<string, string[]>;
 };
 
-type PhotoUploadSessionResponse = {
-  ok?: boolean;
-  sessionId?: string;
-  status?: 'pending' | 'ready';
+type PhotoUploadSessionDocument = {
+  ownerId: string;
+  transferSecret: string;
+  status: 'pending' | 'ready';
+  createdAtMs: number;
+  expiresAtMs: number;
+  completedAtMs?: number;
+  submittedSecret?: string;
   payload?: PhonePhotoTransferPayload;
-  expiresAtMs?: number;
-  error?: string;
 };
 
-const getSessionEndpoint = (sessionId?: string) => {
-  const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL ||
-    (import.meta as any).env?.BALI_BASE_API_URL ||
-    '';
-  const base = `${String(apiBaseUrl).replace(/\/$/, '')}/api/photo-upload-sessions`;
-  return sessionId ? `${base}/${encodeURIComponent(sessionId)}` : base;
+const COLLECTION = 'photo_upload_sessions';
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+const randomBase64Url = (byteLength: number) => {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  bytes.forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 };
 
-const parseResponse = async (response: Response) => {
-  const payload = await response.json().catch(() => null) as PhotoUploadSessionResponse | null;
-  if (!response.ok || !payload?.ok) {
-    throw new Error(payload?.error || response.statusText || 'Photo upload session request failed.');
+const splitSessionToken = (sessionToken: string) => {
+  const separatorIndex = sessionToken.indexOf('.');
+  if (separatorIndex < 1) throw new Error('Invalid photo upload session.');
+
+  const sessionId = sessionToken.slice(0, separatorIndex);
+  const transferSecret = sessionToken.slice(separatorIndex + 1);
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(sessionId) || !/^[A-Za-z0-9_-]{32,128}$/.test(transferSecret)) {
+    throw new Error('Invalid photo upload session.');
   }
-  return payload;
+
+  return { sessionId, transferSecret };
 };
 
 export const createPhonePhotoTransferSession = async () => {
-  const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error('Sign in is required before connecting a phone.');
-  const response = await fetch(getSessionEndpoint(), {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const payload = await parseResponse(response);
-  if (!payload.sessionId) throw new Error('Photo upload session was not created.');
-  return payload.sessionId;
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sign in is required before connecting a phone.');
+
+  const sessionId = randomBase64Url(32);
+  const transferSecret = randomBase64Url(32);
+  const now = Date.now();
+  await setDoc(doc(db, COLLECTION, sessionId), {
+    ownerId: user.uid,
+    transferSecret,
+    status: 'pending',
+    createdAtMs: now,
+    expiresAtMs: now + SESSION_TTL_MS
+  } satisfies PhotoUploadSessionDocument);
+
+  return `${sessionId}.${transferSecret}`;
 };
 
-export const readPhonePhotoTransferSession = async (sessionId: string) => {
-  const response = await fetch(getSessionEndpoint(sessionId));
-  return parseResponse(response);
+export const readPhonePhotoTransferSession = async (sessionToken: string) => {
+  const { sessionId } = splitSessionToken(sessionToken);
+  const snapshot = await getDoc(doc(db, COLLECTION, sessionId));
+  if (!snapshot.exists()) throw new Error('Photo upload session not found.');
+
+  const data = snapshot.data() as PhotoUploadSessionDocument;
+  if (data.expiresAtMs <= Date.now()) throw new Error('Photo upload session expired.');
+  return {
+    status: data.status,
+    payload: data.status === 'ready' ? data.payload : undefined,
+    expiresAtMs: data.expiresAtMs
+  };
 };
 
 export const completePhonePhotoTransferSession = async (
-  sessionId: string,
+  sessionToken: string,
   payload: PhonePhotoTransferPayload
 ) => {
-  const response = await fetch(getSessionEndpoint(sessionId), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+  const { sessionId, transferSecret } = splitSessionToken(sessionToken);
+  await updateDoc(doc(db, COLLECTION, sessionId), {
+    status: 'ready',
+    payload,
+    submittedSecret: transferSecret,
+    completedAtMs: Date.now()
   });
-  await parseResponse(response);
 };
 
-export const closePhonePhotoTransferSession = async (sessionId: string) => {
-  await fetch(getSessionEndpoint(sessionId), { method: 'DELETE' });
+export const closePhonePhotoTransferSession = async (sessionToken: string) => {
+  const { sessionId } = splitSessionToken(sessionToken);
+  await deleteDoc(doc(db, COLLECTION, sessionId));
 };
-
