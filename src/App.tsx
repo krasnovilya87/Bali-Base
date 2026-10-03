@@ -65,7 +65,6 @@ type CreateWizardDeepLink = {
   category?: string;
   subCategory?: string;
   stepKey?: 'category' | 'subcategory' | 'title' | 'location' | 'photos' | 'features' | 'pricing' | 'contact' | 'preview';
-  photoTransferSessionId?: string;
 };
 type AuthReturnContext = {
   view: AppView;
@@ -108,8 +107,7 @@ const readCreateWizardDeepLink = (): CreateWizardDeepLink | null => {
   return {
     category: params.get('category') || undefined,
     subCategory: params.get('subcategory') || undefined,
-    stepKey: stepKey || undefined,
-    photoTransferSessionId: params.get('photoTransferSession') || undefined
+    stepKey: stepKey || undefined
   };
 };
 

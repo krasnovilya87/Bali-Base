@@ -460,33 +460,6 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     );
   };
 
-  const applyTransferredPhotos = (payload: {
-    photoUrls: string[];
-    realPhotoUrls: string[];
-    photoSlotAssignments: Record<string, string[]>;
-  }) => {
-    const incomingUrls = Array.from(new Set(payload.photoUrls));
-    const incomingUrlSet = new Set(incomingUrls);
-
-    setPhotoUrls(prev => Array.from(new Set([...prev, ...incomingUrls])));
-    setRealPhotoUrls(prev => Array.from(new Set([
-      ...prev,
-      ...payload.realPhotoUrls.filter(url => incomingUrlSet.has(url))
-    ])));
-    setPhotoSlotAssignments(prev => {
-      const next: Partial<Record<PhotoSlotId, string[]>> = {};
-      activePhotoSlotConfig.forEach(slot => {
-        const currentUrls = (prev[slot.id] || []).filter(url => !incomingUrlSet.has(url));
-        const transferredUrls = (payload.photoSlotAssignments[slot.id] || [])
-          .filter(url => incomingUrlSet.has(url));
-        const combined = [...currentUrls, ...transferredUrls].slice(-slot.maxCount);
-        if (combined.length) next[slot.id] = combined;
-      });
-      return next;
-    });
-    uploadSequenceRef.current += incomingUrls.length;
-  };
-
   return {
     photoUrls,
     realPhotoUrls,
@@ -520,7 +493,6 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'gallery'),
     openCameraForSlot,
     uploadCameraPhotoForSlot,
-    applyTransferredPhotos,
     handleRemovePhoto,
     setMainPhoto
   };
