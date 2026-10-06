@@ -2088,7 +2088,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => scrollL2Menu(-1)}
-                  className="absolute left-1.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:left-6"
+                  className="absolute left-1.5 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:left-6 md:flex"
                   aria-label={tr('menu.scrollSubcategoriesLeft')}
                 >
                   <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
@@ -2098,7 +2098,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => scrollL2Menu(1)}
-                  className="absolute right-7 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:right-6"
+                  className="absolute right-7 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#D7DFDD] bg-white/95 text-[#1E293B] shadow-[0_3px_12px_rgba(15,23,42,0.14)] transition hover:border-[#FF7A50] hover:text-[#FF7A50] active:scale-95 sm:right-6 md:flex"
                   aria-label={tr('menu.scrollSubcategoriesRight')}
                 >
                   <ChevronRight className="h-4 w-4" strokeWidth={2.25} />

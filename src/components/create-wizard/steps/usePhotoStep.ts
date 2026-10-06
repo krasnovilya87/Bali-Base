@@ -283,6 +283,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           errorMessage: error instanceof Error ? error.message : String(error)
         };
         console.error('ImageKit upload failed', diagnostic, error);
+        setUploadError(diagnostic.errorMessage);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         // A local object URL is only a temporary preview. Remove it so a
         // failed conversion/upload can never be written to the listing.
@@ -402,6 +403,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           errorMessage: error instanceof Error ? error.message : String(error)
         };
         console.error('ImageKit upload failed', diagnostic, error);
+        setUploadError(diagnostic.errorMessage);
         photoErrorsRef.current.set(localPreviewUrl, diagnostic.errorMessage);
         setPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));
         setRealPhotoUrls(prev => prev.filter(url => url !== localPreviewUrl));

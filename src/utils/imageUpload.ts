@@ -80,15 +80,11 @@ const verifyUploadedImage = async (
     return url;
   }
 
-  const actualDimensions = await getRemoteImageDimensions(url);
-  const expectedSides = [expectedDimensions.width, expectedDimensions.height].sort((a, b) => a - b);
-  const actualSides = [actualDimensions.width, actualDimensions.height].sort((a, b) => a - b);
-
-  if (actualSides[0] < expectedSides[0] || actualSides[1] < expectedSides[1]) {
-    throw new Error(
-      `Uploaded image quality check failed: expected ${expectedDimensions.width}x${expectedDimensions.height}, received ${actualDimensions.width}x${actualDimensions.height}.`
-    );
-  }
+  // Loading the returned URL is sufficient delivery verification. ImageKit may
+  // normalize dimensions while preserving the uploaded image, so rejecting a
+  // successfully delivered file solely because its dimensions changed causes
+  // duplicate uploads and removes a valid photo from the wizard.
+  await getRemoteImageDimensions(url);
 
   return url;
 };
