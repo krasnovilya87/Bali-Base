@@ -23,8 +23,6 @@ type UsePhotoStepParams = {
   };
 };
 
-type PhotoUploadSource = 'camera' | 'gallery' | 'files';
-
 type PhotoUploadDiagnostic = {
   fileName: string;
   fileType: string;
@@ -166,9 +164,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const [isPreparingPhotoPreview, setIsPreparingPhotoPreview] = useState(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const cameraTargetSlotIdRef = useRef<PhotoSlotId | null>(null);
   const isUploading = activeUploadCount > 0;
 
   const beginUpload = () => setActiveUploadCount(count => count + 1);
@@ -253,16 +249,12 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     return `${nameParts.join('-')}.${getUploadExtension(image, originalFile)}`;
   };
 
-  const uploadPhotoToStorage = (file: File, source: PhotoUploadSource = 'files', batchOffset = 0) => {
+  const uploadPhotoToStorage = (file: File, batchOffset = 0) => {
     if (!isPhotoWithinSizeLimit(file)) return;
 
-    const preferredSlotId = source === 'camera' ? cameraTargetSlotIdRef.current : null;
     const localPreviewUrl = URL.createObjectURL(file);
     setPhotoUrls(prev => [...prev, localPreviewUrl]);
-    if (source === 'camera') {
-      setRealPhotoUrls(prev => prev.includes(localPreviewUrl) ? prev : [...prev, localPreviewUrl]);
-    }
-    assignUploadedPhoto(localPreviewUrl, preferredSlotId);
+    assignUploadedPhoto(localPreviewUrl);
 
     return trackPhotoUpload((async () => {
       beginUpload();
@@ -332,7 +324,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       try {
         await waitForPreviewIndicatorPaint();
         for (const [index, file] of (files as File[]).entries()) {
-          void uploadPhotoToStorage(file, 'files', index);
+          void uploadPhotoToStorage(file, index);
         }
       } finally {
         setIsPreparingPhotoPreview(false);
@@ -340,7 +332,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     }
   };
 
-  const handleFileChoose = async (e: React.ChangeEvent<HTMLInputElement>, source: PhotoUploadSource = 'files') => {
+  const handleFileChoose = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const files = Array.from(e.target.files as any).filter((file: any) => file.type.startsWith('image/'));
       if (!files.length) {
@@ -351,21 +343,13 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
       try {
         await waitForPreviewIndicatorPaint();
         for (const [index, file] of (files as File[]).entries()) {
-          void uploadPhotoToStorage(file, source, index);
+          void uploadPhotoToStorage(file, index);
         }
       } finally {
         setIsPreparingPhotoPreview(false);
-        if (source === 'camera') {
-          cameraTargetSlotIdRef.current = null;
-        }
         e.target.value = '';
       }
     }
-  };
-
-  const openCameraForSlot = (slotId?: PhotoSlotId) => {
-    cameraTargetSlotIdRef.current = slotId || null;
-    cameraInputRef.current?.click();
   };
 
   const replacePhotoUrl = (fromUrl: string, toUrl: string) => {
@@ -492,14 +476,11 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     waitForPhotoUploads,
     dragActive,
     fileInputRef,
-    cameraInputRef,
     galleryInputRef,
     handleDrag,
     handleDrop,
     handleFileChoose,
-    handleCameraChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'camera'),
-    handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => handleFileChoose(event, 'gallery'),
-    openCameraForSlot,
+    handleGalleryChoose: handleFileChoose,
     uploadCameraPhotoForSlot,
     handleRemovePhoto,
     setMainPhoto

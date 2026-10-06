@@ -17,12 +17,9 @@ type StepPhotosProps = {
   handleDrag: (event: React.DragEvent) => void;
   handleDrop: (event: React.DragEvent) => MaybePromise<void>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
-  cameraInputRef: React.RefObject<HTMLInputElement | null>;
   galleryInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
-  handleCameraChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
   handleGalleryChoose: (event: React.ChangeEvent<HTMLInputElement>) => MaybePromise<void>;
-  openCameraForSlot: (slotId?: PhotoSlotId) => void;
   uploadCameraPhotoForSlot: (file: File, slotId?: PhotoSlotId | null) => MaybePromise<void>;
   isUploading: boolean;
   isPreparingPhotoPreview: boolean;
@@ -67,12 +64,9 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   handleDrag,
   handleDrop,
   fileInputRef,
-  cameraInputRef,
   galleryInputRef,
   handleFileChoose,
-  handleCameraChoose,
   handleGalleryChoose,
-  openCameraForSlot,
   uploadCameraPhotoForSlot,
   isUploading,
   isPreparingPhotoPreview,
@@ -317,14 +311,6 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
     <div className="space-y-4 animate-fade-in">
       {isScooterPhotoFlow && isPhoneUploadDevice ? (
         <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            ref={cameraInputRef}
-            onChange={handleCameraChoose}
-            className="hidden"
-          />
           <input
             type="file"
             multiple
