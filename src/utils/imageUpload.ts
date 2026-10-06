@@ -1,6 +1,8 @@
 import { getFirebaseRequestHeaders } from './firebaseRequestHeaders';
 
-const IMAGEKIT_WORKER_UPLOAD_ENDPOINT = 'https://media.balibase.id/upload';
+const IMAGEKIT_WORKER_UPLOAD_ENDPOINT = import.meta.env.DEV
+  ? '/api/image-upload/imagekit'
+  : 'https://media.balibase.id/upload';
 
 type ImageKitProxyResponse = {
   ok?: boolean;
