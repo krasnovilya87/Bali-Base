@@ -1,28 +1,17 @@
 import type { Router } from 'express';
 import express from 'express';
 import { LanguageCode } from '../../i18n';
-import { adminAuth } from '../firebaseAdmin';
+import { rateLimit, requireAuth } from '../security';
 import { translateTextWithGemini } from './service';
 
 const LANGUAGE_CODES = new Set<LanguageCode>(['EN', 'ID', 'RU', 'FR', 'DE']);
-
-const getBearerToken = (authorizationHeader?: string) => {
-  const match = authorizationHeader?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] || '';
-};
+const MAX_TRANSLATION_TEXT_LENGTH = 5_000;
 
 export const createAiTranslationRouter = (): Router => {
   const router = express.Router();
 
-  router.post('/translate', async (req, res) => {
+  router.post('/translate', requireAuth, rateLimit({ scope: 'ai-translation', windowMs: 60 * 60 * 1000, max: 30 }), async (req, res) => {
     try {
-      const token = getBearerToken(req.headers.authorization);
-      if (!token) {
-        res.status(401).json({ ok: false, error: 'Sign in is required before AI translation.' });
-        return;
-      }
-
-      await adminAuth.verifyIdToken(token);
       const {
         text,
         language
@@ -33,6 +22,11 @@ export const createAiTranslationRouter = (): Router => {
 
       if (!text?.trim()) {
         res.status(400).json({ error: 'text is required' });
+        return;
+      }
+
+      if (text.length > MAX_TRANSLATION_TEXT_LENGTH) {
+        res.status(413).json({ error: `text must not exceed ${MAX_TRANSLATION_TEXT_LENGTH} characters` });
         return;
       }
 

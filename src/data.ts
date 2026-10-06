@@ -791,6 +791,8 @@ export const MOCK_BOOKINGS: BookingRequest[] = [
   {
     id: 'bk-1',
     listingId: 'house-1',
+    guestId: 'mock-guest-1',
+    listingOwnerId: 'owner-1',
     listingTitle: 'Wayan Guesthouse & Boho Villa Premium',
     listingImage: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=100&fit=crop&q=80',
     listingCategory: 'housing',
@@ -806,6 +808,8 @@ export const MOCK_BOOKINGS: BookingRequest[] = [
   {
     id: 'bk-2',
     listingId: 'house-2',
+    guestId: 'mock-guest-2',
+    listingOwnerId: 'owner-1',
     listingTitle: 'Ubud Jungle Sanctuary Bamboo Bungalow',
     listingImage: 'https://images.unsplash.com/photo-1546548970-71785318a17b?w=100&fit=crop&q=80',
     listingCategory: 'housing',
@@ -821,6 +825,8 @@ export const MOCK_BOOKINGS: BookingRequest[] = [
   {
     id: 'bk-3',
     listingId: 'trans-1',
+    guestId: 'mock-guest-3',
+    listingOwnerId: 'owner-1',
     listingTitle: 'Yamaha NMAX 2023 Premium Black Edition',
     listingImage: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=100&fit=crop&q=80',
     listingCategory: 'transport',

@@ -176,7 +176,7 @@ input[type="range"]::-moz-range-thumb:hover {
 html,
 #root {
   background-color: transparent;
-  background-image: url("/cover-hero.jpg");
+  background-image: url("/assets/images/site/cover-hero.jpg");
   background-position: center 44%;
   background-repeat: no-repeat;
   background-size: cover;
@@ -189,7 +189,7 @@ body {
   margin: 0;
   padding: 0;
   background-color: transparent;
-  background-image: url("/cover-hero.jpg");
+  background-image: url("/assets/images/site/cover-hero.jpg");
   background-position: center 44%;
   background-repeat: no-repeat;
   background-size: cover;

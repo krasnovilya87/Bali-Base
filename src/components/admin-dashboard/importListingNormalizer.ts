@@ -193,7 +193,7 @@ export function normalizeHousingListingForImport(item: Record<string, any>, inde
     reviews: Array.isArray(item.reviews) ? item.reviews : [],
     isApproved: typeof item.isApproved === 'boolean' ? item.isApproved : true,
     isVerified: typeof item.isVerified === 'boolean' ? item.isVerified : false,
-    isNew: isListingFresh({ yearBuilt: normalizedYearBuilt, yearRenovated: normalizedYearRenovated }),
+    isNew: isListingFresh({ category: 'housing', yearBuilt: normalizedYearBuilt, yearRenovated: normalizedYearRenovated }),
     status: item.status || 'active',
     pricePerDay,
     pricePerMonth: toNumber(item.pricePerMonth ?? item.monthlyPrice ?? item.price_per_month) || undefined,

@@ -14,8 +14,6 @@ import {
   TRANSPORT_FOR_RENT_COLLECTION
 } from '../../firebase';
 import { normalizeHousingListingForImport } from '../../components/admin-dashboard/importListingNormalizer';
-import { moderateListing } from '../../utils/aiModerationClient';
-import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
 import {
   applyGoogleReviewsCacheToListing,
@@ -24,9 +22,7 @@ import {
 } from '../../utils/googlePlacesReviewsClient';
 import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
-import { t } from '../../i18n';
 import { deleteListingFromAiSearch, indexListingForAiSearch } from '../../utils/aiSearchClient';
-import { getAfishaExpirationDate } from '../../config/eventSpecial';
 
 const getListingCollection = (listing: Listing) =>
   listing.category === 'transport' ? TRANSPORT_FOR_RENT_COLLECTION : LISTINGS_COLLECTION;
@@ -123,14 +119,19 @@ const getStoredMenuOverrides = () => {
 };
 
 export const useListingsData = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [menuOverrides, setMenuOverrides] = useState<any>(() => getStoredMenuOverrides());
 
   useEffect(() => {
     const loaded = getStoredData();
-    const loadedBookings = loaded.bookings.filter(isBookingStored);
+    const loadedBookings = user
+      ? loaded.bookings.filter(booking =>
+          isBookingStored(booking) &&
+          (isAdmin || booking.guestId === user.uid || booking.listingOwnerId === user.uid)
+        )
+      : [];
     setListings(filterDeletedListings(mergeFirebaseListingsWithStaticListings(loaded.listings)));
     setBookings(loadedBookings);
 
@@ -138,7 +139,12 @@ export const useListingsData = () => {
       await testConnection();
       let syncPassed = false;
       try {
-        const synced = await syncWithFirebase();
+        const synced = await syncWithFirebase(user ? {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          isAdmin
+        } : undefined);
         const syncedListings = mergeFirebaseListingsWithStaticListings(synced.listings);
         const visibleListings = filterDeletedListings(
           await mergeGoogleReviewsCacheIntoListings(syncedListings)
@@ -167,7 +173,7 @@ export const useListingsData = () => {
       }
     };
     initFirebase();
-  }, []);
+  }, [user?.uid, user?.email, user?.emailVerified, isAdmin]);
 
   const saveUpdatedState = (newListings: Listing[], newBookings: BookingRequest[]) => {
     const newVisibleBookings = newBookings.filter(isBookingStored);
@@ -363,52 +369,22 @@ export const useListingsData = () => {
       newListing,
       listings.filter(listing => listing.id !== newListing.id).map(listing => listing.id)
     );
-    let moderatedListing = newListing;
-    try {
-      const aiModeration = await moderateListing({ ...newListing, id: listingId });
-      const failedCheck = aiModeration.checks.find(check => !check.passed);
-      const failedRule = failedCheck
-        ? AI_MODERATION_RULES.find(rule => rule.id === failedCheck.id)
-        : undefined;
-      const rejectionReason = failedRule
-        ? t('EN', failedRule.rejectionReasonKey)
-        : t('EN', 'admin.reject.reason.other');
-      const requiresManualReview = (newListing.category === 'life' && newListing.subCategory === 'life_warnings')
-        || (newListing.category === 'afisha' && newListing.subCategory === 'afisha_warnings');
-      const shouldPublish = aiModeration.status === 'passed' && !requiresManualReview;
-      moderatedListing = {
-        ...newListing,
-        aiModeration,
-        isApproved: shouldPublish,
-        isVerified: newListing.isVerified ?? false,
-        status: shouldPublish ? 'active' : 'moderation',
-        expirationDate: newListing.category === 'afisha'
-          ? shouldPublish ? getAfishaExpirationDate(newListing.classifiedAttributes?.afisha_publication_term) : undefined
-          : newListing.expirationDate,
-        rejectionReason: aiModeration.status === 'passed' ? undefined : rejectionReason,
-        rejectionComment: undefined
-      };
-    } catch (error) {
-      console.warn('AI moderation failed; listing was sent to manual review.', error);
-      moderatedListing = {
-        ...newListing,
-        aiModeration: {
-          status: 'error',
-          checkedAt: new Date().toISOString(),
-          checks: []
-        },
-        isApproved: false,
-        isVerified: newListing.isVerified ?? false,
-        status: 'moderation',
-        expirationDate: newListing.category === 'afisha' ? undefined : newListing.expirationDate
-      };
-    }
+    const listingPendingReview: Listing = {
+      ...newListing,
+      aiModeration: undefined,
+      isApproved: false,
+      isVerified: newListing.isVerified ?? false,
+      status: 'moderation',
+      expirationDate: newListing.category === 'afisha' ? undefined : newListing.expirationDate,
+      rejectionReason: undefined,
+      rejectionComment: undefined
+    };
 
     onProgress?.('saving');
     let listingForSave = sanitizeListingForFirestore({
-      ...moderatedListing,
+      ...listingPendingReview,
       id: listingId,
-      ownerId: user?.uid || moderatedListing.ownerId
+      ownerId: user?.uid || listingPendingReview.ownerId
     }) as Listing;
     const exists = listings.some(listing => listing.id === newListing.id);
     if (exists && listingForSave.id !== newListing.id) {

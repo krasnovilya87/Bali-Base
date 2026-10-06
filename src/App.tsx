@@ -57,8 +57,7 @@ const AUTH_RETURN_VIEW_STORAGE_KEY = 'bali_base_auth_return_view';
 const AUTH_RETURN_CONTEXT_STORAGE_KEY = 'bali_base_auth_return_context';
 const INITIAL_VIEW_STORAGE_KEY = 'bali_base_initial_view';
 const ADMIN_ROUTE = '/adm';
-const ADMIN_EMAILS = ['krasnovilya87@gmail.com'];
-const SINGLE_SELECT_L2_CATEGORIES = new Set(['services', 'ads', 'life', 'investments', 'useful']);
+const SINGLE_SELECT_L2_CATEGORIES = new Set(['transport', 'services', 'ads', 'life', 'investments', 'useful']);
 
 type AppView = 'cover' | 'menu' | 'app';
 type CreateWizardDeepLink = {
@@ -139,7 +138,12 @@ const getDefaultFilters = (): FilterState => ({
   viewType: [],
   extraOptions: [],
   engineSize: [],
+  vehicleEngineDisplacementMin: 100,
+  vehicleEngineDisplacementMax: 1900,
   transmission: [],
+  vehicleDriverOption: [],
+  vehicleFuelType: [],
+  vehicleLuggageCapacity: [],
   vehicleBrand: [],
   vehicleModel: [],
   vehicleColor: [],
@@ -149,6 +153,13 @@ const getDefaultFilters = (): FilterState => ({
   sellerType: [],
   keylessOnly: false,
   absOnly: false,
+  airbagOnly: false,
+  rearCameraOnly: false,
+  parkingSensorsOnly: false,
+  sunroofOnly: false,
+  leatherInteriorOnly: false,
+  childSeatOnly: false,
+  roofRackOnly: false,
   surfRackOnly: false,
   insuranceOnly: false,
   freeDeliveryToAddressOnly: false,
@@ -321,11 +332,8 @@ const readIsAdminRoute = () => {
   return window.location.pathname.replace(/\/+$/, '') === ADMIN_ROUTE;
 };
 
-const isAdminEmail = (email?: string | null) =>
-  Boolean(email && ADMIN_EMAILS.includes(email.trim().toLowerCase()));
-
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(readInitialView);
   const [isAdminRoute, setIsAdminRoute] = useState(readIsAdminRoute);
   const {
@@ -414,7 +422,7 @@ export default function App() {
   const footerRef = useRef<HTMLElement | null>(null);
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
   const mapFrameRef = useRef({ top: 154, height: 420 });
-  const isCurrentUserAdmin = isAdminEmail(user?.email);
+  const isCurrentUserAdmin = isAdmin;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -938,6 +946,11 @@ export default function App() {
     }
     if (isMapFullscreen) {
       setIsMapFullscreen(false);
+      setIsMapSelectionActive(false);
+      if (returnToFiltersAfterDeliveryPoint) {
+        setReturnToFiltersAfterDeliveryPoint(false);
+        setShowFiltersModal(true);
+      }
       return;
     }
     if (showFiltersModal) {
@@ -2027,6 +2040,7 @@ export default function App() {
                   const displayLabel = tr(`subcategory.${sub.id}`);
                   const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon;
                   const displayCustomImage = getMenuSubcategoryImage(sub, menuOverrides);
+                  const usesEmojiIcon = currentL1 === 'life' || (currentL1 === 'useful' && !displayCustomImage);
                   const isSelected = currentL1 === 'ads'
                     ? activeAdsL2 === sub.id
                     : currentL2.includes(sub.id);
@@ -2040,7 +2054,7 @@ export default function App() {
                         : 'font-light text-gray-400 hover:text-gray-500'
                         }`}
                     >
-                      {displayCustomImage ? (
+                      {displayCustomImage && !usesEmojiIcon ? (
                         <div className={`w-11 h-11 flex items-center justify-center shrink-0 overflow-hidden rounded-lg transition duration-200 ${isSelected ? '' : 'grayscale opacity-55'}`}>
                           <img
                             src={displayCustomImage}
@@ -2049,12 +2063,14 @@ export default function App() {
                             referrerPolicy="no-referrer"
                           />
                         </div>
-                      ) : (
+                      ) : usesEmojiIcon ? (
                         <ThreeDIcon
                           emoji={displayIcon}
                           size={38}
                           className={`transition duration-200 hover:scale-[1.04] ${isSelected ? '' : 'grayscale opacity-45'}`}
                         />
+                      ) : (
+                        <div className="w-11 h-11 shrink-0" aria-hidden="true" />
                       )}
                       <span className="min-w-0 w-full text-xs font-sans leading-tight block">
                         {displayLabel}
@@ -2466,6 +2482,10 @@ export default function App() {
                           setShowListingMap(false);
                           setIsMapFullscreen(false);
                           setIsMapSelectionActive(false);
+                          if (returnToFiltersAfterDeliveryPoint) {
+                            setReturnToFiltersAfterDeliveryPoint(false);
+                            setShowFiltersModal(true);
+                          }
                           if (returnToBookingAfterDeliveryPoint) {
                             setReturnToBookingAfterDeliveryPoint(false);
                             setTransportBookingReturnToken(token => token + 1);
@@ -2537,7 +2557,7 @@ export default function App() {
                           setSelectionFitRequest(request => request + 1);
                           if (returnToFiltersAfterDeliveryPoint) {
                             setReturnToFiltersAfterDeliveryPoint(false);
-                            window.setTimeout(() => setShowFiltersModal(true), 120);
+                            setShowFiltersModal(true);
                           }
                           if (returnToBookingAfterDeliveryPoint) {
                             setReturnToBookingAfterDeliveryPoint(false);
@@ -2558,9 +2578,6 @@ export default function App() {
 
             <footer ref={footerRef} className="shrink-0 bg-white border-t border-[#E5E7EB] text-center mt-auto font-sans text-xs text-gray-400 select-none py-8">
               <div className="max-w-7xl mx-auto px-4 space-y-3">
-                <p className="max-w-md mx-auto leading-relaxed whitespace-pre-line">
-                  {tr('footer.body')}
-                </p>
                 <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-gray-500 font-semibold sm:gap-x-10">
                   <a href="/faq.html" className="transition hover:text-[#FF7A50]">
                     {tr('footer.faq')}

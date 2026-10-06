@@ -4,6 +4,7 @@ import { useI18n } from '../../../i18nContext';
 import PhotoCategoryPanel from '../PhotoCategoryPanel';
 import Del from '../../Del';
 import {
+  getPhotoSlotOverlayBackgroundStyle,
   PhotoSlotConfig,
   PhotoSlotId
 } from '../constants';
@@ -48,6 +49,7 @@ type StepPhotosProps = {
   activePhotoSlotConfig: PhotoSlotConfig[];
   requiredPhotoSlots: PhotoSlotConfig[];
   optionalPhotoSlots: PhotoSlotConfig[];
+  isCarPhotoFlow: boolean;
   isScooterPhotoFlow: boolean;
   isServicePhotoFlow?: boolean;
   setDraggedPhotoSlotId: React.Dispatch<React.SetStateAction<PhotoSlotId | null>>;
@@ -82,6 +84,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   activePhotoSlotConfig,
   requiredPhotoSlots,
   optionalPhotoSlots,
+  isCarPhotoFlow,
   isScooterPhotoFlow,
   isServicePhotoFlow = false,
   setDraggedPhotoSlotId,
@@ -338,7 +341,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
               className="flex min-h-16 w-full items-center justify-center gap-3 rounded-[1.35rem] bg-[#FF7A50] px-6 py-5 text-base font-black text-white shadow-[0_18px_36px_rgba(255,122,80,0.26)] transition active:scale-[0.99] disabled:opacity-60"
             >
               <Camera className="h-6 w-6" />
-              {tr('wizard.photos.takeBikePhoto')}
+              {tr(isCarPhotoFlow ? 'wizard.photos.takeCarPhoto' : 'wizard.photos.takeBikePhoto')}
             </button>
             <button
               type="button"
@@ -418,14 +421,20 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
                 autoPlay
               />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_58%,rgba(2,6,23,0.34)_100%)]" />
-              {activeCameraSlot.cameraOverlayImage && (
+              {activeCameraSlot.cameraOverlayGrid ? (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-4 right-4 top-1/2 aspect-[3/2] -translate-y-1/2 bg-white opacity-90 mix-blend-multiply drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)]"
+                  style={getPhotoSlotOverlayBackgroundStyle(activeCameraSlot)}
+                />
+              ) : activeCameraSlot.cameraOverlayImage ? (
                 <img
                   src={activeCameraSlot.cameraOverlayImage}
                   alt=""
                   aria-hidden="true"
                   className={`absolute inset-0 h-full w-full object-contain p-4 opacity-90 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)] ${activeCameraSlot.cameraOverlayMirror ? '-scale-x-100' : ''}`}
                 />
-              )}
+              ) : null}
               {captureFeedbackKey > 0 && (
                 <div
                   key={`scooter-camera-flash-${captureFeedbackKey}`}

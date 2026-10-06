@@ -28,8 +28,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn()
-        && request.auth.token.email is string
-        && request.auth.token.email in ['krasnovilya87@gmail.com'];
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
     }
 
     function isValidListing(data) {
@@ -37,22 +37,37 @@ service cloud.firestore {
         && data.ownerId is string && data.ownerId.size() <= 128
         && data.category is string && data.category.size() <= 64
         && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 10000
         && data.district is string && data.district.size() <= 64
+        && data.images is list && data.images.size() <= 20
         && data.status is string && (data.status == 'active' || data.status == 'paused' || data.status == 'draft' || data.status == 'moderation' || data.status == 'rejected')
-        && (data.pricePerDay is int || data.pricePerDay is float) && data.pricePerDay >= 0;
+        && (data.pricePerDay is int || data.pricePerDay is float) && data.pricePerDay >= 0 && data.pricePerDay <= 1000000000000000;
     }
 
     function isManualReviewWarning(data) {
-      return (data.category == 'life' && data.subCategory == 'life_warnings')
-        || (data.category == 'afisha' && data.subCategory == 'afisha_warnings');
-    }
+  return 'subCategory' in data
+    && ((data.category == 'life' && data.subCategory == 'life_warnings')
+      || (data.category == 'afisha' && data.subCategory == 'afisha_warnings'));
+}
 
     function canOwnerCreateListing(data) {
-      return !isManualReviewWarning(data) || (data.status == 'moderation' && data.isApproved == false);
+      return data.isApproved == false
+        && (!('isVerified' in data) || data.isVerified == false)
+        && !('adminEditLocked' in data)
+        && !('adminEditedAt' in data)
+        && !('adminEditedBy' in data)
+        && (!isManualReviewWarning(data) || data.status == 'moderation');
     }
 
     function canOwnerUpdateListing(before, after) {
       return (!('adminEditLocked' in before) || before.adminEditLocked != true)
+        && !after.diff(before).affectedKeys().hasAny([
+          'isApproved',
+          'isVerified',
+          'adminEditLocked',
+          'adminEditedAt',
+          'adminEditedBy'
+        ])
         && (!isManualReviewWarning(before) && canOwnerCreateListing(after)
           || isManualReviewWarning(before) && isManualReviewWarning(after) && after.status == 'moderation' && after.isApproved == false);
     }
@@ -65,38 +80,103 @@ service cloud.firestore {
     function isValidBookingRequest(data) {
       return data.id is string && data.id.size() <= 128
         && data.listingId is string && data.listingId.size() <= 128
+        && data.guestId is string && data.guestId.size() <= 128
+        && data.listingOwnerId is string && data.listingOwnerId.size() <= 128
         && data.guestName is string && data.guestName.size() <= 128
         && data.guestPhone is string && data.guestPhone.size() <= 64
+        && data.startDate is string && data.startDate.size() <= 32
+        && data.endDate is string && data.endDate.size() <= 32
+        && data.totalDays is int && data.totalDays > 0 && data.totalDays <= 366
         && data.status is string && (data.status == 'pending' || data.status == 'accepted' || data.status == 'declined')
-        && (data.totalPrice is int || data.totalPrice is float) && data.totalPrice >= 0;
+        && (data.totalPrice is int || data.totalPrice is float) && data.totalPrice >= 0 && data.totalPrice <= 1000000000000000;
+    }
+
+    function bookingListingOwnerMatches(listingId, ownerId) {
+      return (exists(/databases/$(database)/documents/housing_for_rent_listing/$(listingId))
+          && get(/databases/$(database)/documents/housing_for_rent_listing/$(listingId)).data.ownerId == ownerId)
+        || (exists(/databases/$(database)/documents/transport_for_rent/$(listingId))
+          && get(/databases/$(database)/documents/transport_for_rent/$(listingId)).data.ownerId == ownerId)
+        || (exists(/databases/$(database)/documents/listings/$(listingId))
+          && get(/databases/$(database)/documents/listings/$(listingId)).data.ownerId == ownerId);
+    }
+
+    function isValidListingReview(data, listingId, reviewId) {
+      return data.id == reviewId
+        && data.listingId == listingId
+        && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 128
+        && data.avatar is string && data.avatar.size() <= 2048
+        && (data.rating is int || data.rating is float) && data.rating >= 1 && data.rating <= 5
+        && data.text is string && data.text.size() >= 3 && data.text.size() <= 2000
+        && data.date is string
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    function isHousingListingId(listingId) {
+      return (exists(/databases/$(database)/documents/housing_for_rent_listing/$(listingId))
+          && get(/databases/$(database)/documents/housing_for_rent_listing/$(listingId)).data.category == 'housing')
+        || (exists(/databases/$(database)/documents/listings/$(listingId))
+          && get(/databases/$(database)/documents/listings/$(listingId)).data.category == 'housing');
     }
 
     match /listings/{listingId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
       allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
-      allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
+      allow delete: if isSignedIn() && isValidId(listingId) && (isOwner(existing().ownerId) || isAdmin());
     }
 
     match /housing_for_rent_listing/{listingId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
       allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
-      allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
+      allow delete: if isSignedIn() && isValidId(listingId) && (isOwner(existing().ownerId) || isAdmin());
     }
 
     match /transport_for_rent/{listingId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && isOwner(incoming().ownerId) && canOwnerCreateListing(incoming());
       allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && canUpdateListing(existing(), incoming());
-      allow delete: if isSignedIn() && isValidId(listingId) && isOwner(existing().ownerId);
+      allow delete: if isSignedIn() && isValidId(listingId) && (isOwner(existing().ownerId) || isAdmin());
     }
 
     match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (isOwner(existing().guestId) || isOwner(existing().listingOwnerId) || isAdmin());
+      allow create: if isSignedIn()
+        && isValidId(bookingId)
+        && isValidBookingRequest(incoming())
+        && isOwner(incoming().guestId)
+        && bookingListingOwnerMatches(incoming().listingId, incoming().listingOwnerId);
+      allow update: if isSignedIn()
+        && isValidId(bookingId)
+        && isValidBookingRequest(incoming())
+        && (isAdmin() || isOwner(existing().listingOwnerId))
+        && incoming().guestId == existing().guestId
+        && incoming().listingOwnerId == existing().listingOwnerId
+        && incoming().listingId == existing().listingId
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status',
+          'paymentStatus',
+          'depositAmount',
+          'roomIndex',
+          'roomNumber',
+          'comment',
+          'declinedAt',
+          'statusChangedAt'
+        ]);
+      allow delete: if isSignedIn()
+        && isValidId(bookingId)
+        && (isOwner(existing().guestId) || isOwner(existing().listingOwnerId) || isAdmin());
+    }
+
+    match /listing_reviews/{listingId}/items/{reviewId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidId(bookingId) && isValidBookingRequest(incoming());
-      allow update: if isSignedIn() && isValidId(bookingId) && isValidBookingRequest(incoming());
-      allow delete: if isSignedIn() && isValidId(bookingId);
+      allow create, update: if isSignedIn()
+        && reviewId == request.auth.uid
+        && !isHousingListingId(listingId)
+        && isValidListingReview(incoming(), listingId, reviewId);
+      allow delete: if isSignedIn() && reviewId == request.auth.uid;
     }
 
     match /users/{userId} {
@@ -127,30 +207,27 @@ service cloud.firestore {
     }
 
     match /auth_email_providers/{emailKey} {
-      allow read: if true;
-      allow create, update: if isSignedIn()
-        && incoming().uid == request.auth.uid
-        && incoming().email is string
-        && incoming().email.size() <= 254;
-      allow delete: if false;
+      allow read, write: if false;
     }
 
     match /configs/{configId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /google_places_review_cache/{listingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
     }
 
     match /google_places_api_usage/{monthKey} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /google_places_api_request_log/{logId} {
-      allow read, write: if true;
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

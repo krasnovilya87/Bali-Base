@@ -1,4 +1,10 @@
 import { initializeApp } from 'firebase/app';
+import {
+  getToken as getAppCheckToken,
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  type AppCheck
+} from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
 import { 
   initializeFirestore, 
@@ -21,6 +27,24 @@ import firebaseConfig from './config/firebaseConfig';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const appCheckSiteKey = String((import.meta as any).env?.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY || '').trim();
+
+if ((import.meta as any).env?.DEV && appCheckSiteKey) {
+  (globalThis as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
+export const appCheck: AppCheck | null = appCheckSiteKey
+  ? initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true
+    })
+  : null;
+
+export const getCurrentAppCheckToken = async () => {
+  if (!appCheck) return '';
+  return (await getAppCheckToken(appCheck, false)).token;
+};
+
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({})
 }, (firebaseConfig as any).firestoreDatabaseId); /* CRITICAL: The app will break without this line */
@@ -256,7 +280,32 @@ export async function deleteDocument(path: string, docId: string): Promise<void>
   }
 }
 
-export async function syncWithFirebase(): Promise<{ listings: any[], bookings: any[] }> {
+type FirebaseSyncUser = {
+  uid: string;
+  email?: string | null;
+  emailVerified?: boolean;
+  isAdmin?: boolean;
+};
+
+const isAdminSyncUser = (user: FirebaseSyncUser) => user.isAdmin === true;
+
+const getBookingsForUser = async (user?: FirebaseSyncUser) => {
+  if (!user) return [];
+  if (isAdminSyncUser(user)) return getCollection('bookings');
+
+  const bookingsRef = collection(db, 'bookings');
+  const snapshots = await Promise.all([
+    getDocsFromServer(query(bookingsRef, where('guestId', '==', user.uid))),
+    getDocsFromServer(query(bookingsRef, where('listingOwnerId', '==', user.uid)))
+  ]);
+  const bookings = new Map<string, any>();
+  snapshots.forEach(snapshot => {
+    snapshot.docs.forEach(booking => bookings.set(booking.id, { id: booking.id, ...booking.data() }));
+  });
+  return Array.from(bookings.values());
+};
+
+export async function syncWithFirebase(user?: FirebaseSyncUser): Promise<{ listings: any[], bookings: any[] }> {
   const firebaseListingsByCollection = await Promise.all(
     LISTING_COLLECTIONS.map(async collectionPath => {
       try {
@@ -274,7 +323,7 @@ export async function syncWithFirebase(): Promise<{ listings: any[], bookings: a
     })
   );
   let firebaseListings = firebaseListingsByCollection.flatMap(item => item.listings);
-  const firebaseBookings = await getCollection('bookings');
+  const firebaseBookings = await getBookingsForUser(user);
 
   for (const item of firebaseListingsByCollection) {
     const listingsWithLegacyCoordinates = item.listings.filter(listing =>
@@ -308,6 +357,6 @@ export async function getDailyAuthImageUrl(): Promise<string | null> {
   const daySeed = Array.from(todayKey).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   const dailyImageNumber = imageNumbers[daySeed % imageNumbers.length];
 
-  return `/img_auth/${dailyImageNumber}.webp`;
+  return `/assets/images/auth/${dailyImageNumber}.webp`;
 }
 

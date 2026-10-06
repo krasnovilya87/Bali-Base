@@ -107,10 +107,12 @@ export default function AiSearchRefinementDialog({
 
   const applyArrayFilter = (key: keyof FilterState, value: string) => {
     const current = filters[key];
-    if (!Array.isArray(current) || current.includes(value)) return;
+    if (!Array.isArray(current)) return;
+    const currentValues = current as string[];
+    if (currentValues.includes(value)) return;
     onFiltersChange({
       ...filters,
-      [key]: [...current, value]
+      [key]: [...currentValues, value]
     });
   };
 

@@ -68,11 +68,16 @@ export const INVESTMENT_COMMON_FIELDS: InvestmentField[] = [
   select('ownership_type', ['freehold', 'leasehold']),
   number('leasehold_remaining', 'investments.unit.years'),
   boolean('leasehold_extension'),
-  select('readiness', ['ready', 'under_construction', 'project']),
-  boolean('installment'),
-  boolean('income_property'),
   number('declared_yield', 'investments.unit.percent_year', true),
   number('payback_period', 'investments.unit.years', true),
+  number('current_income', 'investments.unit.idr', true),
+  select('income_period', ['monthly', 'yearly']),
+  number('projected_income', 'investments.unit.idr', true),
+  select('projected_income_period', ['monthly', 'yearly']),
+  select('readiness', ['ready', 'under_construction', 'project']),
+  number('year_built'),
+  boolean('installment'),
+  boolean('income_property'),
   select('seller_type', ['owner', 'agency', 'developer'])
 ];
 
@@ -81,10 +86,10 @@ export const INVESTMENT_FIELDS: Record<string, InvestmentField[]> = {
     number('bedrooms'), number('bathrooms'), number('building_area', 'investments.unit.sqm'),
     number('land_area', 'investments.unit.sqm'), select('pool', ['private', 'shared', 'none']),
     select('furnishing', ['fully_furnished', 'partly_furnished', 'unfurnished']),
-    select('condition', ['ready', 'under_construction', 'needs_renovation']), number('year_built'),
+    select('condition', ['ready', 'under_construction', 'needs_renovation']),
     boolean('parking'), multi('view', ['ocean', 'rice_fields', 'jungle', 'city']),
     boolean('management_company'), boolean('daily_rental_allowed'), number('occupancy', 'investments.unit.percent'),
-    number('average_nightly_rate', 'investments.unit.idr', true), number('current_income', 'investments.unit.idr', true), select('income_period', ['monthly', 'yearly'])
+    number('average_nightly_rate', 'investments.unit.idr', true)
   ],
   commercial_real_estate: [
     number('premises_area', 'investments.unit.sqm'), number('land_area', 'investments.unit.sqm'), number('floors'),

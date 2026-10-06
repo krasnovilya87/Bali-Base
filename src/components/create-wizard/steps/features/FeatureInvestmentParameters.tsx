@@ -44,6 +44,11 @@ const INVESTMENT_VALUE_SPECS: Record<string, RangeSpec> = {
 
 const FALLBACK_VALUE_SPEC: RangeSpec = { min: 0, max: 100, step: 1 };
 const FALLBACK_MONEY_SPEC: RangeSpec = { min: 0, max: 1000000000, step: 1000000 };
+const INCOME_PERIOD_FIELDS: Record<string, string> = {
+  current_income: 'income_period',
+  projected_income: 'projected_income_period'
+};
+const INLINE_PERIOD_FIELD_IDS = new Set(Object.values(INCOME_PERIOD_FIELDS));
 
 export default function FeatureInvestmentParameters({ subCategory, classifiedAttributes, setClassifiedAttributes }: Props) {
   const { tr } = useI18n();
@@ -55,6 +60,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
       if (value === '' || (Array.isArray(value) && value.length === 0)) delete next[fieldId];
       else {
         next[fieldId] = value;
+        if (fieldId === 'ownership_type' && value !== 'leasehold') delete next.leasehold_remaining;
         const field = fields.find(item => item.id === fieldId);
         if (field?.financial && !next[getInvestmentEvidenceFieldId(fieldId)]) {
           next[getInvestmentEvidenceFieldId(fieldId)] = 'seller_declared';
@@ -85,8 +91,15 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
         </div>
       </div>
 
-      {fields.map(field => {
+      {fields.filter(field => {
+        if (INLINE_PERIOD_FIELD_IDS.has(field.id)) return false;
+        if (field.id === 'leasehold_remaining') return classifiedAttributes.ownership_type === 'leasehold';
+        return true;
+      }).map(field => {
         const value = classifiedAttributes[field.id];
+        const periodFieldId = INCOME_PERIOD_FIELDS[field.id];
+        const periodField = periodFieldId ? fields.find(item => item.id === periodFieldId) : undefined;
+        const periodValue = periodFieldId ? classifiedAttributes[periodFieldId] : undefined;
         return (
           <div key={field.id} className={cardClass}>
             {field.type === 'number' && (
@@ -124,6 +137,17 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
                   const active = Array.isArray(value) && value.includes(item.value);
                   return <button key={item.value} type="button" onClick={() => toggleMulti(field.id, item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr(item.labelKey)}</button>;
                 })}
+              </div>
+            )}
+            {periodField && (
+              <div className="space-y-2 pt-1">
+                <span className={labelClass}>{tr(periodField.labelKey)}</span>
+                <div className="flex flex-wrap gap-2">
+                  {(periodField.options || []).map(item => {
+                    const active = periodValue === item.value;
+                    return <button key={item.value} type="button" onClick={() => setValue(periodField.id, item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr(item.labelKey)}</button>;
+                  })}
+                </div>
               </div>
             )}
             {field.financial && value !== undefined && value !== '' && (

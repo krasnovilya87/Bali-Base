@@ -6,3 +6,15 @@ workers_dev = false
 routes = [
   { pattern = "media.balibase.id", custom_domain = true }
 ]
+
+[vars]
+FIREBASE_PROJECT_NUMBER = "516937970438"
+FIREBASE_APP_ID = "1:516937970438:web:0e3fd968cceb55eebd6487"
+
+[[ratelimits]]
+name = "UPLOAD_RATE_LIMITER"
+namespace_id = "516937970438"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60

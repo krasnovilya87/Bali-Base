@@ -4,7 +4,7 @@ import { useI18n } from '../../../../i18nContext';
 type FeatureSectionProps = Record<string, any>;
 
 const FeatureYearBuilt: React.FC<FeatureSectionProps> = (props) => {
-  const { yearBuilt, recentYears, setYearBuilt } = props;
+  const { category, yearBuilt, recentYears, setYearBuilt } = props;
   const { tr } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -28,6 +28,55 @@ const FeatureYearBuilt: React.FC<FeatureSectionProps> = (props) => {
     window.addEventListener('pointerdown', handlePointerDown);
     return () => window.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
+
+  if (category === 'housing') {
+    const currentYear = new Date().getFullYear();
+    const housingYearOptions = Array.from({ length: 7 }, (_, index) => String(currentYear - index));
+    const oldestYear = currentYear - 7;
+    const selectedYearNumber = Number(yearBuilt);
+    const isOldestYearSelected = yearBuilt === 'other' || (
+      Number.isFinite(selectedYearNumber) && selectedYearNumber <= oldestYear
+    );
+    const activePillClass = 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]';
+    const inactivePillClass = 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]';
+
+    return (
+      <div className="space-y-3">
+        <span className="text-xs font-semibold font-sans text-gray-400 tracking-wider block ml-1">
+          {tr('wizard.features.year')}
+        </span>
+        <div className="grid grid-cols-8 gap-1">
+          {housingYearOptions.map(value => {
+            const isActive = yearBuilt === value;
+
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setYearBuilt(value)}
+                aria-pressed={isActive}
+                className={`pl pl-interactive min-w-0 rounded-full border px-1 py-2 text-[11px] font-normal leading-none transition cursor-pointer select-none sm:text-xs ${
+                  isActive ? `selected ${activePillClass}` : inactivePillClass
+                }`}
+              >
+                {value}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setYearBuilt('other')}
+            aria-pressed={isOldestYearSelected}
+            className={`pl pl-interactive min-w-0 rounded-full border px-1 py-2 text-[11px] font-normal leading-none transition cursor-pointer select-none sm:text-xs ${
+              isOldestYearSelected ? `selected ${activePillClass}` : inactivePillClass
+            }`}
+          >
+            {oldestYear}−
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pl p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs relative z-[2000]">

@@ -6,4 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+bookings-guest-map*.json
+!scripts/bookings-guest-map.example.json
 bali-base-*-firebase-adminsdk-*.json

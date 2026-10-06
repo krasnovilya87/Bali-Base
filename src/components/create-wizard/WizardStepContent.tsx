@@ -50,6 +50,8 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           setVehicleModel={categoryState.setVehicleModel}
           vehicleModelQuantity={categoryState.vehicleModelQuantity}
           setVehicleModelQuantity={categoryState.setVehicleModelQuantity}
+          vehicleEngineDisplacementCc={categoryState.vehicleEngineDisplacementCc}
+          setVehicleEngineDisplacementCc={categoryState.setVehicleEngineDisplacementCc}
           vehicleColor={categoryState.vehicleColor}
           setVehicleColor={categoryState.setVehicleColor}
           mapSuggestions={locationState.mapSuggestions}

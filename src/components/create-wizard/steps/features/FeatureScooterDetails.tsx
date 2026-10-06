@@ -8,12 +8,28 @@ import {
   getScooterModelDescription
 } from '../../configs/scooterWizardConfig';
 import {
+  MOTORCYCLE_MODEL_GROUPS,
+  MOTORCYCLE_MODEL_OPTIONS,
+  MOTORCYCLE_TYPE_GROUPS,
+  MOTORCYCLE_OTHER_MODEL_PREFIX,
+  getMotorcycleEngineDisplacements,
+  getMotorcycleModelsForGroup,
+  type MotorcycleTypeGroup
+} from '../../../../config/motorcycleCatalog';
+import {
+  CAR_BRAND_GROUPS,
+  CAR_MODEL_OPTIONS,
+  getCarEngineDisplacements,
+  getCarModelsForGroup
+} from '../../../../config/carCatalog';
+import {
   SCOOTER_MODEL_GROUPS,
   getScooterModelsForGroup,
   type ScooterModelGroup
 } from '../../../../utils/scooterFilters';
 
 type FeatureScooterDetailsProps = {
+  subCategory: string;
   title: string;
   setTitle: React.Dispatch<React.SetStateAction<string>>;
   description: string;
@@ -23,6 +39,8 @@ type FeatureScooterDetailsProps = {
   setVehicleModel: React.Dispatch<React.SetStateAction<string>>;
   vehicleModelQuantity?: number;
   setVehicleModelQuantity: React.Dispatch<React.SetStateAction<number | undefined>>;
+  vehicleEngineDisplacementCc?: number;
+  setVehicleEngineDisplacementCc: React.Dispatch<React.SetStateAction<number | undefined>>;
   vehicleColor: string;
   setVehicleColor: React.Dispatch<React.SetStateAction<string>>;
 };
@@ -33,6 +51,7 @@ const activePillClass = 'border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px
 const inactivePillClass = 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]';
 
 const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
+  subCategory,
   title,
   setTitle,
   description,
@@ -42,36 +61,159 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
   setVehicleModel,
   vehicleModelQuantity,
   setVehicleModelQuantity,
+  vehicleEngineDisplacementCc,
+  setVehicleEngineDisplacementCc,
   vehicleColor,
   setVehicleColor
 }) => {
   const { tr } = useI18n();
-  const [activeModelGroup, setActiveModelGroup] = React.useState<ScooterModelGroup>('all');
-  const selectedModelLabel = SCOOTER_WIZARD_MODEL_OPTIONS.find(model => model.value === vehicleModel)?.label || tr('wizard.transport.selectedModel');
-  const visibleModels = getScooterModelsForGroup(activeModelGroup);
+  const isScooter = subCategory === 'scooters';
+  const isMotorcycle = subCategory === 'motorcycles';
+  const isCar = subCategory === 'cars';
+  const [activeModelGroup, setActiveModelGroup] = React.useState<string>(subCategory === 'cars' ? 'toyota' : 'all');
+  const [activeMotorcycleType, setActiveMotorcycleType] = React.useState<MotorcycleTypeGroup>('all');
+  const [isCustomMotorcycleModel, setIsCustomMotorcycleModel] = React.useState(vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX));
+  const modelGroups = isMotorcycle
+    ? MOTORCYCLE_MODEL_GROUPS
+    : isCar
+      ? CAR_BRAND_GROUPS.filter(group => group.value !== 'all')
+      : SCOOTER_MODEL_GROUPS;
+  const visibleModelGroups = isMotorcycle && activeMotorcycleType !== 'all'
+    ? MOTORCYCLE_MODEL_GROUPS.filter(group =>
+        group.value === 'all' || MOTORCYCLE_MODEL_OPTIONS.some(model =>
+          model.group === group.value && (model.types as readonly string[]).includes(activeMotorcycleType)
+        )
+      )
+    : modelGroups;
+  const modelOptions: ReadonlyArray<{ value: string; label: string }> = isMotorcycle
+    ? MOTORCYCLE_MODEL_OPTIONS
+    : isCar
+      ? CAR_MODEL_OPTIONS
+      : SCOOTER_WIZARD_MODEL_OPTIONS;
+  const selectedModelLabel = vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX)
+    ? vehicleModel.slice(MOTORCYCLE_OTHER_MODEL_PREFIX.length).trim() || tr('wizard.transport.selectedModel')
+    : modelOptions.find(model => model.value === vehicleModel)?.label || tr('wizard.transport.selectedModel');
+  const visibleModels = isMotorcycle
+    ? getMotorcycleModelsForGroup(activeModelGroup as typeof MOTORCYCLE_MODEL_GROUPS[number]['value'], activeMotorcycleType)
+    : isCar
+      ? getCarModelsForGroup(activeModelGroup as typeof CAR_BRAND_GROUPS[number]['value'])
+    : isScooter
+      ? getScooterModelsForGroup(activeModelGroup as ScooterModelGroup)
+      : [];
+  const selectedEngineDisplacements = isMotorcycle && !isCustomMotorcycleModel
+    ? getMotorcycleEngineDisplacements(vehicleModel)
+    : isCar
+      ? getCarEngineDisplacements(vehicleModel)
+      : [];
+
+  React.useEffect(() => {
+    if (isMotorcycle) {
+      const selectedOption = MOTORCYCLE_MODEL_OPTIONS.find(model => model.value === vehicleModel);
+      setIsCustomMotorcycleModel(vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX));
+      setActiveModelGroup(selectedOption?.group || 'all');
+      return;
+    }
+    if (isCar) {
+      const selectedOption = CAR_MODEL_OPTIONS.find(model => model.value === vehicleModel);
+      setActiveModelGroup(selectedOption?.brand || 'toyota');
+      return;
+    }
+    setActiveModelGroup('all');
+  }, [isCar, isMotorcycle, subCategory, vehicleModel]);
+
+  React.useEffect(() => {
+    if ((!isMotorcycle && !isCar) || (isMotorcycle && vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX))) return;
+    const engineOptions = isCar
+      ? getCarEngineDisplacements(vehicleModel)
+      : getMotorcycleEngineDisplacements(vehicleModel);
+    if (engineOptions.length === 1) {
+      setVehicleEngineDisplacementCc(engineOptions[0]);
+    } else if (vehicleEngineDisplacementCc !== undefined && !engineOptions.includes(vehicleEngineDisplacementCc)) {
+      setVehicleEngineDisplacementCc(undefined);
+    }
+  }, [isCar, isMotorcycle, setVehicleEngineDisplacementCc, vehicleEngineDisplacementCc, vehicleModel]);
 
   const selectModel = (value: string, label: string) => {
+    setIsCustomMotorcycleModel(false);
     setVehicleModel(value);
-    if (!title.trim() || SCOOTER_WIZARD_MODEL_OPTIONS.some(model => model.label === title.trim())) {
+    const engineOptions = isMotorcycle
+      ? getMotorcycleEngineDisplacements(value)
+      : isCar
+        ? getCarEngineDisplacements(value)
+        : [];
+    setVehicleEngineDisplacementCc(engineOptions.length === 1 ? engineOptions[0] : undefined);
+    if (
+      !title.trim()
+      || modelOptions.some(model => model.label === title.trim())
+      || vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX)
+      || (isMotorcycle && MOTORCYCLE_MODEL_OPTIONS.some(model => model.value === vehicleModel))
+    ) {
       setTitle(label);
     }
-    if (!description.trim() || isGeneratedScooterDescription(description)) {
+    if (isScooter && (!description.trim() || isGeneratedScooterDescription(description))) {
       setDescription(getScooterModelDescription(value));
     }
   };
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="space-y-3">
+      {(isScooter || isMotorcycle || isCar) && <div className="space-y-3">
         <span className={fieldTitleClass}>{tr('wizard.transport.model')}</span>
+        {isMotorcycle && (
+          <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+            {MOTORCYCLE_TYPE_GROUPS.map(type => {
+              const isActive = activeMotorcycleType === type.value;
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => {
+                    setActiveMotorcycleType(type.value);
+                    if (type.value === 'all' || isCustomMotorcycleModel || activeModelGroup === 'all') return;
+                    const selectedOption = MOTORCYCLE_MODEL_OPTIONS.find(model => model.value === vehicleModel);
+                    if (selectedOption && !(selectedOption.types as readonly string[]).includes(type.value)) {
+                      if (title.trim() === selectedOption.label) setTitle('');
+                      setVehicleModel('');
+                      setVehicleEngineDisplacementCc(undefined);
+                    }
+                    const activeBrandHasModels = MOTORCYCLE_MODEL_OPTIONS.some(model =>
+                      model.group === activeModelGroup && (model.types as readonly string[]).includes(type.value)
+                    );
+                    if (!activeBrandHasModels) {
+                      const firstMatchingModel = MOTORCYCLE_MODEL_OPTIONS.find(model => (model.types as readonly string[]).includes(type.value));
+                      if (firstMatchingModel) setActiveModelGroup(firstMatchingModel.group);
+                    }
+                  }}
+                  aria-pressed={isActive}
+                  className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                    isActive
+                      ? 'selected bg-[#1E293B] text-white shadow-[0_8px_16px_rgba(30,41,59,0.16)]'
+                      : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                  }`}
+                >
+                  {tr(type.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
-          {SCOOTER_MODEL_GROUPS.map(group => {
+          {visibleModelGroups.map(group => {
             const isActive = activeModelGroup === group.value;
             return (
               <button
                 key={group.value}
                 type="button"
-                onClick={() => setActiveModelGroup(group.value)}
+                onClick={() => {
+                  setActiveModelGroup(group.value);
+                  if (isMotorcycle && isCustomMotorcycleModel) {
+                    const customModel = vehicleModel.slice(MOTORCYCLE_OTHER_MODEL_PREFIX.length).trim();
+                    if (title.trim() === customModel) setTitle('');
+                    setVehicleModel('');
+                    setVehicleEngineDisplacementCc(undefined);
+                    setIsCustomMotorcycleModel(false);
+                  }
+                }}
                 aria-pressed={isActive}
                 className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
                   isActive
@@ -79,7 +221,7 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
                     : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
                 }`}
               >
-                {tr(group.labelKey)}
+                {'label' in group ? group.label : tr(group.labelKey)}
               </button>
             );
           })}
@@ -99,8 +241,72 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
               </button>
             );
           })}
+          {isMotorcycle && (
+            <button
+              type="button"
+              onClick={() => {
+                const selectedOption = MOTORCYCLE_MODEL_OPTIONS.find(model => model.value === vehicleModel);
+                if (selectedOption && title.trim() === selectedOption.label) setTitle('');
+                setVehicleModel('');
+                setVehicleEngineDisplacementCc(undefined);
+                setIsCustomMotorcycleModel(true);
+              }}
+              aria-pressed={isCustomMotorcycleModel}
+              className={`${pillClass} ${isCustomMotorcycleModel ? `selected ${activePillClass}` : inactivePillClass}`}
+            >
+              {tr('wizard.transport.modelGroup.other')}
+            </button>
+          )}
         </div>
-      </div>
+        {isMotorcycle && isCustomMotorcycleModel && (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={vehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX) ? vehicleModel.slice(MOTORCYCLE_OTHER_MODEL_PREFIX.length) : ''}
+              onChange={event => {
+                const customModel = event.target.value;
+                setVehicleModel(customModel ? `${MOTORCYCLE_OTHER_MODEL_PREFIX}${customModel}` : '');
+                setTitle(customModel);
+              }}
+              className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+            />
+            <div className="space-y-1.5">
+              <label className={fieldTitleClass}>{tr('wizard.transport.engineDisplacement')}</label>
+              <input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={vehicleEngineDisplacementCc ?? ''}
+                onChange={event => setVehicleEngineDisplacementCc(event.target.value ? Math.max(1, Number(event.target.value)) : undefined)}
+                className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-xs focus:ring-0 focus:outline-none transition-colors duration-150 font-sans"
+              />
+            </div>
+          </div>
+        )}
+      </div>}
+
+      {((isMotorcycle && !isCustomMotorcycleModel && selectedEngineDisplacements.length > 0)
+        || (isCar && selectedEngineDisplacements.length > 1)) && (
+        <div className="space-y-3">
+          <span className={fieldTitleClass}>{tr('wizard.transport.engineDisplacement')}</span>
+          <div className="flex flex-wrap gap-2">
+            {selectedEngineDisplacements.map(displacement => {
+              const isActive = vehicleEngineDisplacementCc === displacement;
+              return (
+                <button
+                  key={displacement}
+                  type="button"
+                  onClick={() => setVehicleEngineDisplacementCc(displacement)}
+                  aria-pressed={isActive}
+                  className={`${pillClass} ${isActive ? `selected ${activePillClass}` : inactivePillClass}`}
+                >
+                  {tr('wizard.transport.engineDisplacementValue', { value: displacement })}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         <span className={fieldTitleClass}>{tr('filters.transport.color')}</span>
@@ -170,7 +376,7 @@ const FeatureScooterDetails: React.FC<FeatureScooterDetailsProps> = ({
 
       <div className="space-y-1.5">
         <label className="font-semibold block text-xs text-[#1E293B]">
-          {tr('wizard.transport.modelQuantity', { model: selectedModelLabel })}
+          {tr(`wizard.transport.modelQuantity.${subCategory}`, { model: selectedModelLabel })}
         </label>
         <input
           type="text"

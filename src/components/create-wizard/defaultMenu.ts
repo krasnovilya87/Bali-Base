@@ -1,9 +1,17 @@
 // @ts-ignore
-import menuL2Scooters from '../../assets/images/menu_l2_scooters_firebase.webp';
+import menuL2Scooters from '../../assets/images/menu/l2/transport/menu_l2_scooters_firebase.webp';
 // @ts-ignore
-import menuL2Motorcycles from '../../assets/images/menu_l2_motorcycles_firebase.webp';
+import menuL2Motorcycles from '../../assets/images/menu/l2/transport/menu_l2_motorcycles_firebase.webp';
 // @ts-ignore
-import menuL2Cars from '../../assets/images/menu_l2_cars_firebase.webp';
+import menuL2ServiceHousehold from '../../assets/images/menu/l2/services/menu_l2_service_household.webp';
+// @ts-ignore
+import menuL2ServiceConsultations from '../../assets/images/menu/l2/services/menu_l2_service_consultations.webp';
+// @ts-ignore
+import menuL2ServiceBusiness from '../../assets/images/menu/l2/services/menu_l2_service_business.webp';
+// @ts-ignore
+import menuL2ServiceTransport from '../../assets/images/menu/l2/services/menu_l2_service_transport.webp';
+// @ts-ignore
+import menuL2KidsGoods from '../../assets/images/menu/l2/market/menu_l2_kids_goods.webp';
 import { SUBCATEGORIES_MAP } from '../../app/menu';
 
 export const defaultCategoriesList = [
@@ -26,7 +34,7 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
   transport: [
     { id: 'scooters', label: 'Скутеры', icon: '🛵', customImage: menuL2Scooters },
     { id: 'motorcycles', label: 'Мотоциклы', icon: '🏍', customImage: menuL2Motorcycles },
-    { id: 'cars', label: 'Автомобили', icon: '🚗', customImage: menuL2Cars }
+    { id: 'cars', label: 'Автомобили', icon: '' }
   ],
   investments: [
     { id: 'villas', label: 'Жилая недвижимость', icon: '🏢' },
@@ -35,15 +43,15 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'business', label: 'Готовый Бизнес', icon: '💼' }
   ],
   services: [
-    { id: 'household_services', label: 'Бытовые услуги', icon: '🧰' },
+    { id: 'household_services', label: 'Бытовые услуги', icon: '🧰', customImage: menuL2ServiceHousehold },
     { id: 'beauty_care', label: 'Красота и уход', icon: '✨' },
     { id: 'health', label: 'Здоровье', icon: '🩺' },
     { id: 'education', label: 'Обучение', icon: '📚' },
     { id: 'sport', label: 'Спорт', icon: '🏄‍♂️' },
     { id: 'photo_video', label: 'Фото и видео', icon: '📷' },
-    { id: 'consultations', label: 'Консультации', icon: '💡' },
-    { id: 'service_business', label: 'Бизнес', icon: '💼' },
-    { id: 'service_transport', label: 'Транспорт', icon: '🛵' },
+    { id: 'consultations', label: 'Консультации', icon: '💡', customImage: menuL2ServiceConsultations },
+    { id: 'service_business', label: 'Бизнес', icon: '💼', customImage: menuL2ServiceBusiness },
+    { id: 'service_transport', label: 'Транспорт', icon: '🛵', customImage: menuL2ServiceTransport },
     { id: 'other_services', label: 'Другие услуги', icon: '⭐' }
   ],
   ads: [
@@ -52,7 +60,7 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'home_living', label: 'Дом и быт', icon: '🏡' },
     { id: 'clothes_items', label: 'Одежда и вещи', icon: '👕' },
     { id: 'sport_hobby', label: 'Спорт и хобби', icon: '🏄‍♂️' },
-    { id: 'kids_goods', label: 'Детские товары', icon: '🧸' },
+    { id: 'kids_goods', label: 'Детские товары', icon: '', customImage: menuL2KidsGoods },
     { id: 'other_ads', label: 'Другое', icon: '⭐' }
   ],
   afisha: SUBCATEGORIES_MAP.afisha,
@@ -68,16 +76,5 @@ export const defaultSubcategoriesMap: Record<string, Array<{ id: string; label: 
     { id: 'life_warnings', label: 'Warnings', icon: '⚠️' },
     { id: 'life_other', label: 'Other', icon: '⭐' }
   ],
-  useful: [
-    { id: 'useful_before_trip', label: 'Before your trip', icon: '🧳' },
-    { id: 'useful_visas_documents', label: 'Visas and documents', icon: '🛂' },
-    { id: 'useful_bali_areas', label: 'Bali areas', icon: '🗺️' },
-    { id: 'useful_housing_daily_life', label: 'Housing and daily life', icon: '🏠' },
-    { id: 'useful_transport', label: 'Transport', icon: '🛵' },
-    { id: 'useful_money_connectivity', label: 'Money and connectivity', icon: '💳' },
-    { id: 'useful_health', label: 'Health', icon: '🩺' },
-    { id: 'useful_laws_safety', label: 'Laws and safety', icon: '⚖️' },
-    { id: 'useful_work_business', label: 'Work and business', icon: '💼' },
-    { id: 'useful_emergency_help', label: 'Emergency help', icon: '🆘' }
-  ]
+  useful: SUBCATEGORIES_MAP.useful
 };

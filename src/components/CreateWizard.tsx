@@ -20,7 +20,22 @@ import { findDistrictByCoordsSync } from '../utils/geo';
 import { useAuth } from '../auth/AuthContext';
 import { db } from '../firebase';
 import { formatPhoneInput } from '../utils/phone';
-import { getScooterModelLabel, isScooterGeneratedDescription } from './create-wizard/configs/scooterWizardConfig';
+import {
+  getTransportModelLabel,
+  isDetailedTransportSubcategory,
+  isScooterGeneratedDescription
+} from './create-wizard/configs/scooterWizardConfig';
+import {
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MAX,
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+  MOTORCYCLE_MODEL_GROUPS,
+  MOTORCYCLE_MODEL_OPTIONS
+} from '../config/motorcycleCatalog';
+import {
+  CAR_ENGINE_DISPLACEMENT_MAX,
+  CAR_ENGINE_DISPLACEMENT_MIN,
+  getCarBrandLabel
+} from '../config/carCatalog';
 import { getMissingClassifiedSpecialFieldKey } from '../config/classifiedSpecial';
 import type { ClassifiedSpecialValue } from '../config/classifiedSpecial';
 import { AFISHA_PUBLICATION_DAYS, EVENT_COMMON_FIELD_IDS } from '../config/eventSpecial';
@@ -68,10 +83,19 @@ const getScooterSeoBrand = (modelValue: string) => {
   return '';
 };
 
-const getScooterSeoModel = (modelValue: string) => {
-  const brand = getScooterSeoBrand(modelValue);
-  const modelLabel = getScooterModelLabel(modelValue) || modelValue;
+const getTransportSeoBrand = (subCategory: string, modelValue: string) => {
+  if (subCategory === 'motorcycles') {
+    const groupValue = MOTORCYCLE_MODEL_OPTIONS.find(model => model.value === modelValue)?.group;
+    const group = MOTORCYCLE_MODEL_GROUPS.find(item => item.value === groupValue);
+    return group && 'label' in group ? group.label : '';
+  }
+  if (subCategory === 'cars') return getCarBrandLabel(modelValue);
+  return subCategory === 'scooters' ? getScooterSeoBrand(modelValue) : '';
+};
 
+const getTransportSeoModel = (subCategory: string, modelValue: string) => {
+  const brand = getTransportSeoBrand(subCategory, modelValue);
+  const modelLabel = getTransportModelLabel(subCategory, modelValue) || modelValue;
   return brand && modelLabel.toLowerCase().startsWith(`${brand.toLowerCase()} `)
     ? modelLabel.slice(brand.length).trim()
     : modelLabel;
@@ -109,6 +133,31 @@ const DEFAULT_HOUSING_PRICE_PER_DAY = 450000;
 const DEFAULT_HOUSING_PRICE_PER_MONTH = 11000000;
 const DEFAULT_SCOOTER_PRICE_PER_DAY = 120000;
 const DEFAULT_SCOOTER_PRICE_PER_MONTH = 1500000;
+const DEFAULT_MOTORCYCLE_PRICE_PER_DAY = 200000;
+const DEFAULT_MOTORCYCLE_PRICE_PER_MONTH = 4000000;
+const DEFAULT_CAR_PRICE_PER_DAY = 350000;
+const DEFAULT_CAR_PRICE_PER_MONTH = 7000000;
+
+const getDefaultTransportPrices = (subCategory: string) => {
+  if (subCategory === 'cars') {
+    return { perDay: DEFAULT_CAR_PRICE_PER_DAY, perMonth: DEFAULT_CAR_PRICE_PER_MONTH };
+  }
+  if (subCategory === 'motorcycles') {
+    return { perDay: DEFAULT_MOTORCYCLE_PRICE_PER_DAY, perMonth: DEFAULT_MOTORCYCLE_PRICE_PER_MONTH };
+  }
+  return { perDay: DEFAULT_SCOOTER_PRICE_PER_DAY, perMonth: DEFAULT_SCOOTER_PRICE_PER_MONTH };
+};
+
+const transportDefaultPricesPerDay = [
+  DEFAULT_SCOOTER_PRICE_PER_DAY,
+  DEFAULT_MOTORCYCLE_PRICE_PER_DAY,
+  DEFAULT_CAR_PRICE_PER_DAY
+];
+const transportDefaultPricesPerMonth = [
+  DEFAULT_SCOOTER_PRICE_PER_MONTH,
+  DEFAULT_MOTORCYCLE_PRICE_PER_MONTH,
+  DEFAULT_CAR_PRICE_PER_MONTH
+];
 const CALENDAR_ROOM_SUBCATEGORIES = ['private_room', 'private_suite', 'entire_place'];
 const UNIT_TYPE_SUBCATEGORIES = ['private_suite', 'entire_place'];
 
@@ -228,14 +277,26 @@ export default function CreateWizard({
   const [showKitchenTooltip, setShowKitchenTooltip] = useState<boolean>(false);
   const [vehicleModel, setVehicleModel] = useState<string>(initialListing?.vehicleModel || '');
   const [vehicleModelQuantity, setVehicleModelQuantity] = useState<number | undefined>(initialListing?.vehicleModelQuantity || 1);
+  const [vehicleEngineDisplacementCc, setVehicleEngineDisplacementCc] = useState<number | undefined>(initialListing?.vehicleEngineDisplacementCc);
   const [vehicleColor, setVehicleColor] = useState<string>(initialListing?.vehicleColor || '');
   const [vehicleCondition, setVehicleCondition] = useState<string>(initialListing?.vehicleCondition || '');
+  const [vehicleDriverOption, setVehicleDriverOption] = useState<string>(initialListing?.vehicleDriverOption || '');
+  const [vehicleTransmission, setVehicleTransmission] = useState<string>(initialListing?.vehicleTransmission || '');
+  const [vehicleFuelType, setVehicleFuelType] = useState<string>(initialListing?.vehicleFuelType || '');
+  const [vehicleLuggageCapacity, setVehicleLuggageCapacity] = useState<number | undefined>(initialListing?.vehicleLuggageCapacity);
   const [sellerType, setSellerType] = useState<string>(initialListing?.sellerType || '');
   const [sellerCompanyName, setSellerCompanyName] = useState<string>(initialListing?.sellerType === 'company' ? initialListing?.ownerName || '' : '');
   const [sellerGoogleMapsUrl, setSellerGoogleMapsUrl] = useState<string>(initialListing?.sellerGoogleMapsUrl || '');
   const [sellerGooglePlaceId, setSellerGooglePlaceId] = useState<string>(initialListing?.sellerGooglePlaceId || '');
   const [keyless, setKeyless] = useState<boolean>(Boolean(initialListing?.keyless));
   const [abs, setAbs] = useState<boolean>(Boolean(initialListing?.abs));
+  const [airbag, setAirbag] = useState<boolean>(Boolean(initialListing?.airbag));
+  const [rearCamera, setRearCamera] = useState<boolean>(Boolean(initialListing?.rearCamera));
+  const [parkingSensors, setParkingSensors] = useState<boolean>(Boolean(initialListing?.parkingSensors));
+  const [sunroof, setSunroof] = useState<boolean>(Boolean(initialListing?.sunroof));
+  const [leatherInterior, setLeatherInterior] = useState<boolean>(Boolean(initialListing?.leatherInterior));
+  const [childSeat, setChildSeat] = useState<boolean>(Boolean(initialListing?.childSeat));
+  const [roofRack, setRoofRack] = useState<boolean>(Boolean(initialListing?.roofRack));
   const [surfRack, setSurfRack] = useState<boolean>(Boolean(initialListing?.surfRack || initialListing?.amenities?.includes('surf_rack')));
   const [insurance, setInsurance] = useState<boolean>(Boolean(initialListing?.insurance));
   const [freeDeliveryDistricts, setFreeDeliveryDistricts] = useState<string[]>(initialListing?.freeDeliveryDistricts || []);
@@ -299,6 +360,7 @@ export default function CreateWizard({
     activePhotoSlotConfig,
     requiredPhotoSlots,
     optionalPhotoSlots,
+    isCarPhotoFlow,
     isScooterPhotoFlow,
     isServicePhotoFlow,
     draggedPhotoSlotId,
@@ -329,10 +391,10 @@ export default function CreateWizard({
     initialListing,
     category,
     subCategory,
-    uploadNamingContext: category === 'transport' && subCategory === 'scooters'
+    uploadNamingContext: category === 'transport' && isDetailedTransportSubcategory(subCategory)
       ? {
-        brand: getScooterSeoBrand(vehicleModel),
-        model: getScooterSeoModel(vehicleModel),
+        brand: getTransportSeoBrand(subCategory, vehicleModel),
+        model: getTransportSeoModel(subCategory, vehicleModel),
         year: yearBuilt && yearBuilt !== 'other' ? yearBuilt : undefined,
         color: vehicleColor
       }
@@ -341,15 +403,15 @@ export default function CreateWizard({
 
   const [pricePerDay, setPricePerDay] = useState<number>(
     initialListing?.pricePerDay || (
-      category === 'transport' && subCategory === 'scooters'
-        ? DEFAULT_SCOOTER_PRICE_PER_DAY
+      category === 'transport' && isDetailedTransportSubcategory(subCategory)
+        ? getDefaultTransportPrices(subCategory).perDay
         : DEFAULT_HOUSING_PRICE_PER_DAY
     )
   );
   const [pricePerMonth, setPricePerMonth] = useState<number>(
     initialListing?.pricePerMonth || (
-      category === 'transport' && subCategory === 'scooters'
-        ? DEFAULT_SCOOTER_PRICE_PER_MONTH
+      category === 'transport' && isDetailedTransportSubcategory(subCategory)
+        ? getDefaultTransportPrices(subCategory).perMonth
         : DEFAULT_HOUSING_PRICE_PER_MONTH
     )
   );
@@ -368,15 +430,36 @@ export default function CreateWizard({
   useEffect(() => {
     if (initialListing) return;
 
-    if (category === 'transport' && subCategory === 'scooters') {
-      setPricePerDay(current => current === 0 || current === DEFAULT_HOUSING_PRICE_PER_DAY ? DEFAULT_SCOOTER_PRICE_PER_DAY : current);
-      setPricePerMonth(current => current === 0 || current === DEFAULT_HOUSING_PRICE_PER_MONTH ? DEFAULT_SCOOTER_PRICE_PER_MONTH : current);
+    if (category === 'transport' && isDetailedTransportSubcategory(subCategory)) {
+      const defaults = getDefaultTransportPrices(subCategory);
+      setPricePerDay(current => (
+        current === 0 ||
+        current === DEFAULT_HOUSING_PRICE_PER_DAY ||
+        transportDefaultPricesPerDay.includes(current)
+          ? defaults.perDay
+          : current
+      ));
+      setPricePerMonth(current => (
+        current === 0 ||
+        current === DEFAULT_HOUSING_PRICE_PER_MONTH ||
+        transportDefaultPricesPerMonth.includes(current)
+          ? defaults.perMonth
+          : current
+      ));
       return;
     }
 
     if (category === 'housing') {
-      setPricePerDay(current => current === 0 || current === DEFAULT_SCOOTER_PRICE_PER_DAY ? DEFAULT_HOUSING_PRICE_PER_DAY : current);
-      setPricePerMonth(current => current === 0 || current === DEFAULT_SCOOTER_PRICE_PER_MONTH ? DEFAULT_HOUSING_PRICE_PER_MONTH : current);
+      setPricePerDay(current => (
+        current === 0 || transportDefaultPricesPerDay.includes(current)
+          ? DEFAULT_HOUSING_PRICE_PER_DAY
+          : current
+      ));
+      setPricePerMonth(current => (
+        current === 0 || transportDefaultPricesPerMonth.includes(current)
+          ? DEFAULT_HOUSING_PRICE_PER_MONTH
+          : current
+      ));
     }
   }, [category, initialListing, subCategory]);
 
@@ -505,7 +588,9 @@ export default function CreateWizard({
   const wizardFlow = getWizardFlow(category, subCategory);
   const isLifeCommunityListing = category === 'life' && subCategory !== 'life_jobs';
   const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
-  const supportsSellerType = category === 'housing' || (category === 'transport' && subCategory === 'scooters') || category === 'services';
+  const isDetailedTransportWizard = category === 'transport' && isDetailedTransportSubcategory(subCategory);
+  const requiresVehicleModel = isDetailedTransportWizard;
+  const supportsSellerType = category === 'housing' || isDetailedTransportWizard || category === 'services';
   const stepLabels = wizardFlow.map(key => tr(
     isLifeCommunityListing && key === 'pricing'
         ? 'wizard.step.lifeExpenses'
@@ -521,18 +606,45 @@ export default function CreateWizard({
   const validateMechanicalStep = async (targetStep: number) => {
     const targetStepKey = getWizardStepKey(targetStep, category, subCategory);
 
+    if (targetStepKey === 'subcategory' && !subcategories.some(item => item.id === subCategory)) {
+      return tr('wizard.validationSubcategory');
+    }
+
     if (targetStepKey === 'subcategory' && category === 'life' && !LIFE_FIELDS[normalizeLifeSubCategory(subCategory)]) {
       return tr('filters.life.selectCategory');
     }
 
     if (targetStepKey === 'title') {
-      if (category === 'transport' && subCategory === 'scooters' && !vehicleModel) {
-        return tr('wizard.validationScooterModel');
+      if (requiresVehicleModel && !getTransportModelLabel(subCategory, vehicleModel)) {
+        return tr('wizard.validationTransportModel');
       }
-      if (category === 'transport' && subCategory === 'scooters' && !vehicleColor) {
-        return tr('wizard.validationScooterColor');
+      if (isDetailedTransportWizard && ['motorcycles', 'cars'].includes(subCategory) && !vehicleEngineDisplacementCc) {
+        return tr(subCategory === 'cars' ? 'wizard.validationCarEngineDisplacement' : 'wizard.validationMotorcycleEngineDisplacement');
       }
-      if (!title.trim() && !(category === 'transport' && subCategory === 'scooters' && getScooterModelLabel(vehicleModel))) return tr('wizard.validationTitle');
+      if (isDetailedTransportWizard && subCategory === 'motorcycles' && vehicleEngineDisplacementCc !== undefined && (
+        !Number.isFinite(vehicleEngineDisplacementCc)
+        || vehicleEngineDisplacementCc < MOTORCYCLE_ENGINE_DISPLACEMENT_MIN
+        || vehicleEngineDisplacementCc > MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+      )) {
+        return tr('wizard.validationEngineDisplacementRange', {
+          min: MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+          max: MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+        });
+      }
+      if (isDetailedTransportWizard && subCategory === 'cars' && vehicleEngineDisplacementCc !== undefined && (
+        !Number.isFinite(vehicleEngineDisplacementCc)
+        || vehicleEngineDisplacementCc < CAR_ENGINE_DISPLACEMENT_MIN
+        || vehicleEngineDisplacementCc > CAR_ENGINE_DISPLACEMENT_MAX
+      )) {
+        return tr('wizard.validationEngineDisplacementRange', {
+          min: CAR_ENGINE_DISPLACEMENT_MIN,
+          max: CAR_ENGINE_DISPLACEMENT_MAX
+        });
+      }
+      if (isDetailedTransportWizard && !vehicleColor) {
+        return tr('wizard.validationTransportColor');
+      }
+      if (!title.trim() && !(requiresVehicleModel && getTransportModelLabel(subCategory, vehicleModel))) return tr('wizard.validationTitle');
       if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
         return tr('wizard.validationDescriptionMin', { count: MIN_DESCRIPTION_LENGTH });
       }
@@ -648,7 +760,9 @@ export default function CreateWizard({
         return '';
       }
       if (!Number.isFinite(pricePerDay) || pricePerDay <= 0) return tr('wizard.validationPriceDay');
-      if (category !== 'services' && pricePerMonth !== undefined && pricePerMonth < 0) return tr('wizard.validationPriceMonth');
+      if (category !== 'services' && pricePerMonth !== undefined && (!Number.isFinite(pricePerMonth) || pricePerMonth < 0)) {
+        return tr('wizard.validationPriceMonth');
+      }
     }
 
     if (targetStepKey === 'contact') {
@@ -661,7 +775,8 @@ export default function CreateWizard({
       } else if (ownerName.trim().length < 2) {
         return tr('wizard.validationOwnerName');
       }
-      if (!whatsappNumber || whatsappNumber.replace(/\D/g, '').length < 8) return tr('wizard.validationPhone');
+      const phoneDigits = whatsappNumber.replace(/\D/g, '').length;
+      if (!whatsappNumber || phoneDigits < 8 || phoneDigits > 15) return tr('wizard.validationPhone');
     }
 
     return '';
@@ -680,6 +795,11 @@ export default function CreateWizard({
         showValidationPopup(tr('wizard.validationDuplicateTitleType'), stepToValidate);
         return false;
       }
+    }
+
+    if (isLocationRequired && !confirmedLocationCoords && !pickedCoords && !initialListing?.locationCoords) {
+      showValidationPopup(tr('wizard.validationMapPoint'), Math.max(1, wizardFlow.indexOf('location') + 1));
+      return false;
     }
 
     return true;
@@ -821,15 +941,19 @@ export default function CreateWizard({
       return;
     }
 
-    if (currentStepKey === 'title' && category === 'transport' && subCategory === 'scooters' && !vehicleModel) {
-      showValidationPopup(tr('wizard.validationScooterModel'));
+    if (currentStepKey === 'title' && requiresVehicleModel && !getTransportModelLabel(subCategory, vehicleModel)) {
+      showValidationPopup(tr('wizard.validationTransportModel'));
       return;
     }
-    if (currentStepKey === 'title' && category === 'transport' && subCategory === 'scooters' && !vehicleColor) {
-      showValidationPopup(tr('wizard.validationScooterColor'));
+    if (currentStepKey === 'title' && isDetailedTransportWizard && ['motorcycles', 'cars'].includes(subCategory) && !vehicleEngineDisplacementCc) {
+      showValidationPopup(tr(subCategory === 'cars' ? 'wizard.validationCarEngineDisplacement' : 'wizard.validationMotorcycleEngineDisplacement'));
       return;
     }
-    if (currentStepKey === 'title' && !title.trim() && !(category === 'transport' && subCategory === 'scooters' && getScooterModelLabel(vehicleModel))) {
+    if (currentStepKey === 'title' && isDetailedTransportWizard && !vehicleColor) {
+      showValidationPopup(tr('wizard.validationTransportColor'));
+      return;
+    }
+    if (currentStepKey === 'title' && !title.trim() && !(requiresVehicleModel && getTransportModelLabel(subCategory, vehicleModel))) {
       showValidationPopup(tr('wizard.validationTitle'));
       return;
     }
@@ -899,10 +1023,14 @@ export default function CreateWizard({
     const dropPricePerMonth = selectedDiscountPercent > 0
       ? Math.round(pricePerMonth * (1 - selectedDiscountPercent / 100))
       : undefined;
-    const scooterTitle = category === 'transport' && subCategory === 'scooters'
-      ? getScooterModelLabel(vehicleModel) || title
+    const transportModelTitle = getTransportModelLabel(subCategory, vehicleModel);
+    const carYearTitle = rawYear === 'other' ? `${currentYear - 7}−` : String(rawYear);
+    const transportTitle = isDetailedTransportWizard
+      ? subCategory === 'cars' && transportModelTitle
+        ? `${transportModelTitle} ${carYearTitle}`
+        : transportModelTitle || title
       : '';
-    const baseTitle = stripRoomTypeFromTitle(scooterTitle || title || 'Новое бунгало на побережье');
+    const baseTitle = stripRoomTypeFromTitle(transportTitle || title);
     const listingTitle = category === 'housing' && subCategory === 'private_room'
       ? `${baseTitle} · ${ROOM_TYPE_LABELS[roomType]}`
       : baseTitle;
@@ -949,9 +1077,9 @@ export default function CreateWizard({
       category: category as Listing['category'],
       subCategory,
       title: cleanListingTitle,
-      description: description || 'Стильный объект в центральном районе, ждет своих гостей.',
+      description: description.trim(),
       district: resolvedDistrict,
-      address: address || resolvedDistrict,
+      address: address.trim(),
       locationCoords,
       googlePlaceId: selectedGooglePlaceId || googlePlaceIdOverride || initialListing?.googlePlaceId || initialListing?.placeId,
       images: orderedPhotoUrls,
@@ -962,7 +1090,7 @@ export default function CreateWizard({
       reviews: initialListing?.reviews || [],
       isApproved: initialListing?.isApproved ?? false,
       isVerified: initialListing?.isVerified ?? false,
-      isNew: isListingFresh({ yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
+      isNew: isListingFresh({ category, yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
       status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
       pricePerDay: isLifeCommunityListing ? Number(classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY]) || 0 : pricePerDay,
       pricePerMonth: category === 'services' || isLifeCommunityListing ? undefined : pricePerMonth,
@@ -994,21 +1122,46 @@ export default function CreateWizard({
       cleaningFrequency,
       viewType: selectedViews[0] as Listing['viewType'],
       extraOptions,
-      vehicleModel: category === 'transport' && subCategory === 'scooters' ? vehicleModel || undefined : initialListing?.vehicleModel,
-      vehicleModelQuantity: category === 'transport' && subCategory === 'scooters' ? vehicleModelQuantity : initialListing?.vehicleModelQuantity,
-      vehicleColor: category === 'transport' && subCategory === 'scooters' ? vehicleColor || undefined : initialListing?.vehicleColor,
-      vehicleCondition: category === 'transport' && subCategory === 'scooters' ? vehicleCondition as Listing['vehicleCondition'] || undefined : initialListing?.vehicleCondition,
+      vehicleBrand: isDetailedTransportWizard && subCategory === 'cars'
+        ? getCarBrandLabel(vehicleModel) || undefined
+        : initialListing?.vehicleBrand,
+      vehicleModel: isDetailedTransportWizard ? vehicleModel || undefined : initialListing?.vehicleModel,
+      vehicleModelQuantity: isDetailedTransportWizard ? vehicleModelQuantity : initialListing?.vehicleModelQuantity,
+      vehicleEngineDisplacementCc: isDetailedTransportWizard && ['motorcycles', 'cars'].includes(subCategory)
+        ? vehicleEngineDisplacementCc
+        : initialListing?.vehicleEngineDisplacementCc,
+      vehicleColor: isDetailedTransportWizard ? vehicleColor || undefined : initialListing?.vehicleColor,
+      vehicleCondition: isDetailedTransportWizard ? vehicleCondition as Listing['vehicleCondition'] || undefined : initialListing?.vehicleCondition,
+      vehicleDriverOption: isDetailedTransportWizard && subCategory === 'cars'
+        ? vehicleDriverOption as Listing['vehicleDriverOption'] || undefined
+        : initialListing?.vehicleDriverOption,
+      vehicleTransmission: isDetailedTransportWizard && subCategory === 'cars'
+        ? vehicleTransmission as Listing['vehicleTransmission'] || undefined
+        : initialListing?.vehicleTransmission,
+      vehicleFuelType: isDetailedTransportWizard && subCategory === 'cars'
+        ? vehicleFuelType as Listing['vehicleFuelType'] || undefined
+        : initialListing?.vehicleFuelType,
+      vehicleLuggageCapacity: isDetailedTransportWizard && subCategory === 'cars'
+        ? vehicleLuggageCapacity as Listing['vehicleLuggageCapacity']
+        : initialListing?.vehicleLuggageCapacity,
       sellerType: supportsSellerType ? sellerType as Listing['sellerType'] || undefined : initialListing?.sellerType,
       sellerGoogleMapsUrl: supportsSellerType && sellerType === 'company'
         ? buildSellerGoogleMapsUrl(sellerCompanyName, sellerGoogleMapsUrl, sellerGooglePlaceId)
         : initialListing?.sellerGoogleMapsUrl,
       sellerGooglePlaceId: supportsSellerType && sellerType === 'company' ? sellerGooglePlaceId || undefined : initialListing?.sellerGooglePlaceId,
-      keyless: category === 'transport' && subCategory === 'scooters' ? keyless : initialListing?.keyless,
-      abs: category === 'transport' && subCategory === 'scooters' ? abs : initialListing?.abs,
-      surfRack: category === 'transport' && subCategory === 'scooters' ? surfRack : initialListing?.surfRack,
-      insurance: category === 'transport' && subCategory === 'scooters' ? insurance : initialListing?.insurance,
-      freeDeliveryToDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts.length > 0 : initialListing?.freeDeliveryToDistricts,
-      freeDeliveryDistricts: category === 'transport' && subCategory === 'scooters' ? freeDeliveryDistricts : initialListing?.freeDeliveryDistricts,
+      keyless: isDetailedTransportWizard && subCategory === 'cars' ? undefined : isDetailedTransportWizard ? keyless : initialListing?.keyless,
+      abs: isDetailedTransportWizard ? abs : initialListing?.abs,
+      airbag: isDetailedTransportWizard && subCategory === 'cars' ? airbag : initialListing?.airbag,
+      rearCamera: isDetailedTransportWizard && subCategory === 'cars' ? rearCamera : initialListing?.rearCamera,
+      parkingSensors: isDetailedTransportWizard && subCategory === 'cars' ? parkingSensors : initialListing?.parkingSensors,
+      sunroof: isDetailedTransportWizard && subCategory === 'cars' ? sunroof : initialListing?.sunroof,
+      leatherInterior: isDetailedTransportWizard && subCategory === 'cars' ? leatherInterior : initialListing?.leatherInterior,
+      childSeat: isDetailedTransportWizard && subCategory === 'cars' ? childSeat : initialListing?.childSeat,
+      roofRack: isDetailedTransportWizard && subCategory === 'cars' ? roofRack : initialListing?.roofRack,
+      surfRack: isDetailedTransportWizard && subCategory === 'cars' ? undefined : isDetailedTransportWizard ? surfRack : initialListing?.surfRack,
+      insurance: isDetailedTransportWizard ? insurance : initialListing?.insurance,
+      freeDeliveryToDistricts: isDetailedTransportWizard ? freeDeliveryDistricts.length > 0 : initialListing?.freeDeliveryToDistricts,
+      freeDeliveryDistricts: isDetailedTransportWizard ? freeDeliveryDistricts : initialListing?.freeDeliveryDistricts,
       serviceFormats: category === 'services' ? serviceFormats : initialListing?.serviceFormats,
       serviceSubcategory: category === 'services' ? serviceSubcategory.startsWith(subCategory + '.') ? serviceSubcategory : undefined : initialListing?.serviceSubcategory,
       serviceLicensed: category === 'services' ? subCategory === 'health' && serviceLicensed : initialListing?.serviceLicensed,
@@ -1185,16 +1338,40 @@ export default function CreateWizard({
       setVehicleModel,
       vehicleModelQuantity,
       setVehicleModelQuantity,
+      vehicleEngineDisplacementCc,
+      setVehicleEngineDisplacementCc,
       vehicleColor,
       setVehicleColor,
       vehicleCondition,
       setVehicleCondition,
+      vehicleDriverOption,
+      setVehicleDriverOption,
+      vehicleTransmission,
+      setVehicleTransmission,
+      vehicleFuelType,
+      setVehicleFuelType,
+      vehicleLuggageCapacity,
+      setVehicleLuggageCapacity,
       yearBuilt,
       setYearBuilt,
       keyless,
       setKeyless,
       abs,
       setAbs,
+      airbag,
+      setAirbag,
+      rearCamera,
+      setRearCamera,
+      parkingSensors,
+      setParkingSensors,
+      sunroof,
+      setSunroof,
+      leatherInterior,
+      setLeatherInterior,
+      childSeat,
+      setChildSeat,
+      roofRack,
+      setRoofRack,
       surfRack,
       setSurfRack,
       insurance,
@@ -1243,6 +1420,7 @@ export default function CreateWizard({
       activePhotoSlotConfig,
       requiredPhotoSlots,
       optionalPhotoSlots,
+      isCarPhotoFlow,
       isScooterPhotoFlow,
       isServicePhotoFlow,
       setDraggedPhotoSlotId,
@@ -1315,10 +1493,32 @@ export default function CreateWizard({
       setVehicleColor,
       vehicleCondition,
       setVehicleCondition,
+      vehicleDriverOption,
+      setVehicleDriverOption,
+      vehicleTransmission,
+      setVehicleTransmission,
+      vehicleFuelType,
+      setVehicleFuelType,
+      vehicleLuggageCapacity,
+      setVehicleLuggageCapacity,
       keyless,
       setKeyless,
       abs,
       setAbs,
+      airbag,
+      setAirbag,
+      rearCamera,
+      setRearCamera,
+      parkingSensors,
+      setParkingSensors,
+      sunroof,
+      setSunroof,
+      leatherInterior,
+      setLeatherInterior,
+      childSeat,
+      setChildSeat,
+      roofRack,
+      setRoofRack,
       surfRack,
       setSurfRack,
       insurance,

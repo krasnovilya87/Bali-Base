@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FilterState, Listing } from '../types';
-import { X, Check, ArrowRight, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, ShieldCheck, HelpCircle, Wifi, Compass, Waves, Heart } from 'lucide-react';
+import { X, Check, ArrowRight, Camera, ChevronLeft, ChevronRight, Home, Package, SlidersHorizontal, Sparkles, Flame, Percent, Snowflake, Monitor, Key, Shield, ShieldCheck, HelpCircle, UsersRound, Wifi, Compass, Waves, Heart } from 'lucide-react';
 import Polzunok from './Polzunok';
+import DualRangeSlider from './DualRangeSlider';
 import { isListingFresh } from '../utils/listingFreshness';
 import { isListingVerified } from '../utils/listingVerification';
 import { snapRangeValue } from '../utils/range';
@@ -36,6 +37,29 @@ import {
   listingOffersFreeDeliveryToAddress,
   yearMeetsMinimum
 } from '../utils/scooterFilters';
+import {
+  MOTORCYCLE_MODEL_GROUPS,
+  MOTORCYCLE_MODEL_OPTIONS,
+  MOTORCYCLE_OTHER_MODEL_PREFIX,
+  MOTORCYCLE_TYPE_GROUPS,
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MAX,
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+  getMotorcycleModelsForGroup,
+  motorcycleEngineMatchesRange,
+  type MotorcycleModelGroup,
+  type MotorcycleTypeGroup
+} from '../config/motorcycleCatalog';
+import {
+  CAR_BRAND_GROUPS,
+  CAR_ENGINE_DISPLACEMENT_MAX,
+  CAR_ENGINE_DISPLACEMENT_MIN,
+  CAR_MODEL_OPTIONS,
+  CAR_TYPE_GROUPS,
+  carEngineMatchesRange,
+  getCarModelsForGroup,
+  type CarBrandGroup,
+  type CarTypeGroup
+} from '../config/carCatalog';
 import { findDistrictByMapPointSync } from '../utils/geo';
 import ClassifiedSpecialFilters from './classified/ClassifiedSpecialFilters';
 import { ClassifiedConditionFilterSlider } from './classified/ClassifiedConditionSlider';
@@ -49,9 +73,78 @@ import { LifeSpecialFilters } from './life/LifeParameters';
 import InvestmentFilters from './investments/InvestmentFilters';
 import { listingMatchesInvestmentFilters } from '../utils/investmentFilters';
 // @ts-ignore
-import riceFieldColorsPopup from '../assets/images/rice-field-colors-popup.png';
+import riceFieldColorsPopup from '../assets/images/other/misc/rice-field-colors-popup.png';
 // @ts-ignore
-import scooterConditionSprite from '../assets/images/scooter-condition-sprite.png';
+import scooterConditionSprite from '../assets/images/other/condition-sprites/scooter-condition-sprite.png';
+// @ts-ignore
+import motorcycleConditionSprite from '../assets/images/other/condition-sprites/motorcycle-condition-sprite.png';
+// @ts-ignore
+import carConditionSprite from '../assets/images/other/condition-sprites/car-condition-sprite.png';
+// @ts-ignore
+import driverWithIcon from '../assets/images/other/vehicle-parameters/car/driver-with.png';
+// @ts-ignore
+import driverWithoutIcon from '../assets/images/other/vehicle-parameters/car/driver-without.png';
+// @ts-ignore
+import transmissionAutomaticIcon from '../assets/images/other/vehicle-parameters/car/transmission-automatic.png';
+// @ts-ignore
+import transmissionManualIcon from '../assets/images/other/vehicle-parameters/car/transmission-manual.png';
+// @ts-ignore
+import fuelGasolineIcon from '../assets/images/other/vehicle-parameters/car/fuel-gasoline.png';
+// @ts-ignore
+import fuelDieselIcon from '../assets/images/other/vehicle-parameters/car/fuel-diesel.png';
+// @ts-ignore
+import fuelHybridIcon from '../assets/images/other/vehicle-parameters/car/fuel-hybrid.png';
+// @ts-ignore
+import fuelElectricIcon from '../assets/images/other/vehicle-parameters/car/fuel-electric.png';
+// @ts-ignore
+import fuelGasIcon from '../assets/images/other/vehicle-parameters/car/fuel-gas.png';
+// @ts-ignore
+import luggage2Icon from '../assets/images/other/vehicle-parameters/car/luggage-2.svg';
+// @ts-ignore
+import luggage4Icon from '../assets/images/other/vehicle-parameters/car/luggage-4.svg';
+// @ts-ignore
+import luggage6Icon from '../assets/images/other/vehicle-parameters/car/luggage-6.svg';
+// @ts-ignore
+import luggage8Icon from '../assets/images/other/vehicle-parameters/car/luggage-8.svg';
+
+type FilterImageOptionProps = {
+  label: string;
+  image: string;
+  isActive: boolean;
+  onClick: () => void;
+  wide?: boolean;
+  imageClassName?: string;
+};
+
+const FilterImageOption: React.FC<FilterImageOptionProps> = ({ label, image, isActive, onClick, wide = false, imageClassName = '' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={label}
+    aria-pressed={isActive}
+    className={`group flex appearance-none flex-col items-center gap-1.5 border-0 bg-transparent p-0 text-center transition cursor-pointer select-none ${
+      wide ? 'w-[128px]' : 'w-[78px]'
+    }`}
+  >
+    <span className={`relative flex items-center justify-center overflow-hidden rounded-2xl border bg-white p-2 transition ${
+      wide ? 'h-[70px] w-[124px]' : 'h-[72px] w-[72px]'
+    } ${
+      isActive
+        ? 'selected border-[#FF7A50] bg-[#FFF8F5] shadow-[0_9px_18px_rgba(255,122,80,0.13)]'
+        : 'border-[#E5E7EB] group-hover:border-[#FF7A50]/55'
+    }`}>
+      <img src={image} alt="" aria-hidden="true" className={`h-full w-full object-contain ${imageClassName}`} />
+      {isActive && (
+        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF7A50] text-white ring-2 ring-white">
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      )}
+    </span>
+    <span className="w-full text-[10.5px] font-normal leading-tight text-[#1E293B] sm:text-xs">
+      {label}
+    </span>
+  </button>
+);
 
 const getVehicleColorSwatch = (color: string) => ({
   black: '#111827',
@@ -122,7 +215,18 @@ export default function HousingFilters({
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
-  const isScootersCategory = category === 'transport' && activeSubCategories.includes('scooters');
+  const isScootersCategory = category === 'transport' && subCategory === 'scooters';
+  const isMotorcyclesCategory = category === 'transport' && subCategory === 'motorcycles';
+  const isCarsCategory = category === 'transport' && subCategory === 'cars';
+  const isDetailedTransportCategory = isScootersCategory || isMotorcyclesCategory || isCarsCategory;
+  const engineDisplacementMin = isCarsCategory ? CAR_ENGINE_DISPLACEMENT_MIN : MOTORCYCLE_ENGINE_DISPLACEMENT_MIN;
+  const engineDisplacementMax = isCarsCategory ? CAR_ENGINE_DISPLACEMENT_MAX : MOTORCYCLE_ENGINE_DISPLACEMENT_MAX;
+  const usesOtherVehicleDefaults = isCarsCategory
+    ? filters.vehicleEngineDisplacementMin === MOTORCYCLE_ENGINE_DISPLACEMENT_MIN && filters.vehicleEngineDisplacementMax === MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+    : filters.vehicleEngineDisplacementMin === CAR_ENGINE_DISPLACEMENT_MIN && filters.vehicleEngineDisplacementMax === CAR_ENGINE_DISPLACEMENT_MAX;
+  const clampedEngineDisplacementMin = Math.max(engineDisplacementMin, filters.vehicleEngineDisplacementMin ?? engineDisplacementMin);
+  const clampedEngineDisplacementMax = Math.min(engineDisplacementMax, filters.vehicleEngineDisplacementMax ?? engineDisplacementMax);
+  const hasValidIncomingEngineRange = clampedEngineDisplacementMin <= clampedEngineDisplacementMax;
   const getItemFilterPrice = (item: Listing) => {
     const dailyPrice = item.hasDropPrice && item.dropPricePerDay ? item.dropPricePerDay : item.pricePerDay;
     return dailyPrice * selectedDayCount;
@@ -153,6 +257,23 @@ export default function HousingFilters({
     classifiedSpecialOptions: filters.classifiedSpecialOptions || {},
     classifiedSpecialNumberRanges: filters.classifiedSpecialNumberRanges || {},
     classifiedSpecialText: filters.classifiedSpecialText || {},
+    vehicleEngineDisplacementMin: usesOtherVehicleDefaults
+      ? engineDisplacementMin
+      : hasValidIncomingEngineRange ? clampedEngineDisplacementMin : engineDisplacementMin,
+    vehicleEngineDisplacementMax: usesOtherVehicleDefaults
+      ? engineDisplacementMax
+      : hasValidIncomingEngineRange ? clampedEngineDisplacementMax : engineDisplacementMax,
+    transmission: filters.transmission || [],
+    vehicleDriverOption: filters.vehicleDriverOption || [],
+    vehicleFuelType: filters.vehicleFuelType || [],
+    vehicleLuggageCapacity: filters.vehicleLuggageCapacity || [],
+    airbagOnly: Boolean(filters.airbagOnly),
+    rearCameraOnly: Boolean(filters.rearCameraOnly),
+    parkingSensorsOnly: Boolean(filters.parkingSensorsOnly),
+    sunroofOnly: Boolean(filters.sunroofOnly),
+    leatherInteriorOnly: Boolean(filters.leatherInteriorOnly),
+    childSeatOnly: Boolean(filters.childSeatOnly),
+    roofRackOnly: Boolean(filters.roofRackOnly),
     classifiedSpecialDateRanges: filters.classifiedSpecialDateRanges || {},
     investmentSubtypes: filters.investmentSubtypes || [],
     investmentOptions: filters.investmentOptions || {},
@@ -162,6 +283,13 @@ export default function HousingFilters({
     classifiedUrgentOnly: Boolean(filters.classifiedUrgentOnly),
     classifiedPublishedWithin: filters.classifiedPublishedWithin || 'all'
   };
+  if (
+    isCarsCategory &&
+    normalizedFilters.vehicleDriverOption.includes('with_driver') &&
+    !normalizedFilters.vehicleDriverOption.includes('without_driver')
+  ) {
+    normalizedFilters.transmission = [];
+  }
   if (category === 'ads' && normalizedFilters.classifiedSpecialSubCategory !== subCategory) {
     normalizedFilters.classifiedProductType = [];
     normalizedFilters.classifiedSpecialOptions = {};
@@ -182,6 +310,10 @@ export default function HousingFilters({
   const [activeDrag, setActiveDrag] = useState<'min' | 'max' | null>(null);
   const [showRiceFieldsNotice, setShowRiceFieldsNotice] = useState(false);
   const [activeScooterModelGroup, setActiveScooterModelGroup] = useState<ScooterModelGroup>('all');
+  const [activeMotorcycleModelGroup, setActiveMotorcycleModelGroup] = useState<MotorcycleModelGroup>('honda');
+  const [activeMotorcycleType, setActiveMotorcycleType] = useState<MotorcycleTypeGroup>('all');
+  const [activeCarBrandGroup, setActiveCarBrandGroup] = useState<CarBrandGroup>('toyota');
+  const [activeCarType, setActiveCarType] = useState<CarTypeGroup>('all');
   const currentVehicleYear = new Date().getFullYear();
   const trackRef = useRef<HTMLDivElement>(null);
   const priceDragStartValue = useRef<number>(minBound);
@@ -321,7 +453,12 @@ export default function HousingFilters({
       viewType: [],
       extraOptions: [],
       engineSize: [],
+      vehicleEngineDisplacementMin: engineDisplacementMin,
+      vehicleEngineDisplacementMax: engineDisplacementMax,
       transmission: [],
+      vehicleDriverOption: [],
+      vehicleFuelType: [],
+      vehicleLuggageCapacity: [],
       vehicleBrand: [],
       vehicleModel: [],
       vehicleColor: [],
@@ -331,6 +468,13 @@ export default function HousingFilters({
       sellerType: [],
       keylessOnly: false,
       absOnly: false,
+      airbagOnly: false,
+      rearCameraOnly: false,
+      parkingSensorsOnly: false,
+      sunroofOnly: false,
+      leatherInteriorOnly: false,
+      childSeatOnly: false,
+      roofRackOnly: false,
       surfRackOnly: false,
       insuranceOnly: false,
       freeDeliveryToAddressOnly: false,
@@ -507,11 +651,40 @@ export default function HousingFilters({
         if (price < localFilters.priceMin || price > localFilters.priceMax) return false;
       }
 
-      if (category === 'transport' && item.subCategory === 'scooters') {
-        if (localFilters.vehicleModel.length > 0 && !localFilters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
+      if (category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(item.subCategory)) {
+        const listingVehicleModel = getListingVehicleModel(item) || '';
+        const matchesSelectedVehicleModel = localFilters.vehicleModel.includes(listingVehicleModel)
+          || (item.subCategory === 'motorcycles'
+            && localFilters.vehicleModel.includes('motorcycle_other')
+            && listingVehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX));
+        if (localFilters.vehicleModel.length > 0 && !matchesSelectedVehicleModel) return false;
+        if (item.subCategory === 'motorcycles' && !motorcycleEngineMatchesRange(
+          item.vehicleModel || '',
+          item.vehicleEngineDisplacementCc,
+          localFilters.vehicleEngineDisplacementMin,
+          localFilters.vehicleEngineDisplacementMax
+        )) return false;
+        if (item.subCategory === 'cars' && !carEngineMatchesRange(
+          item.vehicleEngineDisplacementCc,
+          localFilters.vehicleEngineDisplacementMin,
+          localFilters.vehicleEngineDisplacementMax
+        )) return false;
         if (localFilters.vehicleColor.length > 0 && !localFilters.vehicleColor.includes(getListingVehicleColor(item) || '')) return false;
         if (!yearMeetsMinimum(item.yearBuilt, localFilters.vehicleYearMin || 0)) return false;
         if (localFilters.vehicleCondition.length > 0 && !localFilters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
+        if (item.subCategory === 'cars') {
+          if (localFilters.vehicleDriverOption.length > 0 && !localFilters.vehicleDriverOption.includes(item.vehicleDriverOption || '')) return false;
+          if (localFilters.transmission.length > 0 && !localFilters.transmission.includes(item.vehicleTransmission || '')) return false;
+          if (localFilters.vehicleFuelType.length > 0 && !localFilters.vehicleFuelType.includes(item.vehicleFuelType || '')) return false;
+          if (localFilters.vehicleLuggageCapacity.length > 0 && !localFilters.vehicleLuggageCapacity.includes(item.vehicleLuggageCapacity || 0)) return false;
+          if (localFilters.airbagOnly && !item.airbag) return false;
+          if (localFilters.rearCameraOnly && !item.rearCamera) return false;
+          if (localFilters.parkingSensorsOnly && !item.parkingSensors) return false;
+          if (localFilters.sunroofOnly && !item.sunroof) return false;
+          if (localFilters.leatherInteriorOnly && !item.leatherInterior) return false;
+          if (localFilters.childSeatOnly && !item.childSeat) return false;
+          if (localFilters.roofRackOnly && !item.roofRack) return false;
+        }
         if (localFilters.sellerType.length > 0 && !localFilters.sellerType.includes(getListingSellerType(item))) return false;
         if (localFilters.keylessOnly && !listingHasKeyless(item)) return false;
         if (localFilters.absOnly && !listingHasAbs(item)) return false;
@@ -708,12 +881,43 @@ export default function HousingFilters({
         : tr('filters.subPrivateRoom')
     : tr(`category.${category}.label`);
   const visibleScooterModels = getScooterModelsForGroup(activeScooterModelGroup);
+  const availableMotorcycleModelGroups = activeMotorcycleType === 'all'
+    ? MOTORCYCLE_MODEL_GROUPS
+    : MOTORCYCLE_MODEL_GROUPS.filter(group =>
+        group.value === 'all' || MOTORCYCLE_MODEL_OPTIONS.some(model =>
+          model.group === group.value && (model.types as readonly string[]).includes(activeMotorcycleType)
+        )
+      );
+  const visibleMotorcycleModelGroups = [...availableMotorcycleModelGroups].sort((a, b) => {
+    if (a.value === 'honda') return -1;
+    if (b.value === 'honda') return 1;
+    if (a.value === 'all') return 1;
+    if (b.value === 'all') return -1;
+    return 0;
+  });
+  const visibleMotorcycleModels = getMotorcycleModelsForGroup(activeMotorcycleModelGroup, activeMotorcycleType);
+  const availableCarBrandGroups = activeCarType === 'all'
+    ? CAR_BRAND_GROUPS
+    : CAR_BRAND_GROUPS.filter(group =>
+        group.value === 'all' || CAR_MODEL_OPTIONS.some(model =>
+          model.brand === group.value && (model.types as readonly string[]).includes(activeCarType)
+        )
+      );
+  const visibleCarBrandGroups = [...availableCarBrandGroups].sort((a, b) => {
+    if (a.value === 'toyota') return -1;
+    if (b.value === 'toyota') return 1;
+    if (a.value === 'all') return 1;
+    if (b.value === 'all') return -1;
+    return 0;
+  });
+  const visibleCarModels = getCarModelsForGroup(activeCarBrandGroup, activeCarType);
   const vehicleYearSliderValue = localFilters.vehicleYearMin > 0
-    ? Math.min(Math.max(currentVehicleYear - localFilters.vehicleYearMin, 0), 3)
-    : 4;
+    ? Math.min(Math.max(currentVehicleYear - localFilters.vehicleYearMin, 0), 7)
+    : 8;
   const vehicleYearLabel = localFilters.vehicleYearMin > 0
     ? `${localFilters.vehicleYearMin}+`
     : tr('filters.transport.year.any');
+  const isWithoutDriverSelected = localFilters.vehicleDriverOption.includes('without_driver');
   const deliveryAddressLabel = deliveryPoint
     ? tr('filters.transport.delivery.addressSelected')
     : tr('filters.transport.delivery.chooseAddressInline');
@@ -725,8 +929,7 @@ export default function HousingFilters({
     };
     setLocalFilters(nextFilters);
 
-    if (isEnabling && !deliveryPoint) {
-      onApplyFilters(nextFilters);
+    if (isEnabling) {
       onRequestDeliveryPoint?.();
     }
   };
@@ -1011,7 +1214,7 @@ export default function HousingFilters({
                         }`}
                       >
                         <img
-                          src={option.customImage || `/category-icons/${categoryIconFile(option.icon)}.svg`}
+                          src={option.customImage || `/assets/images/category-icons/${categoryIconFile(option.icon)}.svg`}
                           alt=""
                           loading="lazy"
                           className="h-12 w-14 shrink-0 object-contain"
@@ -1087,49 +1290,251 @@ export default function HousingFilters({
           )}
           </div>
 
-          {isScootersCategory && (
+          {isDetailedTransportCategory && (
             <div className="contents">
               <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.models')}</span>
-                <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
-                  {SCOOTER_MODEL_GROUPS.map(group => {
-                    const isActive = activeScooterModelGroup === group.value;
-                    return (
+                {isScootersCategory ? (
+                  <>
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                      {SCOOTER_MODEL_GROUPS.map(group => {
+                        const isActive = activeScooterModelGroup === group.value;
+                        return (
+                          <button
+                            key={group.value}
+                            type="button"
+                            onClick={() => setActiveScooterModelGroup(group.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
+                                : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                            }`}
+                          >
+                            {tr(group.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleScooterModels.map(model => {
+                        const isActive = localFilters.vehicleModel.includes(model.value);
+                        return (
+                          <button
+                            key={model.value}
+                            type="button"
+                            onClick={() => toggleArrayFilter('vehicleModel', model.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                                : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                            }`}
+                          >
+                            {model.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : isMotorcyclesCategory ? (
+                  <>
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                      {MOTORCYCLE_TYPE_GROUPS.map(type => {
+                        const isActive = activeMotorcycleType === type.value;
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() => {
+                              setActiveMotorcycleType(type.value);
+                              if (type.value === 'all' || activeMotorcycleModelGroup === 'all') return;
+                              const activeBrandHasModels = MOTORCYCLE_MODEL_OPTIONS.some(model =>
+                                model.group === activeMotorcycleModelGroup && (model.types as readonly string[]).includes(type.value)
+                              );
+                              if (!activeBrandHasModels) setActiveMotorcycleModelGroup('all');
+                            }}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected bg-[#1E293B] text-white shadow-[0_8px_16px_rgba(30,41,59,0.16)]'
+                                : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                            }`}
+                          >
+                            {tr(type.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                      {visibleMotorcycleModelGroups.map(group => {
+                        const isActive = activeMotorcycleModelGroup === group.value;
+                        return (
+                          <button
+                            key={group.value}
+                            type="button"
+                            onClick={() => setActiveMotorcycleModelGroup(group.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
+                                : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                            }`}
+                          >
+                            {'label' in group ? group.label : tr(group.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleMotorcycleModels.map(model => {
+                        const isActive = localFilters.vehicleModel.includes(model.value);
+                        return (
+                          <button
+                            key={model.value}
+                            type="button"
+                            onClick={() => toggleArrayFilter('vehicleModel', model.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                                : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                            }`}
+                          >
+                            {model.label}
+                          </button>
+                        );
+                      })}
                       <button
-                        key={group.value}
                         type="button"
-                        onClick={() => setActiveScooterModelGroup(group.value)}
-                        className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
-                          isActive
-                            ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
-                            : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
-                        }`}
-                      >
-                        {tr(group.labelKey)}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {visibleScooterModels.map(model => {
-                    const isActive = localFilters.vehicleModel.includes(model.value);
-                    return (
-                      <button
-                        key={model.value}
-                        type="button"
-                        onClick={() => toggleArrayFilter('vehicleModel', model.value)}
+                        onClick={() => toggleArrayFilter('vehicleModel', 'motorcycle_other')}
                         className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
-                          isActive
+                          localFilters.vehicleModel.includes('motorcycle_other')
                             ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
                             : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
                         }`}
                       >
-                        {model.label}
+                        {tr('wizard.transport.modelGroup.other')}
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                      {CAR_TYPE_GROUPS.map(type => {
+                        const isActive = activeCarType === type.value;
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() => {
+                              setActiveCarType(type.value);
+                              if (type.value === 'all' || activeCarBrandGroup === 'all') return;
+                              const activeBrandHasModels = CAR_MODEL_OPTIONS.some(model =>
+                                model.brand === activeCarBrandGroup && (model.types as readonly string[]).includes(type.value)
+                              );
+                              if (!activeBrandHasModels) setActiveCarBrandGroup('all');
+                            }}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected bg-[#1E293B] text-white shadow-[0_8px_16px_rgba(30,41,59,0.16)]'
+                                : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                            }`}
+                          >
+                            {tr(type.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white/70 p-1.5">
+                      {visibleCarBrandGroups.map(group => {
+                        const isActive = activeCarBrandGroup === group.value;
+                        return (
+                          <button
+                            key={group.value}
+                            type="button"
+                            onClick={() => setActiveCarBrandGroup(group.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[11px] font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected bg-[#FF7A50] text-white shadow-[0_8px_16px_rgba(255,122,80,0.16)]'
+                                : 'bg-transparent text-[#64748B] hover:bg-white hover:text-[#1E293B]'
+                            }`}
+                          >
+                            {'label' in group ? group.label : tr(group.labelKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleCarModels.map(model => {
+                        const isActive = localFilters.vehicleModel.includes(model.value);
+                        return (
+                          <button
+                            key={model.value}
+                            type="button"
+                            onClick={() => toggleArrayFilter('vehicleModel', model.value)}
+                            className={`pl pl-interactive transport-pill inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold transition cursor-pointer select-none ${
+                              isActive
+                                ? 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]'
+                                : 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]'
+                            }`}
+                          >
+                            {model.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
+
+              {(isMotorcyclesCategory || isCarsCategory) && (
+                <div className={transportSectionClass}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={sectionTitleClass}>
+                      {tr(isCarsCategory
+                        ? 'filters.transport.engineDisplacementLiters'
+                        : 'filters.transport.engineDisplacement')}
+                    </span>
+                    <span className="pl inline-flex rounded-lg bg-[#FF7A50]/10 px-2.5 py-1 text-xs font-semibold text-[#FF7A50]">
+                      {isCarsCategory
+                        ? tr('filters.transport.engineDisplacementRangeLiters', {
+                            min: (localFilters.vehicleEngineDisplacementMin / 1000).toFixed(1),
+                            max: (localFilters.vehicleEngineDisplacementMax / 1000).toFixed(1)
+                          })
+                        : tr('filters.transport.engineDisplacementRange', {
+                            min: localFilters.vehicleEngineDisplacementMin,
+                            max: localFilters.vehicleEngineDisplacementMax
+                          })}
+                    </span>
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <DualRangeSlider
+                      min={engineDisplacementMin}
+                      max={engineDisplacementMax}
+                      step={isCarsCategory ? 100 : 1}
+                      minValue={localFilters.vehicleEngineDisplacementMin}
+                      maxValue={localFilters.vehicleEngineDisplacementMax}
+                      minAriaLabel={tr(
+                        isCarsCategory
+                          ? 'filters.transport.engineDisplacementFromLiters'
+                          : 'filters.transport.engineDisplacementFrom',
+                        { value: isCarsCategory ? (localFilters.vehicleEngineDisplacementMin / 1000).toFixed(1) : localFilters.vehicleEngineDisplacementMin }
+                      )}
+                      maxAriaLabel={tr(
+                        isCarsCategory
+                          ? 'filters.transport.engineDisplacementToLiters'
+                          : 'filters.transport.engineDisplacementTo',
+                        { value: isCarsCategory ? (localFilters.vehicleEngineDisplacementMax / 1000).toFixed(1) : localFilters.vehicleEngineDisplacementMax }
+                      )}
+                      onChange={(minValue, maxValue) => setLocalFilters({
+                        ...localFilters,
+                        vehicleEngineDisplacementMin: minValue,
+                        vehicleEngineDisplacementMax: maxValue
+                      })}
+                    />
+                    <div className="flex justify-between text-[10.5px] font-semibold text-[#64748B]">
+                      <span>{isCarsCategory ? (engineDisplacementMin / 1000).toFixed(1) : engineDisplacementMin}</span>
+                      <span>{isCarsCategory ? (engineDisplacementMax / 1000).toFixed(1) : engineDisplacementMax}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.color')}</span>
@@ -1210,14 +1615,14 @@ export default function HousingFilters({
                 <div className="pt-2 relative">
                   <Polzunok
                     min={0}
-                    max={4}
+                    max={8}
                     step={1}
                     value={vehicleYearSliderValue}
                     onChange={idx => {
                       setLocalFilters({
                         ...localFilters,
                         vehicleYear: [],
-                        vehicleYearMin: idx === 4 ? 0 : currentVehicleYear - idx
+                        vehicleYearMin: idx === 8 ? 0 : currentVehicleYear - idx
                       });
                     }}
                   />
@@ -1226,6 +1631,10 @@ export default function HousingFilters({
                     currentVehicleYear - 1,
                     currentVehicleYear - 2,
                     currentVehicleYear - 3,
+                    currentVehicleYear - 4,
+                    currentVehicleYear - 5,
+                    currentVehicleYear - 6,
+                    currentVehicleYear - 7,
                     tr('filters.transport.year.any')
                   ])}
                 </div>
@@ -1254,7 +1663,11 @@ export default function HousingFilters({
                         <span
                           className="absolute inset-0 bg-cover bg-center transition-transform duration-300 hover:scale-105"
                           style={{
-                            backgroundImage: `url(${scooterConditionSprite})`,
+                            backgroundImage: `url(${isCarsCategory
+                              ? carConditionSprite
+                              : isMotorcyclesCategory
+                                ? motorcycleConditionSprite
+                                : scooterConditionSprite})`,
                             backgroundSize: '300% 100%',
                             backgroundPosition: `${index * 50}% center`
                           }}
@@ -1326,15 +1739,127 @@ export default function HousingFilters({
                 </div>
               </div>
 
+              {isCarsCategory && (
+                <>
+                  <div className={`${transportSectionClass} grid grid-cols-[auto_minmax(0,1fr)] items-start gap-10`}>
+                    <div className="space-y-3">
+                      <span className={sectionTitleClass}>{tr('filters.transport.driver')}</span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-3">
+                        <FilterImageOption
+                          label={tr('filters.transport.driver.with_driver')}
+                          image={driverWithIcon}
+                          isActive={localFilters.vehicleDriverOption.includes('with_driver')}
+                          onClick={() => setLocalFilters({
+                            ...localFilters,
+                            vehicleDriverOption: ['with_driver'],
+                            transmission: []
+                          })}
+                        />
+                        <FilterImageOption
+                          label={tr('filters.transport.driver.without_driver')}
+                          image={driverWithoutIcon}
+                          isActive={isWithoutDriverSelected}
+                          onClick={() => setLocalFilters({
+                            ...localFilters,
+                            vehicleDriverOption: ['without_driver']
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    {isWithoutDriverSelected && (
+                      <div className="space-y-3">
+                        <span className={sectionTitleClass}>{tr('filters.transport.transmission')}</span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-3">
+                          <FilterImageOption
+                            label={tr('filters.transport.transmission.automatic')}
+                            image={transmissionAutomaticIcon}
+                            isActive={localFilters.transmission.includes('automatic')}
+                            onClick={() => toggleArrayFilter('transmission', 'automatic')}
+                          />
+                          <FilterImageOption
+                            label={tr('filters.transport.transmission.manual')}
+                            image={transmissionManualIcon}
+                            isActive={localFilters.transmission.includes('manual')}
+                            onClick={() => toggleArrayFilter('transmission', 'manual')}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={transportSectionClass}>
+                    <span className={sectionTitleClass}>{tr('filters.transport.fuel')}</span>
+                    <div className="flex flex-wrap gap-x-3 gap-y-3">
+                      {[
+                        ['gasoline', fuelGasolineIcon, 'translate-x-1'],
+                        ['diesel', fuelDieselIcon, ''],
+                        ['hybrid', fuelHybridIcon, ''],
+                        ['electric', fuelElectricIcon, '-translate-x-1'],
+                        ['gas', fuelGasIcon, '']
+                      ].map(([value, image, imageClassName]) => (
+                        <FilterImageOption
+                          key={value}
+                          label={tr(`filters.transport.fuel.${value}`)}
+                          image={image}
+                          imageClassName={imageClassName}
+                          isActive={localFilters.vehicleFuelType.includes(value)}
+                          onClick={() => toggleArrayFilter('vehicleFuelType', value)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={transportSectionClass}>
+                    <span className={sectionTitleClass}>{tr('filters.transport.luggageCapacity')}</span>
+                    <div className="flex flex-wrap gap-x-3 gap-y-3">
+                      {([ 
+                        [2, luggage2Icon],
+                        [4, luggage4Icon],
+                        [6, luggage6Icon],
+                        [8, luggage8Icon]
+                      ] as const).map(([value, image]) => {
+                        const isActive = localFilters.vehicleLuggageCapacity.includes(value);
+                        return (
+                          <FilterImageOption
+                            key={value}
+                            onClick={() => setLocalFilters({
+                              ...localFilters,
+                              vehicleLuggageCapacity: isActive
+                                ? localFilters.vehicleLuggageCapacity.filter(item => item !== value)
+                                : [...localFilters.vehicleLuggageCapacity, value]
+                            })}
+                            label={tr('filters.transport.luggageCapacityValue', { count: value })}
+                            image={image}
+                            isActive={isActive}
+                            wide
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className={transportSectionClass}>
                 <span className={sectionTitleClass}>{tr('filters.transport.features')}</span>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {[
+                <div className={`grid gap-2.5 ${isCarsCategory ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  {(isCarsCategory ? [
+                    { key: 'absOnly' as const, labelKey: 'filters.transport.features.abs', Icon: ShieldCheck },
+                    { key: 'airbagOnly' as const, labelKey: 'filters.transport.features.airbag', Icon: Shield },
+                    { key: 'rearCameraOnly' as const, labelKey: 'filters.transport.features.rearCamera', Icon: Camera },
+                    { key: 'parkingSensorsOnly' as const, labelKey: 'filters.transport.features.parkingSensors', Icon: Wifi },
+                    { key: 'sunroofOnly' as const, labelKey: 'filters.transport.features.sunroof', Icon: Home },
+                    { key: 'leatherInteriorOnly' as const, labelKey: 'filters.transport.features.leatherInterior', Icon: Package },
+                    { key: 'childSeatOnly' as const, labelKey: 'filters.transport.features.childSeat', Icon: UsersRound },
+                    { key: 'roofRackOnly' as const, labelKey: 'filters.transport.features.roofRack', Icon: Package },
+                    { key: 'insuranceOnly' as const, labelKey: 'filters.transport.features.insurance', Icon: Shield }
+                  ] : [
                     { key: 'keylessOnly' as const, labelKey: 'filters.transport.features.keyless', Icon: Key },
                     { key: 'absOnly' as const, labelKey: 'filters.transport.features.abs', Icon: ShieldCheck },
                     { key: 'surfRackOnly' as const, labelKey: 'filters.transport.features.surfRack', Icon: Waves },
                     { key: 'insuranceOnly' as const, labelKey: 'filters.transport.features.insurance', Icon: Shield }
-                  ].map(({ key, labelKey, Icon }) => {
+                  ]).map(({ key, labelKey, Icon }) => {
                     const isActive = localFilters[key];
                     return (
                       <button

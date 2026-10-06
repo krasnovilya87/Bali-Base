@@ -1,3 +1,5 @@
+import { getFirebaseRequestHeaders } from './firebaseRequestHeaders';
+
 const IMAGEKIT_WORKER_UPLOAD_ENDPOINT = 'https://media.balibase.id/upload';
 
 type ImageKitProxyResponse = {
@@ -104,6 +106,10 @@ const blobToBase64Source = (blob: Blob) =>
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+const getUploadSecurityHeaders = () => getFirebaseRequestHeaders({
+  authError: 'Sign in is required before uploading images.'
+});
+
 const uploadBinarySourceViaProxy = async (
   source: Blob,
   diagnostics: ImageUploadDiagnosticStep[],
@@ -113,10 +119,12 @@ const uploadBinarySourceViaProxy = async (
   let response: Response;
 
   try {
+    const securityHeaders = await getUploadSecurityHeaders();
     response = await fetch(IMAGEKIT_WORKER_UPLOAD_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',
+        ...securityHeaders,
         'X-File-Name': encodeURIComponent(metadata?.fileName || 'image'),
         'X-File-Type': metadata?.fileType || source.type || 'application/octet-stream'
       },
@@ -167,10 +175,12 @@ const uploadBase64SourceViaProxy = async (
 ) => {
   let response: Response;
   try {
+    const securityHeaders = await getUploadSecurityHeaders();
     response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...securityHeaders
       },
       body: JSON.stringify({
         source,

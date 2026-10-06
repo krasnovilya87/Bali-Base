@@ -1,5 +1,5 @@
 import { LanguageCode } from '../i18n';
-import { auth } from '../firebase';
+import { getFirebaseRequestHeaders } from './firebaseRequestHeaders';
 
 const CACHE_PREFIX = 'bali_base_ai_review_translation_v1';
 
@@ -33,15 +33,12 @@ export const translateReviewText = async (text: string, language: LanguageCode) 
     // Translation can still continue without local cache.
   }
 
-  const token = await auth.currentUser?.getIdToken();
-  if (!token) return text;
-
   const response = await fetch(getTranslateEndpoint(), {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
+    headers: await getFirebaseRequestHeaders({
+      authError: 'Sign in is required before AI translation.',
+      contentType: 'application/json'
+    }),
     body: JSON.stringify({ text: sourceText, language })
   });
   const payload = await response.json().catch(() => null);

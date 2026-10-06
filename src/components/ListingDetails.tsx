@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Listing, BookingRequest, FilterState, ListingNearbySpot } from '../types';
+import { Listing, BookingRequest, FilterState, ListingNearbySpot, Review } from '../types';
 import {
   X, Star, MapPin, Compass, Flame, ShieldCheck, Mail, Calendar,
   ChevronRight, Wifi, ShieldAlert, Waves, Home, Lock, RefreshCw, Sparkles, Send, LayoutGrid, Check, Info, BedDouble,
@@ -51,8 +51,9 @@ import {
   SCOOTER_MODELS_BY_GROUP
 } from '../utils/scooterFilters';
 import { ROOM_TYPE_LABELS } from './create-wizard/constants';
-import { getScooterModelLabel } from './create-wizard/configs/scooterWizardConfig';
+import { getTransportModelLabel } from './create-wizard/configs/scooterWizardConfig';
 import { formatLifeExpensePerPerson, getLifeExpensePerPerson, LIFE_WEEKDAYS } from '../config/lifeSpecial';
+import { ListingReview, loadListingReviews, saveListingReview } from '../utils/listingReviews';
 
 type MapSpotCategory = PlaceLibraryCategory;
 
@@ -255,7 +256,7 @@ const SCOOTER_ENGINE_CC: Record<string, number> = {
   xmax: 250
 };
 
-const SCOOTER_USB_MODELS = SCOOTER_MODEL_OPTIONS
+const SCOOTER_USB_MODELS: string[] = SCOOTER_MODEL_OPTIONS
   .map(model => model.value)
   .filter(model => model !== 'mio_125');
 const SCOOTER_KEYLESS_MODELS = ['scoopy', 'fazzio', 'grand_filano_125', 'nmax', 'nmax_turbo', 'xmax', 'pcx', 'beat_110'];
@@ -365,6 +366,14 @@ export default function ListingDetails({
   const [isProblemModalOpen, setIsProblemModalOpen] = useState<boolean>(false);
   const [problemMessage, setProblemMessage] = useState<string>('');
   const [problemSent, setProblemSent] = useState<boolean>(false);
+  const [internalReviews, setInternalReviews] = useState<ListingReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState<boolean>(false);
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState<boolean>(false);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewText, setReviewText] = useState<string>('');
+  const [reviewSaving, setReviewSaving] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string>('');
+  const [reviewSaved, setReviewSaved] = useState<boolean>(false);
   const { translatedDescription, isTranslating } = useTranslatedDescription(listing.description, activeLanguage);
 
   const visibleHeroPhotoIndexes = listing.images
@@ -490,6 +499,39 @@ export default function ListingDetails({
     setIsCharacteristicsExpanded(false);
     setIsAmenitiesExpanded(false);
   }, [listing.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (listing.category === 'housing') {
+      setInternalReviews([]);
+      setReviewsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setReviewsLoading(true);
+    setReviewError('');
+    loadListingReviews(listing.id)
+      .then(reviews => {
+        if (cancelled) return;
+        setInternalReviews(reviews);
+        const ownReview = user ? reviews.find(review => review.authorId === user.uid) : undefined;
+        setReviewRating(ownReview?.rating || 5);
+        setReviewText(ownReview?.text || '');
+      })
+      .catch(() => {
+        if (!cancelled) setReviewError(tr('details.review.loadError'));
+      })
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listing.id, listing.category, user?.uid]);
 
   const isFavorite = favoriteIds.has(listing.id);
 
@@ -853,6 +895,10 @@ export default function ListingDetails({
   // WhatsApp template dispatch
   const placeWhatsAppBooking = () => {
     const activeUser = auth.currentUser || user;
+    if (!activeUser) {
+      onRequireAuth?.('auth.reason.booking', placeWhatsAppBooking);
+      return;
+    }
     if (!checkInDate || !checkOutDate) {
       setShowDateCalendar(true);
       return;
@@ -918,11 +964,13 @@ export default function ListingDetails({
     const newReq: BookingRequest = {
       id: `bk-${Date.now()}`,
       listingId: listing.id,
+      guestId: activeUser.uid,
+      listingOwnerId: listing.ownerId,
       listingTitle: listing.title,
       listingImage: listing.images[0],
       listingCategory: listing.category as any,
-      guestName: activeUser?.displayName || activeUser?.email || 'Bali Base user',
-      guestPhone: activeUser?.phoneNumber || '+62899123412',
+      guestName: activeUser.displayName || activeUser.email || 'Bali Base user',
+      guestPhone: activeUser.phoneNumber || '+62899123412',
       startDate: checkInDate,
       endDate: checkOutDate,
       totalDays: diffDays,
@@ -1034,6 +1082,63 @@ export default function ListingDetails({
       setIsProblemModalOpen(false);
       setProblemSent(false);
     }, 1400);
+  };
+
+  const openListingReviewForm = () => {
+    const showReviewForm = () => {
+      const ownReview = user ? internalReviews.find(review => review.authorId === user.uid) : undefined;
+      setReviewRating(ownReview?.rating || 5);
+      setReviewText(ownReview?.text || '');
+      setReviewError('');
+      setReviewSaved(false);
+      setIsReviewFormOpen(true);
+    };
+
+    if (!user && onRequireAuth && !onRequireAuth('auth.reason.review', showReviewForm)) return;
+    showReviewForm();
+  };
+
+  const submitListingReview = async () => {
+    const activeUser = auth.currentUser || user;
+    const cleanText = reviewText.trim();
+    if (!activeUser) {
+      if (onRequireAuth) onRequireAuth('auth.reason.review', () => setIsReviewFormOpen(true));
+      return;
+    }
+    if (cleanText.length < 3) {
+      setReviewError(tr('details.review.textTooShort'));
+      return;
+    }
+
+    const existingReview = internalReviews.find(review => review.authorId === activeUser.uid);
+    const now = new Date().toISOString();
+    const nextReview: ListingReview = {
+      id: activeUser.uid,
+      listingId: listing.id,
+      authorId: activeUser.uid,
+      authorName: activeUser.displayName || activeUser.email || tr('details.review.defaultAuthor'),
+      avatar: activeUser.photoURL || '',
+      rating: reviewRating,
+      date: existingReview?.date || now,
+      text: cleanText,
+      createdAt: existingReview?.createdAt || now,
+      updatedAt: now
+    };
+
+    setReviewSaving(true);
+    setReviewError('');
+    try {
+      await saveListingReview(nextReview);
+      setInternalReviews(current => [
+        nextReview,
+        ...current.filter(review => review.authorId !== activeUser.uid)
+      ]);
+      setReviewSaved(true);
+    } catch {
+      setReviewError(tr('details.review.saveError'));
+    } finally {
+      setReviewSaving(false);
+    }
   };
 
   // Format metadata values for Housing Category
@@ -1381,6 +1486,19 @@ export default function ListingDetails({
   const isInvestmentListing = listing.category === 'investments';
   const isLifeListing = listing.category === 'life';
   const isLifeCommunityListing = isLifeListing && listing.subCategory !== 'life_jobs';
+  const visibleReviews: Review[] = isHousingListing
+    ? (listing.reviews || [])
+    : Array.from(new Map(
+      [...(listing.reviews || []), ...internalReviews].map(review => [review.id, review])
+    ).values()).sort((left, right) =>
+      new Date(right.updatedAt || right.date).getTime() - new Date(left.updatedAt || left.date).getTime()
+    );
+  const displayedReviewsCount = isHousingListing ? listing.reviewsCount : visibleReviews.length;
+  const displayedRating = isHousingListing
+    ? listing.rating
+    : visibleReviews.length > 0
+      ? visibleReviews.reduce((total, review) => total + review.rating, 0) / visibleReviews.length
+      : 0;
   const lifeExpensePerPerson = isLifeCommunityListing ? getLifeExpensePerPerson(listing) : null;
   const lifeExpenseDisplay = lifeExpensePerPerson === null
     ? tr('details.life.notSpecified')
@@ -1624,7 +1742,8 @@ export default function ListingDetails({
 
   if (isTransportListing) {
     const vehicleModel = getListingVehicleModel(listing) || listing.vehicleModel || '';
-    const vehicleModelLabel = vehicleModel ? getScooterModelLabel(vehicleModel) : '';
+    const vehicleModelLabel = vehicleModel ? getTransportModelLabel(listing.subCategory, vehicleModel) : '';
+    const vehicleEngineDisplacementCc = listing.vehicleEngineDisplacementCc ?? SCOOTER_ENGINE_CC[vehicleModel];
     const vehicleColorLabel = listing.vehicleColor
       ? tr(`filters.transport.color.${listing.vehicleColor}`)
       : '';
@@ -1647,12 +1766,55 @@ export default function ListingDetails({
       label: tr('details.field.vehicleModel'),
       value: vehicleModelLabel || vehicleModel
     });
-    addDetailCharacteristic(Boolean(vehicleModel && SCOOTER_ENGINE_CC[vehicleModel]), {
+    addDetailCharacteristic(Boolean(vehicleEngineDisplacementCc), {
       key: 'engineCc',
       icon: '⚙️',
       label: tr('details.transport.engineCc'),
-      value: tr('details.transport.ccValue', { count: SCOOTER_ENGINE_CC[vehicleModel] })
+      value: tr('details.transport.ccValue', { count: vehicleEngineDisplacementCc })
     });
+    if (listing.subCategory === 'cars') {
+      addDetailCharacteristic(Boolean(listing.vehicleDriverOption), {
+        key: 'vehicleDriverOption',
+        icon: '🧑‍✈️',
+        label: tr('filters.transport.driver'),
+        value: listing.vehicleDriverOption ? tr(`filters.transport.driver.${listing.vehicleDriverOption}`) : undefined
+      });
+      addDetailCharacteristic(Boolean(listing.vehicleTransmission), {
+        key: 'vehicleTransmission',
+        icon: '⚙️',
+        label: tr('filters.transport.transmission'),
+        value: listing.vehicleTransmission ? tr(`filters.transport.transmission.${listing.vehicleTransmission}`) : undefined
+      });
+      addDetailCharacteristic(Boolean(listing.vehicleFuelType), {
+        key: 'vehicleFuelType',
+        icon: '⛽',
+        label: tr('filters.transport.fuel'),
+        value: listing.vehicleFuelType ? tr(`filters.transport.fuel.${listing.vehicleFuelType}`) : undefined
+      });
+      addDetailCharacteristic(Boolean(listing.vehicleLuggageCapacity), {
+        key: 'vehicleLuggageCapacity',
+        icon: '🧳',
+        label: tr('filters.transport.luggageCapacity'),
+        value: listing.vehicleLuggageCapacity
+          ? tr('filters.transport.luggageCapacityValue', { count: listing.vehicleLuggageCapacity })
+          : undefined
+      });
+      [
+        ['abs', '🛡️', 'filters.transport.features.abs', listing.abs],
+        ['airbag', '🛡️', 'filters.transport.features.airbag', listing.airbag],
+        ['rearCamera', '📷', 'filters.transport.features.rearCamera', listing.rearCamera],
+        ['parkingSensors', '🅿️', 'filters.transport.features.parkingSensors', listing.parkingSensors],
+        ['sunroof', '🌤️', 'filters.transport.features.sunroof', listing.sunroof],
+        ['leatherInterior', '💺', 'filters.transport.features.leatherInterior', listing.leatherInterior],
+        ['childSeat', '🧒', 'filters.transport.features.childSeat', listing.childSeat],
+        ['roofRack', '🧳', 'filters.transport.features.roofRack', listing.roofRack]
+      ].forEach(([key, icon, labelKey, enabled]) => addDetailCharacteristic(Boolean(enabled), {
+        key: String(key),
+        icon: String(icon),
+        label: tr(String(labelKey)),
+        isBoolean: true
+      }));
+    }
     addDetailCharacteristic(Boolean(listing.yearBuilt), {
       key: 'yearBuilt',
       icon: '🔄',
@@ -2162,8 +2324,8 @@ export default function ListingDetails({
                   <div className="flex w-[74px] shrink-0 flex-col items-stretch gap-2 sm:w-[68px] lg:w-[78px]">
                     <div className={`h-9 rounded-full flex items-center justify-center gap-1.5 text-[14.5px] sm:text-xs lg:text-[15.5px] font-bold text-text-dark ${THEME.fonts.mono}`}>
                       <Star className="w-[15px] h-[15px] sm:w-3.5 sm:h-3.5 lg:w-[17px] lg:h-[17px] fill-current text-amber-500 shrink-0" />
-                      <span>{listing.rating.toFixed(2).replace('.', ',')}</span>
-                      <span className="text-gray-400 font-light">({listing.reviewsCount})</span>
+                      <span>{displayedRating > 0 ? displayedRating.toFixed(2).replace('.', ',') : '—'}</span>
+                      <span className="text-gray-400 font-light">({displayedReviewsCount})</span>
                     </div>
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -2641,40 +2803,142 @@ export default function ListingDetails({
                 )}
               </div>
 
-              {/* Review section elements with cleanest reviews as separate, distinct group */}
+              {/* Reviews use Google Maps for housing and Bali Base reviews for every other category. */}
               <div className="space-y-4 pt-1">
                 <h3 className="font-display text-[#1E293B] text-base font-extrabold">
-                  {tr('details.reviewsTitle')}
+                  {isHousingListing ? tr('details.reviewsTitle') : tr('details.review.listingTitle')}
                 </h3>
 
                 <div className="flex items-center justify-between">
-                  <a
-                    href={googleMapsReviewsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
-                  >
-                    {tr('details.review.all')}
-                  </a>
-                  <a
-                    href={googleMapsWriteReviewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
-                  >
-                    {tr('details.review.leaveReview')}
-                  </a>
+                  {isHousingListing ? (
+                    <>
+                      <a
+                        href={googleMapsReviewsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+                      >
+                        {tr('details.review.all')}
+                      </a>
+                      <a
+                        href={googleMapsWriteReviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-gray-400 transition hover:text-gray-600"
+                      >
+                        {tr('details.review.leaveReview')}
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-semibold text-gray-400">
+                        {tr('details.review.count', { count: displayedReviewsCount })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={openListingReviewForm}
+                        className="rounded-full border border-[#2F7D69]/25 bg-[#2F7D69]/5 px-3 py-1.5 text-xs font-bold text-[#2F7D69] transition hover:border-[#2F7D69]/45 hover:bg-[#2F7D69]/10 active:scale-95"
+                      >
+                        {internalReviews.some(review => review.authorId === user?.uid)
+                          ? tr('details.review.editReview')
+                          : tr('details.review.leaveReview')}
+                      </button>
+                    </>
+                  )}
                 </div>
 
+                {!isHousingListing && isReviewFormOpen && (
+                  <div className="overflow-hidden rounded-[24px] border border-[#2F7D69]/20 bg-gradient-to-br from-[#F4F7F6] to-white p-5 shadow-[0_14px_36px_rgba(47,125,105,0.08)]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-extrabold text-[#1E293B]">{tr('details.review.formTitle')}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-gray-500">{tr('details.review.formHint')}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsReviewFormOpen(false)}
+                        aria-label={tr('details.review.close')}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-white hover:text-gray-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-1" aria-label={tr('details.review.ratingLabel')}>
+                      {[1, 2, 3, 4, 5].map(value => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setReviewRating(value)}
+                          aria-label={tr('details.review.ratingValue', { count: value })}
+                          className="rounded-lg p-1 transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F7D69]"
+                        >
+                          <Star className={`h-7 w-7 ${value <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      value={reviewText}
+                      onChange={event => {
+                        setReviewText(event.target.value);
+                        setReviewError('');
+                        setReviewSaved(false);
+                      }}
+                      maxLength={2000}
+                      rows={4}
+                      placeholder={tr('details.review.placeholder')}
+                      className="mt-4 w-full resize-none rounded-2xl border border-[#DCE5E1] bg-white px-4 py-3 text-sm leading-relaxed text-[#1E293B] outline-none transition placeholder:text-gray-400 focus:border-[#2F7D69]/60 focus:ring-4 focus:ring-[#2F7D69]/10"
+                    />
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs">
+                        {reviewError && <span className="font-semibold text-red-600">{reviewError}</span>}
+                        {reviewSaved && <span className="font-semibold text-[#2F7D69]">{tr('details.review.saved')}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={submitListingReview}
+                        disabled={reviewSaving || reviewText.trim().length < 3}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#2F7D69] px-5 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {reviewSaving ? tr('details.review.saving') : tr('details.review.submit')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
-                  {listing.reviews.map(review => (
+                  {!isHousingListing && reviewsLoading && (
+                    <div className="rounded-[20px] border border-dashed border-[#DCE5E1] px-5 py-6 text-center text-xs font-semibold text-gray-400">
+                      {tr('details.review.loading')}
+                    </div>
+                  )}
+                  {!reviewsLoading && visibleReviews.length === 0 && (
+                    <div className="rounded-[20px] border border-dashed border-[#DCE5E1] px-5 py-7 text-center">
+                      <Star className="mx-auto h-6 w-6 text-amber-300" />
+                      <p className="mt-2 text-sm font-bold text-[#1E293B]">{tr('details.review.emptyTitle')}</p>
+                      <p className="mt-1 text-xs text-gray-500">{tr('details.review.emptyHint')}</p>
+                    </div>
+                  )}
+                  {visibleReviews.map(review => (
                     <div key={review.id} className="bg-[#F4F7F6] p-5 rounded-[24px] border border-[#E5E7EB] space-y-3">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2.5">
-                          <img src={review.avatar} alt="Author" className="w-10 h-10 rounded-full object-cover border border-[#E5E7EB]" referrerPolicy="no-referrer" />
+                          {review.avatar ? (
+                            <img src={review.avatar} alt={review.authorName} className="w-10 h-10 rounded-full object-cover border border-[#E5E7EB]" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2F7D69]/15 bg-[#2F7D69]/10 text-sm font-extrabold text-[#2F7D69]">
+                              {review.authorName.trim().charAt(0).toUpperCase() || 'B'}
+                            </span>
+                          )}
                           <div>
                             <span className="text-xs sm:text-sm font-bold text-gray-800 block">{review.authorName}</span>
-                            <span className="text-[10px] text-gray-400 font-mono">{review.date}</span>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {review.authorId
+                                ? new Intl.DateTimeFormat(activeLanguage.toLowerCase(), { dateStyle: 'medium' }).format(new Date(review.updatedAt || review.date))
+                                : review.date}
+                            </span>
                           </div>
                         </div>
 

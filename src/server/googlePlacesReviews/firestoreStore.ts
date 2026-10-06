@@ -1,47 +1,13 @@
-import fs from 'node:fs';
-import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import firebaseConfig from '../../config/firebaseConfig';
 import type { Listing } from '../../types';
 import { getCurrentMonthKey, GOOGLE_PLACES_REVIEWS_CONFIG } from './config';
 import type { GooglePlaceReviewCacheRecord, GooglePlacesQuotaSnapshot, GooglePlacesRequestPurpose } from './types';
 
-type ServiceAccountConfig = {
-  projectId?: string;
-  clientEmail?: string;
-  privateKey?: string;
-};
-
-const parseServiceAccountJson = (value: string): ServiceAccountConfig => {
-  const parsed = JSON.parse(value) as Record<string, string>;
-  return {
-    projectId: parsed.project_id || parsed.projectId,
-    clientEmail: parsed.client_email || parsed.clientEmail,
-    privateKey: (parsed.private_key || parsed.privateKey || '').replace(/\\n/g, '\n')
-  };
-};
-
-const readServiceAccount = (): ServiceAccountConfig | null => {
-  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (rawJson?.trim()) {
-    return parseServiceAccountJson(rawJson);
-  }
-
-  const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-  if (filePath?.trim()) {
-    return parseServiceAccountJson(fs.readFileSync(filePath, 'utf8'));
-  }
-
-  return null;
-};
-
-const serviceAccount = readServiceAccount();
-
 const adminApp = getApps().find(item => item.name === 'google-places-reviews-admin') ||
   initializeApp({
-    credential: serviceAccount
-      ? cert(serviceAccount)
-      : applicationDefault(),
+    credential: applicationDefault(),
     projectId: firebaseConfig.projectId,
     storageBucket: firebaseConfig.storageBucket
   }, 'google-places-reviews-admin');

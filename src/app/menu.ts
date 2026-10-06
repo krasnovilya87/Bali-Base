@@ -1,99 +1,122 @@
 // @ts-ignore
-import menuHousing from '../assets/images/menu_housing_firebase.webp';
+import menuHousing from '../assets/images/menu/l1/menu_housing_firebase.webp';
 // @ts-ignore
-import menuTransport from '../assets/images/menu_transport_firebase.webp';
+import menuTransport from '../assets/images/menu/l1/menu_transport_firebase.webp';
 // @ts-ignore
-import menuServices from '../assets/images/menu_services_firebase.webp';
+import menuServices from '../assets/images/menu/l1/menu_services_firebase.webp';
 // @ts-ignore
-import menuAds from '../assets/images/menu_ads_firebase.webp';
+import menuAds from '../assets/images/menu/l1/menu_ads_firebase.webp';
 // @ts-ignore
-import menuAfisha from '../assets/images/menu_afisha_firebase.webp';
+import menuAfisha from '../assets/images/menu/l1/menu_afisha_firebase.webp';
 // @ts-ignore
-import menuLife from '../assets/images/menu_life_firebase.webp';
+import menuLife from '../assets/images/menu/l1/menu_life_firebase.webp';
 // @ts-ignore
-import menuInvestments from '../assets/images/menu_investments_firebase.webp';
+import menuInvestments from '../assets/images/menu/l1/menu_investments_firebase.webp';
 // @ts-ignore
-import menuUseful from '../assets/images/menu_useful_firebase.webp';
+import menuUseful from '../assets/images/menu/l1/menu_useful_firebase.webp';
 // @ts-ignore
-import menuL2EntirePlace from '../assets/images/menu_l2_entire_place.webp';
+import menuL2EntirePlace from '../assets/images/menu/l2/housing/menu_l2_entire_place.webp';
 // @ts-ignore
-import menuL2PrivateSuite from '../assets/images/menu_l2_private_suite.webp';
+import menuL2PrivateSuite from '../assets/images/menu/l2/housing/menu_l2_private_suite.webp';
 // @ts-ignore
-import menuL2PrivateRoom from '../assets/images/menu_l2_private_room.webp';
-import marketTransportScooter from '../assets/images/market_transport_scooter.webp';
+import menuL2PrivateRoom from '../assets/images/menu/l2/housing/menu_l2_private_room.webp';
+import marketTransportScooter from '../assets/images/menu/l3/market/transport/market_transport_scooter.webp';
 // @ts-ignore
-import marketTransportMotorcycle from '../assets/images/market_transport_motorcycle.webp';
+import marketTransportMotorcycle from '../assets/images/menu/l3/market/transport/market_transport_motorcycle.webp';
 // @ts-ignore
-import marketTransportCar from '../assets/images/market_transport_car.webp';
+import marketTransportCar from '../assets/images/menu/l3/market/transport/market_transport_car.webp';
 // @ts-ignore
-import marketTransportBicycle from '../assets/images/market_transport_bicycle.webp';
+import marketTransportBicycle from '../assets/images/menu/l3/market/transport/market_transport_bicycle.webp';
 // @ts-ignore
-import marketTransportYacht from '../assets/images/market_transport_yacht.webp';
+import marketTransportYacht from '../assets/images/menu/l3/market/transport/market_transport_yacht.webp';
 // @ts-ignore
-import menuL2Villas from '../assets/images/menu_l2_villas.webp';
+import menuL2Villas from '../assets/images/menu/l2/investments/menu_l2_villas.webp';
 // @ts-ignore
-import menuL2CommercialRealEstate from '../assets/images/menu_l2_commercial_real_estate.png';
+import menuL2CommercialRealEstate from '../assets/images/menu/l2/investments/menu_l2_commercial_real_estate.png';
 // @ts-ignore
-import menuL2Land from '../assets/images/menu_l2_land.webp';
+import menuL2Land from '../assets/images/menu/l2/investments/menu_l2_land.webp';
 // @ts-ignore
-import menuL2Business from '../assets/images/menu_l2_business.webp';
+import menuL2Business from '../assets/images/menu/l2/investments/menu_l2_business.webp';
 // @ts-ignore
-import menuL2ForLeisure from '../assets/images/menu_l2_for_leisure.webp';
+import menuL2ForLeisure from '../assets/images/menu/l2/market/menu_l2_for_leisure.webp';
 // @ts-ignore
-import menuL2ForLiving from '../assets/images/menu_l2_for_living.webp';
+import menuL2ForLiving from '../assets/images/menu/l2/market/menu_l2_for_living.webp';
 // @ts-ignore
-import menuL2HouseholdServices from '../assets/images/menu_l2_household_services.webp';
+import menuL2HouseholdServices from '../assets/images/menu/l2/services/menu_l2_service_household.webp';
 // @ts-ignore
-import menuL2BeautyCare from '../assets/images/menu_l2_beauty_care.png';
+import menuL2ServiceConsultations from '../assets/images/menu/l2/services/menu_l2_service_consultations.webp';
 // @ts-ignore
-import menuL2Health from '../assets/images/menu_l2_health.webp';
+import menuL2ServiceBusiness from '../assets/images/menu/l2/services/menu_l2_service_business.webp';
 // @ts-ignore
-import menuL2Education from '../assets/images/menu_l2_education.webp';
+import menuL2ServiceTransport from '../assets/images/menu/l2/services/menu_l2_service_transport.webp';
 // @ts-ignore
-import menuL2PhotoVideo from '../assets/images/menu_l2_photo_video.webp';
+import menuL2BeautyCare from '../assets/images/menu/l2/services/menu_l2_beauty_care.png';
 // @ts-ignore
-import menuL2SportService from '../assets/images/menu_l2_sport_service.webp';
+import menuL2Health from '../assets/images/menu/l2/services/menu_l2_health.webp';
 // @ts-ignore
-import menuL2OtherServices from '../assets/images/menu_l2_other_services.png';
+import menuL2Education from '../assets/images/menu/l2/services/menu_l2_education.webp';
 // @ts-ignore
-import menuL2Electronics from '../assets/images/menu_l2_electronics.webp';
+import menuL2PhotoVideo from '../assets/images/menu/l2/services/menu_l2_photo_video.webp';
 // @ts-ignore
-import menuL2TransSaleScooter from '../assets/images/menu_l2_trans_sale_scooter.webp';
+import menuL2SportService from '../assets/images/menu/l2/services/menu_l2_sport_service.webp';
 // @ts-ignore
-import menuL2Clothes from '../assets/images/menu_l2_clothes.webp';
+import menuL2OtherServices from '../assets/images/menu/l2/services/menu_l2_other_services.png';
 // @ts-ignore
-import menuL2HouseFurn from '../assets/images/menu_l2_house_furn.webp';
+import menuL2Electronics from '../assets/images/menu/l2/market/menu_l2_electronics.webp';
 // @ts-ignore
-import menuL2Exhibitions from '../assets/images/menu_l2_exhibitions.webp';
+import menuL2TransSaleScooter from '../assets/images/menu/l2/market/menu_l2_trans_sale_scooter.webp';
 // @ts-ignore
+import menuL2Clothes from '../assets/images/menu/l2/market/menu_l2_clothes.webp';
 // @ts-ignore
-import menuL2Buddies from '../assets/images/menu_l2_buddies.webp';
+import menuL2HouseFurn from '../assets/images/menu/l2/market/menu_l2_house_furn.webp';
 // @ts-ignore
-import afishaParties from '../assets/images/menu_l2_afisha_parties.png';
+import menuL2KidsGoods from '../assets/images/menu/l2/market/menu_l2_kids_goods.webp';
 // @ts-ignore
-import afishaConcerts from '../assets/images/menu_l2_afisha_live_music.png';
+import afishaParties from '../assets/images/menu/l2/afisha/menu_l2_afisha_parties.webp';
 // @ts-ignore
-import afishaFestivals from '../assets/images/menu_l2_afisha_festivals.png';
+import afishaConcerts from '../assets/images/menu/l2/afisha/menu_l2_afisha_live_music.webp';
 // @ts-ignore
-import afishaExhibitions from '../assets/images/menu_l2_afisha_exhibitions.png';
+import afishaFestivals from '../assets/images/menu/l2/afisha/menu_l2_afisha_festivals.webp';
 // @ts-ignore
-import afishaCinema from '../assets/images/menu_l2_afisha_cinema_theatre.png';
+import afishaExhibitions from '../assets/images/menu/l2/afisha/menu_l2_afisha_exhibitions.webp';
 // @ts-ignore
-import afishaSports from '../assets/images/menu_l2_afisha_sports_events.png';
+import afishaCinema from '../assets/images/menu/l2/afisha/menu_l2_afisha_cinema_theatre.webp';
 // @ts-ignore
-import afishaWorkshops from '../assets/images/menu_l2_afisha_workshops.png';
+import afishaSports from '../assets/images/menu/l2/afisha/menu_l2_afisha_sports_events.webp';
 // @ts-ignore
-import afishaYoga from '../assets/images/menu_l2_afisha_yoga_wellness.png';
+import afishaWorkshops from '../assets/images/menu/l2/afisha/menu_l2_afisha_workshops.webp';
 // @ts-ignore
-import afishaBusiness from '../assets/images/menu_l2_afisha_business_networking.png';
+import afishaYoga from '../assets/images/menu/l2/afisha/menu_l2_afisha_yoga_wellness.webp';
 // @ts-ignore
-import afishaFamily from '../assets/images/menu_l2_afisha_family_events.png';
+import afishaBusiness from '../assets/images/menu/l2/afisha/menu_l2_afisha_business_networking.webp';
 // @ts-ignore
-import afishaMarkets from '../assets/images/menu_l2_afisha_markets_fairs.png';
+import afishaFamily from '../assets/images/menu/l2/afisha/menu_l2_afisha_family_events.webp';
 // @ts-ignore
-import afishaTours from '../assets/images/menu_l2_afisha_tours.png';
+import afishaMarkets from '../assets/images/menu/l2/afisha/menu_l2_afisha_markets_fairs.webp';
 // @ts-ignore
-import afishaOther from '../assets/images/menu_l2_afisha_other.png';
+import afishaTours from '../assets/images/menu/l2/afisha/menu_l2_afisha_tours.webp';
+// @ts-ignore
+import afishaOther from '../assets/images/menu/l2/afisha/menu_l2_afisha_other.png';
+// @ts-ignore
+import usefulBeforeTrip from '../assets/images/menu/l2/useful/menu_l2_useful_before_trip.webp';
+// @ts-ignore
+import usefulVisasDocuments from '../assets/images/menu/l2/useful/menu_l2_useful_visas_documents.webp';
+// @ts-ignore
+import usefulBaliAreas from '../assets/images/menu/l2/useful/menu_l2_useful_bali_areas.webp';
+// @ts-ignore
+import usefulHousingDailyLife from '../assets/images/menu/l2/useful/menu_l2_useful_housing_daily_life.webp';
+// @ts-ignore
+import usefulTransport from '../assets/images/menu/l2/useful/menu_l2_useful_transport.webp';
+// @ts-ignore
+import usefulMoneyConnectivity from '../assets/images/menu/l2/useful/menu_l2_useful_money_connectivity.webp';
+// @ts-ignore
+import usefulHealth from '../assets/images/menu/l2/useful/menu_l2_useful_health.webp';
+// @ts-ignore
+import usefulLawsSafety from '../assets/images/menu/l2/useful/menu_l2_useful_laws_safety.webp';
+// @ts-ignore
+import usefulWorkBusiness from '../assets/images/menu/l2/useful/menu_l2_useful_work_business.webp';
+// @ts-ignore
+import usefulEmergencyHelp from '../assets/images/menu/l2/useful/menu_l2_useful_emergency_help.webp';
 
 export type MenuSubcategory = { id: string; label: string; icon: string; customImage?: string; dividerBefore?: boolean };
 
@@ -198,9 +221,9 @@ export const SUBCATEGORIES_MAP: Record<string, MenuSubcategory[]> = {
     { id: 'education', label: 'Education', icon: '📚', customImage: menuL2Education },
     { id: 'sport', label: 'Sport', icon: '🏄‍♂️', customImage: menuL2SportService },
     { id: 'photo_video', label: 'Photo & video', icon: '📷', customImage: menuL2PhotoVideo },
-    { id: 'consultations', label: 'Consultations', icon: '💡', customImage: menuL2ForLiving },
-    { id: 'service_business', label: 'Business', icon: '💼', customImage: menuL2Business },
-    { id: 'service_transport', label: 'Transport services', icon: '🛵', customImage: menuL2TransSaleScooter },
+    { id: 'consultations', label: 'Consultations', icon: '💡', customImage: menuL2ServiceConsultations },
+    { id: 'service_business', label: 'Business', icon: '💼', customImage: menuL2ServiceBusiness },
+    { id: 'service_transport', label: 'Transport services', icon: '🛵', customImage: menuL2ServiceTransport },
     { id: 'other_services', label: 'Other services', icon: '⭐', customImage: menuL2OtherServices }
   ],
   ads: [
@@ -209,7 +232,7 @@ export const SUBCATEGORIES_MAP: Record<string, MenuSubcategory[]> = {
     { id: 'home_living', label: 'Home and living', icon: '🏡', customImage: menuL2HouseFurn },
     { id: 'clothes_items', label: 'Clothing and items', icon: '👕', customImage: menuL2Clothes },
     { id: 'sport_hobby', label: 'Sport and hobbies', icon: '🏄‍♂️', customImage: menuL2ForLeisure },
-    { id: 'kids_goods', label: 'Kids goods', icon: '🧸', customImage: menuL2Exhibitions },
+    { id: 'kids_goods', label: 'Kids goods', icon: '', customImage: menuL2KidsGoods },
     { id: 'other_ads', label: 'Other', icon: '⭐', customImage: menuL2OtherServices }
   ],
   afisha: [
@@ -228,7 +251,7 @@ export const SUBCATEGORIES_MAP: Record<string, MenuSubcategory[]> = {
     { id: 'afisha_other', label: 'Other', icon: '⭐', customImage: afishaOther }
   ],
   life: [
-    { id: 'life_company', label: 'Looking for company', icon: '🛵', customImage: menuL2Buddies },
+    { id: 'life_company', label: 'Looking for company', icon: '🛵' },
     { id: 'life_jobs', label: 'Vacancies', icon: '💼' },
     { id: 'life_family', label: 'Family and kids', icon: '👨‍👩‍👧' },
     { id: 'life_sport', label: 'Sport', icon: '🎾' },
@@ -240,16 +263,16 @@ export const SUBCATEGORIES_MAP: Record<string, MenuSubcategory[]> = {
     { id: 'life_other', label: 'Other', icon: '⭐' }
   ],
   useful: [
-    { id: 'useful_before_trip', label: 'Before your trip', icon: '🧳' },
-    { id: 'useful_visas_documents', label: 'Visas and documents', icon: '🛂' },
-    { id: 'useful_bali_areas', label: 'Bali areas', icon: '🗺️' },
-    { id: 'useful_housing_daily_life', label: 'Housing and daily life', icon: '🏠' },
-    { id: 'useful_transport', label: 'Transport', icon: '🛵' },
-    { id: 'useful_money_connectivity', label: 'Money and connectivity', icon: '💳' },
-    { id: 'useful_health', label: 'Health', icon: '🩺' },
-    { id: 'useful_laws_safety', label: 'Laws and safety', icon: '⚖️' },
-    { id: 'useful_work_business', label: 'Work and business', icon: '💼' },
-    { id: 'useful_emergency_help', label: 'Emergency help', icon: '🆘' }
+    { id: 'useful_before_trip', label: 'Before your trip', icon: '🧳', customImage: usefulBeforeTrip },
+    { id: 'useful_visas_documents', label: 'Visas and documents', icon: '🛂', customImage: usefulVisasDocuments },
+    { id: 'useful_bali_areas', label: 'Bali areas', icon: '🗺️', customImage: usefulBaliAreas },
+    { id: 'useful_housing_daily_life', label: 'Housing and daily life', icon: '🏠', customImage: usefulHousingDailyLife },
+    { id: 'useful_transport', label: 'Transport', icon: '🛵', customImage: usefulTransport },
+    { id: 'useful_money_connectivity', label: 'Money and connectivity', icon: '💳', customImage: usefulMoneyConnectivity },
+    { id: 'useful_health', label: 'Health', icon: '🩺', customImage: usefulHealth },
+    { id: 'useful_laws_safety', label: 'Laws and safety', icon: '⚖️', customImage: usefulLawsSafety },
+    { id: 'useful_work_business', label: 'Work and business', icon: '💼', customImage: usefulWorkBusiness },
+    { id: 'useful_emergency_help', label: 'Emergency help', icon: '🆘', customImage: usefulEmergencyHelp }
   ]
 };
 

@@ -25,11 +25,11 @@ export default function BrandWordmark({ label, variant = 'header' }: BrandWordma
             className="inline-block h-[0.72em] w-[0.74em] -translate-y-[0.0em]"
             style={{
               backgroundColor: logoAColor,
-              WebkitMaskImage: 'url(/logo-a.svg)',
+              WebkitMaskImage: 'url(/assets/images/site/logo-a.svg)',
               WebkitMaskPosition: 'center',
               WebkitMaskRepeat: 'no-repeat',
               WebkitMaskSize: 'contain',
-              maskImage: 'url(/logo-a.svg)',
+              maskImage: 'url(/assets/images/site/logo-a.svg)',
               maskPosition: 'center',
               maskRepeat: 'no-repeat',
               maskSize: 'contain'

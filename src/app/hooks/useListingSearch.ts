@@ -26,6 +26,17 @@ import {
   yearMeetsMinimum
 } from '../../utils/scooterFilters';
 import { normalizeVehicleModelSearchQuery } from '../../utils/vehicleModelNormalizer';
+import {
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MAX,
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+  MOTORCYCLE_OTHER_MODEL_PREFIX,
+  motorcycleEngineMatchesRange
+} from '../../config/motorcycleCatalog';
+import {
+  CAR_ENGINE_DISPLACEMENT_MAX,
+  CAR_ENGINE_DISPLACEMENT_MIN,
+  carEngineMatchesRange
+} from '../../config/carCatalog';
 import { listingMatchesEventAttributes } from '../../utils/eventFilters';
 import { listingMatchesServiceFilters } from '../../utils/serviceFilters';
 import { listingMatchesLifeAttributes, normalizeLifeSubCategory } from '../../config/lifeSpecial';
@@ -153,7 +164,7 @@ export const useListingSearch = ({
       const inDesc = item.description.toLowerCase().includes(query);
       const inDistrict = item.district.toLowerCase().includes(query);
       const inVehicleModel = currentL1 === 'transport' &&
-        item.subCategory === 'scooters' &&
+        ['scooters', 'motorcycles', 'cars'].includes(item.subCategory) &&
         Boolean(normalizedSearch.modelValue) &&
         getListingVehicleModel(item) === normalizedSearch.modelValue;
       if (!inTitle && !inDesc && !inDistrict && !inVehicleModel) return false;
@@ -164,11 +175,46 @@ export const useListingSearch = ({
       if (comparablePrice < filters.priceMin || comparablePrice > effectivePriceMax) return false;
     }
 
-    if (currentL1 === 'transport' && item.subCategory === 'scooters') {
-      if (filters.vehicleModel.length > 0 && !filters.vehicleModel.includes(getListingVehicleModel(item) || '')) return false;
+    if (currentL1 === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(item.subCategory)) {
+      const listingVehicleModel = getListingVehicleModel(item) || '';
+      const matchesSelectedVehicleModel = filters.vehicleModel.includes(listingVehicleModel)
+        || (item.subCategory === 'motorcycles'
+          && filters.vehicleModel.includes('motorcycle_other')
+          && listingVehicleModel.startsWith(MOTORCYCLE_OTHER_MODEL_PREFIX));
+      if (filters.vehicleModel.length > 0 && !matchesSelectedVehicleModel) return false;
+      if (item.subCategory === 'motorcycles' && !motorcycleEngineMatchesRange(
+        item.vehicleModel || '',
+        item.vehicleEngineDisplacementCc,
+        filters.vehicleEngineDisplacementMin ?? MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+        filters.vehicleEngineDisplacementMax ?? MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+      )) return false;
+      if (item.subCategory === 'cars' && !carEngineMatchesRange(
+        item.vehicleEngineDisplacementCc,
+        filters.vehicleEngineDisplacementMin === MOTORCYCLE_ENGINE_DISPLACEMENT_MIN
+          && filters.vehicleEngineDisplacementMax === MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+          ? CAR_ENGINE_DISPLACEMENT_MIN
+          : filters.vehicleEngineDisplacementMin,
+        filters.vehicleEngineDisplacementMin === MOTORCYCLE_ENGINE_DISPLACEMENT_MIN
+          && filters.vehicleEngineDisplacementMax === MOTORCYCLE_ENGINE_DISPLACEMENT_MAX
+          ? CAR_ENGINE_DISPLACEMENT_MAX
+          : filters.vehicleEngineDisplacementMax
+      )) return false;
       if (filters.vehicleColor.length > 0 && !filters.vehicleColor.includes(getListingVehicleColor(item) || '')) return false;
       if (!yearMeetsMinimum(item.yearBuilt, filters.vehicleYearMin || 0)) return false;
       if (filters.vehicleCondition.length > 0 && !filters.vehicleCondition.includes(getListingVehicleCondition(item) || '')) return false;
+      if (item.subCategory === 'cars') {
+        if (filters.vehicleDriverOption.length > 0 && !filters.vehicleDriverOption.includes(item.vehicleDriverOption || '')) return false;
+        if (filters.transmission.length > 0 && !filters.transmission.includes(item.vehicleTransmission || '')) return false;
+        if (filters.vehicleFuelType.length > 0 && !filters.vehicleFuelType.includes(item.vehicleFuelType || '')) return false;
+        if (filters.vehicleLuggageCapacity.length > 0 && !filters.vehicleLuggageCapacity.includes(item.vehicleLuggageCapacity || 0)) return false;
+        if (filters.airbagOnly && !item.airbag) return false;
+        if (filters.rearCameraOnly && !item.rearCamera) return false;
+        if (filters.parkingSensorsOnly && !item.parkingSensors) return false;
+        if (filters.sunroofOnly && !item.sunroof) return false;
+        if (filters.leatherInteriorOnly && !item.leatherInterior) return false;
+        if (filters.childSeatOnly && !item.childSeat) return false;
+        if (filters.roofRackOnly && !item.roofRack) return false;
+      }
       if (filters.sellerType.length > 0 && !filters.sellerType.includes(getListingSellerType(item))) return false;
       if (filters.keylessOnly && !listingHasKeyless(item)) return false;
       if (filters.absOnly && !listingHasAbs(item)) return false;

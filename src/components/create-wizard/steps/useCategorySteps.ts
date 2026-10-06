@@ -62,7 +62,7 @@ export const useCategorySteps = ({
   }, [categoriesToUse, menuOverrides, tr]);
 
   const subcategories = useMemo(() => {
-    const rawSubs = subcategoriesMapToUse[category] || [];
+    const rawSubs = (subcategoriesMapToUse[category] || []) as SubcategorySourceItem[];
     return rawSubs.map(sub => {
       const displayLabel = tr(`subcategory.${sub.id}`);
       const displayIcon = menuOverrides?.l2?.[sub.id]?.icon || sub.icon || '⭐';

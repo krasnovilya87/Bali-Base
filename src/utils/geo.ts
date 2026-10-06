@@ -52,6 +52,7 @@ const normalizeDistrictKey = (value: string) =>
 const POPULAR_DISTRICT_ORDER = [
   'Canggu',
   'Seminyak',
+  'Kerobokan',
   'Kuta',
   'Ubud',
   'Sanur',
@@ -69,8 +70,7 @@ const POPULAR_DISTRICT_ORDER = [
   'Ceningan',
   'Gili Trawangan',
   'Gili Air',
-  'Gili Meno',
-  'Kerobokan'
+  'Gili Meno'
 ];
 
 const districtPopularityRank = (district: string) => {

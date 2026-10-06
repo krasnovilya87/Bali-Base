@@ -136,6 +136,8 @@ export default function CalendarListingModal({
     const acceptedBooking: BookingRequest = {
       id: `reserve-${listing.id}-${Date.now()}`,
       listingId: listing.id,
+      guestId: listing.ownerId,
+      listingOwnerId: listing.ownerId,
       listingTitle: listing.title,
       listingImage: listing.images[0],
       listingCategory: listing.category as BookingRequest['listingCategory'],

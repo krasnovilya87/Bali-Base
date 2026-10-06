@@ -43,8 +43,8 @@ const StepContact: React.FC<StepContactProps> = ({
   handlePhoneChange
 }) => {
   const { tr } = useI18n();
-  const isScooterWizard = category === 'transport' && subCategory === 'scooters';
-  const supportsSellerType = category === 'housing' || isScooterWizard || category === 'services';
+  const isDetailedTransportWizard = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
+  const supportsSellerType = category === 'housing' || isDetailedTransportWizard || category === 'services';
   const isCompanySeller = supportsSellerType && sellerType === 'company';
   const [companySuggestions, setCompanySuggestions] = useState<any[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);

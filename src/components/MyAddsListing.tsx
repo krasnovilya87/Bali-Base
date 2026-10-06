@@ -13,6 +13,7 @@ import CalendarListingModal from './my-adds/CalendarListingModal';
 import DropPriceModal from './my-adds/DropPriceModal';
 import AnalyticsModal from './my-adds/AnalyticsModal';
 import { useI18n } from '../i18nContext';
+import { isListingFresh } from '../utils/listingFreshness';
 import { isListingVerified } from '../utils/listingVerification';
 import Del from './Del';
 
@@ -320,7 +321,7 @@ export default function MyAddsListing({
                             {tr('listing.approvedBadge')}
                           </span>
                         )}
-                        {item.isNew && (
+                        {isListingFresh(item) && (
                           <span className="rounded bg-[#FF7A50] px-1.5 py-0.5 text-[8px] font-extrabold text-white shadow-md">
                             {tr('listing.newBadge')}
                           </span>

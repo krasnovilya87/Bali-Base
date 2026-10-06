@@ -1,9 +1,13 @@
 import type { Router } from 'express';
 import express from 'express';
 import type { Listing } from '../../types';
-import { adminAuth } from '../firebaseAdmin';
+import { getAuthenticatedUser, rateLimit, requireAuth } from '../security';
 import { assertAiModerationQuota } from './limits';
 import { moderateListingWithGemini } from './service';
+
+const MAX_MODERATION_PAYLOAD_BYTES = 128 * 1024;
+const MAX_LISTING_TITLE_LENGTH = 240;
+const MAX_LISTING_DESCRIPTION_LENGTH = 20_000;
 
 const getModerationErrorStatus = (message: string) => {
   if (message.includes('Authorization')) return 401;
@@ -24,23 +28,13 @@ const getModerationErrorMessage = (status: number) => {
   return 'AI moderation could not complete.';
 };
 
-const getBearerToken = (authorizationHeader?: string) => {
-  const match = authorizationHeader?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] || '';
-};
-
 export const createAiModerationRouter = (): Router => {
   const router = express.Router();
 
-  router.post('/moderate-listing', async (req, res) => {
+  router.post('/moderate-listing', requireAuth, rateLimit({ scope: 'ai-moderation', windowMs: 60 * 60 * 1000, max: 20 }), async (req, res) => {
     try {
-      const token = getBearerToken(req.headers.authorization);
-      if (!token) {
-        res.status(401).json({ ok: false, error: getModerationErrorMessage(401) });
-        return;
-      }
-
-      const decodedToken = await adminAuth.verifyIdToken(token);
+      const decodedToken = getAuthenticatedUser(res);
+      if (!decodedToken) throw new Error('Sign in is required.');
       const listing = req.body?.listing as Listing | undefined;
 
       if (!listing || typeof listing !== 'object') {
@@ -50,6 +44,15 @@ export const createAiModerationRouter = (): Router => {
 
       if (!listing.title?.trim() || !listing.category) {
         res.status(400).json({ ok: false, error: 'listing title and category are required' });
+        return;
+      }
+
+      if (
+        listing.title.length > MAX_LISTING_TITLE_LENGTH ||
+        (typeof listing.description === 'string' && listing.description.length > MAX_LISTING_DESCRIPTION_LENGTH) ||
+        Buffer.byteLength(JSON.stringify(listing), 'utf8') > MAX_MODERATION_PAYLOAD_BYTES
+      ) {
+        res.status(413).json({ ok: false, error: 'listing payload is too large' });
         return;
       }
 

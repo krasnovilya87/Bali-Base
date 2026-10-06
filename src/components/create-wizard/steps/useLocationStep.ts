@@ -2,6 +2,8 @@ import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Listing } from '../../../types';
 import { findDistrictByCoords, getDefaultDistrictNameSync, getDistrictNamesFromGeoJSONSync } from '../../../utils/geo';
 import { ensureGoogleMapsLibraries } from '../../../utils/googleMapsLoader';
+import { auth } from '../../../firebase';
+import { getFirebaseRequestHeaders } from '../../../utils/firebaseRequestHeaders';
 
 type UseLocationStepParams = {
   initialListing?: Listing | null;
@@ -69,9 +71,10 @@ export const resolveGoogleMapsLink = async (value: string) => {
   }
 
   try {
+    if (!auth.currentUser) return localResult;
     const response = await fetch(getGooglePlacesMapsLinkResolveApiUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getFirebaseRequestHeaders({ contentType: 'application/json' }),
       body: JSON.stringify({ url: value.trim() })
     });
     if (!response.ok) return localResult;

@@ -378,8 +378,9 @@ export default function ListingCard({
     const vehicleModel = getListingVehicleModel(listing) || listing.vehicleModel || '';
     const parts: string[] = [];
 
-    if (vehicleModel && SCOOTER_ENGINE_CC[vehicleModel]) {
-      parts.push(tr('details.transport.ccValue', { count: SCOOTER_ENGINE_CC[vehicleModel] }));
+    const vehicleEngineDisplacementCc = listing.vehicleEngineDisplacementCc ?? SCOOTER_ENGINE_CC[vehicleModel];
+    if (vehicleEngineDisplacementCc) {
+      parts.push(tr('details.transport.ccValue', { count: vehicleEngineDisplacementCc }));
     }
 
     if (listing.yearBuilt && listing.yearBuilt !== 'other') {

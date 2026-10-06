@@ -3,6 +3,8 @@ import { Listing } from '../../../types';
 import { useI18n } from '../../../i18nContext';
 import { ImageUploadError, ImageUploadDiagnosticStep, uploadImageToImageKit } from '../../../utils/imageUpload';
 import {
+  CAR_PHOTO_SLOT_CONFIG,
+  MOTORCYCLE_PHOTO_SLOT_CONFIG,
   PHOTO_SLOT_CONFIG,
   SCOOTER_PHOTO_SLOT_CONFIG,
   PhotoSlotConfig,
@@ -65,11 +67,17 @@ const getUploadExtension = (image: Blob | File, fallbackFile: File) => {
 
 export const usePhotoStep = ({ initialListing, category, subCategory, uploadNamingContext }: UsePhotoStepParams) => {
   const { tr } = useI18n();
-  const isScooterPhotoFlow = category === 'transport' && subCategory === 'scooters';
+  const isCarPhotoFlow = category === 'transport' && subCategory === 'cars';
+  const isMotorcyclePhotoFlow = category === 'transport' && subCategory === 'motorcycles';
+  const isScooterPhotoFlow = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
   const isServicePhotoFlow = category === 'services';
   const isUncategorizedPhotoFlow = category === 'afisha' || category === 'life';
-  const activePhotoSlotConfig = isScooterPhotoFlow
-    ? SCOOTER_PHOTO_SLOT_CONFIG
+  const activePhotoSlotConfig = isCarPhotoFlow
+    ? CAR_PHOTO_SLOT_CONFIG
+    : isMotorcyclePhotoFlow
+      ? MOTORCYCLE_PHOTO_SLOT_CONFIG
+    : isScooterPhotoFlow
+      ? SCOOTER_PHOTO_SLOT_CONFIG
     : isServicePhotoFlow || isUncategorizedPhotoFlow
       ? []
       : PHOTO_SLOT_CONFIG;
@@ -269,9 +277,8 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
           fileType: uploadableImage.type || file.type || 'image/jpeg'
         });
         replacePhotoUrl(localPreviewUrl, uploadedUrl);
-        // Keep the final hosted image URL for every upload source. The local
-        // object URL is only a temporary preview and must never be published.
-        setRealPhotoUrls(prev => prev.includes(uploadedUrl) ? prev : [...prev, uploadedUrl]);
+        // replacePhotoUrl preserves the marker only when the temporary preview
+        // originated from the mobile camera.
         URL.revokeObjectURL(localPreviewUrl);
       } catch (error) {
         const diagnostic: PhotoUploadDiagnostic = {
@@ -467,6 +474,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
     activePhotoSlotConfig,
     requiredPhotoSlots,
     optionalPhotoSlots,
+    isCarPhotoFlow,
     isScooterPhotoFlow,
     isServicePhotoFlow,
     draggedPhotoSlotId,

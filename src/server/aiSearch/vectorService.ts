@@ -1,5 +1,4 @@
-import fs from 'node:fs';
-import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import firebaseConfig from '../../config/firebaseConfig';
 import type { Listing } from '../../types';
@@ -23,12 +22,6 @@ const traceAiSearch = (message: string, details?: Record<string, unknown>) => {
   }
 };
 
-type ServiceAccountConfig = {
-  projectId?: string;
-  clientEmail?: string;
-  privateKey?: string;
-};
-
 export type AiSearchUsageStats = {
   totalRequests: number;
   voiceRequests: number;
@@ -45,31 +38,11 @@ export type VectorSearchMatch = {
   score: number;
 };
 
-const parseServiceAccountJson = (value: string): ServiceAccountConfig => {
-  const parsed = JSON.parse(value) as Record<string, string>;
-  return {
-    projectId: parsed.project_id || parsed.projectId,
-    clientEmail: parsed.client_email || parsed.clientEmail,
-    privateKey: (parsed.private_key || parsed.privateKey || '').replace(/\\n/g, '\n')
-  };
-};
-
-const readServiceAccount = (): ServiceAccountConfig | null => {
-  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (rawJson?.trim()) return parseServiceAccountJson(rawJson);
-
-  const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-  if (filePath?.trim()) return parseServiceAccountJson(fs.readFileSync(filePath, 'utf8'));
-
-  return null;
-};
-
 const getAiSearchDb = () => {
   const appName = 'ai-search-admin';
   const existing = getApps().find(item => item.name === appName);
-  const serviceAccount = readServiceAccount();
   const app = existing || initializeApp({
-    credential: serviceAccount ? cert(serviceAccount) : applicationDefault(),
+    credential: applicationDefault(),
     projectId: firebaseConfig.projectId,
     storageBucket: firebaseConfig.storageBucket
   }, appName);

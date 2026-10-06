@@ -4,12 +4,12 @@ import { Listing } from '../types';
 type CompetitorPlatform = NonNullable<Listing['competitorPlatform']>;
 
 const LOGO_URLS: Partial<Record<CompetitorPlatform, string>> = {
-  Booking: '/logo/Booking.com_logo.svg',
-  Traveloka: '/logo/Traveloka.svg',
-  'Trip.com': '/logo/Trip.com_logo.svg',
-  Agoda: '/logo/agoda-1.svg',
-  Airbnb: '/logo/airbnb.svg',
-  'Only Facebook': '/logo/facebook.svg'
+  Booking: '/assets/images/logos/Booking.com_logo.svg',
+  Traveloka: '/assets/images/logos/Traveloka.svg',
+  'Trip.com': '/assets/images/logos/Trip.com_logo.svg',
+  Agoda: '/assets/images/logos/agoda-1.svg',
+  Airbnb: '/assets/images/logos/airbnb.svg',
+  'Only Facebook': '/assets/images/logos/facebook.svg'
 };
 
 const TEXT_BADGE_CLASSES: Partial<Record<CompetitorPlatform, string>> = {

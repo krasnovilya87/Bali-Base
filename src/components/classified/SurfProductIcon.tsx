@@ -1,15 +1,15 @@
 import React from 'react';
 import { Ellipsis } from 'lucide-react';
-import boardImage from '../../assets/images/surf-products/surf-board.png';
-import finsImage from '../../assets/images/surf-products/surf-fins.png';
-import leashImage from '../../assets/images/surf-products/surf-leash.png';
-import bagImage from '../../assets/images/surf-products/surf-board-bag.png';
-import wetsuitImage from '../../assets/images/surf-products/surf-wetsuit.png';
-import rashguardImage from '../../assets/images/surf-products/surf-rashguard.png';
-import ponchoImage from '../../assets/images/surf-products/surf-poncho.png';
-import waxImage from '../../assets/images/surf-products/surf-wax.png';
-import repairKitImage from '../../assets/images/surf-products/surf-repair-kit.png';
-import mountImage from '../../assets/images/surf-products/surf-mount.png';
+import boardImage from '../../assets/images/other/products/surf/surf-board.png';
+import finsImage from '../../assets/images/other/products/surf/surf-fins.png';
+import leashImage from '../../assets/images/other/products/surf/surf-leash.png';
+import bagImage from '../../assets/images/other/products/surf/surf-board-bag.png';
+import wetsuitImage from '../../assets/images/other/products/surf/surf-wetsuit.png';
+import rashguardImage from '../../assets/images/other/products/surf/surf-rashguard.png';
+import ponchoImage from '../../assets/images/other/products/surf/surf-poncho.png';
+import waxImage from '../../assets/images/other/products/surf/surf-wax.png';
+import repairKitImage from '../../assets/images/other/products/surf/surf-repair-kit.png';
+import mountImage from '../../assets/images/other/products/surf/surf-mount.png';
 
 const surfProductImages: Record<string, string> = {
   board: boardImage,

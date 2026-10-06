@@ -10,8 +10,19 @@ import {
   transcribeAudioWithGroq,
   upsertListingVector
 } from './vectorService';
+import { getAuthenticatedUser, isAdminToken, rateLimit, requireAdmin, requireAuth } from '../security';
+import { adminDb } from '../firebaseAdmin';
 
 const AI_SEARCH_DEBUG = process.env.AI_SEARCH_DEBUG === 'true';
+const LISTING_COLLECTIONS = ['housing_for_rent_listing', 'transport_for_rent', 'listings'];
+
+const readStoredListing = async (listingId: string) => {
+  for (const collectionName of LISTING_COLLECTIONS) {
+    const snapshot = await adminDb.collection(collectionName).doc(listingId).get();
+    if (snapshot.exists) return snapshot.data();
+  }
+  return undefined;
+};
 
 const traceAiSearch = (message: string, details?: Record<string, unknown>) => {
   if (!AI_SEARCH_DEBUG) return;
@@ -25,10 +36,13 @@ const traceAiSearch = (message: string, details?: Record<string, unknown>) => {
 export const createAiSearchRouter = (): Router => {
   const router = express.Router();
 
+  router.use(requireAuth);
+  router.use(rateLimit({ scope: 'ai-search', windowMs: 10 * 60 * 1000, max: 60 }));
+
   router.post('/', async (req, res) => {
     const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
 
-    if (!query) {
+    if (!query || query.length > 240) {
       res.status(400).json({ ok: false, error: 'query is required' });
       return;
     }
@@ -38,7 +52,7 @@ export const createAiSearchRouter = (): Router => {
     res.json({ ok: true, intent });
   });
 
-  router.post('/voice', async (req, res) => {
+  router.post('/voice', rateLimit({ scope: 'ai-voice', windowMs: 10 * 60 * 1000, max: 5 }), async (req, res) => {
     const startedAt = Date.now();
     traceAiSearch('[AI voice trace] route start', {
       contentType: req.headers['content-type'],
@@ -110,7 +124,7 @@ export const createAiSearchRouter = (): Router => {
     }
   });
 
-  router.post('/voice/transcribe', async (req, res) => {
+  router.post('/voice/transcribe', rateLimit({ scope: 'ai-transcribe', windowMs: 10 * 60 * 1000, max: 5 }), async (req, res) => {
     const startedAt = Date.now();
     traceAiSearch('[AI voice trace] transcribe route start', {
       contentType: req.headers['content-type'],
@@ -148,7 +162,7 @@ export const createAiSearchRouter = (): Router => {
     const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
     const topK = Number(req.body?.topK || 10);
 
-    if (!query) {
+    if (!query || query.length > 240) {
       res.status(400).json({ ok: false, error: 'query is required' });
       return;
     }
@@ -176,13 +190,22 @@ export const createAiSearchRouter = (): Router => {
 
   router.post('/index-listing', async (req, res) => {
     const listing = req.body?.listing;
-    if (!listing?.id) {
+    if (!listing?.id || typeof listing.id !== 'string' || listing.id.length > 128) {
       res.status(400).json({ ok: false, error: 'listing is required' });
       return;
     }
 
+    const authUser = getAuthenticatedUser(res);
+    const storedListing = await readStoredListing(listing.id);
+    if (!authUser || !storedListing || (storedListing.ownerId !== authUser.uid && !isAdminToken(authUser))) {
+      res.status(403).json({ ok: false, error: 'You cannot index this listing.' });
+      return;
+    }
+
+    const listingForIndex = { ...storedListing, id: listing.id };
+
     try {
-      const result = await upsertListingVector(listing);
+      const result = await upsertListingVector(listingForIndex as typeof listing);
       res.json({ ok: true, result });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'AI listing indexing failed';
@@ -191,7 +214,7 @@ export const createAiSearchRouter = (): Router => {
     }
   });
 
-  router.post('/delete-listing', async (req, res) => {
+  router.post('/delete-listing', requireAdmin, async (req, res) => {
     const listingId = typeof req.body?.listingId === 'string' ? req.body.listingId.trim() : '';
     if (!listingId) {
       res.status(400).json({ ok: false, error: 'listingId is required' });
@@ -208,7 +231,7 @@ export const createAiSearchRouter = (): Router => {
     }
   });
 
-  router.get('/stats', async (_req, res) => {
+  router.get('/stats', requireAdmin, async (_req, res) => {
     const stats = await readAiSearchUsageStats();
     res.json({ ok: true, stats });
   });

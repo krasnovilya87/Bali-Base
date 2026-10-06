@@ -1,5 +1,5 @@
 .cover-screen {
-  --cover-bg-image: url("/cover-hero.jpg");
+  --cover-bg-image: url("/assets/images/site/cover-hero.jpg");
   --cover-bg-position: center 38%;
   --cover-bg-mobile-position: center 44%;
   --cover-bg-overlay: rgb(0 0 0 / 55%);

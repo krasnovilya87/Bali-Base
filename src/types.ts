@@ -1,10 +1,14 @@
 export interface Review {
   id: string;
+  listingId?: string;
+  authorId?: string;
   authorName: string;
   avatar: string;
   rating: number;
   date: string;
   text: string;
+  createdAt?: string;
+  updatedAt?: string;
   textLanguageCode?: string;
   originalText?: string;
   originalLanguageCode?: string;
@@ -132,13 +136,25 @@ export interface Listing {
   vehicleBrand?: string;
   vehicleModel?: string;
   vehicleModelQuantity?: number;
+  vehicleEngineDisplacementCc?: number;
   vehicleColor?: string;
   vehicleCondition?: 'like_new' | 'minor_scratches' | 'faded_surf_rack';
+  vehicleDriverOption?: 'with_driver' | 'without_driver';
+  vehicleTransmission?: 'automatic' | 'manual';
+  vehicleFuelType?: 'gasoline' | 'diesel' | 'hybrid' | 'electric' | 'gas';
+  vehicleLuggageCapacity?: 2 | 4 | 6 | 8;
   sellerType?: 'private' | 'company';
   sellerGoogleMapsUrl?: string;
   sellerGooglePlaceId?: string;
   keyless?: boolean;
   abs?: boolean;
+  airbag?: boolean;
+  rearCamera?: boolean;
+  parkingSensors?: boolean;
+  sunroof?: boolean;
+  leatherInterior?: boolean;
+  childSeat?: boolean;
+  roofRack?: boolean;
   surfRack?: boolean;
   insurance?: boolean;
   freeDeliveryToAddress?: boolean;
@@ -206,6 +222,8 @@ export interface Listing {
 export interface BookingRequest {
   id: string;
   listingId: string;
+  guestId: string;
+  listingOwnerId: string;
   listingTitle: string;
   listingImage: string;
   listingCategory: 'housing' | 'transport' | 'investments' | 'services' | 'ads' | 'afisha' | 'life' | 'useful';
@@ -278,7 +296,12 @@ export interface FilterState {
   
   // Transport specifics
   engineSize: string[];
+  vehicleEngineDisplacementMin: number;
+  vehicleEngineDisplacementMax: number;
   transmission: string[];
+  vehicleDriverOption: string[];
+  vehicleFuelType: string[];
+  vehicleLuggageCapacity: number[];
   vehicleBrand: string[];
   vehicleModel: string[];
   vehicleColor: string[];
@@ -288,6 +311,13 @@ export interface FilterState {
   sellerType: string[];
   keylessOnly: boolean;
   absOnly: boolean;
+  airbagOnly: boolean;
+  rearCameraOnly: boolean;
+  parkingSensorsOnly: boolean;
+  sunroofOnly: boolean;
+  leatherInteriorOnly: boolean;
+  childSeatOnly: boolean;
+  roofRackOnly: boolean;
   surfRackOnly: boolean;
   insuranceOnly: boolean;
   freeDeliveryToAddressOnly: boolean;

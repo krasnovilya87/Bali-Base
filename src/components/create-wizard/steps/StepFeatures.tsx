@@ -43,7 +43,7 @@ const housingFeatureSections = [
 const StepFeatures: React.FC<StepFeaturesProps> = (props) => {
   const { category, subCategory } = props;
 
-  if (category === 'transport' && subCategory === 'scooters') {
+  if (category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory)) {
     return <FeatureScooterParameters {...props} />;
   }
 

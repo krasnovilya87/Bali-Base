@@ -250,7 +250,7 @@ export const getMarketBrandLogoSources = (brand: BrandWithLogo): string[] => {
   const iconifySlug = normalized.replace(/&/g, 'and').replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const domain = BRAND_DOMAINS[brand.name];
   const sources = [
-    `/brand-logos/${localLogoSlug(brand.name)}.svg`,
+    `/assets/images/brand-logos/${localLogoSlug(brand.name)}.svg`,
     brand.logoUrl,
     explicitSlug ? `https://cdn.simpleicons.org/${explicitSlug}/1E293B` : undefined,
     domain ? `https://${domain}/favicon.ico` : undefined,

@@ -42,7 +42,7 @@ const adminRouteFallback = () => ({
 export default defineConfig(() => {
   return {
     appType: 'spa' as const,
-    worker: { format: 'es' },
+    worker: { format: 'es' as const },
     plugins: [adminRouteFallback(), react(), tailwindcss()],
     resolve: {
       alias: [
@@ -50,8 +50,7 @@ export default defineConfig(() => {
       ],
     },
     define: {
-      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(process.env.GOOGLE_MAPS_PLATFORM_KEY || ''),
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || '')
+      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(process.env.GOOGLE_MAPS_PLATFORM_KEY || '')
     },
     build: {
       rollupOptions: {

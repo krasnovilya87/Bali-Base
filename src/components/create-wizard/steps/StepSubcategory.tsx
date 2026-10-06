@@ -79,15 +79,17 @@ const StepSubcategory: React.FC<StepSubcategoryProps> = ({
               <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-[#FF7A50]/5 rounded-full filter blur-xl group-hover:scale-125 transition duration-300 pointer-events-none" />
 
               <div className="absolute inset-x-2 sm:inset-x-3 top-2 sm:top-2.5 bottom-7 sm:bottom-8 flex items-center justify-center">
-                {sub.customImage ? (
+                {sub.customImage && category !== 'life' ? (
                   <img
                     src={sub.customImage}
                     alt={category === 'afisha' ? tr(`subcategory.${sub.id}`) : sub.label}
                     className="w-full h-full max-w-[78%] max-h-[78%] sm:max-w-[74%] sm:max-h-[74%] object-contain filter drop-shadow hover:brightness-105 group-hover:scale-105 transition-all duration-300"
                     referrerPolicy="no-referrer"
                   />
-                ) : (
+                ) : category === 'life' || category === 'useful' ? (
                   <ThreeDIcon emoji={sub.icon} size={80} className="transition-all duration-200" />
+                ) : (
+                  <div className="w-full h-full" aria-hidden="true" />
                 )}
               </div>
 
@@ -131,7 +133,7 @@ const StepSubcategory: React.FC<StepSubcategoryProps> = ({
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <ThreeDIcon emoji={activeAdsGroup.icon} size={44} className="shrink-0" />
+              <div className="h-11 w-11 shrink-0" aria-hidden="true" />
             )}
             <h3 id="ads-l3-dialog-title" className="min-w-0 flex-1 text-base font-black leading-tight text-[#1E293B] sm:text-lg">
               {activeAdsGroup.label}

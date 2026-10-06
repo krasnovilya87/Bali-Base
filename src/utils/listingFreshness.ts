@@ -9,13 +9,17 @@ const asYear = (value: unknown): number | null => {
   return null;
 };
 
-export function isListingFresh(listing: Pick<Listing, 'yearBuilt' | 'yearRenovated'>): boolean {
-  const years = [asYear(listing.yearBuilt), asYear(listing.yearRenovated)].filter(
-    (year): year is number => year !== null
-  );
+export function isListingFresh(listing: Pick<Listing, 'category' | 'yearBuilt' | 'yearRenovated'>): boolean {
+  if (listing.category !== 'housing' && listing.category !== 'transport') return false;
 
-  if (!years.length) return false;
+  const years = listing.category === 'housing'
+    ? [asYear(listing.yearBuilt), asYear(listing.yearRenovated)]
+    : [asYear(listing.yearBuilt)];
+  const validYears = years.filter((year): year is number => year !== null);
 
-  const latestYear = Math.max(...years);
-  return new Date().getFullYear() - latestYear <= 2;
+  if (!validYears.length) return false;
+
+  const latestYear = Math.max(...validYears);
+  const maximumAge = listing.category === 'housing' ? 2 : 1;
+  return new Date().getFullYear() - latestYear <= maximumAge;
 }

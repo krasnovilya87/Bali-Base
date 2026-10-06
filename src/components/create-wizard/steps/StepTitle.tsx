@@ -27,6 +27,8 @@ type StepTitleProps = {
   setVehicleModel?: React.Dispatch<React.SetStateAction<string>>;
   vehicleModelQuantity?: number;
   setVehicleModelQuantity?: React.Dispatch<React.SetStateAction<number | undefined>>;
+  vehicleEngineDisplacementCc?: number;
+  setVehicleEngineDisplacementCc?: React.Dispatch<React.SetStateAction<number | undefined>>;
   vehicleColor?: string;
   setVehicleColor?: React.Dispatch<React.SetStateAction<string>>;
   mapSuggestions?: any[];
@@ -58,6 +60,8 @@ const StepTitle: React.FC<StepTitleProps> = ({
   setVehicleModel,
   vehicleModelQuantity,
   setVehicleModelQuantity,
+  vehicleEngineDisplacementCc,
+  setVehicleEngineDisplacementCc,
   vehicleColor = '',
   setVehicleColor,
   mapSuggestions,
@@ -71,7 +75,7 @@ const StepTitle: React.FC<StepTitleProps> = ({
 }) => {
   const { tr } = useI18n();
   const showsUnitTypeAndCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
-  const isScooterWizard = category === 'transport' && subCategory === 'scooters';
+  const isDetailedTransportWizard = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
   const [roomCountInput, setRoomCountInput] = React.useState(roomCount === undefined ? '' : String(roomCount));
 
   React.useEffect(() => {
@@ -98,8 +102,9 @@ const StepTitle: React.FC<StepTitleProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {isScooterWizard && setVehicleModel && setVehicleColor && setVehicleModelQuantity ? (
+      {isDetailedTransportWizard && setVehicleModel && setVehicleColor && setVehicleModelQuantity && setVehicleEngineDisplacementCc ? (
         <FeatureScooterDetails
+          subCategory={subCategory}
           title={title}
           setTitle={setTitle}
           description={description}
@@ -109,6 +114,8 @@ const StepTitle: React.FC<StepTitleProps> = ({
           setVehicleModel={setVehicleModel}
           vehicleModelQuantity={vehicleModelQuantity}
           setVehicleModelQuantity={setVehicleModelQuantity}
+          vehicleEngineDisplacementCc={vehicleEngineDisplacementCc}
+          setVehicleEngineDisplacementCc={setVehicleEngineDisplacementCc}
           vehicleColor={vehicleColor}
           setVehicleColor={setVehicleColor}
         />

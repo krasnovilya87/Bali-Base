@@ -22,10 +22,10 @@ import { auth, db } from '../firebase';
 
 const EMAIL_SIGN_IN_KEY = 'bali_base_email_sign_in';
 const CURRENT_USER_PROFILE_KEY = 'bali_base_current_user_profile';
-const EMAIL_PROVIDERS_COLLECTION = 'auth_email_providers';
 
 type AuthContextValue = {
   user: User | null;
+  isAdmin: boolean;
   loading: boolean;
   authError: string;
   emailLinkSent: boolean;
@@ -65,26 +65,7 @@ const readRememberedEmail = () => {
   }
 };
 
-const getEmailProviderKey = (email: string) =>
-  email.trim().toLowerCase();
-
-type EmailAuthProviderId = 'google.com' | 'password';
 type UserProfileProvider = 'google' | 'email_link';
-
-const upsertEmailProviderIndex = async (user: User, provider: EmailAuthProviderId) => {
-  if (!user.email) return;
-
-  await setDoc(doc(db, EMAIL_PROVIDERS_COLLECTION, getEmailProviderKey(user.email)), {
-    email: user.email.toLowerCase(),
-    providers: [provider],
-    primaryProvider: provider,
-    uid: user.uid,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-};
-
-const getEmailProviderId = (provider: UserProfileProvider): EmailAuthProviderId =>
-  provider === 'google' ? 'google.com' : 'password';
 
 const shouldUseRedirectSignIn = () => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -125,7 +106,6 @@ const upsertUserProfile = async (user: User, provider: UserProfileProvider) => {
     updatedAt: serverTimestamp()
   }, { merge: true });
 
-  await upsertEmailProviderIndex(user, getEmailProviderId(provider));
 };
 
 const getExistingSessionProvider = (user: User): UserProfileProvider => {
@@ -144,6 +124,7 @@ const safeUpsertUserProfile = async (user: User, provider: UserProfileProvider |
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [emailLinkSent, setEmailLinkSent] = useState(false);
@@ -174,9 +155,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      unsubscribe = onAuthStateChanged(auth, nextUser => {
+      unsubscribe = onAuthStateChanged(auth, async nextUser => {
         if (!isMounted) return;
         setUser(nextUser);
+        setIsAdmin(false);
         if (nextUser) {
           window.localStorage.setItem(CURRENT_USER_PROFILE_KEY, JSON.stringify({
             uid: nextUser.uid,
@@ -188,10 +170,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           window.localStorage.removeItem(CURRENT_USER_PROFILE_KEY);
         }
-        setLoading(false);
         if (nextUser) {
+          try {
+            const tokenResult = await nextUser.getIdTokenResult();
+            if (isMounted && auth.currentUser?.uid === nextUser.uid) {
+              setIsAdmin(tokenResult.claims.admin === true);
+            }
+          } catch (error) {
+            console.warn('Could not read Firebase custom claims:', error);
+          }
           safeUpsertUserProfile(nextUser, 'existing_session');
         }
+        if (isMounted) setLoading(false);
       });
     };
 
@@ -232,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
+    isAdmin,
     loading,
     authError,
     emailLinkSent,
@@ -359,23 +350,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
-        let indexedProviders: string[] = [];
-
-        try {
-          const providerSnapshot = await getDoc(doc(db, EMAIL_PROVIDERS_COLLECTION, getEmailProviderKey(cleanEmail)));
-          indexedProviders = providerSnapshot.exists()
-            ? ((providerSnapshot.data().providers || []) as string[])
-            : [];
-        } catch (indexError: any) {
-          if (indexError?.code === 'permission-denied') {
-            indexedProviders = ['google.com'];
-          } else {
-            throw indexError;
-          }
-        }
-
-        return Array.from(new Set([...methods, ...indexedProviders]));
+        return await fetchSignInMethodsForEmail(auth, cleanEmail);
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : 'Could not check this email address.');
         return [];
@@ -404,7 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError('');
       setEmailLinkSent(false);
     }
-  }), [authError, emailLinkSent, loading, user]);
+  }), [authError, emailLinkSent, isAdmin, loading, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -2,6 +2,19 @@ import type { Router } from 'express';
 import express from 'express';
 import { getGooglePlaceReviewsForListing, refreshGooglePlaceReviews } from './service';
 import type { GooglePlacesRequestPurpose } from './types';
+import { adminDb } from '../firebaseAdmin';
+import { getAuthenticatedUser, isAdminToken, rateLimit, requireAuth } from '../security';
+
+const LISTING_COLLECTIONS = ['housing_for_rent_listing', 'transport_for_rent', 'listings'];
+const MAX_MAPS_URL_LENGTH = 2_048;
+
+const readListingOwner = async (listingId: string) => {
+  for (const collectionName of LISTING_COLLECTIONS) {
+    const snapshot = await adminDb.collection(collectionName).doc(listingId).get();
+    if (snapshot.exists) return snapshot.data()?.ownerId as string | undefined;
+  }
+  return undefined;
+};
 
 const isAllowedGoogleMapsUrl = (value: string) => {
   try {
@@ -36,28 +49,55 @@ const parseGoogleMapsUrl = (value: string) => {
   }
 };
 
+const resolveAllowedGoogleMapsUrl = async (rawUrl: string) => {
+  let currentUrl = rawUrl;
+
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
+    if (!isAllowedGoogleMapsUrl(currentUrl)) {
+      throw new Error('Google Maps redirected to a disallowed host.');
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
+        redirect: 'manual',
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (response.status < 300 || response.status >= 400) {
+      return response.url || currentUrl;
+    }
+
+    const location = response.headers.get('location');
+    if (!location) throw new Error('Google Maps returned an invalid redirect.');
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new Error('Google Maps returned too many redirects.');
+};
+
 export const createGooglePlacesReviewsRouter = (): Router => {
   const router = express.Router();
+
+  router.use(requireAuth);
+  router.use(rateLimit({ scope: 'google-places', windowMs: 10 * 60 * 1000, max: 30 }));
 
   router.post('/maps-link/resolve', async (req, res) => {
     try {
       const { url }: { url?: string } = req.body || {};
       const rawUrl = String(url || '').trim();
 
-      if (!rawUrl || !isAllowedGoogleMapsUrl(rawUrl)) {
+      if (!rawUrl || rawUrl.length > MAX_MAPS_URL_LENGTH || !isAllowedGoogleMapsUrl(rawUrl)) {
         res.status(400).json({ error: 'A Google Maps URL is required' });
         return;
       }
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(rawUrl, {
-        redirect: 'follow',
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-
-      const resolvedUrl = response.url || rawUrl;
+      const resolvedUrl = await resolveAllowedGoogleMapsUrl(rawUrl);
       const parsed = parseGoogleMapsUrl(resolvedUrl);
 
       res.json({
@@ -81,8 +121,20 @@ export const createGooglePlacesReviewsRouter = (): Router => {
         purpose?: GooglePlacesRequestPurpose;
       } = req.body || {};
 
-      if (!listingId || !placeId) {
+      if (!listingId || !placeId || listingId.length > 128 || placeId.length > 256) {
         res.status(400).json({ error: 'listingId and placeId are required' });
+        return;
+      }
+
+      if (purpose !== 'listing_create' && purpose !== 'listing_update') {
+        res.status(400).json({ error: 'purpose must be listing_create or listing_update' });
+        return;
+      }
+
+      const authUser = getAuthenticatedUser(res);
+      const ownerId = await readListingOwner(listingId);
+      if (!authUser || !ownerId || (ownerId !== authUser.uid && !isAdminToken(authUser))) {
+        res.status(403).json({ error: 'You cannot refresh reviews for this listing.' });
         return;
       }
 

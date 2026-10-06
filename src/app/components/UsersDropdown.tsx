@@ -1,5 +1,6 @@
 import { List, LogOut, MessageSquare, User, UserRoundCog } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { auth } from '../../firebase';
 import { BookingRequest, Listing } from '../../types';
@@ -44,6 +45,8 @@ export default function UsersDropdown({
   };
   const ownListings = getOwnListings();
   const userPhotoURL = currentUser?.photoURL || '';
+  const [failedPhotoURL, setFailedPhotoURL] = useState('');
+  const showUserPhoto = Boolean(userPhotoURL && failedPhotoURL !== userPhotoURL);
   const totalContactHistoryCount = getContactHistoryCount();
   const acceptedBookingCount = getAcceptedContactHistoryBookingCount(bookings);
   const ownListingIds = new Set(ownListings.map(item => item.id));
@@ -76,12 +79,13 @@ export default function UsersDropdown({
         id={id}
         title="Users Menu"
       >
-        {userPhotoURL ? (
+        {showUserPhoto ? (
           <img
             src={userPhotoURL}
             alt=""
             className="h-11 w-11 rounded-full object-cover shadow-sm"
             referrerPolicy="no-referrer"
+            onError={() => setFailedPhotoURL(userPhotoURL)}
           />
         ) : (
           <User className="h-7 w-7 text-[#FF7A50]" />

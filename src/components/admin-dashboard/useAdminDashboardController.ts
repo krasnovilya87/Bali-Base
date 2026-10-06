@@ -18,6 +18,7 @@ import { getDistrictNamesFromGeoJSONSync } from '../../utils/geo';
 import { uploadImageToImageKit } from '../../utils/imageUpload';
 import { AiSearchUsageStats, loadAiSearchUsageStats } from '../../utils/aiSearchClient';
 import { getAfishaExpirationDate } from '../../config/eventSpecial';
+import { createFirebaseAdminUser, deleteFirebaseAdminUser, setFirebaseUserStatus } from '../../utils/adminUsersClient';
 
 type AdminDashboardControllerParams = Pick<
   AdminDashboardProps,
@@ -722,23 +723,28 @@ export function useAdminDashboardController({
       showToast('Please fill in all fields.');
       return;
     }
-    const newUser: AdminUser = {
-      id: `user-generated-${Date.now()}`,
-      name: newUserName,
-      email: newUserEmail,
-      phone: newUserPhone,
-      role: newUserRole,
-      status: 'active',
-      listingsCount: 0,
-      registeredAt: new Date().toISOString(),
-      avatar: DEFAULT_USER_AVATAR
-    };
-    const updatedUsers = mergeAdminUsers(adminUsers, [newUser]);
-    saveUsers(updatedUsers);
     try {
-      await persistAdminUser(newUser);
+      const created = await createFirebaseAdminUser({
+        name: newUserName,
+        email: newUserEmail,
+        phone: newUserPhone,
+        role: newUserRole
+      });
+      const newUser: AdminUser = {
+        id: created.id,
+        name: created.displayName || newUserName,
+        email: created.email || newUserEmail,
+        phone: created.contactPhone || newUserPhone,
+        role: created.role || newUserRole,
+        status: 'active',
+        listingsCount: 0,
+        registeredAt: created.registeredAt || new Date().toISOString(),
+        avatar: created.photoURL || DEFAULT_USER_AVATAR
+      };
+      saveUsers(mergeAdminUsers(adminUsers, [newUser]));
     } catch (error) {
-      console.warn('Could not save admin-created user to Firestore:', error);
+      showToast(error instanceof Error ? error.message : 'Could not create user.');
+      return;
     }
     setShowAddUserModal(false);
     setNewUserName('');
@@ -769,36 +775,29 @@ export function useAdminDashboardController({
 
   // Toggle User Ban Status
   const handleToggleUserBan = async (userId: string) => {
-    const updated = adminUsers.map(u => {
-      if (u.id === userId) {
-        const toggle = u.status === 'banned' ? 'active' : 'banned';
-        return { ...u, status: toggle as 'active' | 'banned' };
-      }
-      return u;
-    });
-    saveUsers(updated);
     const matched = adminUsers.find(u => u.id === userId);
-    const updatedUser = updated.find(u => u.id === userId);
-    if (updatedUser) {
-      try {
-        await persistAdminUser(updatedUser);
-      } catch (error) {
-        console.warn('Could not update user status in Firestore:', error);
-      }
+    if (!matched) return;
+    const nextStatus = matched.status === 'banned' ? 'active' : 'banned';
+    try {
+      await setFirebaseUserStatus(userId, nextStatus);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not update user status.');
+      return;
     }
+    saveUsers(adminUsers.map(user => user.id === userId ? { ...user, status: nextStatus } : user));
     const verb = matched?.status === 'active' ? 'banned' : 'unbanned';
     showToast(`User ${matched?.name} ${verb}.`);
   };
 
   // Delete User Handler
   const handleDeleteUser = async (userId: string) => {
-    const updated = adminUsers.filter(u => u.id !== userId);
-    saveUsers(updated);
     try {
-      await deleteDocument('users', userId);
+      await deleteFirebaseAdminUser(userId);
     } catch (error) {
-      console.warn('Could not delete user profile from Firestore:', error);
+      showToast(error instanceof Error ? error.message : 'Could not delete user.');
+      return;
     }
+    saveUsers(adminUsers.filter(u => u.id !== userId));
     showToast('User deleted.');
   };
 

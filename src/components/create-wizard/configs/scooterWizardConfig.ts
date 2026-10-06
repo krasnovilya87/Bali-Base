@@ -4,11 +4,45 @@ import {
   SCOOTER_MODEL_OPTIONS,
   SCOOTER_SELLER_TYPE_OPTIONS
 } from '../../../utils/scooterFilters';
+import { getMotorcycleModelLabel } from '../../../config/motorcycleCatalog';
+import { getCarModelLabel } from '../../../config/carCatalog';
+
+export {
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MAX,
+  MOTORCYCLE_ENGINE_DISPLACEMENT_MIN,
+  MOTORCYCLE_MODEL_GROUPS,
+  MOTORCYCLE_MODEL_OPTIONS,
+  MOTORCYCLE_OTHER_MODEL_PREFIX,
+  MOTORCYCLE_TYPE_GROUPS,
+  getMotorcycleEngineDisplacements,
+  getMotorcycleModel,
+  getMotorcycleModelsForGroup,
+  motorcycleEngineMatchesRange,
+  type MotorcycleCatalogModel,
+  type MotorcycleModelGroup,
+  type MotorcycleTypeGroup
+} from '../../../config/motorcycleCatalog';
 
 export const SCOOTER_WIZARD_MODEL_OPTIONS = SCOOTER_MODEL_OPTIONS;
 export const SCOOTER_WIZARD_COLOR_OPTIONS = SCOOTER_COLOR_OPTIONS;
 export const SCOOTER_WIZARD_CONDITION_OPTIONS = SCOOTER_CONDITION_OPTIONS;
 export const SCOOTER_WIZARD_SELLER_TYPE_OPTIONS = SCOOTER_SELLER_TYPE_OPTIONS;
+
+export const DETAILED_TRANSPORT_SUBCATEGORIES = ['scooters', 'motorcycles', 'cars'] as const;
+
+export const isDetailedTransportSubcategory = (subCategory: string) =>
+  DETAILED_TRANSPORT_SUBCATEGORIES.includes(subCategory as typeof DETAILED_TRANSPORT_SUBCATEGORIES[number]);
+
+export const getTransportModelLabel = (subCategory: string, value: string) => {
+  if (subCategory === 'motorcycles') {
+    return getMotorcycleModelLabel(value);
+  }
+  if (subCategory === 'cars') {
+    return getCarModelLabel(value);
+  }
+
+  return SCOOTER_WIZARD_MODEL_OPTIONS.find(model => model.value === value)?.label || '';
+};
 
 export const SCOOTER_WIZARD_COLOR_SWATCHES: Record<string, string> = {
   black: '#111827',

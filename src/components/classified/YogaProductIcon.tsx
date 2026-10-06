@@ -1,13 +1,13 @@
 import React from 'react';
-import matImage from '../../assets/images/yoga-products/yoga-mat.png';
-import blocksImage from '../../assets/images/yoga-products/yoga-blocks.png';
-import cushionImage from '../../assets/images/yoga-products/yoga-cushion.png';
-import strapImage from '../../assets/images/yoga-products/yoga-strap.png';
-import bolsterImage from '../../assets/images/yoga-products/yoga-bolster.png';
-import wheelImage from '../../assets/images/yoga-products/yoga-wheel.png';
-import hammockImage from '../../assets/images/yoga-products/yoga-hammock.png';
-import blanketImage from '../../assets/images/yoga-products/yoga-blanket.png';
-import accessorySetImage from '../../assets/images/yoga-products/yoga-accessory-set.png';
+import matImage from '../../assets/images/other/products/yoga/yoga-mat.png';
+import blocksImage from '../../assets/images/other/products/yoga/yoga-blocks.png';
+import cushionImage from '../../assets/images/other/products/yoga/yoga-cushion.png';
+import strapImage from '../../assets/images/other/products/yoga/yoga-strap.png';
+import bolsterImage from '../../assets/images/other/products/yoga/yoga-bolster.png';
+import wheelImage from '../../assets/images/other/products/yoga/yoga-wheel.png';
+import hammockImage from '../../assets/images/other/products/yoga/yoga-hammock.png';
+import blanketImage from '../../assets/images/other/products/yoga/yoga-blanket.png';
+import accessorySetImage from '../../assets/images/other/products/yoga/yoga-accessory-set.png';
 
 const yogaProductImages: Record<string, string> = {
   mat: matImage,

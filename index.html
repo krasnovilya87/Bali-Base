@@ -7,10 +7,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
-    <link rel="preload" as="image" href="/cover-hero.jpg" />
+    <link rel="preload" as="image" href="/assets/images/site/cover-hero.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="icon" type="image/webp" href="/favicon.webp" />
+    <link rel="icon" type="image/webp" href="/assets/images/site/favicon.webp" />
     <title>Bali Base</title>
     <style>
       .pu-window-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0;padding:1rem 1.25rem;border-bottom:1px solid #E5E7EB}
@@ -26,16 +26,16 @@
       .pu-button-primary:hover{background:#E05A30}
       .pu-button-secondary:active,.pu-button-primary:active{transform:scale(.95)}
       .pu-button-secondary:disabled,.pu-button-primary:disabled{cursor:not-allowed;opacity:.5;transform:none}
-      html.static-cover-visible,html.static-cover-visible body{min-height:100%;margin:0;background:transparent url("/cover-hero.jpg") center 44%/cover no-repeat;overscroll-behavior-y:auto}
+      html.static-cover-visible,html.static-cover-visible body{min-height:100%;margin:0;background:transparent url("/assets/images/site/cover-hero.jpg") center 44%/cover no-repeat;overscroll-behavior-y:auto}
       .static-cover{--static-cover-vh:1vh;position:relative;z-index:9999;min-height:120svh;min-height:calc((var(--static-cover-vh) * 100) + max(env(safe-area-inset-top,0px),44px) + max(env(safe-area-inset-bottom,0px),120px));overflow:hidden;background:transparent;color:#fff;text-align:center;font-family:Manrope,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;user-select:none}
       .static-cover::before{content:"";position:absolute;inset:0;z-index:1;background:rgb(0 0 0 / 55%);pointer-events:none}
-      .static-cover::after{content:"";position:absolute;inset:0;z-index:0;background:transparent url("/cover-hero.jpg") center 44%/cover no-repeat;animation:staticCoverScalePan 20s ease-in-out infinite alternate;transform-origin:center 42%;will-change:transform}
+      .static-cover::after{content:"";position:absolute;inset:0;z-index:0;background:transparent url("/assets/images/site/cover-hero.jpg") center 44%/cover no-repeat;animation:staticCoverScalePan 20s ease-in-out infinite alternate;transform-origin:center 42%;will-change:transform}
       .static-cover__inner{position:fixed;inset:0;z-index:2;box-sizing:border-box;display:flex;min-height:100svh;min-height:calc(var(--static-cover-vh) * 100);width:100%;flex-direction:column;align-items:center;justify-content:center;padding:calc(10svh + env(safe-area-inset-top)) 16px calc(22svh + env(safe-area-inset-bottom));transform:translateY(15px);pointer-events:none}
       .static-cover__badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;border:1px solid rgb(255 255 255 / 20%);border-radius:999px;background:rgb(255 255 255 / 10%);padding:8px 14px;backdrop-filter:blur(12px);animation:staticCoverBounce 3s ease-in-out infinite}
       .static-cover__badge-icon{color:#FF7A50;font-size:16px;line-height:1}
       .static-cover__badge-text{font-size:11px;font-weight:800;line-height:1;text-transform:uppercase;letter-spacing:.08em}
       .static-cover__brand{display:inline-flex;align-items:baseline;max-width:92vw;margin:0 0 8px;font-family:Jost,Manrope,system-ui,sans-serif;font-size:clamp(3.35rem,13vw,6.5rem);font-weight:800;line-height:1;letter-spacing:.08em;text-transform:uppercase;color:#fff;filter:drop-shadow(0 6px 24px rgb(0 0 0 / 35%))}
-      .static-cover__logo-a{display:inline-block;width:.74em;height:.72em;background-color:#d47558;transform:translateY(0);-webkit-mask:url("/logo-a.svg") center/contain no-repeat;mask:url("/logo-a.svg") center/contain no-repeat}
+      .static-cover__logo-a{display:inline-block;width:.74em;height:.72em;background-color:#d47558;transform:translateY(0);-webkit-mask:url("/assets/images/site/logo-a.svg") center/contain no-repeat;mask:url("/assets/images/site/logo-a.svg") center/contain no-repeat}
       .static-cover__subtitle{max-width:min(38rem,86vw);margin:12px auto 0;color:rgb(236 253 245 / 90%);font-size:16px;font-weight:500;line-height:1.55;text-shadow:0 2px 12px rgb(0 0 0 / 24%)}
       .static-cover__swipe{position:fixed;left:0;right:0;bottom:calc(6svh + env(safe-area-inset-bottom) - 16px);z-index:2;display:flex;justify-content:center;color:rgb(255 255 255 / 90%);transform:translateY(calc(-150% + 30px));pointer-events:none}
       .static-cover__swipe-mark{position:relative;width:44px;height:84px}
