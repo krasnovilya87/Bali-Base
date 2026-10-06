@@ -20,10 +20,7 @@ html.cover-screen-active,
 html.cover-screen-active body,
 html.cover-screen-active #root {
   background-color: transparent !important;
-  background-image: var(--cover-bg-image);
-  background-position: center 44%;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-image: none;
 }
 
 html.cover-screen-active,
@@ -204,11 +201,18 @@ html.cover-screen-active body {
 
 .cover-swipe-hand {
   position: relative;
+  z-index: 1;
+  display: flex;
   width: 64px;
   height: 84px;
   align-items: center;
   justify-content: center;
-  transform: translateY(-200%);
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 28%));
+}
+
+.cover-screen__scroll-indicator {
+  z-index: 30;
+  pointer-events: none;
 }
 
 .cover-swipe-up {
@@ -399,10 +403,7 @@ html.cover-screen-active body {
     height: auto;
     max-height: none;
     overflow: visible;
-    background-image: var(--cover-bg-image);
-    background-position: var(--cover-bg-mobile-position);
-    background-repeat: no-repeat;
-    background-size: cover;
+    background-image: none;
   }
 
   html.cover-screen-ios-safari .cover-screen::after {
@@ -451,7 +452,7 @@ html.cover-screen-active body {
 
   html.cover-screen-ios-safari .cover-screen__content,
   html.cover-screen-ios-safari .cover-screen__scroll-indicator {
-    z-index: 2;
+    z-index: 30;
   }
 
   html.cover-screen-ios-safari .cover-screen__tail-spacer {

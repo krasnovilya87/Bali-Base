@@ -175,11 +175,7 @@ input[type="range"]::-moz-range-thumb:hover {
 
 html,
 #root {
-  background-color: transparent;
-  background-image: url("/assets/images/site/cover-hero.jpg");
-  background-position: center 44%;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #F4F7F6;
   max-width: 100%;
   overflow-x: clip;
 }
@@ -188,11 +184,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background-color: transparent;
-  background-image: url("/assets/images/site/cover-hero.jpg");
-  background-position: center 44%;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #F4F7F6;
   color: var(--color-text-dark);
   font-family: var(--font-sans);
   max-width: 100%;

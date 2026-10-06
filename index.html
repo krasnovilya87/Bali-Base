@@ -26,7 +26,7 @@
       .pu-button-primary:hover{background:#E05A30}
       .pu-button-secondary:active,.pu-button-primary:active{transform:scale(.95)}
       .pu-button-secondary:disabled,.pu-button-primary:disabled{cursor:not-allowed;opacity:.5;transform:none}
-      html.static-cover-visible,html.static-cover-visible body{min-height:100%;margin:0;background:transparent url("/assets/images/site/cover-hero.jpg") center 44%/cover no-repeat;overscroll-behavior-y:auto}
+      html.static-cover-visible,html.static-cover-visible body{min-height:100%;margin:0;background:#F4F7F6;overscroll-behavior-y:auto}
       .static-cover{--static-cover-vh:1vh;position:relative;z-index:9999;min-height:120svh;min-height:calc((var(--static-cover-vh) * 100) + max(env(safe-area-inset-top,0px),44px) + max(env(safe-area-inset-bottom,0px),120px));overflow:hidden;background:transparent;color:#fff;text-align:center;font-family:Manrope,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;user-select:none}
       .static-cover::before{content:"";position:absolute;inset:0;z-index:1;background:rgb(0 0 0 / 55%);pointer-events:none}
       .static-cover::after{content:"";position:absolute;inset:0;z-index:0;background:transparent url("/assets/images/site/cover-hero.jpg") center 44%/cover no-repeat;animation:staticCoverScalePan 20s ease-in-out infinite alternate;transform-origin:center 42%;will-change:transform}
@@ -37,7 +37,7 @@
       .static-cover__brand{display:inline-flex;align-items:baseline;max-width:92vw;margin:0 0 8px;font-family:Jost,Manrope,system-ui,sans-serif;font-size:clamp(3.35rem,13vw,6.5rem);font-weight:800;line-height:1;letter-spacing:.08em;text-transform:uppercase;color:#fff;filter:drop-shadow(0 6px 24px rgb(0 0 0 / 35%))}
       .static-cover__logo-a{display:inline-block;width:.74em;height:.72em;background-color:#d47558;transform:translateY(0);-webkit-mask:url("/assets/images/site/logo-a.svg") center/contain no-repeat;mask:url("/assets/images/site/logo-a.svg") center/contain no-repeat}
       .static-cover__subtitle{max-width:min(38rem,86vw);margin:12px auto 0;color:rgb(236 253 245 / 90%);font-size:16px;font-weight:500;line-height:1.55;text-shadow:0 2px 12px rgb(0 0 0 / 24%)}
-      .static-cover__swipe{position:fixed;left:0;right:0;bottom:calc(6svh + env(safe-area-inset-bottom) - 16px);z-index:2;display:flex;justify-content:center;color:rgb(255 255 255 / 90%);transform:translateY(calc(-150% + 30px));pointer-events:none}
+      .static-cover__swipe{position:fixed;left:0;right:0;bottom:calc(7svh + env(safe-area-inset-bottom));z-index:3;display:flex;justify-content:center;color:rgb(255 255 255 / 90%);pointer-events:none}
       .static-cover__swipe-mark{position:relative;width:44px;height:84px}
       .static-cover__swipe-track{position:absolute;left:50%;bottom:13px;width:1px;height:52px;border-radius:999px;background:linear-gradient(180deg,rgb(255 255 255 / 56%),rgb(255 255 255 / 8%));transform:translateX(-50%) scaleY(.2);transform-origin:bottom;animation:staticCoverSwipeTrack 1.65s cubic-bezier(.33,0,.16,1) infinite}
       .static-cover__swipe-dot{position:absolute;left:50%;bottom:10px;width:14px;height:14px;border-radius:999px;background:rgb(255 255 255 / 78%);box-shadow:0 0 0 1px rgb(255 255 255 / 18%),0 8px 16px rgb(0 0 0 / 12%);transform:translateX(-50%);animation:staticCoverSwipeDot 1.65s cubic-bezier(.33,0,.16,1) infinite}
