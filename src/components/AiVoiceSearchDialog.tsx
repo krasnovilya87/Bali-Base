@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Mic, Send, X } from 'lucide-react';
+import { AudioLines, CheckCircle2, LoaderCircle, Mic, Send, Square, X } from 'lucide-react';
 import { LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
 import { requestAiVoiceTranscription } from '../utils/aiSearchClient';
@@ -198,15 +198,59 @@ export default function AiVoiceSearchDialog({
                 )}
               </>
             ) : (
-              <div className="m-auto max-w-[280px] text-center text-sm font-semibold leading-relaxed text-[#64748B]">
-                {tr(
-                  isTranscribing
-                    ? 'search.voice.transcribing'
-                    : isListening
-                      ? 'search.voice.listening'
+              <div
+                className={`m-auto flex w-full max-w-[310px] flex-col items-center rounded-[28px] border px-5 py-6 text-center transition-all duration-300 ${
+                  isListening
+                    ? 'border-[#FF7A50]/35 bg-[#FFF3EE] shadow-[0_18px_45px_rgba(255,122,80,0.16)]'
+                    : isTranscribing
+                      ? 'border-[#1E293B]/10 bg-white shadow-sm'
                       : transcript.trim()
-                        ? 'search.voice.readyToSearch'
-                        : 'search.voice.ready'
+                        ? 'border-emerald-200 bg-emerald-50/70'
+                        : 'border-transparent bg-transparent'
+                }`}
+              >
+                {isListening ? (
+                  <>
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center">
+                      <span className="absolute inset-0 rounded-full bg-[#FF7A50]/15 animate-ping" />
+                      <span className="absolute inset-2 rounded-full border border-[#FF7A50]/30 bg-white shadow-[0_10px_28px_rgba(255,122,80,0.2)]" />
+                      <AudioLines className="relative h-8 w-8 text-[#FF7A50]" strokeWidth={2.2} />
+                    </div>
+                    <div className="mb-4 flex h-9 items-center justify-center gap-1" aria-hidden="true">
+                      {[18, 30, 22, 36, 26, 32, 18].map((height, index) => (
+                        <span
+                          key={`${height}-${index}`}
+                          className="w-1.5 animate-pulse rounded-full bg-[#FF7A50]"
+                          style={{
+                            height,
+                            animationDelay: `${index * 90}ms`,
+                            animationDuration: '700ms'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-base font-extrabold text-[#1E293B]">{tr('search.voice.listening')}</p>
+                    <p className="mt-1.5 text-xs font-semibold leading-relaxed text-[#7C6259]">
+                      {tr('search.voice.listeningHint')}
+                    </p>
+                  </>
+                ) : isTranscribing ? (
+                  <>
+                    <LoaderCircle className="mb-4 h-10 w-10 animate-spin text-[#FF7A50]" strokeWidth={2} />
+                    <p className="text-sm font-extrabold text-[#1E293B]">{tr('search.voice.transcribing')}</p>
+                  </>
+                ) : transcript.trim() ? (
+                  <>
+                    <CheckCircle2 className="mb-3 h-9 w-9 text-emerald-600" strokeWidth={2} />
+                    <p className="text-sm font-extrabold text-emerald-900">{tr('search.voice.readyToSearch')}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E293B] shadow-sm">
+                      <Mic className="h-6 w-6" strokeWidth={1.9} />
+                    </div>
+                    <p className="text-sm font-semibold leading-relaxed text-[#64748B]">{tr('search.voice.ready')}</p>
+                  </>
                 )}
               </div>
             )}
@@ -259,13 +303,23 @@ export default function AiVoiceSearchDialog({
                 }
               }}
               disabled={isSearching || isTranscribing}
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
-                isListening ? 'bg-[#FF7A50] animate-pulse' : 'bg-[#1E293B] hover:bg-[#FF7A50]'
+              aria-pressed={isListening}
+              className={`flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 text-white transition-all duration-200 active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
+                isListening
+                  ? 'min-w-[116px] bg-[#FF5F35] shadow-[0_0_0_4px_rgba(255,122,80,0.16),0_10px_24px_rgba(255,95,53,0.3)] hover:bg-[#E94E27]'
+                  : 'min-w-[106px] bg-[#1E293B] shadow-sm hover:bg-[#FF7A50]'
               }`}
-              title={tr('search.voice.listenAgain')}
-              aria-label={tr('search.voice.listenAgain')}
+              title={tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
+              aria-label={tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
             >
-              <Mic className="h-5 w-5" strokeWidth={2} />
+              {isListening ? (
+                <Square className="h-3.5 w-3.5 fill-current" strokeWidth={2} />
+              ) : (
+                <Mic className="h-4.5 w-4.5" strokeWidth={2} />
+              )}
+              <span className="text-[11px] font-extrabold leading-none">
+                {tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
+              </span>
             </button>
             <button
               type="submit"
