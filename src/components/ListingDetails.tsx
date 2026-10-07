@@ -66,6 +66,74 @@ type DetailCharacteristic = {
   isBoolean?: boolean;
 };
 
+const INVESTMENT_DETAIL_ICONS: Record<string, string> = {
+  investment_subtype: '🏷️',
+  ownership_type: '🔑',
+  leasehold_remaining: '⏳',
+  leasehold_extension: '↗️',
+  declared_yield: '📈',
+  payback_period: '⏱️',
+  current_income: '💵',
+  income_period: '🗓️',
+  projected_income: '🚀',
+  projected_income_period: '🗓️',
+  readiness: '🏗️',
+  year_built: '📅',
+  installment: '🧾',
+  income_property: '💰',
+  seller_type: '🤝',
+  bedrooms: '🛏️',
+  bathrooms: '🚿',
+  building_area: '📐',
+  premises_area: '📐',
+  land_area: '🌿',
+  pool: '💦',
+  furnishing: '🛋️',
+  condition: '🧰',
+  parking: '🅿️',
+  view: '🌅',
+  management_company: '🏢',
+  daily_rental_allowed: '📆',
+  occupancy: '📊',
+  average_nightly_rate: '🌙',
+  floors: '🏬',
+  separate_entrance: '🚪',
+  capacity: '👥',
+  electric_power: '⚡',
+  water_sewerage: '💧',
+  ventilation: '💨',
+  current_tenant: '👤',
+  rental_income: '💵',
+  price_per_are: '🏷️',
+  zoning: '🗺️',
+  access_road_width: '🛣️',
+  electricity: '⚡',
+  water_supply: '💧',
+  terrain: '⛰️',
+  distance_to_ocean: '🌊',
+  building_permit: '📄',
+  project_included: '📐',
+  business_status: '🟢',
+  business_age: '⌛',
+  monthly_revenue: '💵',
+  net_profit: '📈',
+  employees: '👥',
+  premises_tenure: '🏢',
+  lease_remaining: '⏳',
+  financial_verification: '✅'
+};
+
+const INVESTMENT_FINANCIAL_FIELD_IDS = new Set([
+  'declared_yield',
+  'payback_period',
+  'current_income',
+  'projected_income',
+  'average_nightly_rate',
+  'rental_income',
+  'monthly_revenue',
+  'net_profit'
+]);
+
 type HelmetSize = 'none' | 'S' | 'M' | 'L' | 'XL';
 type TransportBookingNotice = {
   messageKey: string;
@@ -2000,7 +2068,7 @@ export default function ListingDetails({
         : '';
       addDetailCharacteristic(true, {
         key: field.id,
-        icon: field.financial ? '📊' : '🏷️',
+        icon: INVESTMENT_DETAIL_ICONS[field.id] || (field.financial ? '📊' : '🏷️'),
         label: tr(field.labelKey),
         value: `${formattedValue}${field.unitKey && field.id !== 'land_area' ? ` ${tr(field.unitKey)}` : ''}${evidence ? ` · ${tr(`investments.option.${evidence}`)}` : ''}`
       });
@@ -2089,6 +2157,35 @@ export default function ListingDetails({
         {subText && (
           <span className={`max-w-[78px] line-clamp-2 text-[10px] font-normal leading-[1.05] tracking-normal sm:max-w-[88px] ${tone.sub}`}>
             {subText}
+          </span>
+        )}
+      </div>
+    );
+  };
+  const renderInvestmentTile = (item: DetailCharacteristic, className = '') => {
+    const isFinancial = INVESTMENT_FINANCIAL_FIELD_IDS.has(item.key);
+    const isOwnership = item.key === 'ownership_type' || item.key.includes('lease');
+    const iconTone = isFinancial
+      ? 'border-[#B9D8CA] bg-[#EDF7F1] shadow-[0_10px_18px_rgba(47,125,105,0.12)]'
+      : isOwnership
+        ? 'border-[#F2D98C] bg-[#F5EEDB] shadow-[0_10px_18px_rgba(231,165,0,0.13)]'
+        : 'border-[#FFD0BD] bg-[#FFF1EA] shadow-[0_10px_18px_rgba(255,122,80,0.12)]';
+
+    return (
+      <div
+        key={item.key}
+        title={`${item.label}: ${item.value || ''}`}
+        className={`flex min-w-0 select-none flex-col items-center justify-start gap-1.5 text-center text-[#111827] ${THEME.fonts.heading} ${className}`}
+      >
+        <span className={`flex h-[50px] w-[50px] items-center justify-center rounded-[16px] border text-[22px] leading-none transition sm:h-[56px] sm:w-[56px] sm:rounded-[18px] sm:text-[24px] ${iconTone}`}>
+          {item.icon}
+        </span>
+        <span className="max-w-[132px] line-clamp-2 text-[11px] font-semibold leading-[1.08] sm:text-[12px]">
+          {item.value || item.label}
+        </span>
+        {item.value && (
+          <span className="max-w-[132px] line-clamp-2 text-[10px] font-normal leading-[1.08] text-[#8A94A3]">
+            {item.label}
           </span>
         )}
       </div>
@@ -2501,11 +2598,15 @@ export default function ListingDetails({
                 {!isServicesListing && !isLifeListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
-                    {isTransportListing ? tr('details.characteristicsTransportTitle') : tr('details.characteristicsTitle')}
+                    {isInvestmentListing
+                      ? tr('details.investmentCharacteristicsTitle')
+                      : isTransportListing
+                        ? tr('details.characteristicsTransportTitle')
+                        : tr('details.characteristicsTitle')}
                   </h3>
 
                   {(() => {
-                    const buttonVisibilityClass = isTransportListing
+                    const buttonVisibilityClass = isTransportListing || isInvestmentListing
                       ? 'hidden'
                       : housingDetailCharacteristics.length <= 4
                         ? 'hidden'
@@ -2515,10 +2616,10 @@ export default function ListingDetails({
 
                     return (
                       <div className="grid grid-cols-1 gap-2.5">
-                        <div className={`grid w-full ${isTransportListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
+                        <div className={`grid w-full ${isTransportListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : isInvestmentListing ? 'grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-x-5' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
                           {housingDetailCharacteristics.map((item, index) => {
                             const visibilityClass = !isCharacteristicsExpanded
-                              ? isTransportListing
+                              ? isTransportListing || isInvestmentListing
                                 ? 'flex'
                                 : index < 4
                                 ? 'flex'
@@ -2532,6 +2633,10 @@ export default function ListingDetails({
 
                             if (isTransportListing) {
                               return renderTransportTile(item, visibilityClass);
+                            }
+
+                            if (isInvestmentListing) {
+                              return renderInvestmentTile(item, visibilityClass);
                             }
 
                             return (
@@ -2549,7 +2654,7 @@ export default function ListingDetails({
                           })}
                         </div>
 
-                        {!isTransportListing && housingDetailCharacteristics.length > 4 && (
+                        {!isTransportListing && !isInvestmentListing && housingDetailCharacteristics.length > 4 && (
                           <div className={`relative flex items-center py-2 ${isCharacteristicsExpanded ? '' : buttonVisibilityClass}`}>
                             <div className="flex-grow border-t border-[#E5E7EB] h-0"></div>
                             <button
@@ -2626,7 +2731,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Amenities checkboxes - visual styled exactly like filters */}
-                {!isTransportListing && !isServicesListing && !isLifeListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && !isInvestmentListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.amenitiesTitle')}</h3>
 
@@ -3042,10 +3147,12 @@ export default function ListingDetails({
                     {convertPrice(totalBudget)} {currencySymbol}
                   </span>
 
-                  <div className="text-xs font-semibold text-text-dark/85 block">
-                    <span className="font-mono">{convertPrice(activeDailyPrice)} {currencySymbol}</span>
-                    <span className="text-gray-400 font-light">{` ${tr('details.perDay')}`}</span>
-                  </div>
+                  {!isInvestmentListing && (
+                    <div className="text-xs font-semibold text-text-dark/85 block">
+                      <span className="font-mono">{convertPrice(activeDailyPrice)} {currencySymbol}</span>
+                      <span className="text-gray-400 font-light">{` ${tr('details.perDay')}`}</span>
+                    </div>
+                  )}
 
                   {hasSavings && (
                     <div className="flex items-center justify-center">

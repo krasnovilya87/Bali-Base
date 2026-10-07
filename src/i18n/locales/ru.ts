@@ -577,6 +577,7 @@ const ru: TranslationDictionary = {
   "details.myNotesPlaceholder": "Напишите личную заметку об этом объекте...",
   "details.descriptionTitle": "Описание",
   "details.characteristicsTitle": "Характеристики & условия",
+  "details.investmentCharacteristicsTitle": "Характеристики и условия",
   "details.characteristicsTransportTitle": "Характеристики",
   "details.amenitiesTitle": "Удобства",
   "details.additionalTitle": "Дополнительно",

@@ -573,6 +573,7 @@ const fr: TranslationDictionary = {
   "details.myNotesPlaceholder": "Ecrivez une note privee sur ce bien...",
   "details.descriptionTitle": "Description",
   "details.characteristicsTitle": "Caractéristiques & conditions",
+  "details.investmentCharacteristicsTitle": "Caractéristiques et conditions",
   "details.characteristicsTransportTitle": "Caractéristiques",
   "details.amenitiesTitle": "Équipements",
   "details.additionalTitle": "Supplementaire",
