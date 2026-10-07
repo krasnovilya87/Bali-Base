@@ -234,6 +234,8 @@ export const useListingsData = () => {
     listing: Listing,
     purpose: 'listing_create' | 'listing_update'
   ) => {
+    if (listing.category === 'afisha') return listing;
+
     const placeId = listing.googlePlaceId || listing.placeId;
     if (!placeId) {
       console.warn('Google Places reviews refresh skipped: listing has no googlePlaceId/placeId.');

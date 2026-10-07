@@ -591,7 +591,7 @@ export default function CreateWizard({
   const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
   const isDetailedTransportWizard = category === 'transport' && isDetailedTransportSubcategory(subCategory);
   const requiresVehicleModel = isDetailedTransportWizard;
-  const supportsSellerType = category === 'housing' || isDetailedTransportWizard || category === 'services';
+  const supportsSellerType = true;
   const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
   const photosStep = Math.max(1, wizardFlow.indexOf('photos') + 1);

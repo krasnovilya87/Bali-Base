@@ -641,6 +641,7 @@ const ru: TranslationDictionary = {
   "wizard.whatsapp": "WhatsApp номер",
   "wizard.companyGoogleMaps": "Компания на Google Maps",
   "wizard.companyGoogleMapsPlaceholder": "Название компании или ссылка Google Maps (предпочтительно)",
+  "wizard.companyName": "Название компании",
   "common.close": "Закрыть",
   "common.save": "Сохранить",
   "common.reset": "Сбросить",

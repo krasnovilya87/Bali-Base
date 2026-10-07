@@ -638,6 +638,7 @@ const de: TranslationDictionary = {
   "wizard.whatsapp": "WhatsApp-Nummer",
   "wizard.companyGoogleMaps": "Firma auf Google Maps",
   "wizard.companyGoogleMapsPlaceholder": "Firmenname oder Google-Maps-Link (empfohlen)",
+  "wizard.companyName": "Firmenname",
   "common.close": "Schließen",
   "common.save": "Speichern",
   "common.reset": "Zurücksetzen",

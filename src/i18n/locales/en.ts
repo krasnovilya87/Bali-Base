@@ -649,6 +649,7 @@ const en: TranslationDictionary = {
   "wizard.name": "Name",
   "wizard.whatsapp": "WhatsApp number",
   "wizard.companyGoogleMapsPlaceholder": "Company name or Google Maps link (preferred)",
+  "wizard.companyName": "Company name",
   "common.close": "Close",
   "common.save": "Save",
   "common.reset": "Reset",

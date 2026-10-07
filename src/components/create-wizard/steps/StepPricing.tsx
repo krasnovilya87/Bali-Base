@@ -115,11 +115,11 @@ const StepPricing: React.FC<StepPricingProps> = ({
   if (usesSinglePrice) {
     return (
       <div className="animate-fade-in pt-2">
-        <div className="pl max-w-sm space-y-2 rounded-3xl p-5">
+        <div className="max-w-sm space-y-1.5">
           <label htmlFor="single-listing-price" className="block text-xs font-semibold tracking-wider text-[#1E293B]">
             {tr('wizard.listingPrice')}
           </label>
-          <div className="flex min-h-12 items-center rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#FF7A50]/15">
+          <div className="flex min-h-12 items-center rounded-2xl bg-white">
             <input
               id="single-listing-price"
               type="text"

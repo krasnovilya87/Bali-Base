@@ -53,6 +53,7 @@ import {
 import { ROOM_TYPE_LABELS } from './create-wizard/constants';
 import { getTransportModelLabel } from './create-wizard/configs/scooterWizardConfig';
 import { formatLifeExpensePerPerson, getLifeExpensePerPerson, LIFE_WEEKDAYS } from '../config/lifeSpecial';
+import { EVENT_COMMON_FIELDS, EVENT_REGISTRATION_URL_FIELD, EVENT_START_TIME_FIELD, getEventCategoryFields } from '../config/eventSpecial';
 import { ListingReview, loadListingReviews, saveListingReview } from '../utils/listingReviews';
 
 type MapSpotCategory = PlaceLibraryCategory;
@@ -1563,6 +1564,57 @@ export default function ListingDetails({
   const usesSimpleTotalLabel = isInvestmentListing || isMarketListing || isAfishaListing;
   const isLifeListing = listing.category === 'life';
   const isLifeCommunityListing = isLifeListing && listing.subCategory !== 'life_jobs';
+  if (isAfishaListing) {
+    const attributes = listing.classifiedAttributes || {};
+    const admission = String(attributes.afisha_admission || '');
+    const eventFields = [
+      EVENT_START_TIME_FIELD,
+      ...EVENT_COMMON_FIELDS.filter(field => field.id !== 'afisha_start_period'),
+      ...(['registration', 'ticket'].includes(admission) ? [EVENT_REGISTRATION_URL_FIELD] : []),
+      ...getEventCategoryFields(listing.subCategory)
+    ];
+    const seenEventFields = new Set<string>();
+    const getEventIcon = (fieldId: string) => {
+      if (fieldId.includes('time') || fieldId.includes('duration') || fieldId.includes('term')) return '🕒';
+      if (fieldId.includes('language') || fieldId.includes('subtitles')) return '💬';
+      if (fieldId.includes('age') || fieldId.includes('parents') || fieldId.includes('audience')) return '👥';
+      if (fieldId.includes('venue') || fieldId.includes('transport')) return '📍';
+      if (fieldId.includes('admission') || fieldId.includes('registration')) return '🎟️';
+      if (fieldId.includes('music') || fieldId.includes('concert') || fieldId.includes('performer')) return '🎵';
+      if (fieldId.includes('sport') || fieldId.includes('level') || fieldId.includes('difficulty')) return '🏅';
+      if (fieldId.includes('market') || fieldId.includes('goods')) return '🛍️';
+      if (fieldId.includes('art') || fieldId.includes('theme') || fieldId.includes('topic')) return '✨';
+      return '📌';
+    };
+
+    eventFields.forEach(field => {
+      if (seenEventFields.has(field.id)) return;
+      seenEventFields.add(field.id);
+      const rawValue = attributes[field.id];
+      if (rawValue === undefined || rawValue === null || rawValue === '' || (Array.isArray(rawValue) && rawValue.length === 0)) return;
+      const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+      const value = values.map(item => {
+        const option = field.options.find(candidate => candidate.value === String(item));
+        return option ? tr(option.labelKey) : String(item);
+      }).join(', ');
+      addDetailCharacteristic(true, {
+        key: field.id,
+        icon: getEventIcon(field.id),
+        label: tr(field.labelKey),
+        value
+      });
+    });
+
+    if (listing.sellerType) {
+      const sellerTypeLabel = tr(`filters.transport.sellerType.${listing.sellerType}`);
+      addDetailCharacteristic(true, {
+        key: 'sellerType',
+        icon: '🤝',
+        label: tr('filters.transport.sellerType'),
+        value: sellerTypeLabel === `filters.transport.sellerType.${listing.sellerType}` ? listing.sellerType : sellerTypeLabel
+      });
+    }
+  }
   const visibleReviews: Review[] = isHousingListing
     ? (listing.reviews || [])
     : Array.from(new Map(
@@ -2606,7 +2658,7 @@ export default function ListingDetails({
                   </h3>
 
                   {(() => {
-                    const buttonVisibilityClass = isTransportListing || isInvestmentListing
+                    const buttonVisibilityClass = isTransportListing || isInvestmentListing || isAfishaListing
                       ? 'hidden'
                       : housingDetailCharacteristics.length <= 4
                         ? 'hidden'
@@ -2616,10 +2668,10 @@ export default function ListingDetails({
 
                     return (
                       <div className="grid grid-cols-1 gap-2.5">
-                        <div className={`grid w-full ${isTransportListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : isInvestmentListing ? 'grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-x-5' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
+                        <div className={`grid w-full ${isTransportListing || isAfishaListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : isInvestmentListing ? 'grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-x-5' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
                           {housingDetailCharacteristics.map((item, index) => {
                             const visibilityClass = !isCharacteristicsExpanded
-                              ? isTransportListing || isInvestmentListing
+                              ? isTransportListing || isInvestmentListing || isAfishaListing
                                 ? 'flex'
                                 : index < 4
                                 ? 'flex'
@@ -2631,7 +2683,7 @@ export default function ListingDetails({
                               ? 'bg-[#F8FAFC] text-[#94A3B8] border border-[#CBD5E1]'
                               : 'bg-white text-[#1E293B]';
 
-                            if (isTransportListing) {
+                            if (isTransportListing || isAfishaListing) {
                               return renderTransportTile(item, visibilityClass);
                             }
 
@@ -2654,7 +2706,7 @@ export default function ListingDetails({
                           })}
                         </div>
 
-                        {!isTransportListing && !isInvestmentListing && housingDetailCharacteristics.length > 4 && (
+                        {!isTransportListing && !isInvestmentListing && !isAfishaListing && housingDetailCharacteristics.length > 4 && (
                           <div className={`relative flex items-center py-2 ${isCharacteristicsExpanded ? '' : buttonVisibilityClass}`}>
                             <div className="flex-grow border-t border-[#E5E7EB] h-0"></div>
                             <button
@@ -2731,7 +2783,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Amenities checkboxes - visual styled exactly like filters */}
-                {!isTransportListing && !isServicesListing && !isLifeListing && !isInvestmentListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && !isInvestmentListing && !isAfishaListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.amenitiesTitle')}</h3>
 
@@ -2833,7 +2885,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Exact Surrounding spots list */}
-                {!isTransportListing && !isServicesListing && !isLifeListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && !isAfishaListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
                     {tr('details.nearbyTitle')}

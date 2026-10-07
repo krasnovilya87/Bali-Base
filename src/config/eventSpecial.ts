@@ -63,7 +63,8 @@ export const EVENT_COMMON_FIELDS: EventSpecialField[] = [
   ]),
   field('afisha_admission', 'Admission', 'Участие', [
     ['free', 'Free entry', 'Свободный вход'], ['registration', 'Registration required', 'Нужна регистрация'],
-    ['ticket', 'Ticket required', 'Нужен билет'], ['invitation', 'By invitation', 'По приглашению']
+    ['ticket', 'Ticket required', 'Нужен билет'], ['ticket_at_entrance', 'Ticket at the entrance', 'Билет на входе'],
+    ['invitation', 'By invitation', 'По приглашению']
   ]),
   field('afisha_publication_term', 'Publication period', 'Срок публикации', [
     ['24_hours', '24 hours', '24 часа'], ['3_days', '3 days', '3 дня'], ['1_week', '1 week', '1 неделя'],

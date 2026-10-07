@@ -26,7 +26,6 @@ type StepContactProps = {
 
 const StepContact: React.FC<StepContactProps> = ({
   category,
-  subCategory,
   apiKey,
   hasValidKey,
   sellerType,
@@ -43,9 +42,9 @@ const StepContact: React.FC<StepContactProps> = ({
   handlePhoneChange
 }) => {
   const { tr } = useI18n();
-  const isDetailedTransportWizard = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
-  const supportsSellerType = category === 'housing' || isDetailedTransportWizard || category === 'services';
+  const supportsSellerType = true;
   const isCompanySeller = supportsSellerType && sellerType === 'company';
+  const usesCompanyPlacesSearch = category !== 'afisha';
   const [companySuggestions, setCompanySuggestions] = useState<any[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [isSearchingCompany, setIsSearchingCompany] = useState(false);
@@ -57,11 +56,11 @@ const StepContact: React.FC<StepContactProps> = ({
   }, [sellerType, setSellerType, supportsSellerType]);
 
   useEffect(() => {
-    if (!hasValidKey || !supportsSellerType) return;
+    if (!hasValidKey || !supportsSellerType || !usesCompanyPlacesSearch) return;
     ensureGoogleMapsLibraries(apiKey, ['places']).catch(error => {
       console.warn('Google Maps company search preload failed:', error);
     });
-  }, [apiKey, hasValidKey, supportsSellerType]);
+  }, [apiKey, hasValidKey, supportsSellerType, usesCompanyPlacesSearch]);
 
   const formatOwnerName = (value: string) =>
     value.replace(/(^|[\s-])(\p{L})/gu, (_, separator, letter) =>
@@ -197,7 +196,20 @@ const StepContact: React.FC<StepContactProps> = ({
           </div>
         )}
 
-        {isCompanySeller ? (
+        {isCompanySeller && !usesCompanyPlacesSearch ? (
+          <input
+            type="text"
+            placeholder={tr('wizard.companyName')}
+            aria-label={tr('wizard.companyName')}
+            value={sellerCompanyName}
+            onChange={event => {
+              setSellerCompanyName(formatOwnerName(event.target.value).slice(0, 60));
+              setSellerGoogleMapsUrl('');
+              setSellerGooglePlaceId('');
+            }}
+            className="w-full !bg-white !border-0 p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
+          />
+        ) : isCompanySeller ? (
           <div className="space-y-2">
             <div className="relative">
               <input
