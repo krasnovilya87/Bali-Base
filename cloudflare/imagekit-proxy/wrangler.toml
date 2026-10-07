@@ -18,3 +18,11 @@ namespace_id = "516937970438"
   [ratelimits.simple]
   limit = 10
   period = 60
+
+[[ratelimits]]
+name = "VOICE_RATE_LIMITER"
+namespace_id = "516937970439"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60

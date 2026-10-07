@@ -1,7 +1,10 @@
 const IMAGEKIT_DELIVERY_ORIGIN = 'https://ik.imagekit.io';
 const IMAGEKIT_UPLOAD_ENDPOINT = 'https://upload.imagekit.io/api/v1/files/upload';
+const GROQ_TRANSCRIPTION_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const DEFAULT_GROQ_WHISPER_MODEL = 'whisper-large-v3-turbo';
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024;
+const MAX_VOICE_SIZE_BYTES = 10 * 1024 * 1024;
 const UPLOADS_PER_USER_PER_HOUR = 30;
 const uploadRateLimits = new Map();
 let appCheckJwksCache = { expiresAt: 0, keys: [] };
@@ -169,6 +172,94 @@ const consumeUploadQuota = async (userId, env) => {
   return entry.count <= UPLOADS_PER_USER_PER_HOUR;
 };
 
+const consumeVoiceQuota = async (request, env) => {
+  const clientId = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (!env.VOICE_RATE_LIMITER?.limit) return true;
+  const result = await env.VOICE_RATE_LIMITER.limit({ key: `voice:${clientId}` });
+  return result.success;
+};
+
+const decodeBase64Audio = (source) => {
+  try {
+    const decoded = atob(source);
+    return Uint8Array.from(decoded, character => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+};
+
+const transcribeVoice = async (request, env) => {
+  const origin = getUploadOrigin(request);
+  if (!origin) {
+    return jsonResponse({ ok: false, error: 'Voice search origin is not allowed.' }, 403);
+  }
+  if (!env.GROQ_API_KEY) {
+    return jsonResponse({ ok: false, error: 'Voice transcription is not configured.' }, 503, origin);
+  }
+  if (!await verifyAppCheckToken(request, env)) {
+    return jsonResponse({ ok: false, error: 'Firebase App Check is required.' }, 401, origin);
+  }
+  if (!await consumeVoiceQuota(request, env)) {
+    return jsonResponse({ ok: false, error: 'Voice transcription limit reached. Try again later.' }, 429, origin);
+  }
+
+  const body = await request.json().catch(() => null);
+  const audio = typeof body?.audio === 'string' ? body.audio : '';
+  const mimeType = typeof body?.mimeType === 'string' ? body.mimeType.split(';')[0].trim() : 'audio/webm';
+  const supportedTypes = new Set(['audio/webm', 'audio/wav', 'audio/mpeg', 'audio/mp4', 'audio/ogg']);
+  if (!audio) {
+    return jsonResponse({ ok: false, error: 'audio is required' }, 400, origin);
+  }
+  if (!supportedTypes.has(mimeType)) {
+    return jsonResponse({ ok: false, error: 'Audio type is not supported.' }, 415, origin);
+  }
+  if (audio.length > Math.ceil(MAX_VOICE_SIZE_BYTES * 4 / 3) + 4) {
+    return jsonResponse({ ok: false, error: 'Audio payload is too large.' }, 413, origin);
+  }
+
+  const audioBytes = decodeBase64Audio(audio);
+  if (!audioBytes?.byteLength) {
+    return jsonResponse({ ok: false, error: 'Audio payload is invalid.' }, 400, origin);
+  }
+  if (audioBytes.byteLength > MAX_VOICE_SIZE_BYTES) {
+    return jsonResponse({ ok: false, error: 'Audio payload is too large.' }, 413, origin);
+  }
+
+  const extensionByType = {
+    'audio/webm': 'webm',
+    'audio/wav': 'wav',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/ogg': 'ogg'
+  };
+  const formData = new FormData();
+  formData.append('model', env.GROQ_WHISPER_MODEL || DEFAULT_GROQ_WHISPER_MODEL);
+  formData.append('response_format', 'json');
+  formData.append('temperature', '0');
+  formData.append('file', new Blob([audioBytes], { type: mimeType }), `voice-search.${extensionByType[mimeType]}`);
+
+  const response = await fetch(GROQ_TRANSCRIPTION_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GROQ_API_KEY}`
+    },
+    body: formData
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    return jsonResponse({
+      ok: false,
+      error: payload?.error?.message || response.statusText || 'Voice transcription failed.'
+    }, response.status || 502, origin);
+  }
+
+  const transcript = String(payload?.text || '').trim();
+  if (!transcript) {
+    return jsonResponse({ ok: false, error: 'Voice transcription returned empty text.' }, 502, origin);
+  }
+  return jsonResponse({ ok: true, transcript }, 200, origin);
+};
+
 const buildPublicImageUrl = (imageKitUrl, incomingUrl) => {
   const sourceUrl = new URL(imageKitUrl);
   return `${incomingUrl.origin}${sourceUrl.pathname}${sourceUrl.search}`;
@@ -299,7 +390,7 @@ export default {
 
     if (request.method === 'OPTIONS') {
       const origin = getUploadOrigin(request);
-      if (incomingUrl.pathname === '/upload' && !origin) {
+      if ((incomingUrl.pathname === '/upload' || incomingUrl.pathname === '/ai-search/voice/transcribe') && !origin) {
         return jsonResponse({ ok: false, error: 'Origin is not allowed.' }, 403);
       }
       return new Response(null, {
@@ -313,6 +404,10 @@ export default {
 
     if (incomingUrl.pathname === '/upload' && request.method === 'POST') {
       return uploadImage(request, env, incomingUrl);
+    }
+
+    if (incomingUrl.pathname === '/ai-search/voice/transcribe' && request.method === 'POST') {
+      return transcribeVoice(request, env);
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {

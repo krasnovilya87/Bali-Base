@@ -1,5 +1,7 @@
 import { getFirebaseRequestHeaders } from './firebaseRequestHeaders';
 
+const PRODUCTION_VOICE_TRANSCRIPTION_ENDPOINT = 'https://media.balibase.id/ai-search/voice/transcribe';
+
 export type AiSearchIntent = {
   category: 'housing' | 'transport' | 'services' | 'investments' | 'ads' | 'afisha' | 'life' | 'useful' | 'unknown';
   supported: boolean;
@@ -138,7 +140,10 @@ export const requestAiVoiceVectorSearch = async (
 };
 
 export const requestAiVoiceTranscription = async (audio: Blob): Promise<AiVoiceTranscriptionResult> => {
-  const response = await fetch(`${getAiSearchEndpoint()}/voice/transcribe`, {
+  const endpoint = (import.meta as any).env?.PROD
+    ? PRODUCTION_VOICE_TRANSCRIPTION_ENDPOINT
+    : `${getAiSearchEndpoint()}/voice/transcribe`;
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: await getFirebaseRequestHeaders({
       contentType: 'application/json',
