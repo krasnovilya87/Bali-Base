@@ -375,6 +375,8 @@ export default function App() {
   const [isAiSearchLoading, setIsAiSearchLoading] = useState<boolean>(false);
   const [showAiVoiceSearchDialog, setShowAiVoiceSearchDialog] = useState<boolean>(false);
   const [showAiRefinementDialog, setShowAiRefinementDialog] = useState<boolean>(false);
+  const [aiSearchNeedsTopLevelCategory, setAiSearchNeedsTopLevelCategory] = useState<boolean>(false);
+  const [pendingUnresolvedAiSearch, setPendingUnresolvedAiSearch] = useState<boolean>(false);
   const [aiVectorListingIds, setAiVectorListingIds] = useState<string[] | null>(null);
   const [lastAiSearchQuery, setLastAiSearchQuery] = useState<string>('');
 
@@ -1339,7 +1341,7 @@ export default function App() {
     setShowFavoritesOnly(nextFilters.favoritesOnly);
   };
 
-  const applyAiSearchIntent = (intent: AiSearchIntent, sourceQuery: string) => {
+  const applyAiSearchIntent = (intent: AiSearchIntent, sourceQuery: string, vectorListingIds?: string[]) => {
     if (!intent.supported || intent.shouldFallback || intent.category !== 'housing') {
       setAiVectorListingIds(null);
       setSearchTerm(intent.searchText || sourceQuery);
@@ -1375,7 +1377,13 @@ export default function App() {
     setDistrictSearch(intent.district ? [intent.district] : []);
     setCustomPoint(null);
     setCustomPolygon(null);
-    applyFilters(nextFilters);
+    if (vectorListingIds) {
+      setFilters(nextFilters);
+      setShowFavoritesOnly(nextFilters.favoritesOnly);
+      setAiVectorListingIds(vectorListingIds);
+    } else {
+      applyFilters(nextFilters);
+    }
     setSearchTerm(intent.searchText || '');
     setShowAutoComplete(false);
     openAppView();
@@ -1406,20 +1414,56 @@ export default function App() {
   const openAiVoiceSearchDialog = () => {
     setShowAiVoiceSearchDialog(true);
     setShowAiRefinementDialog(false);
+    setAiSearchNeedsTopLevelCategory(false);
+    setPendingUnresolvedAiSearch(false);
     setShowAutoComplete(false);
     setShowMenuCurrencyDrop(false);
   };
 
   const applyAiVectorSearchResults = (query: string, listingIds: string[]) => {
+    const parsed = parseLocalAiSearchQuery(query, {
+      currentL1,
+      currentL2,
+      filters,
+      showFavoritesOnly
+    });
+    const matchedListings = listingIds
+      .map(id => listings.find(listing => listing.id === id))
+      .filter((listing): listing is Listing => Boolean(listing && listing.status === 'active'));
+
+    if (parsed.matched) {
+      setCurrentL1(parsed.currentL1);
+      setCurrentL2(parsed.currentL2);
+      setDistrictSearch(parsed.districtSearch);
+      setFilters(parsed.filters);
+      setShowFavoritesOnly(parsed.filters.favoritesOnly);
+    } else if (matchedListings.length > 0) {
+      const categoryCounts = new Map<string, number>();
+      matchedListings.forEach(listing => {
+        categoryCounts.set(listing.category, (categoryCounts.get(listing.category) || 0) + 1);
+      });
+      const matchedCategory = Array.from(categoryCounts.entries())
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || currentL1;
+      const matchedSubCategories = Array.from(new Set(
+        matchedListings
+          .filter(listing => listing.category === matchedCategory)
+          .map(listing => listing.subCategory)
+      ));
+
+      setCurrentL1(matchedCategory);
+      setCurrentL2(
+        isSingleSelectL2Category(matchedCategory) && matchedSubCategories.length > 1
+          ? []
+          : matchedSubCategories
+      );
+      setDistrictSearch([]);
+    }
+
     setSearchTerm(query);
-    setCurrentL1('housing');
-    setCurrentL2(getL2IdsForL1('housing'));
-    setDistrictSearch([]);
     setCustomPoint(null);
     setCustomPolygon(null);
     setAiVectorListingIds(listingIds);
     setShowAutoComplete(false);
-    setShowAiRefinementDialog(false);
     openAppView();
   };
 
@@ -1434,28 +1478,47 @@ export default function App() {
     setSearchTerm(query);
     setLastAiSearchQuery(query);
     setIsAiSearchLoading(true);
+    setAiSearchNeedsTopLevelCategory(false);
+    setPendingUnresolvedAiSearch(false);
     setShowAutoComplete(false);
     try {
-      try {
-        const vectorResult = await requestAiVectorSearch(query, 10);
-        if (vectorResult.listingIds.length > 0) {
-          applyAiVectorSearchResults(query, vectorResult.listingIds);
-          return;
-        }
-      } catch (vectorError) {
+      const [vectorResult, intentResult] = await Promise.allSettled([
+        requestAiVectorSearch(query, 10),
+        requestAiSearchIntent(query)
+      ]);
+
+      if (vectorResult.status === 'rejected') {
+        const vectorError = vectorResult.reason;
         console.warn('[AI search] Vector search failed, trying structured fallback.', vectorError);
       }
 
-      const intent = await requestAiSearchIntent(query);
-      const didApplyStructuredFilters = applyAiSearchIntent(intent, query);
+      if (vectorResult.status === 'fulfilled' && vectorResult.value.listingIds.length > 0) {
+        const listingIds = vectorResult.value.listingIds;
+        const didApplyStructuredFilters = intentResult.status === 'fulfilled'
+          ? applyAiSearchIntent(intentResult.value, query, listingIds)
+          : false;
+        if (!didApplyStructuredFilters) applyAiVectorSearchResults(query, listingIds);
+        setShowAiRefinementDialog(!keepVoiceDialogOpen);
+        return;
+      }
+
+      if (intentResult.status === 'rejected') throw intentResult.reason;
+
+      const didApplyStructuredFilters = applyAiSearchIntent(intentResult.value, query);
       const didApplyLocalFallback = didApplyStructuredFilters ? false : applyLocalAiSearchFallback(query);
-      setShowAiRefinementDialog(
-        keepVoiceDialogOpen ? false : didApplyStructuredFilters || didApplyLocalFallback || currentL1 !== 'useful'
-      );
+      if (!didApplyStructuredFilters && !didApplyLocalFallback) {
+        setPendingUnresolvedAiSearch(true);
+      } else {
+        setShowAiRefinementDialog(!keepVoiceDialogOpen);
+      }
     } catch (error) {
       console.warn('[AI search] Falling back to normal search.', error);
       const didApplyLocalFallback = applyLocalAiSearchFallback(query);
-      setShowAiRefinementDialog(keepVoiceDialogOpen ? false : didApplyLocalFallback || currentL1 !== 'useful');
+      if (didApplyLocalFallback) {
+        setShowAiRefinementDialog(!keepVoiceDialogOpen);
+      } else {
+        setPendingUnresolvedAiSearch(true);
+      }
     } finally {
       setIsAiSearchLoading(false);
       if (!keepVoiceDialogOpen) setShowAiVoiceSearchDialog(false);
@@ -1505,6 +1568,32 @@ export default function App() {
       .filter(listing => aiVectorOrder.has(listing.id))
       .sort((a, b) => (aiVectorOrder.get(a.id) ?? 0) - (aiVectorOrder.get(b.id) ?? 0));
   }, [aiVectorOrder, sortedListings]);
+  const aiTopLevelCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    listings.forEach(listing => {
+      if (listing.status !== 'active') return;
+      counts[listing.category] = (counts[listing.category] || 0) + 1;
+    });
+    counts.useful = MOCK_GUIDES.length;
+    return counts;
+  }, [listings]);
+
+  useEffect(() => {
+    if (!pendingUnresolvedAiSearch) return;
+    setAiSearchNeedsTopLevelCategory(visibleSortedListings.length === 0);
+    setShowAiRefinementDialog(!showAiVoiceSearchDialog);
+    setPendingUnresolvedAiSearch(false);
+  }, [pendingUnresolvedAiSearch, showAiVoiceSearchDialog, visibleSortedListings.length]);
+
+  const answerAiTopLevelCategory = (category: string) => {
+    setAiSearchNeedsTopLevelCategory(false);
+    setAiVectorListingIds(null);
+    setSearchTerm('');
+    setCurrentL1(category);
+    setCurrentL2(getDefaultSubcategorySelection(category));
+    setCustomPoint(null);
+    setCustomPolygon(null);
+  };
   const currentSectionFavoriteCount = useMemo(
     () => visibleSortedListings.filter(item => favoriteIds.has(item.id)).length,
     [favoriteIds, visibleSortedListings]
@@ -2826,6 +2915,8 @@ export default function App() {
             districtSearch={districtSearch}
             filters={activeFilters}
             results={visibleSortedListings}
+            askTopLevelCategory={aiSearchNeedsTopLevelCategory}
+            topLevelCategoryCounts={aiTopLevelCategoryCounts}
             isSearching={isAiSearchLoading}
             onClose={() => setShowAiVoiceSearchDialog(false)}
             onSubmit={query => runAiSearch(query, true)}
@@ -2836,10 +2927,11 @@ export default function App() {
             }}
             onFiltersChange={applyFilters}
             onSubCategoriesChange={setCurrentL2}
+            onCategoryChange={answerAiTopLevelCategory}
           />
         )}
 
-        {showAiRefinementDialog && currentL1 !== 'useful' && (
+        {showAiRefinementDialog && (currentL1 !== 'useful' || aiSearchNeedsTopLevelCategory) && (
           <AiSearchRefinementDialog
             currentL1={currentL1}
             currentL2={currentL2}
@@ -2847,6 +2939,8 @@ export default function App() {
             districtSearch={districtSearch}
             filters={activeFilters}
             results={visibleSortedListings}
+            askTopLevelCategory={aiSearchNeedsTopLevelCategory}
+            topLevelCategoryCounts={aiTopLevelCategoryCounts}
             onClose={() => setShowAiRefinementDialog(false)}
             onDistrictChange={districts => {
               setDistrictSearch(districts);
@@ -2855,6 +2949,7 @@ export default function App() {
             }}
             onFiltersChange={applyFilters}
             onSubCategoriesChange={setCurrentL2}
+            onCategoryChange={answerAiTopLevelCategory}
           />
         )}
 

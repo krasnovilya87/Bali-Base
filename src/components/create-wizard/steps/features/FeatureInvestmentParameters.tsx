@@ -19,7 +19,9 @@ type Props = {
 const cardClass = 'pl p-5 rounded-3xl space-y-3';
 const labelClass = 'text-xs font-semibold font-sans text-[#1E293B] tracking-wider block';
 const inputClass = 'w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#FF7A50]';
-const pillClass = 'pl pl-interactive min-h-9 rounded-full border px-3 py-2 text-[11px] font-extrabold transition';
+const pillClass = 'pl pl-interactive transport-pill inline-flex min-h-9 items-center rounded-full border px-3 py-2 text-[11px] font-extrabold transition cursor-pointer select-none';
+const activePillClass = 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]';
+const inactivePillClass = 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]';
 
 const INVESTMENT_VALUE_SPECS: Record<string, RangeSpec> = {
   bedrooms: { min: 0, max: 20, step: 1 },
@@ -83,7 +85,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
           {(INVESTMENT_SUBTYPES[subCategory] || []).map(item => {
             const active = classifiedAttributes.investment_subtype === item.value;
             return (
-              <button key={item.value} type="button" onClick={() => setValue('investment_subtype', item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>
+              <button key={item.value} type="button" onClick={() => setValue('investment_subtype', item.value)} className={`${pillClass} ${active ? activePillClass : inactivePillClass}`}>
                 {tr(item.labelKey)}
               </button>
             );
@@ -127,7 +129,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
               <div className="flex flex-wrap gap-2">
                 {(field.options || []).map(item => {
                   const active = value === item.value || (field.type === 'boolean' && value === (item.value === 'yes'));
-                  return <button key={item.value} type="button" onClick={() => setValue(field.id, field.type === 'boolean' ? item.value === 'yes' : item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr(item.labelKey)}</button>;
+                  return <button key={item.value} type="button" onClick={() => setValue(field.id, field.type === 'boolean' ? item.value === 'yes' : item.value)} className={`${pillClass} ${active ? activePillClass : inactivePillClass}`}>{tr(item.labelKey)}</button>;
                 })}
               </div>
             )}
@@ -135,7 +137,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
               <div className="flex flex-wrap gap-2">
                 {(field.options || []).map(item => {
                   const active = Array.isArray(value) && value.includes(item.value);
-                  return <button key={item.value} type="button" onClick={() => toggleMulti(field.id, item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr(item.labelKey)}</button>;
+                  return <button key={item.value} type="button" onClick={() => toggleMulti(field.id, item.value)} className={`${pillClass} ${active ? activePillClass : inactivePillClass}`}>{tr(item.labelKey)}</button>;
                 })}
               </div>
             )}
@@ -145,7 +147,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
                 <div className="flex flex-wrap gap-2">
                   {(periodField.options || []).map(item => {
                     const active = periodValue === item.value;
-                    return <button key={item.value} type="button" onClick={() => setValue(periodField.id, item.value)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr(item.labelKey)}</button>;
+                    return <button key={item.value} type="button" onClick={() => setValue(periodField.id, item.value)} className={`${pillClass} ${active ? activePillClass : inactivePillClass}`}>{tr(item.labelKey)}</button>;
                   })}
                 </div>
               </div>
@@ -157,7 +159,7 @@ export default function FeatureInvestmentParameters({ subCategory, classifiedAtt
                   {INVESTMENT_EVIDENCE_OPTIONS.map(item => {
                     const evidenceId = getInvestmentEvidenceFieldId(field.id);
                     const active = classifiedAttributes[evidenceId] === item.value;
-                    return <button key={item.value} type="button" onClick={() => setValue(evidenceId, item.value)} className={`${pillClass} ${active ? 'border-amber-500 bg-amber-500 text-white' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{tr(item.labelKey)}</button>;
+                    return <button key={item.value} type="button" onClick={() => setValue(evidenceId, item.value)} className={`${pillClass} ${active ? activePillClass : inactivePillClass}`}>{tr(item.labelKey)}</button>;
                   })}
                 </div>
               </div>

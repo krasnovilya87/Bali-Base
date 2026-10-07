@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bot, Filter, Search, X } from 'lucide-react';
 import { FilterState, Listing } from '../types';
 import { useI18n } from '../i18nContext';
+import { L1_CATEGORIES } from '../app/menu';
 import { getListingVehicleColor, getListingVehicleCondition, getListingVehicleModel, getListingSellerType } from '../utils/scooterFilters';
 import { hasTransportRentIntent } from '../utils/localAiSearchParser';
 
@@ -16,6 +17,7 @@ type RefineOption = {
 type RefineQuestion = {
   title: string;
   options: RefineOption[];
+  instruction?: string;
 };
 
 interface AiSearchRefinementDialogProps {
@@ -25,10 +27,13 @@ interface AiSearchRefinementDialogProps {
   districtSearch: string[];
   filters: FilterState;
   results: Listing[];
+  askTopLevelCategory?: boolean;
+  topLevelCategoryCounts?: Record<string, number>;
   onClose: () => void;
   onDistrictChange: (districts: string[]) => void;
   onFiltersChange: (filters: FilterState) => void;
   onSubCategoriesChange: (subCategories: string[]) => void;
+  onCategoryChange?: (category: string) => void;
   embedded?: boolean;
   onAnswer?: (answer: string) => void;
 }
@@ -92,10 +97,13 @@ export default function AiSearchRefinementDialog({
   districtSearch,
   filters,
   results,
+  askTopLevelCategory = false,
+  topLevelCategoryCounts = {},
   onClose,
   onDistrictChange,
   onFiltersChange,
   onSubCategoriesChange,
+  onCategoryChange,
   embedded = false,
   onAnswer
 }: AiSearchRefinementDialogProps) {
@@ -121,6 +129,19 @@ export default function AiSearchRefinementDialog({
   };
 
   const questions: RefineQuestion[] = [];
+
+  if (askTopLevelCategory && onCategoryChange) {
+    questions.push({
+      title: tr('search.refine.topLevelCategory'),
+      instruction: tr('search.refine.chooseTopLevelCategory'),
+      options: L1_CATEGORIES.map(category => ({
+        id: `category-${category.id}`,
+        label: tr(`category.${category.id}.label`),
+        count: topLevelCategoryCounts[category.id] || 0,
+        apply: () => onCategoryChange(category.id)
+      }))
+    });
+  }
 
   const addDistrictQuestion = () => {
     const districtOptions = uniqueCounts(results, item => item.district)
@@ -398,7 +419,7 @@ export default function AiSearchRefinementDialog({
               {question.title}
             </p>
             <p className="mt-1 text-xs font-semibold leading-relaxed text-[#64748B]">
-              {tr('search.refine.tapToNarrow')}
+              {question.instruction || tr('search.refine.tapToNarrow')}
             </p>
           </div>
 

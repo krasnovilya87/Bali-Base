@@ -15,12 +15,15 @@ interface AiVoiceSearchDialogProps {
   districtSearch: string[];
   filters: FilterState;
   results: Listing[];
+  askTopLevelCategory?: boolean;
+  topLevelCategoryCounts?: Record<string, number>;
   isSearching: boolean;
   onClose: () => void;
   onSubmit: (query: string) => void;
   onDistrictChange: (districts: string[]) => void;
   onFiltersChange: (filters: FilterState) => void;
   onSubCategoriesChange: (subCategories: string[]) => void;
+  onCategoryChange?: (category: string) => void;
 }
 
 export default function AiVoiceSearchDialog({
@@ -31,12 +34,15 @@ export default function AiVoiceSearchDialog({
   districtSearch,
   filters,
   results,
+  askTopLevelCategory = false,
+  topLevelCategoryCounts = {},
   isSearching,
   onClose,
   onSubmit,
   onDistrictChange,
   onFiltersChange,
-  onSubCategoriesChange
+  onSubCategoriesChange,
+  onCategoryChange
 }: AiVoiceSearchDialogProps) {
   const { tr } = useI18n();
   const [transcript, setTranscript] = useState('');
@@ -323,10 +329,13 @@ export default function AiVoiceSearchDialog({
                       districtSearch={districtSearch}
                       filters={filters}
                       results={results}
+                      askTopLevelCategory={askTopLevelCategory}
+                      topLevelCategoryCounts={topLevelCategoryCounts}
                       onClose={onClose}
                       onDistrictChange={onDistrictChange}
                       onFiltersChange={onFiltersChange}
                       onSubCategoriesChange={onSubCategoriesChange}
+                      onCategoryChange={onCategoryChange}
                       onAnswer={answer => setSubmittedMessages(messages => [...messages, answer])}
                     />
                   </>

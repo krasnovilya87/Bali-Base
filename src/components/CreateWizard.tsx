@@ -137,6 +137,7 @@ const DEFAULT_MOTORCYCLE_PRICE_PER_DAY = 200000;
 const DEFAULT_MOTORCYCLE_PRICE_PER_MONTH = 4000000;
 const DEFAULT_CAR_PRICE_PER_DAY = 350000;
 const DEFAULT_CAR_PRICE_PER_MONTH = 7000000;
+const SINGLE_PRICE_CATEGORIES = new Set(['investments', 'ads', 'afisha', 'life']);
 
 const getDefaultTransportPrices = (subCategory: string) => {
   if (subCategory === 'cars') {
@@ -399,11 +400,13 @@ export default function CreateWizard({
   });
 
   const [pricePerDay, setPricePerDay] = useState<number>(
-    initialListing?.pricePerDay || (
+    SINGLE_PRICE_CATEGORIES.has(category)
+      ? initialListing?.pricePerDay ?? 0
+      : initialListing?.pricePerDay || (
       category === 'transport' && isDetailedTransportSubcategory(subCategory)
         ? getDefaultTransportPrices(subCategory).perDay
         : DEFAULT_HOUSING_PRICE_PER_DAY
-    )
+      )
   );
   const [pricePerMonth, setPricePerMonth] = useState<number>(
     initialListing?.pricePerMonth || (
@@ -584,15 +587,12 @@ export default function CreateWizard({
 
   const wizardFlow = getWizardFlow(category, subCategory);
   const isLifeCommunityListing = category === 'life' && subCategory !== 'life_jobs';
+  const usesSinglePrice = SINGLE_PRICE_CATEGORIES.has(category);
   const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
   const isDetailedTransportWizard = category === 'transport' && isDetailedTransportSubcategory(subCategory);
   const requiresVehicleModel = isDetailedTransportWizard;
   const supportsSellerType = category === 'housing' || isDetailedTransportWizard || category === 'services';
-  const stepLabels = wizardFlow.map(key => tr(
-    isLifeCommunityListing && key === 'pricing'
-        ? 'wizard.step.lifeExpenses'
-      : stepLabelKeyByStep[key]
-  ));
+  const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
   const photosStep = Math.max(1, wizardFlow.indexOf('photos') + 1);
 
@@ -753,11 +753,9 @@ export default function CreateWizard({
     }
 
     if (targetStepKey === 'pricing') {
-      if (isLifeCommunityListing) {
-        const amount = classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY];
-        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) {
-          return tr('wizard.validationLifeExpensesPerPerson');
-        }
+      if (usesSinglePrice) {
+        const minimumPrice = category === 'life' ? 0 : 1;
+        if (!Number.isFinite(pricePerDay) || pricePerDay < minimumPrice) return tr('wizard.validationPrice');
         return '';
       }
       if (!Number.isFinite(pricePerDay) || pricePerDay <= 0) return tr('wizard.validationPriceDay');
@@ -1075,6 +1073,11 @@ export default function CreateWizard({
     const normalizedRoomNumbers = normalizedRoomCount
       ? Array.from({ length: normalizedRoomCount }, (_, index) => sourceListing?.roomNumbers?.[index] || (index === 0 ? sourceListing?.roomNumber || '' : ''))
       : undefined;
+    const savedClassifiedAttributes = category === 'life'
+      ? Object.fromEntries(
+        Object.entries(classifiedAttributes).filter(([fieldId]) => fieldId !== LIFE_EXPENSE_PER_PERSON_KEY)
+      )
+      : classifiedAttributes;
 
     return {
       id,
@@ -1097,15 +1100,15 @@ export default function CreateWizard({
       isVerified: initialListing?.isVerified ?? false,
       isNew: isListingFresh({ category, yearBuilt: rawYear, yearRenovated: initialListing?.yearRenovated }),
       status: initialListing?.status === 'rejected' ? 'moderation' : initialListing?.status || 'moderation',
-      pricePerDay: isLifeCommunityListing ? Number(classifiedAttributes[LIFE_EXPENSE_PER_PERSON_KEY]) || 0 : pricePerDay,
-      pricePerMonth: category === 'services' || isLifeCommunityListing ? undefined : pricePerMonth,
-      listingDepositAmount: category === 'services' || isLifeCommunityListing ? undefined : listingDepositAmount > 0 ? listingDepositAmount : undefined,
-      bookingComPrice: category !== 'services' && !isLifeCommunityListing && competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,
-      competitorPlatform: category !== 'services' && !isLifeCommunityListing && competitorPlatform !== 'Only Facebook' ? competitorPlatform as Listing['competitorPlatform'] : undefined,
-      competitorUrl: category !== 'services' && !isLifeCommunityListing ? competitorUrl || undefined : undefined,
-      hasDropPrice: !isLifeCommunityListing && selectedDiscountPercent > 0,
-      dropPricePerDay: isLifeCommunityListing ? undefined : dropPricePerDay,
-      dropPricePerMonth: isLifeCommunityListing ? undefined : dropPricePerMonth,
+      pricePerDay,
+      pricePerMonth: category === 'services' || usesSinglePrice ? undefined : pricePerMonth,
+      listingDepositAmount: category === 'services' || usesSinglePrice ? undefined : listingDepositAmount > 0 ? listingDepositAmount : undefined,
+      bookingComPrice: category !== 'services' && !usesSinglePrice && competitorPlatform !== 'Only Facebook' ? competitorPrice || undefined : undefined,
+      competitorPlatform: category !== 'services' && !usesSinglePrice && competitorPlatform !== 'Only Facebook' ? competitorPlatform as Listing['competitorPlatform'] : undefined,
+      competitorUrl: category !== 'services' && !usesSinglePrice ? competitorUrl || undefined : undefined,
+      hasDropPrice: !usesSinglePrice && selectedDiscountPercent > 0,
+      dropPricePerDay: usesSinglePrice ? undefined : dropPricePerDay,
+      dropPricePerMonth: usesSinglePrice ? undefined : dropPricePerMonth,
       roomsTotal: subCategory === 'private_room' ? 1 : roomsTotal,
       bedroomsCount: subCategory === 'private_room' ? 1 : roomsTotal,
       wallMaterial: initialListing?.wallMaterial || 'concrete',
@@ -1185,7 +1188,7 @@ export default function CreateWizard({
       classifiedAudience: category === 'ads' ? classifiedAudience || undefined : initialListing?.classifiedAudience,
       classifiedLevel: category === 'ads' ? classifiedLevel || undefined : initialListing?.classifiedLevel,
       classifiedProductType: category === 'ads' ? classifiedProductType || undefined : initialListing?.classifiedProductType,
-      classifiedAttributes: category === 'ads' || category === 'afisha' || category === 'life' ? classifiedAttributes : initialListing?.classifiedAttributes,
+      classifiedAttributes: category === 'ads' || category === 'afisha' || category === 'life' ? savedClassifiedAttributes : initialListing?.classifiedAttributes,
       investmentAttributes: category === 'investments' ? classifiedAttributes : initialListing?.investmentAttributes,
       yearBuilt: rawYear,
       interiorStyle,

@@ -72,6 +72,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const platformDropdownRef = useRef<HTMLDivElement>(null);
   const isServicePricing = category === 'services';
+  const usesSinglePrice = ['investments', 'ads', 'afisha', 'life'].includes(category);
   const isLifeCommunityPricing = category === 'life' && subCategory !== 'life_jobs';
 
   useEffect(() => {
@@ -87,7 +88,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
     return () => window.removeEventListener('pointerdown', handlePointerDown);
   }, [isPlatformOpen]);
 
-  if (isLifeCommunityPricing) {
+  if (isLifeCommunityPricing && !usesSinglePrice) {
     return (
       <div className="animate-fade-in space-y-2 pt-2">
         <label htmlFor="life-expense-per-person" className="block text-xs font-semibold text-[#1E293B]">
@@ -106,6 +107,32 @@ const StepPricing: React.FC<StepPricingProps> = ({
             className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm font-semibold text-[#1E293B] outline-none"
           />
           <span className="shrink-0 px-3 text-sm font-semibold text-[#5F6978]">Rp</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (usesSinglePrice) {
+    return (
+      <div className="animate-fade-in pt-2">
+        <div className="pl max-w-sm space-y-2 rounded-3xl p-5">
+          <label htmlFor="single-listing-price" className="block text-xs font-semibold tracking-wider text-[#1E293B]">
+            {tr('wizard.listingPrice')}
+          </label>
+          <div className="flex min-h-12 items-center rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#FF7A50]/15">
+            <input
+              id="single-listing-price"
+              type="text"
+              inputMode="numeric"
+              value={formatPriceWithSpaces(pricePerDay)}
+              onChange={event => {
+                const digits = event.target.value.replace(/\D/g, '');
+                setPricePerDay(digits ? parseInt(digits, 10) : 0);
+              }}
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-mono font-bold text-[#1E293B] outline-none"
+            />
+            <span className="shrink-0 px-4 text-xs font-bold text-[#64748B]">IDR</span>
+          </div>
         </div>
       </div>
     );
