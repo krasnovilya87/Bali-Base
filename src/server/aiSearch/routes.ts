@@ -36,7 +36,13 @@ const traceAiSearch = (message: string, details?: Record<string, unknown>) => {
 export const createAiSearchRouter = (): Router => {
   const router = express.Router();
 
-  router.use(requireAuth);
+  router.use((req, res, next) => {
+    if (req.path === '/voice/transcribe') {
+      next();
+      return;
+    }
+    requireAuth(req, res, next);
+  });
   router.use(rateLimit({ scope: 'ai-search', windowMs: 10 * 60 * 1000, max: 60 }));
 
   router.post('/', async (req, res) => {

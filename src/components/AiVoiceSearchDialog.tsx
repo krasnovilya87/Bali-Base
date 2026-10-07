@@ -89,6 +89,7 @@ export default function AiVoiceSearchDialog({
     if (isSearching || isListening || isTranscribing) return;
     clearRecordingTimeout();
     setError('');
+    hasSubmittedRef.current = false;
 
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -111,6 +112,7 @@ export default function AiVoiceSearchDialog({
       };
       recorder.onstop = () => {
         setIsListening(false);
+        mediaRecorderRef.current = null;
         stopAudioStream();
         const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         audioChunksRef.current = [];
@@ -195,7 +197,19 @@ export default function AiVoiceSearchDialog({
                   </div>
                 )}
               </>
-            ) : null}
+            ) : (
+              <div className="m-auto max-w-[280px] text-center text-sm font-semibold leading-relaxed text-[#64748B]">
+                {tr(
+                  isTranscribing
+                    ? 'search.voice.transcribing'
+                    : isListening
+                      ? 'search.voice.listening'
+                      : transcript.trim()
+                        ? 'search.voice.readyToSearch'
+                        : 'search.voice.ready'
+                )}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -214,7 +228,7 @@ export default function AiVoiceSearchDialog({
                   hasSubmittedRef.current = false;
                   setTranscript(event.target.value);
                 }}
-                placeholder=""
+                placeholder={tr('search.voice.placeholder')}
                 className="min-h-11 max-h-32 w-full resize-none bg-transparent py-2 pl-2 pr-9 text-sm font-semibold leading-relaxed text-[#1E293B] outline-none"
                 rows={1}
                 autoFocus
@@ -237,13 +251,13 @@ export default function AiVoiceSearchDialog({
             </div>
             <button
               type="button"
-              onPointerDown={() => {
-                hasSubmittedRef.current = false;
-                startListening();
+              onClick={() => {
+                if (isListening) {
+                  stopListening();
+                } else {
+                  void startListening();
+                }
               }}
-              onPointerUp={stopListening}
-              onPointerCancel={stopListening}
-              onPointerLeave={stopListening}
               disabled={isSearching || isTranscribing}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
                 isListening ? 'bg-[#FF7A50] animate-pulse' : 'bg-[#1E293B] hover:bg-[#FF7A50]'

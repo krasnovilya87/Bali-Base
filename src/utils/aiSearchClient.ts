@@ -140,7 +140,10 @@ export const requestAiVoiceVectorSearch = async (
 export const requestAiVoiceTranscription = async (audio: Blob): Promise<AiVoiceTranscriptionResult> => {
   const response = await fetch(`${getAiSearchEndpoint()}/voice/transcribe`, {
     method: 'POST',
-    headers: await getJsonHeaders(),
+    headers: await getFirebaseRequestHeaders({
+      contentType: 'application/json',
+      requireAuth: false
+    }),
     body: JSON.stringify({
       audio: await blobToBase64(audio),
       mimeType: audio.type || 'audio/webm'
