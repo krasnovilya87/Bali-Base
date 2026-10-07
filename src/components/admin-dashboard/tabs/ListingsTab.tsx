@@ -178,10 +178,11 @@ export function ListingsTab(props: AdminTabProps) {
                                 confirmLabel={tr('myListings.deleteConfirm')}
                                 cancelLabel={tr('common.cancel')}
                                 onConfirm={() => onDeleteListing(l.id)}
-                                className="p-1.5 bg-red-50 text-red-655 hover:bg-red-100 rounded-xl text-xs cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[10.5px] font-bold transition cursor-pointer"
                                 titleAttr={tr('admin.listings.delete')}
                               >
                                 <Trash2 className="w-4 h-4" />
+                                <span>{tr('admin.listings.delete')}</span>
                               </Del>
                             </td>
                           </tr>
