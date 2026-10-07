@@ -121,7 +121,7 @@ const en: TranslationDictionary = {
   "search.voice.stopRecording": "Stop",
   "search.voice.listeningHint": "Speak now. The app is listening.",
   "search.voice.searching": "Searching...",
-  "search.voice.understood": "I understood your request: {subject}.",
+  "search.voice.resultsSummary": "For your search “{context}”, {count} listings were found.",
   "search.voice.unsupported": "Voice input is not supported in this browser. You can type your search instead.",
   "search.voice.error": "Could not start the microphone. Check browser permission or type your search.",
   "search.voice.empty": "Nothing was recognized. Please try again or type your search.",

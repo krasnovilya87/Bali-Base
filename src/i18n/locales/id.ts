@@ -121,7 +121,7 @@ const id: TranslationDictionary = {
   "search.voice.stopRecording": "Hentikan",
   "search.voice.listeningHint": "Mulai bicara. Aplikasi sedang mendengarkan.",
   "search.voice.searching": "Searching...",
-  "search.voice.understood": "Saya memahami permintaan Anda: {subject}.",
+  "search.voice.resultsSummary": "Untuk pencarian “{context}”, ditemukan {count} iklan.",
   "search.voice.unsupported": "Voice input is not supported in this browser. You can type your search instead.",
   "search.voice.error": "Could not start the microphone. Check browser permission or type your search.",
   "search.voice.empty": "Nothing was recognized. Please try again or type your search.",

@@ -77,6 +77,14 @@ type AuthReturnContext = {
 };
 
 const getL2IdsForL1 = (catId: string) => (SUBCATEGORIES_MAP[catId] || []).map(sub => sub.id);
+const getAiSearchContextText = (query: string) => {
+  const trimmed = query.trim().replace(/\s+/g, ' ');
+  const withoutLeadingRequest = trimmed.replace(
+    /^(?:(?:я\s+)?(?:ищу|хочу найти|хочу|мне (?:нужен|нужна|нужно|нужны)|найди(?:те)?(?: мне)?|покажи(?:те)?(?: мне)?)|(?:i(?:'m| am)? looking for|looking for|i need|find me|show me)|(?:ich suche|ich brauche|finde mir|zeige mir)|(?:je cherche|j’ai besoin de|j'ai besoin de|trouve-moi|montre-moi)|(?:saya mencari|saya butuh|carikan saya|tunjukkan saya))\s*/iu,
+    ''
+  ).replace(/^[\s,.:;—–-]+|[\s,.:;—–-]+$/g, '');
+  return withoutLeadingRequest || trimmed;
+};
 const getSelectableSubcategoryIdsForL1 = (catId: string) => {
   if (catId === 'ads') {
     return Object.values(ADS_L3_SUBCATEGORIES).flat().map(sub => sub.id);
@@ -1505,22 +1513,10 @@ export default function App() {
       .filter(listing => aiVectorOrder.has(listing.id))
       .sort((a, b) => (aiVectorOrder.get(a.id) ?? 0) - (aiVectorOrder.get(b.id) ?? 0));
   }, [aiVectorOrder, sortedListings]);
-  const aiSearchSubject = useMemo(() => {
-    const parsed = lastAiSearchQuery
-      ? parseLocalAiSearchQuery(lastAiSearchQuery, {
-        currentL1,
-        currentL2,
-        filters: activeFilters,
-        showFavoritesOnly
-      })
-      : null;
-    const subjectL1 = parsed?.matched ? parsed.currentL1 : currentL1;
-    const subjectL2 = parsed?.matched ? parsed.currentL2 : currentL2;
-    const translationKey = subjectL2.length === 1
-      ? `subcategory.${subjectL2[0]}`
-      : `category.${subjectL1}.label`;
-    return t(activeLanguage, translationKey);
-  }, [activeFilters, activeLanguage, currentL1, currentL2, lastAiSearchQuery, showFavoritesOnly]);
+  const aiSearchContext = useMemo(
+    () => getAiSearchContextText(lastAiSearchQuery),
+    [lastAiSearchQuery]
+  );
   const currentSectionFavoriteCount = useMemo(
     () => visibleSortedListings.filter(item => favoriteIds.has(item.id)).length,
     [favoriteIds, visibleSortedListings]
@@ -2839,7 +2835,7 @@ export default function App() {
             currentL1={currentL1}
             currentL2={currentL2}
             sourceQuery={lastAiSearchQuery}
-            searchSubject={aiSearchSubject}
+            searchContext={aiSearchContext}
             districtSearch={districtSearch}
             filters={activeFilters}
             results={visibleSortedListings}

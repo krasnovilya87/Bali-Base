@@ -12,7 +12,7 @@ interface AiVoiceSearchDialogProps {
   currentL1: string;
   currentL2: string[];
   sourceQuery: string;
-  searchSubject: string;
+  searchContext: string;
   districtSearch: string[];
   filters: FilterState;
   results: Listing[];
@@ -29,7 +29,7 @@ export default function AiVoiceSearchDialog({
   currentL1,
   currentL2,
   sourceQuery,
-  searchSubject,
+  searchContext,
   districtSearch,
   filters,
   results,
@@ -267,9 +267,11 @@ export default function AiVoiceSearchDialog({
                         <Bot className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 text-sm font-semibold leading-relaxed text-[#1E293B]">
-                        <p>{tr('search.voice.understood', { subject: searchSubject })}</p>
-                        <p className="mt-1 text-[#2F7D69]">
-                          {tr('search.refine.found', { count: results.length.toLocaleString(activeLanguage) })}
+                        <p>
+                          {tr('search.voice.resultsSummary', {
+                            context: searchContext,
+                            count: results.length.toLocaleString(activeLanguage)
+                          })}
                         </p>
                       </div>
                     </div>

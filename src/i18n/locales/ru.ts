@@ -124,7 +124,7 @@ const ru: TranslationDictionary = {
   "search.voice.stopRecording": "Остановить",
   "search.voice.listeningHint": "Говорите, приложение вас слушает.",
   "search.voice.searching": "Searching...",
-  "search.voice.understood": "Я понял ваш запрос: {subject}.",
+  "search.voice.resultsSummary": "По вашему запросу «{context}» найдено {count} объявлений.",
   "search.voice.unsupported": "Voice input is not supported in this browser. You can type your search instead.",
   "search.voice.error": "Could not start the microphone. Check browser permission or type your search.",
   "search.voice.empty": "Nothing was recognized. Please try again or type your search.",
