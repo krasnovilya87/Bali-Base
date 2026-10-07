@@ -602,6 +602,7 @@ const ru: TranslationDictionary = {
   "details.notCalculated": "Не рассчитано",
   "details.locationTitle": "Местоположение на карте",
   "details.book": "Забронировать",
+  "details.contact": "Контакт",
   "details.life.date": "Дата",
   "details.life.time": "Время",
   "details.life.meetingPlace": "Место встречи",

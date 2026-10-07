@@ -611,6 +611,7 @@ const en: TranslationDictionary = {
   "details.notCalculated": "Not calculated",
   "details.locationTitle": "Location on map",
   "details.book": "Book",
+  "details.contact": "Contact",
   "details.life.date": "Date",
   "details.life.time": "Time",
   "details.life.meetingPlace": "Meeting place",

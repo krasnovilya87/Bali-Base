@@ -226,7 +226,7 @@ const FeatureScooterParameters: React.FC<FeatureScooterParametersProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-10">
+          <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-[auto_minmax(0,1fr)] md:gap-10">
             <div className="space-y-3">
               <span className={fieldTitleClass}>{tr('filters.transport.transmission')}</span>
               <div className="flex flex-wrap gap-x-3 gap-y-3">
@@ -355,7 +355,7 @@ const FeatureScooterParameters: React.FC<FeatureScooterParametersProps> = ({
 
       <div className="space-y-3">
         <span className={fieldTitleClass}>{tr('filters.transport.features')}</span>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {(isCar ? [
             { key: 'abs', labelKey: 'filters.transport.features.abs', Icon: ShieldCheck, active: abs, toggle: setAbs },
             { key: 'airbag', labelKey: 'filters.transport.features.airbag', Icon: Shield, active: airbag, toggle: setAirbag },

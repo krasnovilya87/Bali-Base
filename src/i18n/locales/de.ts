@@ -599,6 +599,7 @@ const de: TranslationDictionary = {
   "details.notCalculated": "Nicht berechnet",
   "details.locationTitle": "Standort auf Karte",
   "details.book": "Buchen",
+  "details.contact": "Kontakt",
   "details.life.date": "Datum",
   "details.life.time": "Uhrzeit",
   "details.life.meetingPlace": "Treffpunkt",

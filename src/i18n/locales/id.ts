@@ -598,6 +598,7 @@ const id: TranslationDictionary = {
   "details.notCalculated": "Belum dihitung",
   "details.locationTitle": "Lokasi di peta",
   "details.book": "Pesan",
+  "details.contact": "Kontak",
   "details.life.date": "Tanggal",
   "details.life.time": "Waktu",
   "details.life.meetingPlace": "Tempat bertemu",

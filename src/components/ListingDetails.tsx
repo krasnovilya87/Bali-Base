@@ -988,12 +988,17 @@ export default function ListingDetails({
   };
 
   const handleWhatsAppClick = () => {
+    if (listing.category === 'investments' || listing.category === 'ads' || listing.category === 'afisha') {
+      contactListingAuthor();
+      return;
+    }
+
     const nextAction = listing.category === 'transport' ? openTransportBookingConfirm : placeWhatsAppBooking;
     if (!user && onRequireAuth && !onRequireAuth('auth.reason.booking', nextAction)) return;
     nextAction();
   };
 
-  const contactLifeAuthor = () => {
+  const contactListingAuthor = () => {
     const openAuthorChat = () => {
       const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
       const params = new URLSearchParams({
@@ -1484,6 +1489,10 @@ export default function ListingDetails({
   const isTransportListing = listing.category === 'transport';
   const isServicesListing = listing.category === 'services';
   const isInvestmentListing = listing.category === 'investments';
+  const isMarketListing = listing.category === 'ads';
+  const isAfishaListing = listing.category === 'afisha';
+  const isDateFreeListing = isInvestmentListing || isMarketListing || isAfishaListing;
+  const usesSimpleTotalLabel = isInvestmentListing || isMarketListing || isAfishaListing;
   const isLifeListing = listing.category === 'life';
   const isLifeCommunityListing = isLifeListing && listing.subCategory !== 'life_jobs';
   const visibleReviews: Review[] = isHousingListing
@@ -2361,7 +2370,9 @@ export default function ListingDetails({
                 ) : <div className="pt-2 sm:pt-2.5 lg:pt-0 pb-1">
                   {stayDays && (
                     <div className={`mb-1.5 text-[14px] sm:text-xs lg:text-[13px] font-bold text-text-dark ${THEME.fonts.heading}`}>
-                      {tr('details.totalFor', { count: stayDays, unit: pluralizeDays(stayDays) })}
+                      {usesSimpleTotalLabel
+                        ? tr('booking.total')
+                        : tr('details.totalFor', { count: stayDays, unit: pluralizeDays(stayDays) })}
                     </div>
                   )}
 
@@ -2986,7 +2997,7 @@ export default function ListingDetails({
                   {renderLifeSummary()}
                   <button
                     type="button"
-                    onClick={contactLifeAuthor}
+                    onClick={contactListingAuthor}
                     className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2F7D69] px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F7D69]"
                   >
                     <Send className="h-4 w-4" />
@@ -2999,7 +3010,9 @@ export default function ListingDetails({
                 {/* Total cost and nights details */}
                 <div className="text-center space-y-2">
                   <span className="text-[13px] font-bold text-text-dark block">
-                    {tr('details.totalFor', { count: diffDays, unit: pluralizeDays(diffDays) })}
+                    {usesSimpleTotalLabel
+                      ? tr('booking.total')
+                      : tr('details.totalFor', { count: diffDays, unit: pluralizeDays(diffDays) })}
                   </span>
 
                   {listing.bookingComPrice && (
@@ -3050,10 +3063,11 @@ export default function ListingDetails({
                 </div>
 
                 {/* Dates input selectors */}
+                {!isDateFreeListing && (
                 <div className="space-y-3 pt-3.5 border-t border-[#E5E7EB]/60 relative">
-                  <div className="grid grid-cols-2 gap-2">
+                  {isServicesListing ? (
                     <div>
-                      <label className="text-[10px] font-bold text-gray-400 block mb-1">{tr('details.checkIn')}</label>
+                      <label className="text-[10px] font-bold text-gray-400 block mb-1">{tr('details.date')}</label>
                       <button
                         type="button"
                         onClick={() => setShowDateCalendar(true)}
@@ -3062,22 +3076,42 @@ export default function ListingDetails({
                         {formatBookingDate(checkInDate) || tr('details.date')}
                       </button>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 block mb-1">{tr('details.checkOut')}</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowDateCalendar(true)}
-                        className="w-full bg-[#F4F7F6] border border-[#E5E7EB] rounded-xl px-3 py-2 text-left text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-[#FF7A50] cursor-pointer hover:border-[#FF7A50]/60 transition"
-                      >
-                        {formatBookingDate(checkOutDate) || tr('details.date')}
-                      </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 block mb-1">
+                          {isTransportListing ? tr('investments.from') : tr('details.checkIn')}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowDateCalendar(true)}
+                          className="w-full bg-[#F4F7F6] border border-[#E5E7EB] rounded-xl px-3 py-2 text-left text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-[#FF7A50] cursor-pointer hover:border-[#FF7A50]/60 transition"
+                        >
+                          {formatBookingDate(checkInDate) || tr('details.date')}
+                        </button>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 block mb-1">
+                          {isTransportListing ? tr('investments.to') : tr('details.checkOut')}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowDateCalendar(true)}
+                          className="w-full bg-[#F4F7F6] border border-[#E5E7EB] rounded-xl px-3 py-2 text-left text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-[#FF7A50] cursor-pointer hover:border-[#FF7A50]/60 transition"
+                        >
+                          {formatBookingDate(checkOutDate) || tr('details.date')}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {showDateCalendar && (
                     <TwoMonthCalendar
                       checkInDate={checkInDate}
                       checkOutDate={checkOutDate}
+                      singleDateMode={isServicesListing}
+                      singleDateTitle={isServicesListing ? tr('details.date') : undefined}
+                      singleDateSummary={isServicesListing ? date => formatBookingDate(date) : undefined}
                       modalPlacement
                       onChange={(inD, outD) => {
                         setCheckInDate(inD);
@@ -3089,6 +3123,7 @@ export default function ListingDetails({
                     />
                   )}
                 </div>
+                )}
 
                 {/* Call WhatsApp button */}
                 <div className="pt-2">
@@ -3119,7 +3154,11 @@ export default function ListingDetails({
                       <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
                     </svg>
                     <span>
-                      {orderPlaced ? tr('details.redirecting') : tr('details.book')}
+                      {orderPlaced
+                        ? tr('details.redirecting')
+                        : isInvestmentListing
+                          ? tr('details.contact')
+                          : tr('details.book')}
                     </span>
                   </button>
                 </div>
@@ -3152,7 +3191,7 @@ export default function ListingDetails({
           <div className="z-40 border-t border-[#E5E7EB] bg-white px-5 pb-[26px] pt-3 lg:hidden">
             <button
               type="button"
-              onClick={contactLifeAuthor}
+              onClick={contactListingAuthor}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2F7D69] px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2F7D69]"
             >
               <Send className="h-4 w-4" />
@@ -3177,7 +3216,11 @@ export default function ListingDetails({
           )}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <span className="text-[9px] text-gray-400 font-bold block leading-none mb-1">{tr('details.totalFor', { count: diffDays, unit: diffDays === 1 ? tr('details.night') : tr('details.nights') })}</span>
+              <span className="text-[9px] text-gray-400 font-bold block leading-none mb-1">
+                {usesSimpleTotalLabel
+                  ? tr('booking.total')
+                  : tr('details.totalFor', { count: diffDays, unit: diffDays === 1 ? tr('details.night') : tr('details.nights') })}
+              </span>
               <div className="flex flex-col">
                 <span className="text-base sm:text-lg font-mono font-black text-[#FF7A50] leading-none">
                   {convertPrice(totalBudget)} {currencySymbol}
@@ -3202,16 +3245,25 @@ export default function ListingDetails({
               <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                 <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.764.462 3.42 1.258 4.876L2 22l5.304-1.216A9.94 9.94 0 0 0 12.004 22c5.52 0 10-4.48 10-10.004C22.004 6.48 17.524 2 12.004 2zm5.72 13.92c-.22.624-1.076 1.156-1.748 1.296-.512.108-1.18.2-3.444-.736-2.892-1.196-4.736-4.14-4.88-4.332-.14-.192-1.136-1.512-1.136-2.884 0-1.372.716-2.044.972-2.316.22-.228.58-.336.872-.336.096 0 .18 0 .252.004.212.008.316.02.456.328.176.388.604 1.472.656 1.58.052.108.088.232.016.376-.072.148-.108.24-.216.368-.108.128-.22.252-.316.364-.1.108-.204.228-.088.428.116.196.516.852 1.112 1.384.768.684 1.412.896 1.612.996.2.1.316.084.432-.048.116-.132.504-.588.64-.788.136-.2.272-.164.456-.096.188.068 1.192.56 1.4.664.204.104.34.156.388.24.048.084.048.492-.172 1.116z" />
               </svg>
-              <span>{orderPlaced ? tr('details.loading') : tr('details.book')}</span>
+              <span>
+                {orderPlaced
+                  ? tr('details.loading')
+                  : isInvestmentListing
+                    ? tr('details.contact')
+                    : tr('details.book')}
+              </span>
             </button>
           </div>
         </div>}
 
-        {showDateCalendar && (
+        {showDateCalendar && !isDateFreeListing && (
           <div className={isTransportBookingConfirmOpen ? '' : 'lg:hidden'}>
             <TwoMonthCalendar
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
+              singleDateMode={isServicesListing}
+              singleDateTitle={isServicesListing ? tr('details.date') : undefined}
+              singleDateSummary={isServicesListing ? date => formatBookingDate(date) : undefined}
               modalPlacement
               bookingModalPlacement={isTransportBookingConfirmOpen}
               onChange={(inD, outD) => {
