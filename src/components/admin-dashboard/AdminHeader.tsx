@@ -15,7 +15,6 @@ const TITLE_KEYS: Record<AdminTab, string> = {
   listings: 'admin.title.listings',
   moderation: 'admin.title.moderation',
   messages: 'admin.title.messages',
-  places: 'admin.title.places',
   settings: 'admin.title.settings'
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Database, List, MapPinned, MessageSquare, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
+import { BarChart2, Database, List, MessageSquare, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
 import { AdminTab } from './types';
 import { useI18n } from '../../i18nContext';
 
@@ -73,7 +73,7 @@ export default function AdminSidebar({
             <ShieldAlert className="w-4 h-4 animate-pulse text-amber-400" />
             <span>{tr('admin.nav.moderation')}</span>
             {moderationListings > 0 && (
-              <span className="ml-auto text-[10px] bg-amber-550 text-slate-900 font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-[10px] bg-[#1E3A5F] text-white font-bold px-2 py-0.5 rounded-full">
                 {moderationListings}
               </span>
             )}
@@ -85,11 +85,6 @@ export default function AdminSidebar({
             <span className="ml-auto text-[10.5px] bg-emerald-500 hover:bg-emerald-605 text-white font-black px-1.5 rounded-md leading-none py-1">
               {tr('listing.newBadge')}
             </span>
-          </button>
-
-          <button onClick={() => onTabChange('places')} className={itemClass('places')}>
-            <MapPinned className="w-4 h-4" />
-            <span>{tr('admin.nav.places')}</span>
           </button>
 
           <button onClick={() => onTabChange('settings')} className={itemClass('settings')}>
