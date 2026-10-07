@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Search, AlertCircle, TrendingUp, Check, Play, Square, Mail, Eye, Trash2, Edit3, MessageCircle,
+  Search, AlertCircle, TrendingUp, Check, Play, Pause, Square, Mail, Eye, Trash2, Edit3, MessageCircle,
   RefreshCw, Sparkles, CheckCircle2, XCircle, PlusCircle, UserCheck, UserX, Ban, HelpCircle,
   ArrowRight, DollarSign, Briefcase, Send, Volume2, ShieldCheck, Heart, MapPin, Percent, Star,
   List, Image as ImageIcon, MessageSquare, Database, Settings, X
@@ -91,14 +91,16 @@ export function ListingsTab(props: AdminTabProps) {
                           <th className="p-4">{tr('admin.listings.viewsClicks')}</th>
                           <th className="p-4">{tr('admin.listings.approvedBase')}</th>
                           <th className="p-4">{tr('admin.listings.status')}</th>
-                          <th className="p-4 pr-6 text-right">{tr('admin.listings.actions')}</th>
+                          <th className="sticky right-0 z-10 w-[88px] min-w-[88px] bg-slate-50 p-4 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]">
+                            {tr('admin.listings.actions')}
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
                         {filteredListingsList.map(l => {
                           const isVerified = isListingVerified(l);
                           return (
-                          <tr key={l.id} className="hover:bg-slate-50/50">
+                          <tr key={l.id} className="group hover:bg-slate-50/50">
                             <td className="p-4 pl-6 flex items-center gap-3">
                               <img 
                                 src={l.images[0] || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80'} 
@@ -161,29 +163,35 @@ export function ListingsTab(props: AdminTabProps) {
                                 {tr(`admin.listings.status.${l.status}`)}
                               </span>
                             </td>
-                            <td className="p-4 pr-6 text-right space-x-1.5 whitespace-nowrap">
-                              {!(((l.category === 'life' && l.subCategory === 'life_warnings')
-                                || (l.category === 'afisha' && l.subCategory === 'afisha_warnings')) && !l.isApproved) && (
-                                <button
-                                  onClick={() => onToggleStatus(l.id)}
-                                  className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10.5px] cursor-pointer"
-                                  title={tr('admin.listings.toggleStatus')}
+                            <td className="sticky right-0 z-[1] w-[88px] min-w-[88px] bg-white p-3 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-slate-50">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {!(((l.category === 'life' && l.subCategory === 'life_warnings')
+                                  || (l.category === 'afisha' && l.subCategory === 'afisha_warnings')) && !l.isApproved) && (
+                                  <button
+                                    onClick={() => onToggleStatus(l.id)}
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition cursor-pointer ${
+                                      l.status === 'active'
+                                        ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                                        : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                    }`}
+                                    title={l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
+                                    aria-label={l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
+                                  >
+                                    {l.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                  </button>
+                                )}
+                                <Del
+                                  title={tr('myListings.deleteTitle')}
+                                  message={tr('myListings.deleteBody', { title: l.title })}
+                                  confirmLabel={tr('myListings.deleteConfirm')}
+                                  cancelLabel={tr('common.cancel')}
+                                  onConfirm={() => onDeleteListing(l.id)}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 cursor-pointer"
+                                  titleAttr={tr('admin.listings.delete')}
                                 >
-                                  {l.status === 'active' ? tr('admin.listings.pause') : tr('admin.listings.activate')}
-                                </button>
-                              )}
-                              <Del
-                                title={tr('myListings.deleteTitle')}
-                                message={tr('myListings.deleteBody', { title: l.title })}
-                                confirmLabel={tr('myListings.deleteConfirm')}
-                                cancelLabel={tr('common.cancel')}
-                                onConfirm={() => onDeleteListing(l.id)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[10.5px] font-bold transition cursor-pointer"
-                                titleAttr={tr('admin.listings.delete')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                <span>{tr('admin.listings.delete')}</span>
-                              </Del>
+                                  <Trash2 className="h-4 w-4" />
+                                </Del>
+                              </div>
                             </td>
                           </tr>
                           );

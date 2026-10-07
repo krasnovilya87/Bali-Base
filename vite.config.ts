@@ -69,6 +69,7 @@ export default defineConfig(() => {
         '@lottiefiles/dotlottie-react',
         'fast-deep-equal',
         'firebase/app',
+        'firebase/app-check',
         'firebase/auth',
         'firebase/firestore',
         'firebase/storage',

@@ -1503,6 +1503,10 @@ export default function App() {
       .filter(listing => aiVectorOrder.has(listing.id))
       .sort((a, b) => (aiVectorOrder.get(a.id) ?? 0) - (aiVectorOrder.get(b.id) ?? 0));
   }, [aiVectorOrder, sortedListings]);
+  const currentSectionFavoriteCount = useMemo(
+    () => visibleSortedListings.filter(item => favoriteIds.has(item.id)).length,
+    [favoriteIds, visibleSortedListings]
+  );
   const mobileNavButtonClass = 'flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/32 text-[#1E293B] shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
   const mobileNavActiveButtonClass = 'relative flex h-[50px] w-[50px] min-w-0 items-center justify-center justify-self-center rounded-full border border-white/60 bg-white/38 shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-[2px] transition active:scale-95';
   const isCoverView = !isAdminRoute && currentView === 'cover';
@@ -1913,9 +1917,9 @@ export default function App() {
                       strokeWidth={showFavoritesOnly ? 2.2 : 1.6}
                       fill={showFavoritesOnly ? 'currentColor' : 'none'}
                     />
-                    {favoriteIds.size > 0 && (
+                    {currentSectionFavoriteCount > 0 && (
                       <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#FF4D5D] px-1 text-[10px] font-black leading-none text-white shadow-sm">
-                        {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
+                        {currentSectionFavoriteCount > 99 ? '99+' : currentSectionFavoriteCount}
                       </span>
                     )}
                   </button>
@@ -2680,9 +2684,9 @@ export default function App() {
                 >
                   <span className="relative flex h-[22px] w-[22px] items-center justify-center">
                     <Heart className="h-[22px] w-[22px] text-[#FF4D5D]" strokeWidth={showFavoritesOnly ? 2.1 : 1.65} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-                    {favoriteIds.size > 0 && (
+                    {currentSectionFavoriteCount > 0 && (
                       <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF4D5D] px-1 text-[9px] font-black leading-none text-white">
-                        {favoriteIds.size > 99 ? '99+' : favoriteIds.size}
+                        {currentSectionFavoriteCount > 99 ? '99+' : currentSectionFavoriteCount}
                       </span>
                     )}
                   </span>
