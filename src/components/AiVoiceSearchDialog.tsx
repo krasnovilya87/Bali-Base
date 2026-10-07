@@ -28,6 +28,8 @@ export default function AiVoiceSearchDialog({
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [error, setError] = useState('');
+  const [mobileViewport, setMobileViewport] = useState<{ height: number; offsetTop: number } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -149,6 +151,45 @@ export default function AiVoiceSearchDialog({
     };
   }, []);
 
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    let frameId = 0;
+
+    const syncViewport = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        if (!window.matchMedia('(max-width: 639px)').matches) {
+          setMobileViewport(null);
+          return;
+        }
+
+        setMobileViewport({
+          height: Math.round(viewport?.height || window.innerHeight),
+          offsetTop: Math.round(viewport?.offsetTop || 0)
+        });
+      });
+    };
+
+    syncViewport();
+    viewport?.addEventListener('resize', syncViewport);
+    viewport?.addEventListener('scroll', syncViewport);
+    window.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      viewport?.removeEventListener('resize', syncViewport);
+      viewport?.removeEventListener('scroll', syncViewport);
+      window.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      textareaRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     submitQuery();
@@ -157,13 +198,18 @@ export default function AiVoiceSearchDialog({
   return (
     <div
       className="fixed inset-0 z-[640] flex items-stretch justify-center bg-[#0B1714]/65 p-0 backdrop-blur-md sm:items-center sm:p-5"
+      style={mobileViewport ? {
+        bottom: 'auto',
+        height: `${mobileViewport.height}px`,
+        top: `${mobileViewport.offsetTop}px`
+      } : undefined}
       role="dialog"
       aria-modal="true"
       aria-label={tr('search.voice.title')}
     >
       <form
         onSubmit={handleSubmit}
-        className="flex h-[100svh] w-full flex-col overflow-hidden bg-white shadow-[0_30px_90px_rgba(11,23,20,0.34)] animate-scale-up sm:h-auto sm:max-h-[86vh] sm:max-w-md sm:rounded-[28px] sm:border sm:border-white/50"
+        className="flex h-full w-full flex-col overflow-hidden bg-white shadow-[0_30px_90px_rgba(11,23,20,0.34)] animate-scale-up sm:h-[min(760px,86vh)] sm:max-h-[86vh] sm:max-w-md sm:rounded-[28px] sm:border sm:border-white/50"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:pt-4">
           <div>
@@ -267,6 +313,7 @@ export default function AiVoiceSearchDialog({
           <div className="flex items-end gap-2 rounded-[24px] border border-[#E5E7EB] bg-[#F4F7F6] p-2">
             <div className="relative min-w-0 flex-1">
               <textarea
+                ref={textareaRef}
                 value={transcript}
                 onChange={event => {
                   hasSubmittedRef.current = false;
