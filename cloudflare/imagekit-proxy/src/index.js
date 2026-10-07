@@ -8,6 +8,8 @@ let appCheckJwksCache = { expiresAt: 0, keys: [] };
 const ALLOWED_UPLOAD_ORIGINS = new Set([
   'https://balibase.id',
   'https://www.balibase.id',
+  'https://bali-base-90ca8.web.app',
+  'https://bali-base-90ca8.firebaseapp.com',
   'http://localhost:3000',
   'http://127.0.0.1:3000'
 ]);
