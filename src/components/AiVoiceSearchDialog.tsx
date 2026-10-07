@@ -1,26 +1,44 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { AudioLines, CheckCircle2, LoaderCircle, Mic, Send, Square, X } from 'lucide-react';
+import { AudioLines, Bot, CheckCircle2, LoaderCircle, Mic, Send, Square, X } from 'lucide-react';
 import { LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
+import { FilterState, Listing } from '../types';
 import { requestAiVoiceTranscription } from '../utils/aiSearchClient';
 import { normalizeVehicleModelSearchQuery } from '../utils/vehicleModelNormalizer';
+import AiSearchRefinementDialog from './AiSearchRefinementDialog';
 
 interface AiVoiceSearchDialogProps {
   activeLanguage: LanguageCode;
-  currentL1?: string;
-  currentL2?: string[];
+  currentL1: string;
+  currentL2: string[];
+  sourceQuery: string;
+  searchSubject: string;
+  districtSearch: string[];
+  filters: FilterState;
+  results: Listing[];
   isSearching: boolean;
   onClose: () => void;
   onSubmit: (query: string) => void;
+  onDistrictChange: (districts: string[]) => void;
+  onFiltersChange: (filters: FilterState) => void;
+  onSubCategoriesChange: (subCategories: string[]) => void;
 }
 
 export default function AiVoiceSearchDialog({
   activeLanguage,
   currentL1,
   currentL2,
+  sourceQuery,
+  searchSubject,
+  districtSearch,
+  filters,
+  results,
   isSearching,
   onClose,
-  onSubmit
+  onSubmit,
+  onDistrictChange,
+  onFiltersChange,
+  onSubCategoriesChange
 }: AiVoiceSearchDialogProps) {
   const { tr } = useI18n();
   const [transcript, setTranscript] = useState('');
@@ -242,6 +260,36 @@ export default function AiVoiceSearchDialog({
                     {tr('search.voice.searching')}
                   </div>
                 )}
+                {!isSearching && (
+                  <>
+                    <div className="mr-auto flex max-w-[92%] items-start gap-3 rounded-[22px] bg-white px-4 py-3 shadow-sm">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1E293B] text-white">
+                        <Bot className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 text-sm font-semibold leading-relaxed text-[#1E293B]">
+                        <p>{tr('search.voice.understood', { subject: searchSubject })}</p>
+                        <p className="mt-1 text-[#2F7D69]">
+                          {tr('search.refine.found', { count: results.length.toLocaleString(activeLanguage) })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <AiSearchRefinementDialog
+                      embedded
+                      currentL1={currentL1}
+                      currentL2={currentL2}
+                      sourceQuery={sourceQuery}
+                      districtSearch={districtSearch}
+                      filters={filters}
+                      results={results}
+                      onClose={onClose}
+                      onDistrictChange={onDistrictChange}
+                      onFiltersChange={onFiltersChange}
+                      onSubCategoriesChange={onSubCategoriesChange}
+                      onAnswer={answer => setSubmittedMessages(messages => [...messages, answer])}
+                    />
+                  </>
+                )}
               </>
             ) : (
               <div
@@ -319,7 +367,7 @@ export default function AiVoiceSearchDialog({
                   hasSubmittedRef.current = false;
                   setTranscript(event.target.value);
                 }}
-                placeholder={tr('search.voice.placeholder')}
+                placeholder=""
                 className="min-h-11 max-h-32 w-full resize-none bg-transparent py-2 pl-2 pr-9 text-sm font-semibold leading-relaxed text-[#1E293B] outline-none"
                 rows={1}
                 autoFocus
@@ -351,12 +399,11 @@ export default function AiVoiceSearchDialog({
               }}
               disabled={isSearching || isTranscribing}
               aria-pressed={isListening}
-              className={`flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 text-white transition-all duration-200 active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-all duration-200 active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
                 isListening
-                  ? 'min-w-[116px] bg-[#FF5F35] shadow-[0_0_0_4px_rgba(255,122,80,0.16),0_10px_24px_rgba(255,95,53,0.3)] hover:bg-[#E94E27]'
-                  : 'min-w-[106px] bg-[#1E293B] shadow-sm hover:bg-[#FF7A50]'
+                  ? 'bg-[#FF5F35] shadow-[0_0_0_4px_rgba(255,122,80,0.16),0_10px_24px_rgba(255,95,53,0.3)] hover:bg-[#E94E27]'
+                  : 'bg-[#1E293B] shadow-sm hover:bg-[#FF7A50]'
               }`}
-              title={tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
               aria-label={tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
             >
               {isListening ? (
@@ -364,9 +411,6 @@ export default function AiVoiceSearchDialog({
               ) : (
                 <Mic className="h-4.5 w-4.5" strokeWidth={2} />
               )}
-              <span className="text-[11px] font-extrabold leading-none">
-                {tr(isListening ? 'search.voice.stopRecording' : 'search.voice.startRecording')}
-              </span>
             </button>
             <button
               type="submit"

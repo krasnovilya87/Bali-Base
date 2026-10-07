@@ -1423,7 +1423,7 @@ export default function App() {
     openAppView();
   };
 
-  const runAiSearch = async (queryOverride?: string) => {
+  const runAiSearch = async (queryOverride?: string, keepVoiceDialogOpen = false) => {
     const query = (queryOverride || searchTerm).trim();
     if (!query || isAiSearchLoading) {
       const inputField = document.getElementById(currentView === 'menu' ? 'live-search-input-menu' : 'live-search-input') as HTMLInputElement | null;
@@ -1449,14 +1449,16 @@ export default function App() {
       const intent = await requestAiSearchIntent(query);
       const didApplyStructuredFilters = applyAiSearchIntent(intent, query);
       const didApplyLocalFallback = didApplyStructuredFilters ? false : applyLocalAiSearchFallback(query);
-      setShowAiRefinementDialog(didApplyStructuredFilters || didApplyLocalFallback || currentL1 !== 'useful');
+      setShowAiRefinementDialog(
+        keepVoiceDialogOpen ? false : didApplyStructuredFilters || didApplyLocalFallback || currentL1 !== 'useful'
+      );
     } catch (error) {
       console.warn('[AI search] Falling back to normal search.', error);
       const didApplyLocalFallback = applyLocalAiSearchFallback(query);
-      setShowAiRefinementDialog(didApplyLocalFallback || currentL1 !== 'useful');
+      setShowAiRefinementDialog(keepVoiceDialogOpen ? false : didApplyLocalFallback || currentL1 !== 'useful');
     } finally {
       setIsAiSearchLoading(false);
-      setShowAiVoiceSearchDialog(false);
+      if (!keepVoiceDialogOpen) setShowAiVoiceSearchDialog(false);
     }
   };
 
@@ -1503,6 +1505,22 @@ export default function App() {
       .filter(listing => aiVectorOrder.has(listing.id))
       .sort((a, b) => (aiVectorOrder.get(a.id) ?? 0) - (aiVectorOrder.get(b.id) ?? 0));
   }, [aiVectorOrder, sortedListings]);
+  const aiSearchSubject = useMemo(() => {
+    const parsed = lastAiSearchQuery
+      ? parseLocalAiSearchQuery(lastAiSearchQuery, {
+        currentL1,
+        currentL2,
+        filters: activeFilters,
+        showFavoritesOnly
+      })
+      : null;
+    const subjectL1 = parsed?.matched ? parsed.currentL1 : currentL1;
+    const subjectL2 = parsed?.matched ? parsed.currentL2 : currentL2;
+    const translationKey = subjectL2.length === 1
+      ? `subcategory.${subjectL2[0]}`
+      : `category.${subjectL1}.label`;
+    return t(activeLanguage, translationKey);
+  }, [activeFilters, activeLanguage, currentL1, currentL2, lastAiSearchQuery, showFavoritesOnly]);
   const currentSectionFavoriteCount = useMemo(
     () => visibleSortedListings.filter(item => favoriteIds.has(item.id)).length,
     [favoriteIds, visibleSortedListings]
@@ -2820,9 +2838,21 @@ export default function App() {
             activeLanguage={activeLanguage}
             currentL1={currentL1}
             currentL2={currentL2}
+            sourceQuery={lastAiSearchQuery}
+            searchSubject={aiSearchSubject}
+            districtSearch={districtSearch}
+            filters={activeFilters}
+            results={visibleSortedListings}
             isSearching={isAiSearchLoading}
             onClose={() => setShowAiVoiceSearchDialog(false)}
-            onSubmit={query => runAiSearch(query)}
+            onSubmit={query => runAiSearch(query, true)}
+            onDistrictChange={districts => {
+              setDistrictSearch(districts);
+              setCustomPoint(null);
+              setCustomPolygon(null);
+            }}
+            onFiltersChange={applyFilters}
+            onSubCategoriesChange={setCurrentL2}
           />
         )}
 

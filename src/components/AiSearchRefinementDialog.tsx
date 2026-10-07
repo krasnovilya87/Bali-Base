@@ -29,6 +29,8 @@ interface AiSearchRefinementDialogProps {
   onDistrictChange: (districts: string[]) => void;
   onFiltersChange: (filters: FilterState) => void;
   onSubCategoriesChange: (subCategories: string[]) => void;
+  embedded?: boolean;
+  onAnswer?: (answer: string) => void;
 }
 
 const formatNumber = (value: number) => value.toLocaleString('en-US');
@@ -93,7 +95,9 @@ export default function AiSearchRefinementDialog({
   onClose,
   onDistrictChange,
   onFiltersChange,
-  onSubCategoriesChange
+  onSubCategoriesChange,
+  embedded = false,
+  onAnswer
 }: AiSearchRefinementDialogProps) {
   const { tr } = useI18n();
   const [transportPurpose, setTransportPurpose] = useState<string | null>(() =>
@@ -376,6 +380,70 @@ export default function AiSearchRefinementDialog({
 
   const question = questions.find(item => item.options.some(option => option.count < resultCount)) || questions[0];
 
+  const applyAnswer = (option: RefineOption) => {
+    onAnswer?.(option.label);
+    option.apply();
+  };
+
+  const questionContent = (
+    <>
+      {question ? (
+        <>
+          <div className="rounded-3xl bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-[#FF7A50]">
+              <Filter className="h-4 w-4" />
+              {tr('search.refine.question')}
+            </div>
+            <p className="mt-1.5 text-sm font-extrabold leading-snug text-[#1E293B]">
+              {question.title}
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#64748B]">
+              {tr('search.refine.tapToNarrow')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {question.options.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => applyAnswer(option)}
+                disabled={option.disabled}
+                className="flex min-h-[58px] items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-left transition hover:border-[#FF7A50]/45 hover:bg-[#FF7A50]/5 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[#E5E7EB] disabled:hover:bg-white"
+              >
+                <span className="text-sm font-extrabold leading-tight text-[#1E293B]">
+                  {option.label}
+                </span>
+                <span className="shrink-0 rounded-full bg-[#2F7D69]/10 px-2.5 py-1 text-xs font-black text-[#2F7D69]">
+                  {formatNumber(option.count)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="rounded-2xl bg-white px-4 py-5 text-center shadow-sm">
+          <p className="text-sm font-extrabold text-[#1E293B]">
+            {tr('search.refine.done')}
+          </p>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF7A50] px-4 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(255,122,80,0.24)] transition hover:bg-[#E05A30] active:scale-95"
+      >
+        <Search className="h-4 w-4" />
+        {tr('search.refine.showResults', { count: formatNumber(resultCount) })}
+      </button>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-3">{questionContent}</div>;
+  }
+
   return (
     <div
       className="fixed inset-0 z-[635] flex items-end justify-center bg-[#0B1714]/55 px-3 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-[calc(env(safe-area-inset-top)+16px)] backdrop-blur-md sm:items-center sm:p-5"
@@ -409,58 +477,7 @@ export default function AiSearchRefinementDialog({
           </button>
         </div>
 
-        <div className="space-y-4 px-5 py-5">
-          {question ? (
-            <>
-              <div className="rounded-3xl bg-[#F4F7F6] px-4 py-3">
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-[#FF7A50]">
-                  <Filter className="h-4 w-4" />
-                  {tr('search.refine.question')}
-                </div>
-                <p className="mt-1.5 text-sm font-extrabold leading-snug text-[#1E293B]">
-                  {question.title}
-                </p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-[#64748B]">
-                  {tr('search.refine.tapToNarrow')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {question.options.map(option => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={option.apply}
-                    disabled={option.disabled}
-                    className="flex min-h-[58px] items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-left transition hover:border-[#FF7A50]/45 hover:bg-[#FF7A50]/5 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[#E5E7EB] disabled:hover:bg-white"
-                  >
-                    <span className="text-sm font-extrabold leading-tight text-[#1E293B]">
-                      {option.label}
-                    </span>
-                    <span className="shrink-0 rounded-full bg-[#2F7D69]/10 px-2.5 py-1 text-xs font-black text-[#2F7D69]">
-                      {formatNumber(option.count)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="rounded-2xl bg-[#F4F7F6] px-4 py-5 text-center">
-              <p className="text-sm font-extrabold text-[#1E293B]">
-                {tr('search.refine.done')}
-              </p>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FF7A50] px-4 text-sm font-extrabold text-white shadow-[0_12px_26px_rgba(255,122,80,0.24)] transition hover:bg-[#E05A30] active:scale-95"
-          >
-            <Search className="h-4 w-4" />
-            {tr('search.refine.showResults', { count: formatNumber(resultCount) })}
-          </button>
-        </div>
+        <div className="space-y-4 bg-[#F4F7F6] px-5 py-5">{questionContent}</div>
       </div>
     </div>
   );
