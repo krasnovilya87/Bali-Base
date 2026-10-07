@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { AudioLines, Bot, CheckCircle2, LoaderCircle, Mic, Send, Square, X } from 'lucide-react';
+import { AudioLines, Bot, CheckCircle2, LoaderCircle, Mic, Plus, Send, Square, X } from 'lucide-react';
 import { LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
 import { FilterState, Listing } from '../types';
@@ -12,7 +12,6 @@ interface AiVoiceSearchDialogProps {
   currentL1: string;
   currentL2: string[];
   sourceQuery: string;
-  searchContext: string;
   districtSearch: string[];
   filters: FilterState;
   results: Listing[];
@@ -29,7 +28,6 @@ export default function AiVoiceSearchDialog({
   currentL1,
   currentL2,
   sourceQuery,
-  searchContext,
   districtSearch,
   filters,
   results,
@@ -53,6 +51,7 @@ export default function AiVoiceSearchDialog({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimeoutRef = useRef<number | null>(null);
   const hasSubmittedRef = useRef(false);
+  const transcriptionGenerationRef = useRef(0);
 
   const clearRecordingTimeout = () => {
     if (recordingTimeoutRef.current !== null) {
@@ -83,11 +82,13 @@ export default function AiVoiceSearchDialog({
 
   const transcribeAudio = async (audio: Blob) => {
     if (audio.size <= 0) return;
+    const generation = transcriptionGenerationRef.current;
     setIsTranscribing(true);
     setError('');
 
     try {
       const result = await requestAiVoiceTranscription(audio);
+      if (generation !== transcriptionGenerationRef.current) return;
       const normalizedTranscript = normalizeVehicleModelSearchQuery(result.transcript, {
         category: currentL1,
         subCategories: currentL2
@@ -99,14 +100,19 @@ export default function AiVoiceSearchDialog({
         setError(tr('search.voice.empty'));
       }
     } catch {
-      setError(tr('search.voice.transcriptionError'));
+      if (generation === transcriptionGenerationRef.current) {
+        setError(tr('search.voice.transcriptionError'));
+      }
     } finally {
-      setIsTranscribing(false);
+      if (generation === transcriptionGenerationRef.current) {
+        setIsTranscribing(false);
+      }
     }
   };
 
   const startListening = async () => {
     if (isSearching || isListening || isTranscribing) return;
+    const generation = transcriptionGenerationRef.current;
     clearRecordingTimeout();
     setError('');
     hasSubmittedRef.current = false;
@@ -118,6 +124,10 @@ export default function AiVoiceSearchDialog({
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (generation !== transcriptionGenerationRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       const preferredType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm';
@@ -136,7 +146,11 @@ export default function AiVoiceSearchDialog({
         stopAudioStream();
         const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         audioChunksRef.current = [];
-        if (audio.size > 0 && !hasSubmittedRef.current) {
+        if (
+          audio.size > 0 &&
+          !hasSubmittedRef.current &&
+          generation === transcriptionGenerationRef.current
+        ) {
           void transcribeAudio(audio);
         }
       };
@@ -158,6 +172,22 @@ export default function AiVoiceSearchDialog({
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
+  };
+
+  const startNewDialog = () => {
+    transcriptionGenerationRef.current += 1;
+    hasSubmittedRef.current = true;
+    clearRecordingTimeout();
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    stopAudioStream();
+    setIsListening(false);
+    setIsTranscribing(false);
+    setSubmittedMessages([]);
+    setTranscript('');
+    setError('');
+    window.requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
   };
 
   useEffect(() => {
@@ -230,20 +260,30 @@ export default function AiVoiceSearchDialog({
         className="flex h-full w-full flex-col overflow-hidden bg-white shadow-[0_30px_90px_rgba(11,23,20,0.34)] animate-scale-up sm:h-[min(760px,86vh)] sm:max-h-[86vh] sm:max-w-md sm:rounded-[28px] sm:border sm:border-white/50"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:pt-4">
-          <div>
-            <h3 className="font-display text-base font-extrabold text-[#1E293B]">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-display text-base font-extrabold text-[#1E293B]">
               {tr('search.voice.title')}
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F7F6] text-[#1E293B] transition hover:text-[#FF7A50] active:scale-95"
-            title={tr('common.close')}
-            aria-label={tr('common.close')}
-          >
-            <X className="h-4.5 w-4.5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={startNewDialog}
+              className="flex h-9 items-center justify-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[11px] font-extrabold text-[#1E293B] transition hover:border-[#FF7A50]/40 hover:text-[#FF7A50] active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+              {tr('search.voice.newDialog')}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F7F6] text-[#1E293B] transition hover:text-[#FF7A50] active:scale-95"
+              title={tr('common.close')}
+              aria-label={tr('common.close')}
+            >
+              <X className="h-4.5 w-4.5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-5 py-5">
@@ -269,7 +309,6 @@ export default function AiVoiceSearchDialog({
                       <div className="min-w-0 text-sm font-semibold leading-relaxed text-[#1E293B]">
                         <p>
                           {tr('search.voice.resultsSummary', {
-                            context: searchContext,
                             count: results.length.toLocaleString(activeLanguage)
                           })}
                         </p>
