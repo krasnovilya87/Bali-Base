@@ -1666,6 +1666,7 @@ const ru: TranslationDictionary = {
   "wizard.validationDuplicateTitleType": "Объявление с таким названием и типом объекта уже существует.",
   "wizard.validationRoomCount": "Введите корректное количество комнат от 1 до 50.",
   "wizard.validationServicePhotos": "Добавьте минимум одно фото услуги.",
+  "wizard.validationInvestmentPhotos": "Добавьте минимум одно фото инвестиционного объявления.",
   "wizard.validationPhotosUploading": "Фото еще загружается. Подождите окончания загрузки фото.",
   "wizard.validationPhotoLocal": "Одно из фото сохранено только как локальный предпросмотр. Загрузите его снова, чтобы получить постоянную ссылку.",
   "wizard.validationPhotoBroken": "Одно из фото не загружается. Удалите его и загрузите изображение снова.",

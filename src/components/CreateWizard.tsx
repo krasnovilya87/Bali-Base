@@ -662,6 +662,10 @@ export default function CreateWizard({
         if (photoUrls.length < 1) return tr('wizard.validationServicePhotos');
         return '';
       }
+      if (category === 'investments') {
+        if (photoUrls.length < 1) return tr('wizard.validationInvestmentPhotos');
+        return '';
+      }
       if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
         return tr('wizard.validationPhotos');
       }
@@ -984,6 +988,10 @@ export default function CreateWizard({
     }
 
     if (currentStepKey === 'photos') {
+      if (category === 'investments' && photoUrls.length < 1) {
+        showValidationPopup(tr('wizard.validationInvestmentPhotos'));
+        return;
+      }
       if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
         showValidationPopup(tr('wizard.validationPhotos'));
         return;
@@ -1203,7 +1211,7 @@ export default function CreateWizard({
   };
 
   const hasRequiredPublishablePhotos = (photoPublishState: PhotoPublishState) =>
-    category === 'services'
+    category === 'services' || category === 'investments'
       ? photoPublishState.photoUrls.some(url => isPublishablePhotoUrl(url))
       :
     requiredPhotoSlots.every(slot =>

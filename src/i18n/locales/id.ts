@@ -1537,6 +1537,7 @@ const id: TranslationDictionary = {
   "wizard.validationRoomCount": "Masukkan jumlah kamar yang valid dari 1 sampai 50.",
   "wizard.validationPhotosUploading": "Foto masih diunggah. Tunggu hingga unggahan foto selesai.",
   "wizard.validationServicePhotos": "Please add at least one service photo.",
+  "wizard.validationInvestmentPhotos": "Tambahkan setidaknya satu foto iklan investasi.",
   "wizard.validationPhotoLocal": "Salah satu foto hanya berupa pratinjau lokal. Unggah lagi agar mendapat URL permanen.",
   "wizard.validationPhotoBroken": "Salah satu foto tidak dapat dimuat. Hapus dan unggah gambar lagi.",
   "wizard.validationPhotoQuality": "Foto harus berukuran minimal {width}x{height}px.",

@@ -1499,6 +1499,7 @@ const de: TranslationDictionary = {
   "wizard.validationRoomCount": "Geben Sie eine gueltige Zimmeranzahl von 1 bis 50 ein.",
   "wizard.validationPhotosUploading": "Das Foto wird noch hochgeladen. Bitte warten, bis der Foto-Upload abgeschlossen ist.",
   "wizard.validationServicePhotos": "Please add at least one service photo.",
+  "wizard.validationInvestmentPhotos": "Bitte fügen Sie mindestens ein Foto des Investitionsangebots hinzu.",
   "wizard.validationPhotoLocal": "Eines der Fotos ist nur eine lokale Vorschau. Laden Sie es erneut hoch, damit eine dauerhafte URL erstellt wird.",
   "wizard.validationPhotoBroken": "Eines der Fotos kann nicht geladen werden. Loeschen Sie es und laden Sie das Bild erneut hoch.",
   "wizard.validationPhotoQuality": "Fotos muessen mindestens {width}x{height}px gross sein.",

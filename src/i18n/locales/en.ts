@@ -1635,6 +1635,7 @@ const en: TranslationDictionary = {
   "wizard.validationAddress": "Please enter the exact property address.",
   "wizard.validationPhotos": "Please assign at least one photo for each required category.",
   "wizard.validationServicePhotos": "Please add at least one service photo.",
+  "wizard.validationInvestmentPhotos": "Please add at least one investment listing photo.",
   "wizard.validationYear": "Please choose or enter the approximate build/renovation year.",
   "wizard.validationMapPoint": "Please choose an object or point on the map to save exact coordinates.",
   "wizard.validationPopupTitle": "Check the listing",
