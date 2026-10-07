@@ -2694,22 +2694,13 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => requireAuth('auth.reason.myListings', () => {
-                    setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
-                    setShowMyAddsListing(true);
-                  })}
-                  className="relative -mt-4 flex h-[58px] w-[58px] place-self-center items-center justify-center rounded-full border border-white/55 bg-[#FF7A50]/95 text-white shadow-[0_6px_14px_rgba(255,122,80,0.26)] backdrop-blur-[2px] transition active:scale-95"
-                  aria-label={tr('nav.myListings')}
-                  title={tr('nav.myListings')}
-                  id="mobile-create-l-btn"
+                  onClick={openAiVoiceSearchDialog}
+                  disabled={isAiSearchLoading}
+                  className="relative -mt-4 flex h-[58px] w-[58px] place-self-center items-center justify-center rounded-full border border-white/55 bg-[#FF7A50]/95 text-white shadow-[0_6px_14px_rgba(255,122,80,0.26)] backdrop-blur-[2px] transition active:scale-95 disabled:cursor-wait disabled:opacity-70"
+                  aria-label={tr('search.ai')}
+                  title={tr('search.ai')}
                 >
-                  {newBookingRequests.length > 0 ? (
-                    <span className="text-[18px] font-black leading-none">
-                      {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
-                    </span>
-                  ) : (
-                    <LayoutGrid className="h-7 w-7" strokeWidth={1.75} />
-                  )}
+                  <Sparkles className={`h-7 w-7 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={1.75} />
                 </button>
 
                 <button
@@ -2731,13 +2722,22 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={openAiVoiceSearchDialog}
-                  disabled={isAiSearchLoading}
+                  onClick={() => requireAuth('auth.reason.myListings', () => {
+                    setInitialBookingsListingId(newBookingRequestListingIds.length === 1 ? newBookingRequestListingIds[0] : null);
+                    setShowMyAddsListing(true);
+                  })}
                   className={mobileNavButtonClass}
-                  aria-label={tr('search.ai')}
-                  title={tr('search.ai')}
+                  aria-label={tr('nav.myListings')}
+                  title={tr('nav.myListings')}
+                  id="mobile-create-l-btn"
                 >
-                  <Sparkles className={`h-[22px] w-[22px] text-[#FF7A50] ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={1.8} />
+                  {newBookingRequests.length > 0 ? (
+                    <span className="text-[16px] font-black leading-none text-[#FF7A50]">
+                      {newBookingRequests.length > 99 ? '99+' : newBookingRequests.length}
+                    </span>
+                  ) : (
+                    <LayoutGrid className="h-[22px] w-[22px] text-[#FF7A50]" strokeWidth={1.8} />
+                  )}
                 </button>
               </div>
             </div>
