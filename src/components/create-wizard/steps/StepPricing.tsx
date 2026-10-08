@@ -73,6 +73,7 @@ const StepPricing: React.FC<StepPricingProps> = ({
   const platformDropdownRef = useRef<HTMLDivElement>(null);
   const isServicePricing = category === 'services';
   const usesSinglePrice = ['investments', 'ads', 'afisha', 'life'].includes(category);
+  const usesCorrectedSinglePriceShape = ['investments', 'afisha', 'life'].includes(category);
   const isLifeCommunityPricing = category === 'life' && subCategory !== 'life_jobs';
 
   useEffect(() => {
@@ -119,7 +120,9 @@ const StepPricing: React.FC<StepPricingProps> = ({
           <label htmlFor="single-listing-price" className="block text-xs font-semibold tracking-wider text-[#1E293B]">
             {tr('wizard.listingPrice')}
           </label>
-          <div className="flex min-h-12 items-center rounded-2xl bg-white">
+          <div className={usesCorrectedSinglePriceShape
+            ? 'relative isolate flex h-12 items-center overflow-hidden rounded-2xl border border-transparent bg-white focus-within:border-[#FF7A50] focus-within:ring-2 focus-within:ring-[#FF7A50]/15'
+            : 'flex min-h-12 items-center rounded-2xl bg-white'}>
             <input
               id="single-listing-price"
               type="text"
@@ -129,7 +132,9 @@ const StepPricing: React.FC<StepPricingProps> = ({
                 const digits = event.target.value.replace(/\D/g, '');
                 setPricePerDay(digits ? parseInt(digits, 10) : 0);
               }}
-              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-mono font-bold text-[#1E293B] outline-none"
+              className={usesCorrectedSinglePriceShape
+                ? 'relative z-0 block h-full min-w-0 flex-1 appearance-none border-0 bg-transparent px-4 py-0 text-sm font-mono font-bold leading-none text-[#1E293B] outline-none ring-0'
+                : 'min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-mono font-bold text-[#1E293B] outline-none'}
             />
             <span className="shrink-0 px-4 text-xs font-bold text-[#64748B]">IDR</span>
           </div>
@@ -145,16 +150,20 @@ const StepPricing: React.FC<StepPricingProps> = ({
           <label className="text-xs font-semibold font-sans text-[#1E293B] tracking-wider block mb-1">
             {tr(isServicePricing ? 'wizard.servicePrice' : 'wizard.priceDay')}
           </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={formatPriceWithSpaces(pricePerDay)}
-            onChange={event => {
-              const digits = event.target.value.replace(/\D/g, '');
-              setPricePerDay(digits ? parseInt(digits, 10) : 0);
-            }}
-            className="w-full bg-white border-0 p-2.5 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-0"
-          />
+          <div className={isServicePricing ? 'relative isolate h-12 overflow-hidden rounded-2xl border border-transparent bg-white focus-within:border-[#FF7A50] focus-within:ring-2 focus-within:ring-[#FF7A50]/15' : ''}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formatPriceWithSpaces(pricePerDay)}
+              onChange={event => {
+                const digits = event.target.value.replace(/\D/g, '');
+                setPricePerDay(digits ? parseInt(digits, 10) : 0);
+              }}
+              className={isServicePricing
+                ? 'relative z-0 block h-full w-full appearance-none border-0 bg-transparent px-4 py-0 text-sm font-mono font-bold leading-none text-[#1E293B] outline-none ring-0'
+                : 'w-full bg-white border-0 p-2.5 rounded-2xl text-xs font-mono font-bold focus:outline-none focus:ring-0'}
+            />
+          </div>
         </div>
 
         {!isServicePricing && (

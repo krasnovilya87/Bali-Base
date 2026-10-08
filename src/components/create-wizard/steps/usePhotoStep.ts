@@ -69,7 +69,7 @@ export const usePhotoStep = ({ initialListing, category, subCategory, uploadNami
   const isMotorcyclePhotoFlow = category === 'transport' && subCategory === 'motorcycles';
   const isScooterPhotoFlow = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
   const isServicePhotoFlow = category === 'services';
-  const isUncategorizedPhotoFlow = category === 'afisha' || category === 'life' || category === 'investments';
+  const isUncategorizedPhotoFlow = category === 'ads' || category === 'afisha' || category === 'life' || category === 'investments';
   const activePhotoSlotConfig = isCarPhotoFlow
     ? CAR_PHOTO_SLOT_CONFIG
     : isMotorcyclePhotoFlow

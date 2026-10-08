@@ -90,7 +90,7 @@ const StepPhotos: React.FC<StepPhotosProps> = ({
   setMainPhoto
 }) => {
   const { tr } = useI18n();
-  const isUncategorizedPhotoFlow = category === 'afisha' || category === 'life' || category === 'investments';
+  const isUncategorizedPhotoFlow = category === 'ads' || category === 'afisha' || category === 'life' || category === 'investments';
   const [isPhoneUploadDevice, setIsPhoneUploadDevice] = useState(false);
   const [activeCameraSlotId, setActiveCameraSlotId] = useState<PhotoSlotId | null>(null);
   const [cameraError, setCameraError] = useState('');

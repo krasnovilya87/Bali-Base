@@ -38,6 +38,7 @@ import {
 } from '../config/carCatalog';
 import { getMissingClassifiedSpecialFieldKey } from '../config/classifiedSpecial';
 import type { ClassifiedSpecialValue } from '../config/classifiedSpecial';
+import { hasClassifiedCatalog } from './create-wizard/steps/features/ClassifiedCatalogWizard';
 import { AFISHA_PUBLICATION_DAYS, EVENT_COMMON_FIELD_IDS } from '../config/eventSpecial';
 import { getLifeFields, LIFE_EXPENSE_PER_PERSON_KEY, LIFE_FIELDS, LIFE_WEEKDAYS, normalizeLifeSubCategory } from '../config/lifeSpecial';
 import { INVESTMENT_SUBTYPES } from '../config/investmentSpecial';
@@ -591,6 +592,7 @@ export default function CreateWizard({
   const isLocationRequired = ['housing', 'transport', 'investments'].includes(category);
   const isDetailedTransportWizard = category === 'transport' && isDetailedTransportSubcategory(subCategory);
   const requiresVehicleModel = isDetailedTransportWizard;
+  const isMarketCatalog = category === 'ads' && hasClassifiedCatalog(subCategory);
   const supportsSellerType = true;
   const stepLabels = wizardFlow.map(key => tr(stepLabelKeyByStep[key]));
   const currentStepKey = getWizardStepKey(step, category, subCategory);
@@ -612,6 +614,12 @@ export default function CreateWizard({
     }
 
     if (targetStepKey === 'title') {
+      if (isMarketCatalog && !String(classifiedAttributes.classified_brand || '').trim()) {
+        return tr('filters.classified.special.validation', { field: tr('filters.classified.special.field.classified_brand') });
+      }
+      if (isMarketCatalog && !String(classifiedAttributes.classified_model || '').trim()) {
+        return tr('filters.classified.special.validation', { field: tr('filters.classified.special.field.classified_model') });
+      }
       if (requiresVehicleModel && !getTransportModelLabel(subCategory, vehicleModel)) {
         return tr('wizard.validationTransportModel');
       }
@@ -665,6 +673,9 @@ export default function CreateWizard({
       if (category === 'investments') {
         if (photoUrls.length < 1) return tr('wizard.validationInvestmentPhotos');
         return '';
+      }
+      if (category === 'ads' && photoUrls.length < 1) {
+        return tr('wizard.validationPhotos');
       }
       if (requiredPhotoSlots.some(slot => getAssignedPhotoUrls(slot.id).length < 1)) {
         return tr('wizard.validationPhotos');
@@ -1350,6 +1361,9 @@ export default function CreateWizard({
       setVehicleEngineDisplacementCc,
       vehicleColor,
       setVehicleColor,
+      classifiedProductType,
+      classifiedAttributes,
+      setClassifiedAttributes,
       vehicleCondition,
       setVehicleCondition,
       vehicleDriverOption,

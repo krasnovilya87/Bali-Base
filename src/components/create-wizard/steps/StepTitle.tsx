@@ -4,6 +4,10 @@ import { ROOM_TYPE_LABELS, UNIT_TYPE_OPTIONS } from '../constants';
 import { useI18n } from '../../../i18nContext';
 import { getGoogleMapsSearchText, isGoogleMapsLink } from './useLocationStep';
 import FeatureScooterDetails from './features/FeatureScooterDetails';
+import ClassifiedCatalogWizard, { hasClassifiedCatalog } from './features/ClassifiedCatalogWizard';
+import ClassifiedColorPicker from './features/ClassifiedColorPicker';
+import { getVisibleClassifiedSpecialFields } from '../../../config/classifiedSpecial';
+import type { ClassifiedSpecialValue } from '../../../config/classifiedSpecial';
 
 type RoomType = keyof typeof ROOM_TYPE_LABELS;
 type UnitType = typeof UNIT_TYPE_OPTIONS[number];
@@ -31,6 +35,9 @@ type StepTitleProps = {
   setVehicleEngineDisplacementCc?: React.Dispatch<React.SetStateAction<number | undefined>>;
   vehicleColor?: string;
   setVehicleColor?: React.Dispatch<React.SetStateAction<string>>;
+  classifiedProductType?: string;
+  classifiedAttributes?: Record<string, ClassifiedSpecialValue>;
+  setClassifiedAttributes?: React.Dispatch<React.SetStateAction<Record<string, ClassifiedSpecialValue>>>;
   mapSuggestions?: any[];
   showSuggestionsDropdown?: boolean;
   setShowSuggestionsDropdown?: (v: boolean) => void;
@@ -64,6 +71,9 @@ const StepTitle: React.FC<StepTitleProps> = ({
   setVehicleEngineDisplacementCc,
   vehicleColor = '',
   setVehicleColor,
+  classifiedProductType = '',
+  classifiedAttributes = {},
+  setClassifiedAttributes,
   mapSuggestions,
   showSuggestionsDropdown,
   setShowSuggestionsDropdown,
@@ -76,6 +86,13 @@ const StepTitle: React.FC<StepTitleProps> = ({
   const { tr } = useI18n();
   const showsUnitTypeAndCount = category === 'housing' && ['private_suite', 'entire_place'].includes(subCategory);
   const isDetailedTransportWizard = category === 'transport' && ['scooters', 'motorcycles', 'cars'].includes(subCategory);
+  const isMarketCatalog = category === 'ads' && hasClassifiedCatalog(subCategory);
+  const classifiedBrand = typeof classifiedAttributes.classified_brand === 'string' ? classifiedAttributes.classified_brand : '';
+  const classifiedModel = typeof classifiedAttributes.classified_model === 'string' ? classifiedAttributes.classified_model : '';
+  const marketColorField = isMarketCatalog
+    ? getVisibleClassifiedSpecialFields(subCategory, classifiedProductType ? [classifiedProductType] : [])
+      .find(field => field.id === 'device_color' || field.id === 'vehicle_color')
+    : undefined;
   const [roomCountInput, setRoomCountInput] = React.useState(roomCount === undefined ? '' : String(roomCount));
 
   React.useEffect(() => {
@@ -85,6 +102,25 @@ const StepTitle: React.FC<StepTitleProps> = ({
   React.useEffect(() => {
     if (category === 'housing' && subCategory === 'private_room' && roomCount === undefined) setRoomCount(1);
   }, [category, roomCount, setRoomCount, subCategory]);
+
+  React.useEffect(() => {
+    if (!isMarketCatalog) return;
+    const brand = classifiedBrand.trim();
+    const model = classifiedModel.trim();
+    const generatedTitle = brand && model.toLocaleLowerCase().startsWith(`${brand.toLocaleLowerCase()} `)
+      ? model
+      : [brand, model].filter(Boolean).join(' ');
+    setTitle(generatedTitle.slice(0, 60));
+  }, [classifiedBrand, classifiedModel, isMarketCatalog, setTitle]);
+
+  const setClassifiedAttribute = (fieldId: string, value: ClassifiedSpecialValue | '') => {
+    setClassifiedAttributes?.(current => {
+      const next = { ...current };
+      if (value === '') delete next[fieldId];
+      else next[fieldId] = value;
+      return next;
+    });
+  };
 
   const handleRoomCountInputChange = (value: string) => {
     const digitsOnly = value.replace(/\D/g, '');
@@ -119,6 +155,23 @@ const StepTitle: React.FC<StepTitleProps> = ({
           vehicleColor={vehicleColor}
           setVehicleColor={setVehicleColor}
         />
+      ) : isMarketCatalog && setClassifiedAttributes ? (
+        <section className="pl rounded-3xl p-5 space-y-5">
+          <ClassifiedCatalogWizard
+            subCategory={subCategory}
+            brand={classifiedBrand}
+            model={classifiedModel}
+            onBrandChange={value => setClassifiedAttribute('classified_brand', value)}
+            onModelChange={value => setClassifiedAttribute('classified_model', value)}
+          />
+          {marketColorField && (
+            <ClassifiedColorPicker
+              field={marketColorField}
+              value={classifiedAttributes[marketColorField.id]}
+              onChange={value => setClassifiedAttribute(marketColorField.id, value)}
+            />
+          )}
+        </section>
       ) : (
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-xs">

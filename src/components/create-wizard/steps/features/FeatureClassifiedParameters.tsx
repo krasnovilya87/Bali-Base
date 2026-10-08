@@ -36,8 +36,9 @@ import {
   getMarketNumberRangeSpec,
   type RangeSpec
 } from '../../../classified/ClassifiedRangeFilter';
-import ClassifiedCatalogWizard, { hasClassifiedCatalog } from './ClassifiedCatalogWizard';
+import { hasClassifiedCatalog } from './ClassifiedCatalogWizard';
 import ClassifiedValueSlider from '../../../classified/ClassifiedValueSlider';
+import ClassifiedColorPicker from './ClassifiedColorPicker';
 
 type FeatureClassifiedParametersProps = {
   classifiedCondition: Listing['classifiedCondition'] | '';
@@ -62,11 +63,6 @@ const pillClass = 'pl pl-interactive transport-pill inline-flex min-h-10 items-c
 const surfTileClass = 'pl pl-interactive flex h-24 w-24 shrink-0 flex-col items-center rounded-lg border px-2 py-2 text-center text-[10px] font-extrabold leading-tight transition cursor-pointer select-none';
 const activePillClass = 'selected border-[#FF7A50] bg-[#FF7A50] text-white shadow-[0_10px_18px_rgba(255,122,80,0.18)]';
 const inactivePillClass = 'border-[#E5E7EB] bg-white text-[#1E293B] hover:border-[#FF7A50] hover:text-[#FF7A50]';
-const vehicleColorSwatches: Record<string, string> = {
-  black: '#111827', white: '#FFFFFF', gray: '#64748B', silver: '#C0C0C0',
-  gold: '#D9AD55', blue: '#2563EB', red: '#EF4444', green: '#16A34A', yellow: '#FACC15',
-  pink: '#EC4899', orange: '#F97316', brown: '#92400E', beige: '#D6C6A5', purple: '#9333EA'
-};
 const surfboardDimensionFieldIds = new Set([
   'surf_length_feet',
   'surf_length_inches',
@@ -205,32 +201,12 @@ const FeatureClassifiedParameters: React.FC<FeatureClassifiedParametersProps> = 
 
     if (field.id === 'vehicle_color' || field.id === 'device_color') {
       return (
-        <div key={field.id} className="space-y-3">
-          <span className={fieldTitleClass}>{tr(field.labelKey)}</span>
-          <div className="flex flex-wrap gap-3">
-            {field.options?.map(item => {
-              const isActive = value === item.value;
-              const colorLabel = tr(item.labelKey);
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  title={colorLabel}
-                  aria-label={colorLabel}
-                  aria-pressed={isActive}
-                  onClick={() => setSpecialAttribute(field.id, item.value)}
-                  className={`pl pl-interactive relative h-10 w-10 shrink-0 rounded-full border bg-white transition ${isActive ? 'border-[#FF7A50] ring-4 ring-[#FF7A50]/18' : 'border-white ring-1 ring-[#1E293B]/10 hover:ring-[#FF7A50]/45'}`}
-                >
-                  <span
-                    className="absolute inset-1 rounded-full border border-[#1E293B]/10"
-                    style={{ background: item.value === 'other' ? 'conic-gradient(#EF4444, #FACC15, #16A34A, #2563EB, #9333EA, #EF4444)' : vehicleColorSwatches[item.value] }}
-                  />
-                  {isActive && <Check className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-[#FF7A50] p-0.5 text-white ring-2 ring-white" strokeWidth={3} />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <ClassifiedColorPicker
+          key={field.id}
+          field={field}
+          value={value}
+          onChange={nextValue => setSpecialAttribute(field.id, nextValue)}
+        />
       );
     }
 
@@ -319,21 +295,13 @@ const FeatureClassifiedParameters: React.FC<FeatureClassifiedParametersProps> = 
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <section className="pl rounded-3xl p-5 space-y-5">
-        {hasCatalog ? (
-          <ClassifiedCatalogWizard
-            subCategory={subCategory}
-            brand={typeof classifiedAttributes.classified_brand === 'string' ? classifiedAttributes.classified_brand : ''}
-            model={typeof classifiedAttributes.classified_model === 'string' ? classifiedAttributes.classified_model : ''}
-            onBrandChange={value => setSpecialAttribute('classified_brand', value)}
-            onModelChange={value => setSpecialAttribute('classified_model', value)}
-          />
-        ) : (
-          CLASSIFIED_GENERIC_SPECIAL_FIELDS
+      {!hasCatalog && (
+        <section className="pl rounded-3xl p-5 space-y-5">
+          {CLASSIFIED_GENERIC_SPECIAL_FIELDS
             .filter(field => field.id !== 'classified_purchase_year')
-            .map(renderSpecialField)
-        )}
-      </section>
+            .map(renderSpecialField)}
+        </section>
+      )}
 
       {specialConfig && (
         <section className="pl rounded-3xl p-5 space-y-5">
@@ -377,6 +345,7 @@ const FeatureClassifiedParameters: React.FC<FeatureClassifiedParametersProps> = 
           {(classifiedProductType || specialConfig.productTypes.length === 0) && (
             <div className="space-y-5">
               {visibleSpecialFields.map(field => {
+                if (hasCatalog && (field.id === 'device_color' || field.id === 'vehicle_color')) return null;
                 if (subCategory === 'surfing' && classifiedProductType === 'board') {
                   if (
                     field.id === 'surf_tail_shape'

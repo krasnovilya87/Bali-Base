@@ -54,6 +54,9 @@ const WizardStepContent: React.FC<WizardStepContentProps> = (p) => {
           setVehicleEngineDisplacementCc={categoryState.setVehicleEngineDisplacementCc}
           vehicleColor={categoryState.vehicleColor}
           setVehicleColor={categoryState.setVehicleColor}
+          classifiedProductType={categoryState.classifiedProductType}
+          classifiedAttributes={categoryState.classifiedAttributes}
+          setClassifiedAttributes={categoryState.setClassifiedAttributes}
           mapSuggestions={locationState.mapSuggestions}
           showSuggestionsDropdown={locationState.showSuggestionsDropdown}
           setShowSuggestionsDropdown={locationState.setShowSuggestionsDropdown}
