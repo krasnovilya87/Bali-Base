@@ -972,7 +972,7 @@ export function useAdminDashboardController({
     setApproveAllProgress({ done: 0, total: queue.length });
     for (const matched of queue) {
       try {
-        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(buildApprovedListing(matched));
+        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(buildApprovedListing(matched), listings);
         await onUpdateListing(withNearby);
         approved += 1;
         if (nearby === 'skipped_quota' || nearby === 'skipped_error') nearbySkipped += 1;
@@ -1013,7 +1013,7 @@ export function useAdminDashboardController({
         isVerified: matched.isVerified ?? false
       };
       try {
-        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(updated);
+        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(updated, listings);
         await onUpdateListing(withNearby);
         const nearbyNote = nearby === 'skipped_quota'
           ? ' Nearby places skipped: Google free quota is above 80%.'
