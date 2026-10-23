@@ -5,7 +5,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../auth/AuthContext';
 import { CURRENCIES, CurrencyKey } from '../app/currency';
-import { LANGUAGE_STORAGE_KEY } from '../app/language';
+import { storeLanguage } from '../app/language';
 import { LANGUAGES, LanguageCode } from '../i18n';
 import { useI18n } from '../i18nContext';
 import { uploadImageToImageKit } from '../utils/imageUpload';
@@ -127,11 +127,7 @@ export default function ProfileModal({
   }, [displayName, email, user?.displayName, user?.uid]);
 
   const updateLanguage = (language: LanguageCode) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-      document.documentElement.lang = language.toLowerCase();
-      window.dispatchEvent(new CustomEvent('bali-base-language-updated', { detail: { language } }));
-    }
+    storeLanguage(language);
     setActiveLanguage(language);
     setShowLanguageDrop(false);
   };
@@ -200,6 +196,7 @@ export default function ProfileModal({
 
       setPhotoFile(null);
       setPhotoURL(nextPhotoURL);
+      onClose();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : tr('profile.saveError'));
     } finally {

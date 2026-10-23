@@ -166,6 +166,7 @@ export function useAdminDashboardController({
   const [aiSearchStats, setAiSearchStats] = useState<AiSearchUsageStats | null>(null);
   const [googleUsage, setGoogleUsage] = useState<GoogleUsageStats | null>(null);
   const [googleUsageError, setGoogleUsageError] = useState(false);
+  const [approveAllProgress, setApproveAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [districtOptions] = useState<string[]>(() => getDistrictNamesFromGeoJSONSync());
 
   const refreshGooglePlacesQuota = () => {
@@ -961,6 +962,44 @@ export function useAdminDashboardController({
   };
 
   // Listing Approved controls
+  // Approves the whole queue one by one; nearby spots follow the same quota guard as single approval.
+  const handleApproveAllModeration = async () => {
+    if (!moderationItems.length || approveAllProgress) return;
+    const queue = [...moderationItems];
+    let approved = 0;
+    let failed = 0;
+    let nearbySkipped = 0;
+    setApproveAllProgress({ done: 0, total: queue.length });
+    for (const matched of queue) {
+      try {
+        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(buildApprovedListing(matched));
+        await onUpdateListing(withNearby);
+        approved += 1;
+        if (nearby === 'skipped_quota' || nearby === 'skipped_error') nearbySkipped += 1;
+      } catch (err) {
+        console.error('Failed to approve listing', matched.id, err);
+        failed += 1;
+      }
+      setApproveAllProgress({ done: approved + failed, total: queue.length });
+    }
+    setApproveAllProgress(null);
+    showToast(`Approved ${approved} of ${queue.length}.`
+      + (failed ? ` Failed: ${failed}.` : '')
+      + (nearbySkipped ? ` Nearby places skipped: ${nearbySkipped}.` : ''));
+    // Each save updated local state from the same snapshot; reload to show the real queue.
+    setTimeout(() => window.location.reload(), 1500);
+  };
+
+  const buildApprovedListing = (matched: Listing): Listing => ({
+    ...matched,
+    status: 'active',
+    isApproved: true,
+    expirationDate: matched.category === 'afisha'
+      ? getAfishaExpirationDate(matched.classifiedAttributes?.afisha_publication_term)
+      : matched.expirationDate,
+    isVerified: matched.isVerified ?? false
+  });
+
   const handleApprove = async (listingId: string) => {
     const matched = listings.find(l => l.id === listingId);
     if (matched) {
@@ -1094,6 +1133,8 @@ export function useAdminDashboardController({
     handleActivateAllListings,
     moderationItems,
     handleDeleteAllModeration,
+    handleApproveAllModeration,
+    approveAllProgress,
     handleApprove,
     handleOpenReject,
     tickets,

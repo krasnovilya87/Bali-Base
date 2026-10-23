@@ -10,8 +10,9 @@ import AdminDashboard from './components/AdminDashboard';
 import { THEME } from './theme';
 import { DEFAULT_LANGUAGE, LanguageCode, loadTranslations, t } from './i18n';
 import { I18nProvider } from './i18nContext';
-import { CURRENCIES, CurrencyKey } from './app/currency';
+import { CURRENCIES, CurrencyKey, getStoredCurrency, storeCurrency } from './app/currency';
 import { getDeviceLanguage } from './app/language';
+import CurrencyLanguageControls from './app/components/CurrencyLanguageControls';
 import {
   ADS_L3_SUBCATEGORIES,
   getMenuCategoryImage,
@@ -643,7 +644,10 @@ export default function App() {
   }, [isMapFullscreen]);
 
   // Localization and Pricing currencies multipliers
-  const [activeCurrency, setActiveCurrency] = useState<CurrencyKey>('IDR');
+  const [activeCurrency, setActiveCurrency] = useState<CurrencyKey>(() => getStoredCurrency());
+  useEffect(() => {
+    storeCurrency(activeCurrency);
+  }, [activeCurrency]);
   const [activeLanguage, setActiveLanguage] = useState<LanguageCode>(() => getDeviceLanguage());
   const [, setI18nVersion] = useState(0);
   const tr = (key: string, params?: Record<string, string | number>) => t(activeLanguage, key, params);
@@ -1757,6 +1761,14 @@ export default function App() {
                     <span>{tr('search.smart')}</span>
                   </button>
 
+                  <CurrencyLanguageControls
+                    activeCurrency={activeCurrency}
+                    activeLanguage={activeLanguage}
+                    tr={tr}
+                    setActiveCurrency={setActiveCurrency}
+                    setActiveLanguage={setActiveLanguage}
+                  />
+
                   <div className="relative shrink-0 md:hidden">
                     <button
                       type="button"
@@ -1984,6 +1996,14 @@ export default function App() {
                     <Mic className={`h-4 w-4 ${isAiSearchLoading ? 'animate-pulse' : ''}`} strokeWidth={2} />
                     <span>{tr('search.smart')}</span>
                   </button>
+
+                  <CurrencyLanguageControls
+                    activeCurrency={activeCurrency}
+                    activeLanguage={activeLanguage}
+                    tr={tr}
+                    setActiveCurrency={setActiveCurrency}
+                    setActiveLanguage={setActiveLanguage}
+                  />
                 </div>
 
                 {/* CONTROLS AREA (PLACE LISTING / PERSONAL CABINET) */}

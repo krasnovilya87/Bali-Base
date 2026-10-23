@@ -7,3 +7,23 @@ export const CURRENCIES = {
 };
 
 export type CurrencyKey = keyof typeof CURRENCIES;
+
+export const CURRENCY_STORAGE_KEY = 'bali_base_currency';
+
+export const getStoredCurrency = (): CurrencyKey => {
+  if (typeof window === 'undefined') return 'IDR';
+  try {
+    const saved = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return saved && saved in CURRENCIES ? saved as CurrencyKey : 'IDR';
+  } catch {
+    return 'IDR';
+  }
+};
+
+export const storeCurrency = (currency: CurrencyKey) => {
+  try {
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+  } catch {
+    // Private mode or blocked storage: the choice just won't survive a reload.
+  }
+};

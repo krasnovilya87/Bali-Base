@@ -102,6 +102,8 @@ export function ModerationTab(props: AdminTabProps) {
   const {
     moderationItems,
     handleDeleteAllModeration,
+    handleApproveAllModeration,
+    approveAllProgress,
     handleApprove,
     handleOpenReject,
     currencySymbol,
@@ -130,6 +132,25 @@ export function ModerationTab(props: AdminTabProps) {
                 {tr('admin.moderation.found', { count: moderationItems.length })}
               </p>
             </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+            {approveAllProgress ? (
+              <span className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{tr('admin.moderation.approveAllProgress', approveAllProgress)}</span>
+              </span>
+            ) : (
+              <Del
+                title={tr('admin.moderation.approveAllTitle')}
+                message={tr('admin.moderation.approveAllBody', { count: moderationItems.length })}
+                confirmLabel={tr('admin.moderation.approveAllConfirm')}
+                cancelLabel={tr('common.cancel')}
+                onConfirm={handleApproveAllModeration}
+                className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{tr('admin.moderation.approveAll')}</span>
+              </Del>
+            )}
             <Del
               title={tr('admin.moderation.deleteAllTitle')}
               message={tr('admin.moderation.deleteAllBody', { count: moderationItems.length })}
@@ -141,6 +162,7 @@ export function ModerationTab(props: AdminTabProps) {
               <Trash2 className="w-4 h-4" />
               <span>{tr('admin.moderation.deleteAll')}</span>
             </Del>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
