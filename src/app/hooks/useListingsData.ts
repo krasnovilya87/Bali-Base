@@ -208,15 +208,10 @@ export const useListingsData = () => {
         const listingForSave = nextStatus === 'active' && nextItem.category === 'housing'
           ? normalizeHousingListingForImport(nextItem, 0)
           : nextItem;
-        const targetId = uniqueListingDocumentId(
-          listingForSave,
-          listings.filter(listing => listing.id !== item.id).map(listing => listing.id)
-        );
+        // Existing documents keep their id: re-creating under a new id needs owner rights,
+        // which an admin acting on someone else's listing does not have.
+        const targetId = item.id;
         const finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
-        if (targetId !== item.id) {
-          deleteDocument(getListingCollection(item), item.id);
-          removeListingAiIndex(item.id);
-        }
         setDocument(getListingCollection(finalListing), targetId, finalListing);
         if (finalListing.status === 'active') {
           syncListingAiIndex(finalListing);
@@ -268,22 +263,21 @@ export const useListingsData = () => {
     const listingForSave = updatedListing.category === 'housing'
       ? normalizeHousingListingForImport(updatedListing, 0)
       : updatedListing;
-    const targetId = uniqueListingDocumentId(
-      listingForSave,
-      listings.filter(listing => listing.id !== updatedListing.id).map(listing => listing.id)
-    );
+    // Keep the document id (see handleToggleListingStatus).
+    const targetId = updatedListing.id;
     let finalListing = sanitizeListingForFirestore({ ...listingForSave, id: targetId }) as Listing;
-    if (targetId !== updatedListing.id) {
-      await deleteDocument(collectionPath, updatedListing.id);
-      removeListingAiIndex(updatedListing.id);
-    }
 
     const optimisticListings = listings.map(item =>
       item.id === updatedListing.id ? finalListing : item
     );
     saveUpdatedState(optimisticListings, bookings);
 
-    await setDocument(collectionPath, targetId, finalListing);
+    try {
+      await setDocument(collectionPath, targetId, finalListing);
+    } catch (err) {
+      saveUpdatedState(listings, bookings);
+      throw err;
+    }
     if (finalListing.status !== 'active') {
       removeListingAiIndex(targetId);
       return;

@@ -1,6 +1,7 @@
 import express, { type Router } from 'express';
 import { adminAuth, adminDb } from '../firebaseAdmin';
 import { getAuthenticatedUser, rateLimit, requireAdmin, requireAuth } from '../security';
+import { loadGoogleMapsUsage } from './googleUsage';
 
 const ALLOWED_ROLES = new Set(['admin', 'moderator', 'host', 'guest']);
 
@@ -83,6 +84,15 @@ export const createAdminRouter = (): Router => {
       res.json({ ok: true });
     } catch {
       res.status(500).json({ ok: false, error: 'Could not update the Firebase Auth user.' });
+    }
+  });
+
+  router.get('/google-usage', async (_req, res) => {
+    try {
+      res.json({ ok: true, ...(await loadGoogleMapsUsage()) });
+    } catch (error) {
+      console.error('[Admin google usage] Could not read Cloud Monitoring:', error);
+      res.status(502).json({ ok: false, error: 'Could not read Google API usage.' });
     }
   });
 

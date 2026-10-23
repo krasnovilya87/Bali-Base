@@ -38,7 +38,7 @@ export interface AdminDashboardProps {
   bookings: BookingRequest[];
   onToggleStatus: (listingId: string) => void;
   onUpdateBookingStatus: (bookingId: string, status: 'accepted' | 'declined') => void;
-  onUpdateListing: (listing: Listing) => void;
+  onUpdateListing: (listing: Listing) => void | Promise<void>;
   onDeleteListing: (listingId: string) => void;
   onSelectListing: (listing: Listing) => void;
   onEditListing: (listing: Listing) => void;

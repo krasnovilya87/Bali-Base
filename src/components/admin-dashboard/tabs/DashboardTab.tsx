@@ -12,7 +12,7 @@ type AdminTabProps = Record<string, any>;
 export function DashboardTab(props: AdminTabProps) {
   const { tr } = useI18n();
   const {
-    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews, googlePlacesQuota, aiSearchStats,
+    setActiveTab, adminUsers, totalListings, activeListings, moderationListings, totalClicksCol, totalViews, districtViewsStats, totalDistrictViews, googlePlacesQuota, googleUsage, googleUsageError, aiSearchStats,
     filteredUsersList, userSearch, setUserSearch, userRoleFilter, setUserRoleFilter, userStatusFilter, setUserStatusFilter, setShowAddUserModal, handleChangeRole, handleToggleUserBan, handleDeleteUser, listings,
     filteredListingsList, listingSearch, setListingSearch, listingCategoryFilter, setListingCategoryFilter, listingStatusFilter, setListingStatusFilter, onUpdateListing, showToast, onToggleStatus, onDeleteListing,
     moderationItems, handleApprove, handleOpenReject,
@@ -89,6 +89,52 @@ export function DashboardTab(props: AdminTabProps) {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-sky-500/10 p-2.5 rounded-2xl">
+                      <Database className="w-5 h-5 text-sky-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-[#1E293B]">{tr('admin.dashboard.googleUsage.title')}</h3>
+                      <p className="text-[11px] text-gray-500 font-semibold">{tr('admin.dashboard.googleUsage.note')}</p>
+                    </div>
+                  </div>
+                  {googleUsageError && !googleUsage && (
+                    <p className="text-xs font-semibold text-rose-600">{tr('admin.dashboard.googleUsage.error')}</p>
+                  )}
+                  {!googleUsageError && !googleUsage && (
+                    <p className="text-xs font-semibold text-gray-400">{tr('admin.dashboard.googleUsage.loading')}</p>
+                  )}
+                  {googleUsage && (
+                    <div className="space-y-3">
+                      {googleUsage.rows.map((row: { label: string; count: number; freeCap: number }) => {
+                        const percent = row.freeCap ? Math.round((row.count / row.freeCap) * 100) : 0;
+                        const barColor = percent >= 100 ? 'bg-rose-500' : percent >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
+                        return (
+                          <div key={row.label} className="space-y-1">
+                            <div className="flex items-center justify-between gap-3 text-xs font-semibold">
+                              <span className="text-[#1E293B]">{row.label}</span>
+                              <span className={percent >= 100 ? 'text-rose-600 font-black' : 'text-gray-500'}>
+                                {tr('admin.dashboard.googleUsage.count', {
+                                  count: row.count.toLocaleString(),
+                                  cap: row.freeCap.toLocaleString(),
+                                  percent
+                                })}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                              <div className={`h-full ${barColor}`} style={{ width: `${Math.min(100, percent)}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-[10px] text-gray-400 font-semibold">
+                        {tr('admin.dashboard.googleUsage.updated', { date: new Date(googleUsage.updatedAt).toLocaleString() })}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">

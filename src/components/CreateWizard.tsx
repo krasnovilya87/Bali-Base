@@ -1292,7 +1292,9 @@ export default function CreateWizard({
     setPublishStage(shouldCalculateNearby ? 'nearby' : 'moderation');
     if (shouldCalculateNearby && publishCoords) {
       try {
-        const nearbySpots = await calculateNearbySpotsOnce(publishCoords, baseListing.district);
+        const nearbySpots = await calculateNearbySpotsOnce(publishCoords, baseListing.district, {
+          includeRating: category !== 'investments'
+        });
         if (!nearbySpots.length) setNearbyWarning(true);
         listingForPublish = {
           ...baseListing,

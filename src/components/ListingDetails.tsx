@@ -40,6 +40,7 @@ import {
   writeSupportTickets
 } from '../utils/supportTickets';
 import { shareListingLink } from '../utils/listingShare';
+import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
 import { isListingVerified } from '../utils/listingVerification';
 import {
   getListingVehicleModel,
@@ -1072,7 +1073,9 @@ export default function ListingDetails({
       const cleanNumber = listing.whatsappNumber.replace(/[^0-9]/g, '');
       const params = new URLSearchParams({
         phone: cleanNumber,
-        text: tr('details.life.contactMessage', { title: listing.title })
+        text: listing.category === 'investments'
+          ? buildInvestmentContactMessage(listing)
+          : tr('details.life.contactMessage', { title: listing.title })
       });
 
       try {

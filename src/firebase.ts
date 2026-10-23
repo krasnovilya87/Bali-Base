@@ -20,7 +20,8 @@ import {
   where,
   getDocFromServer,
   getDocsFromServer,
-  persistentLocalCache
+  persistentLocalCache,
+  type Query
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from './config/firebaseConfig';
@@ -305,13 +306,39 @@ const getBookingsForUser = async (user?: FirebaseSyncUser) => {
   return Array.from(bookings.values());
 };
 
+const getDocsFromServerOrCache = async (listingsQuery: Query) => {
+  try {
+    return await getDocsFromServer(listingsQuery);
+  } catch (serverErr) {
+    console.warn('Failed to fetch listings from server, falling back to local cache', serverErr);
+    return getDocs(listingsQuery);
+  }
+};
+
+// Admins load everything; everyone else loads active listings plus their own in any status,
+// so drafts, moderation queues and bulk imports are not downloaded by every visitor.
+const getListingsForUser = async (collectionPath: string, user?: FirebaseSyncUser) => {
+  if (user && isAdminSyncUser(user)) return getCollection(collectionPath);
+
+  const listingsRef = collection(db, collectionPath);
+  const snapshots = await Promise.all([
+    getDocsFromServerOrCache(query(listingsRef, where('status', '==', 'active'))),
+    ...(user ? [getDocsFromServerOrCache(query(listingsRef, where('ownerId', '==', user.uid)))] : [])
+  ]);
+  const listings = new Map<string, any>();
+  snapshots.forEach(snapshot => {
+    snapshot.docs.forEach(listing => listings.set(listing.id, { id: listing.id, ...listing.data() }));
+  });
+  return Array.from(listings.values());
+};
+
 export async function syncWithFirebase(user?: FirebaseSyncUser): Promise<{ listings: any[], bookings: any[] }> {
   const firebaseListingsByCollection = await Promise.all(
     LISTING_COLLECTIONS.map(async collectionPath => {
       try {
         return {
           collectionPath,
-          listings: await getCollection(collectionPath)
+          listings: await getListingsForUser(collectionPath, user)
         };
       } catch (error) {
         console.warn(`Failed to fetch ${collectionPath}; continuing with other listing collections`, error);

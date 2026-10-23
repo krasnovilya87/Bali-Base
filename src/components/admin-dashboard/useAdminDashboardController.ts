@@ -9,6 +9,8 @@ import { useI18n } from '../../i18nContext';
 import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { uniqueDocumentIdFromTitle } from '../../utils/documentIds';
 import { GooglePlacesQuotaAdminStats, loadGooglePlacesQuotaAdminStats } from '../../utils/googlePlacesQuota';
+import { GoogleUsageStats, loadGoogleUsageStats } from '../../utils/googleUsageClient';
+import { addNearbySpotsForApproval } from '../../utils/approvalNearbySpots';
 import {
   readSupportTickets,
   SUPPORT_TICKETS_UPDATED_EVENT,
@@ -162,6 +164,8 @@ export function useAdminDashboardController({
   const [isJsonImporting, setIsJsonImporting] = useState<boolean>(false);
   const [googlePlacesQuota, setGooglePlacesQuota] = useState<GooglePlacesQuotaAdminStats | null>(null);
   const [aiSearchStats, setAiSearchStats] = useState<AiSearchUsageStats | null>(null);
+  const [googleUsage, setGoogleUsage] = useState<GoogleUsageStats | null>(null);
+  const [googleUsageError, setGoogleUsageError] = useState(false);
   const [districtOptions] = useState<string[]>(() => getDistrictNamesFromGeoJSONSync());
 
   const refreshGooglePlacesQuota = () => {
@@ -185,9 +189,23 @@ export function useAdminDashboardController({
     refreshAiSearchStats();
   }, []);
 
+  // Cloud Monitoring lags a few minutes, so load once per dashboard visit.
+  const refreshGoogleUsage = () => {
+    loadGoogleUsageStats()
+      .then(stats => {
+        setGoogleUsage(stats);
+        setGoogleUsageError(false);
+      })
+      .catch(error => {
+        console.warn('Could not load Google API usage', error);
+        setGoogleUsageError(true);
+      });
+  };
+
   useEffect(() => {
     if (activeTab !== 'dashboard') return;
 
+    refreshGoogleUsage();
     refreshGooglePlacesQuota();
     refreshAiSearchStats();
     const intervalId = window.setInterval(refreshGooglePlacesQuota, 15000);
@@ -943,7 +961,7 @@ export function useAdminDashboardController({
   };
 
   // Listing Approved controls
-  const handleApprove = (listingId: string) => {
+  const handleApprove = async (listingId: string) => {
     const matched = listings.find(l => l.id === listingId);
     if (matched) {
       const updated: Listing = {
@@ -955,8 +973,19 @@ export function useAdminDashboardController({
           : matched.expirationDate,
         isVerified: matched.isVerified ?? false
       };
-      onUpdateListing(updated);
-      showToast(`Listing "${matched.title}" approved and published.`);
+      try {
+        const { listing: withNearby, nearby } = await addNearbySpotsForApproval(updated);
+        await onUpdateListing(withNearby);
+        const nearbyNote = nearby === 'skipped_quota'
+          ? ' Nearby places skipped: Google free quota is above 80%.'
+          : nearby === 'skipped_error'
+            ? ' Nearby places could not be calculated.'
+            : '';
+        showToast(`Listing "${matched.title}" approved and published.${nearbyNote}`);
+      } catch (err) {
+        console.error('Failed to approve listing', err);
+        showToast(`Listing "${matched.title}" was not published: saving failed.`);
+      }
     }
   };
 
@@ -1035,6 +1064,8 @@ export function useAdminDashboardController({
     districtViewsStats,
     totalDistrictViews,
     googlePlacesQuota,
+    googleUsage,
+    googleUsageError,
     aiSearchStats,
     filteredUsersList,
     userSearch,

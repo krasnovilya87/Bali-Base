@@ -81,6 +81,7 @@ const searchNearbyPlaces = async (
     radius: number;
     type?: string;
     filter?: (place: NearbyPlace) => boolean;
+    includeRating?: boolean;
   }
 ): Promise<NearbyPlace[]> => {
   if (!placesLibrary?.Place?.searchNearby) return [];
@@ -92,7 +93,8 @@ const searchNearbyPlaces = async (
   };
   const includedType = request.type || fallbackTypeByKeyword[request.keyword];
   const { places = [] } = await placesLibrary.Place.searchNearby({
-    fields: ['id', 'displayName', 'location', 'rating', 'types'],
+    // `rating` bills the search as Enterprise instead of Pro.
+    fields: ['id', 'displayName', 'location', ...(request.includeRating === false ? [] : ['rating']), 'types'],
     locationRestriction: {
       center: origin,
       radius: request.radius
@@ -148,9 +150,11 @@ const sortPlacesByStraightDistance = (
 
 const searchSupermarketPlaces = async (
   placesLibrary: any,
-  origin: LatLng
+  origin: LatLng,
+  includeRating?: boolean
 ) => {
   const commonRequest = searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'supermarket',
     type: 'supermarket',
     radius: 5000,
@@ -330,20 +334,24 @@ const attachRoutesToNearbySpots = async (
 
 const getStandardSpots = async (
   placesLibrary: any,
-  origin: LatLng
+  origin: LatLng,
+  includeRating?: boolean
 ) => {
   const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin, includeRating);
   const gymPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'gym',
     radius: 2000,
     filter: isSportVenue
   });
   const beachPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'beach',
     radius: 5000
   });
@@ -365,15 +373,18 @@ const getStandardSpots = async (
 
 const getUbudSpots = async (
   placesLibrary: any,
-  origin: LatLng
+  origin: LatLng,
+  includeRating?: boolean
 ) => {
   const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin, includeRating);
   const yogaPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'yoga',
     radius: 2000,
     filter: isSportVenue
@@ -397,14 +408,16 @@ const getUbudSpots = async (
 
 const getKintamaniSpots = async (
   placesLibrary: any,
-  origin: LatLng
+  origin: LatLng,
+  includeRating?: boolean
 ) => {
   const restaurantPlaces = await searchNearbyPlaces(placesLibrary, origin, {
+    includeRating,
     keyword: 'restaurant',
     type: 'restaurant',
     radius: 500
   });
-  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin);
+  const supermarketPlaces = await searchSupermarketPlaces(placesLibrary, origin, includeRating);
   const hotSprings = makeSyntheticPlace('Batur Natural Hot Spring', { lat: -8.2412, lng: 115.4067 });
   const mountBatur = makeSyntheticPlace('Mount Batur', { lat: -8.2423, lng: 115.3754 });
 
@@ -423,9 +436,13 @@ const getKintamaniSpots = async (
   ].filter(Boolean) as ListingNearbySpot[];
 };
 
+// Nearby searches made by one calculation (standard districts run the most).
+export const NEARBY_SEARCHES_PER_CALCULATION = 4;
+
 export const calculateNearbySpotsOnce = async (
   origin?: LatLng | null,
-  district?: string
+  district?: string,
+  options: { includeRating?: boolean } = {}
 ): Promise<ListingNearbySpot[]> => {
   if (!origin) return [];
 
@@ -433,10 +450,10 @@ export const calculateNearbySpotsOnce = async (
   const placesLibrary = maps.places;
 
   const spots = isDistrict(district, ['ubud'])
-    ? await getUbudSpots(placesLibrary, origin)
+    ? await getUbudSpots(placesLibrary, origin, options.includeRating)
     : isDistrict(district, ['kintamani', 'kintomani'])
-      ? await getKintamaniSpots(placesLibrary, origin)
-      : await getStandardSpots(placesLibrary, origin);
+      ? await getKintamaniSpots(placesLibrary, origin, options.includeRating)
+      : await getStandardSpots(placesLibrary, origin, options.includeRating);
 
   return attachRoutesToNearbySpots(origin, spots);
 };
