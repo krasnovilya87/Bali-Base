@@ -14,6 +14,7 @@ import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
+import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
 import { formatLifeExpensePerPerson, getLifeExpensePerPerson } from '../config/lifeSpecial';
 import {
   getListingVehicleModel,
@@ -767,11 +768,11 @@ export default function ListingCard({
                 <span className={`bg-[#FF3B30] text-white font-extrabold text-[8px] sm:text-[9px] lg:text-[9px] px-1 sm:px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                   {tr('listing.dropPrice')} • {countdownText}
                 </span>
-              ) : (
+              ) : getPriceSourceLabelKey(listing) ? (
                 <span className={`text-[8px] sm:text-xs lg:text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                  {tr('listing.directPrice')}
+                  {tr(getPriceSourceLabelKey(listing) as string)}
                 </span>
-              )}
+              ) : null}
             </div>
 
             {/* Line 3: Savings in small red font */}

@@ -41,6 +41,7 @@ import {
 } from '../utils/supportTickets';
 import { shareListingLink } from '../utils/listingShare';
 import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
+import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
 import { isListingVerified } from '../utils/listingVerification';
 import {
   getListingVehicleModel,
@@ -2562,11 +2563,11 @@ export default function ListingDetails({
                         <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9.5px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                           {tr('listing.dropPrice')} • {countdownText}
                         </span>
-                      ) : (
+                      ) : getPriceSourceLabelKey(listing) ? (
                         <span className={`text-[14px] sm:text-xs lg:text-[11px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                          {tr('listing.directPrice')}
+                          {tr(getPriceSourceLabelKey(listing) as string)}
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Line 3: Savings in small red font */}

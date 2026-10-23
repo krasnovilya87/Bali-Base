@@ -10,6 +10,7 @@ import { isListingFresh } from '../utils/listingFreshness';
 import { MapListingVisibilityCandidate, MapViewportSnapshot, selectVisibleMapListings } from '../utils/mapListingVisibility';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { isListingVerified } from '../utils/listingVerification';
+import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
 
 interface MapBoxProps {
   listings: Listing[];
@@ -573,11 +574,11 @@ function MapListingPopup({
               <span className={`bg-[#FF3B30] text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
                 {tr('listing.dropPrice')}
               </span>
-            ) : (
+            ) : getPriceSourceLabelKey(item) ? (
               <span className={`text-[10px] text-[#2F7D69] font-bold tracking-wider leading-none ${THEME.fonts.heading}`}>
-                {tr('listing.directPrice')}
+                {tr(getPriceSourceLabelKey(item) as string)}
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 
