@@ -337,13 +337,39 @@ const getListingsForUser = async (collectionPath: string, user?: FirebaseSyncUse
   return Array.from(listings.values());
 };
 
+// Telegram posts have no images, reviews, subCategory or district. The site's screens expect them,
+// so fill safe defaults on read. Stored values are kept as they are.
+function normalizeModeratedListing(listing: any) {
+  const category = listing.category === 'market' ? 'ads' : listing.category;
+  return {
+    ...listing,
+    category,
+    subCategory: listing.subCategory ?? '',
+    district: listing.district ?? '',
+    ownerId: listing.ownerId ?? '',
+    ownerName: listing.ownerName ?? '',
+    price: listing.price ?? 0,
+    isApproved: listing.isApproved ?? false,
+    isVerified: listing.isVerified ?? false,
+    createdAt: listing.createdAt ?? listing.postedAt ?? '',
+    images: Array.isArray(listing.images) ? listing.images : [],
+    reviews: Array.isArray(listing.reviews) ? listing.reviews : [],
+    nearbySpots: Array.isArray(listing.nearbySpots) ? listing.nearbySpots : [],
+    description: listing.description ?? '',
+    title: listing.title ?? ''
+  };
+}
+
 export async function syncWithFirebase(user?: FirebaseSyncUser): Promise<{ listings: any[], bookings: any[] }> {
   const firebaseListingsByCollection = await Promise.all(
     LISTING_COLLECTIONS.map(async collectionPath => {
       try {
+        const listings = await getListingsForUser(collectionPath, user);
         return {
           collectionPath,
-          listings: await getListingsForUser(collectionPath, user)
+          listings: MODERATED_COLLECTIONS.includes(collectionPath)
+            ? listings.map(listing => normalizeModeratedListing(listing))
+            : listings
         };
       } catch (error) {
         console.warn(`Failed to fetch ${collectionPath}; continuing with other listing collections`, error);
