@@ -919,9 +919,11 @@ export function useAdminDashboardController({
   const moderationItems = listings.filter(l => l.status === 'moderation');
 
   const handleActivateAllListings = async () => {
+    // Telegram posts (services and market) go through moderation one by one, so this bulk release skips them.
     const inactiveListings = listings.filter(l => l.status !== 'active'
       && !(l.category === 'life' && l.subCategory === 'life_warnings')
-      && !(l.category === 'afisha' && l.subCategory === 'afisha_warnings'));
+      && !(l.category === 'afisha' && l.subCategory === 'afisha_warnings')
+      && l.importSource !== 'telegram');
     if (!inactiveListings.length) {
       showToast('All listings are already active.');
       return;
