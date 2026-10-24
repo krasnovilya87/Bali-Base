@@ -247,7 +247,7 @@ const findClosestByStraightDistance = (
 const toNearbySpot = (
   emoji: string,
   title: string,
-  fastest: { place: NearbyPlace; durationText: string } | null
+  fastest: { place: NearbyPlace; durationText: string; durationValue?: number } | null
 ): ListingNearbySpot | null => {
   const location = fastest?.place.location;
   if (!fastest?.place.displayName || !location) return null;
@@ -257,6 +257,7 @@ const toNearbySpot = (
     title,
     desc: fastest.place.displayName,
     time: fastest.durationText ? `${fastest.durationText} \u043d\u0430 \u0431\u0430\u0439\u043a\u0435` : '',
+    durationMinutes: fastest.durationValue ? Math.round(fastest.durationValue / 60) : undefined,
     position: {
       lat: location.lat(),
       lng: location.lng()

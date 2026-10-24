@@ -41,7 +41,9 @@ import {
 } from '../utils/supportTickets';
 import { shareListingLink } from '../utils/listingShare';
 import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
-import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
+import { getPriceSourceLabelKey, isPriceOnRequest } from '../utils/priceSourceLabel';
+import { findCompanyByName } from '../config/companies';
+import CompanyContactModal from './listing-details/CompanyContactModal';
 import { isListingVerified } from '../utils/listingVerification';
 import {
   getListingVehicleModel,
@@ -434,6 +436,7 @@ export default function ListingDetails({
   const [routeError, setRouteError] = useState<string>('');
   const [listingNote, setListingNote] = useState<string>('');
   const [isNotesExpanded, setIsNotesExpanded] = useState<boolean>(false);
+  const [isOwnerCompanyOpen, setIsOwnerCompanyOpen] = useState(false);
   const [isProblemModalOpen, setIsProblemModalOpen] = useState<boolean>(false);
   const [problemMessage, setProblemMessage] = useState<string>('');
   const [problemSent, setProblemSent] = useState<boolean>(false);
@@ -813,6 +816,7 @@ export default function ListingDetails({
   const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice || 0;
   const ownerDisplayName = listing.ownerName.trim() || tr('details.listingAuthor');
   const ownerInitial = ownerDisplayName.charAt(0).toUpperCase();
+  const ownerCompany = findCompanyByName(listing.ownerName, (listing as Listing & { sellerName?: string }).sellerName);
   const {
     hasSavings,
     savingsAmount,
@@ -2110,10 +2114,15 @@ export default function ListingDetails({
       value: subtypeOption ? tr(subtypeOption.labelKey) : undefined
     });
 
+    // The quarter is shown inside the year row ("Q4 2027"), not as a row of its own.
+    const completionQuarter = String(listing.investmentAttributes?.completion_quarter || '');
     getInvestmentAttributeEntries(listing).forEach(({ field, value }) => {
+      if (field.id === 'completion_quarter') return;
       const values = Array.isArray(value) ? value : [value];
       const formattedValue = field.id === 'land_area' && typeof value === 'number'
         ? `${value.toLocaleString()} ${tr('investments.unit.sqm')} = ${(value / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} are`
+        : field.id === 'year_built' && completionQuarter
+          ? `${tr(`investments.option.${completionQuarter}`)} ${value}`
         : values.map(item => {
         if (typeof item === 'boolean') return tr(`investments.option.${item ? 'yes' : 'no'}`);
         const option = field.options?.find(candidate => candidate.value === String(item));
@@ -2557,7 +2566,7 @@ export default function ListingDetails({
                     {/* Line 2: Direct Price and Direct price label */}
                     <div className="flex items-center gap-4 sm:gap-3">
                       <span className={`text-[21px] sm:text-base lg:text-xl font-bold text-text-dark ${THEME.fonts.mono}`}>
-                        {convertPrice(activeBasePrice)} {currencySymbol}
+                        {isPriceOnRequest(listing) ? tr('listing.priceOnRequest') : `${convertPrice(activeBasePrice)} ${currencySymbol}`}
                       </span>
                       {isDropPriceActive ? (
                         <span className={`bg-[#FF3B30] text-white font-extrabold text-[12px] sm:text-[9px] lg:text-[9.5px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>
@@ -2588,7 +2597,13 @@ export default function ListingDetails({
                   </div>
                 </div>}
 
-                <div className="mt-2 flex min-w-0 items-center gap-2 self-start max-w-full">
+                <button
+                  type="button"
+                  onClick={() => ownerCompany && setIsOwnerCompanyOpen(true)}
+                  disabled={!ownerCompany}
+                  className={`mt-2 flex min-w-0 items-center gap-2 self-start max-w-full text-left ${ownerCompany ? 'cursor-pointer rounded-xl transition hover:opacity-80' : 'cursor-default'}`}
+                  title={ownerCompany ? tr('company.showContacts') : undefined}
+                >
                       {listing.ownerAvatar ? (
                         <img
                           src={listing.ownerAvatar}
@@ -2605,11 +2620,14 @@ export default function ListingDetails({
                         <p className="text-[8.5px] font-bold uppercase tracking-wider text-gray-400 leading-none">
                           {tr('details.listingAuthor')}
                         </p>
-                        <p className="truncate text-[11px] sm:text-xs font-bold text-[#1E293B] leading-tight mt-0.5">
+                        <p className={`truncate text-[11px] sm:text-xs font-bold leading-tight mt-0.5 ${ownerCompany ? 'text-[#FF7A50] underline decoration-dotted underline-offset-2' : 'text-[#1E293B]'}`}>
                           {ownerDisplayName}
                         </p>
                       </div>
-                </div>
+                </button>
+                {isOwnerCompanyOpen && ownerCompany && (
+                  <CompanyContactModal company={ownerCompany} onClose={() => setIsOwnerCompanyOpen(false)} />
+                )}
                 {isLifeCommunityListing && <div className="mt-5 lg:hidden">{renderLifeSummary(false, false)}</div>}
               </div>
 

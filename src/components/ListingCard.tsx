@@ -15,6 +15,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
 import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
+import { isPriceOnRequest } from '../utils/priceSourceLabel';
 import { formatLifeExpensePerPerson, getLifeExpensePerPerson } from '../config/lifeSpecial';
 import {
   getListingVehicleModel,
@@ -762,7 +763,7 @@ export default function ListingCard({
             {/* Line 2: Direct Price and Direct price label */}
             <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
               <span className={`text-[14px] sm:text-base lg:text-lg font-bold text-text-dark leading-none ${THEME.fonts.mono}`}>
-                {convertPrice(activeBasePrice)} {currencySymbol}
+                {isPriceOnRequest(listing) ? tr('listing.priceOnRequest') : `${convertPrice(activeBasePrice)} ${currencySymbol}`}
               </span>
               {listing.hasDropPrice && !isExpired ? (
                 <span className={`bg-[#FF3B30] text-white font-extrabold text-[8px] sm:text-[9px] lg:text-[9px] px-1 sm:px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>

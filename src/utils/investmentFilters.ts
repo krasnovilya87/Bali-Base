@@ -1,5 +1,29 @@
 import { FilterState, Listing } from '../types';
 import { getInvestmentFields } from '../config/investmentSpecial';
+import { COMPANIES, findCompanyByName } from '../config/companies';
+
+// Developer filter: chips hold company ids, OTHER_DEVELOPER takes a typed name from investmentText.
+export const DEVELOPER_FILTER_KEY = 'developer';
+export const OTHER_DEVELOPER = '__other__';
+
+// Minutes to the beach from the nearby-spots calculation (same source as the housing filter).
+export const getSeaMinutes = (listing: Listing): number | undefined => {
+  const beach = listing.nearbySpots?.find(spot => spot.emoji.includes('🏖') || spot.title === 'Пляж');
+  return beach?.durationMinutes ?? listing.distanceToSeaMinutes;
+};
+
+const matchesDeveloperFilter = (listing: Listing, filters: FilterState) => {
+  const selected = filters.investmentOptions?.[DEVELOPER_FILTER_KEY] || [];
+  if (!selected.length) return true;
+
+  const company = findCompanyByName(listing.ownerName);
+  if (company && selected.includes(company.id)) return true;
+
+  if (!selected.includes(OTHER_DEVELOPER)) return false;
+  const query = (filters.investmentText?.[DEVELOPER_FILTER_KEY] || '').trim().toLocaleLowerCase();
+  if (query) return (listing.ownerName || '').toLocaleLowerCase().includes(query);
+  return !company || !COMPANIES.some(item => item.id === company.id);
+};
 
 export const listingMatchesInvestmentFilters = (listing: Listing, filters: FilterState) => {
   const attributes = listing.investmentAttributes || {};
@@ -9,9 +33,11 @@ export const listingMatchesInvestmentFilters = (listing: Listing, filters: Filte
     if (!filters.investmentSubtypes.includes(subtype)) return false;
   }
 
+  if (!matchesDeveloperFilter(listing, filters)) return false;
+
   const options = filters.investmentOptions || {};
   for (const [fieldId, selected] of Object.entries(options)) {
-    if (!selected.length) continue;
+    if (fieldId === DEVELOPER_FILTER_KEY || !selected.length) continue;
     const value = attributes[fieldId];
     const values = Array.isArray(value) ? value.map(String) : [String(value ?? '')];
     if (!selected.some(item => values.includes(item))) return false;
@@ -19,7 +45,7 @@ export const listingMatchesInvestmentFilters = (listing: Listing, filters: Filte
 
   const ranges = filters.investmentNumberRanges || {};
   for (const [fieldId, range] of Object.entries(ranges)) {
-    const value = Number(attributes[fieldId]);
+    const value = fieldId === 'distance_to_sea_minutes' ? Number(getSeaMinutes(listing)) : Number(attributes[fieldId]);
     if (!Number.isFinite(value)) return false;
     if (range.min !== undefined && value < range.min) return false;
     if (range.max !== undefined && value > range.max) return false;
@@ -27,6 +53,7 @@ export const listingMatchesInvestmentFilters = (listing: Listing, filters: Filte
 
   const text = filters.investmentText || {};
   for (const [fieldId, query] of Object.entries(text)) {
+    if (fieldId === DEVELOPER_FILTER_KEY) continue;
     if (query.trim() && !String(attributes[fieldId] || '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) return false;
   }
 

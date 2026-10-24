@@ -33,6 +33,7 @@ export interface ListingNearbySpot {
   placeId?: string;
   rating?: number;
   route?: ListingNearbyRoute;
+  durationMinutes?: number; // Google travel time in minutes, used by the distance-to-sea filter
 }
 
 export interface LatLng {

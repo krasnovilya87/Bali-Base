@@ -9,3 +9,7 @@ export const getPriceSourceLabelKey = (listing: Pick<Listing, 'category' | 'inve
   const sellerType = String(listing.investmentAttributes?.seller_type || '');
   return INVESTMENT_SELLER_TYPES.has(sellerType) ? `investments.option.${sellerType}` : null;
 };
+
+// Investment units with no published price (stored as 0) show "Price on request" instead of "0".
+export const isPriceOnRequest = (listing: Pick<Listing, 'category' | 'pricePerDay'>) =>
+  listing.category === 'investments' && !(listing.pricePerDay > 0);

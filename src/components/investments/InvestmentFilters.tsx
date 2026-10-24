@@ -4,6 +4,8 @@ import { getInvestmentFields, INVESTMENT_SUBTYPES } from '../../config/investmen
 import { useI18n } from '../../i18nContext';
 import ClassifiedRangeFilter, { RangeSpec } from '../classified/ClassifiedRangeFilter';
 import { X } from 'lucide-react';
+import { COMPANIES } from '../../config/companies';
+import { DEVELOPER_FILTER_KEY, OTHER_DEVELOPER } from '../../utils/investmentFilters';
 
 type Props = {
   subCategory: string;
@@ -150,8 +152,26 @@ export default function InvestmentFilters({ subCategory, filters, setFilters, li
     update({ investmentNumberRanges: nextRanges });
   };
 
+  const developerCompanies = COMPANIES.filter(company => company.type === 'developer');
+  const selectedDevelopers = filters.investmentOptions[DEVELOPER_FILTER_KEY] || [];
+  const otherDeveloperActive = selectedDevelopers.includes(OTHER_DEVELOPER);
+
   return (
     <div className="space-y-5">
+      <div className="space-y-3">
+        <span className={titleClass}>{tr('investments.developer.title')}</span>
+        <div className="flex flex-wrap gap-2">
+          {developerCompanies.map(company => {
+            const active = selectedDevelopers.includes(company.id);
+            return <button key={company.id} type="button" onClick={() => toggleOption(DEVELOPER_FILTER_KEY, company.id)} className={`${pillClass} ${active ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{company.name}</button>;
+          })}
+          <button type="button" onClick={() => toggleOption(DEVELOPER_FILTER_KEY, OTHER_DEVELOPER)} className={`${pillClass} ${otherDeveloperActive ? 'border-[#FF7A50] bg-[#FF7A50] text-white' : 'border-[#E5E7EB] bg-white text-[#1E293B]'}`}>{tr('investments.developer.other')}</button>
+        </div>
+        {otherDeveloperActive && (
+          <input type="text" value={filters.investmentText[DEVELOPER_FILTER_KEY] || ''} onChange={event => update({ investmentText: { ...filters.investmentText, [DEVELOPER_FILTER_KEY]: event.target.value } })} placeholder={tr('investments.developer.otherPlaceholder')} className={inputClass} />
+        )}
+      </div>
+
       <div className="space-y-3">
         <span className={titleClass}>{tr('investments.subtype')}</span>
         <div className="flex flex-wrap gap-2">

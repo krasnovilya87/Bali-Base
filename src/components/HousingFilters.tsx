@@ -1174,6 +1174,44 @@ export default function HousingFilters({
             </div>
           </div>
           )}
+          {category === 'investments' && (() => {
+            // Same slider as the housing "distance to sea" filter: minutes to the beach by Google travel time.
+            const SEA_FIELD = 'distance_to_sea_minutes';
+            const seaCap = 40;
+            const seaMax = localFilters.investmentNumberRanges[SEA_FIELD]?.max;
+            const sliderValue = seaMax ?? seaCap;
+            return (
+              <div className={`${sectionCardClass} order-1`}>
+                <div className="flex justify-between items-center">
+                  <span className={sectionTitleClass}>🛵 {tr('filters.distanceSea')}</span>
+                  <span className="pl inline-flex text-xs font-semibold text-[#FF7A50] bg-[#FF7A50]/10 px-2.5 py-1 rounded-lg">
+                    {seaMax === undefined
+                      ? tr('filters.minutesPlusLabel', { count: seaCap })
+                      : tr('filters.distanceToSeaValue', { count: seaMax })}
+                  </span>
+                </div>
+                <div className="pt-2 relative">
+                  <Polzunok
+                    min={0}
+                    max={seaCap}
+                    step={5}
+                    value={sliderValue}
+                    onChange={value => setLocalFilters(current => {
+                      const ranges = { ...current.investmentNumberRanges };
+                      if (value >= seaCap) delete ranges[SEA_FIELD];
+                      else ranges[SEA_FIELD] = { max: value };
+                      return { ...current, investmentNumberRanges: ranges };
+                    })}
+                  />
+                  {renderSliderScaleLabels([
+                    tr('filters.nearBeach'),
+                    tr('filters.minLabel', { count: 20 }),
+                    tr('filters.minutesPlusLabel', { count: seaCap })
+                  ])}
+                </div>
+              </div>
+            );
+          })()}
           {category === 'investments' && (
             <div className={`${sectionCardClass} order-2`}>
               <InvestmentFilters subCategory={subCategory} filters={localFilters} setFilters={setLocalFilters} listings={relevantListings} />

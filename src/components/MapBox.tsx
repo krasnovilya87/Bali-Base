@@ -10,7 +10,7 @@ import { isListingFresh } from '../utils/listingFreshness';
 import { MapListingVisibilityCandidate, MapViewportSnapshot, selectVisibleMapListings } from '../utils/mapListingVisibility';
 import { useFavoriteListings } from '../hooks/useFavoriteListings';
 import { isListingVerified } from '../utils/listingVerification';
-import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
+import { getPriceSourceLabelKey, isPriceOnRequest } from '../utils/priceSourceLabel';
 
 interface MapBoxProps {
   listings: Listing[];
@@ -568,7 +568,7 @@ function MapListingPopup({
           )}
           <div className="flex items-center gap-3">
             <span className={`text-lg font-bold text-text-dark ${THEME.fonts.mono}`}>
-              {convertedPrice} {currencySymbol}
+              {isPriceOnRequest(item) ? tr('listing.priceOnRequest') : `${convertedPrice} ${currencySymbol}`}
             </span>
             {isDropPriceActive ? (
               <span className={`bg-[#FF3B30] text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded tracking-wider leading-none shadow-xs ${THEME.fonts.heading}`}>

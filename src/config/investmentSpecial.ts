@@ -76,6 +76,7 @@ export const INVESTMENT_COMMON_FIELDS: InvestmentField[] = [
   select('projected_income_period', ['monthly', 'yearly']),
   select('readiness', ['ready', 'under_construction', 'project']),
   number('year_built'),
+  select('completion_quarter', ['Q1', 'Q2', 'Q3', 'Q4']),
   boolean('installment'),
   boolean('income_property'),
   select('seller_type', ['owner', 'agency', 'developer'])
