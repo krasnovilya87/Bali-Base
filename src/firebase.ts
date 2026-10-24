@@ -349,6 +349,8 @@ function normalizeModeratedListing(listing: any) {
     ownerId: listing.ownerId ?? '',
     ownerName: listing.ownerName ?? '',
     price: listing.price ?? 0,
+    rating: listing.rating ?? 0,
+    reviewsCount: listing.reviewsCount ?? 0,
     isApproved: listing.isApproved ?? false,
     isVerified: listing.isVerified ?? false,
     createdAt: listing.createdAt ?? listing.postedAt ?? '',
