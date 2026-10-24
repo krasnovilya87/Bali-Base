@@ -7,7 +7,9 @@ import {
   deleteDocument,
   getDocument,
   LISTINGS_COLLECTION,
+  MARKET_COLLECTION,
   sanitizeListingForFirestore,
+  SERVICES_COLLECTION,
   setDocument,
   syncWithFirebase,
   testConnection,
@@ -24,8 +26,13 @@ import { useAuth } from '../../auth/AuthContext';
 import { sanitizeMenuOverrides } from '../menu';
 import { deleteListingFromAiSearch, indexListingForAiSearch } from '../../utils/aiSearchClient';
 
-const getListingCollection = (listing: Listing) =>
-  listing.category === 'transport' ? TRANSPORT_FOR_RENT_COLLECTION : LISTINGS_COLLECTION;
+const getListingCollection = (listing: Listing) => {
+  // Telegram posts go to their own moderated collections (see MODERATED_COLLECTIONS in firebase.ts).
+  if (listing.importSource === 'telegram') {
+    return (listing.category as string) === 'market' ? MARKET_COLLECTION : SERVICES_COLLECTION;
+  }
+  return listing.category === 'transport' ? TRANSPORT_FOR_RENT_COLLECTION : LISTINGS_COLLECTION;
+};
 
 const normalizeDocumentIdPart = (value: string) =>
   value

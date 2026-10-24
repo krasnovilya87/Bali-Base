@@ -67,6 +67,8 @@ export interface ListingNearbyRoute {
 export interface Listing {
   id: string;
   ownerId: string;
+  // Set on posts imported from outside the site (Telegram); they are moderated before release.
+  importSource?: string;
   // Category L1
   category: 'housing' | 'transport' | 'investments' | 'services' | 'ads' | 'afisha' | 'life' | 'info' | 'useful';
   // Category L2

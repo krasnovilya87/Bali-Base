@@ -53,7 +53,12 @@ export const auth = getAuth();
 export const storage = getStorage(app);
 export const LISTINGS_COLLECTION = 'housing_for_rent_listing';
 export const TRANSPORT_FOR_RENT_COLLECTION = 'transport_for_rent';
-const LISTING_COLLECTIONS = [LISTINGS_COLLECTION, TRANSPORT_FOR_RENT_COLLECTION];
+export const SERVICES_COLLECTION = 'services';
+export const MARKET_COLLECTION = 'market';
+// New collections start in moderation: owners can only create or edit them as 'moderation',
+// and only an admin moves a listing to 'active' (release). See firestore.rules.
+export const MODERATED_COLLECTIONS = [SERVICES_COLLECTION, MARKET_COLLECTION];
+const LISTING_COLLECTIONS = [LISTINGS_COLLECTION, TRANSPORT_FOR_RENT_COLLECTION, ...MODERATED_COLLECTIONS];
 
 // Test connection on boot as mandated in guidelines
 export async function testConnection() {
