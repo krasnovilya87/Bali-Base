@@ -467,6 +467,7 @@ export default function CreateWizard({
   const [initialPhoneValue] = useState(() => normalizeContactPhone(initialListing?.whatsappNumber || ''));
   const [whatsappNumber, setWhatsappNumber] = useState<string>(initialPhoneValue.savedValue);
   const [whatsappInput, setWhatsappInput] = useState<string>(initialPhoneValue.displayValue);
+  const [telegramUsername, setTelegramUsername] = useState<string>(initialListing?.telegramUsername || '');
   const [ownerName, setOwnerName] = useState<string>(initialListing?.ownerName || '');
 
   useEffect(() => {
@@ -1207,6 +1208,7 @@ export default function CreateWizard({
       area: subCategory === 'private_room' ? undefined : area,
       distanceToSeaMinutes: initialListing?.distanceToSeaMinutes || 8,
       whatsappNumber,
+      telegramUsername: telegramUsername.trim().replace(/^@/, '') || undefined,
       ownerName: supportsSellerType && sellerType === 'company'
         ? sellerCompanyName || ownerName || sellerGoogleMapsUrl
         : ownerName,
@@ -1635,7 +1637,9 @@ export default function CreateWizard({
       sellerGooglePlaceId,
       setSellerGooglePlaceId,
       whatsappInput,
-      handlePhoneChange
+      handlePhoneChange,
+      telegramInput: telegramUsername,
+      setTelegramInput: setTelegramUsername
     },
     previewState: {
       buildListing,

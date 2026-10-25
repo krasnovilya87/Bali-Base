@@ -22,6 +22,8 @@ type StepContactProps = {
   setSellerGooglePlaceId: React.Dispatch<React.SetStateAction<string>>;
   whatsappInput: string;
   handlePhoneChange: (value: string, whatsappFormatted?: string) => void;
+  telegramInput: string;
+  setTelegramInput: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const StepContact: React.FC<StepContactProps> = ({
@@ -39,7 +41,9 @@ const StepContact: React.FC<StepContactProps> = ({
   sellerGooglePlaceId,
   setSellerGooglePlaceId,
   whatsappInput,
-  handlePhoneChange
+  handlePhoneChange,
+  telegramInput,
+  setTelegramInput
 }) => {
   const { tr } = useI18n();
   const supportsSellerType = true;
@@ -274,6 +278,15 @@ const StepContact: React.FC<StepContactProps> = ({
           placeholder={tr('wizard.whatsapp')}
           ariaLabel={tr('wizard.whatsapp')}
           className="w-full !bg-white !border-0 p-2.5 pr-14 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
+        />
+
+        <input
+          type="text"
+          placeholder={tr('wizard.telegram')}
+          aria-label={tr('wizard.telegram')}
+          value={telegramInput}
+          onChange={event => setTelegramInput(event.target.value.replace(/[^A-Za-z0-9_@]/g, ''))}
+          className="w-full !bg-white !border-0 p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:ring-0"
         />
       </div>
     </div>

@@ -39,7 +39,7 @@ import {
   resolveCurrentSupportUserPhone,
   writeSupportTickets
 } from '../utils/supportTickets';
-import { shareListingLink } from '../utils/listingShare';
+import { buildListingShareUrl, shareListingLink } from '../utils/listingShare';
 import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
 import { getPriceSourceLabelKey, isPriceOnRequest } from '../utils/priceSourceLabel';
 import { findCompanyByName } from '../config/companies';
@@ -1060,6 +1060,19 @@ export default function ListingDetails({
     setOrderPlaced(true);
     window.location.href = waUrl;
     setOrderPlaced(false);
+  };
+
+  // Imported Telegram posts have no WhatsApp number: the buttons open Telegram or WhatsApp with a ready
+  // message and a link to the listing on this site. The user picks the recipient in the app.
+  const hasContactButtons = listing.importSource === 'telegram' || Boolean(listing.telegramUsername);
+  const openImportedMessage = (channel: 'telegram' | 'whatsapp') => {
+    const message = `BaliBase. Пишу вам по объявлению «${listing.title}». ${buildListingShareUrl(listing.id)}`;
+    const url = channel === 'telegram'
+      ? listing.telegramUsername
+        ? `https://t.me/${listing.telegramUsername}`
+        : `https://t.me/share/url?url=${encodeURIComponent(buildListingShareUrl(listing.id))}&text=${encodeURIComponent(`BaliBase. Пишу вам по объявлению «${listing.title}».`)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleWhatsAppClick = () => {
@@ -3322,9 +3335,20 @@ export default function ListingDetails({
                       </button>
                     </div>
                   )}
+                  {hasContactButtons && (
+                    <div className="flex flex-col gap-2">
+                      <button type="button" onClick={() => openImportedMessage('telegram')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#229ED9] text-white hover:opacity-90 transition cursor-pointer">
+                        {tr('details.imported.telegram')}
+                      </button>
+                      <button type="button" onClick={() => openImportedMessage('whatsapp')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#2F7D69] text-white hover:opacity-90 transition cursor-pointer">
+                        {tr('details.imported.whatsapp')}
+                      </button>
+                    </div>
+                  )}
                   <button
                     disabled={orderPlaced}
                     onClick={handleWhatsAppClick}
+                    hidden={hasContactButtons}
                     className={`w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md transition duration-200 flex items-center justify-center gap-2 active:scale-97 cursor-pointer ${orderPlaced
                       ? 'bg-emerald-600 text-white'
                       : 'bg-[#2F7D69]/100 text-white hover:bg-emerald-600 hover:shadow-lg'
@@ -3414,9 +3438,20 @@ export default function ListingDetails({
               </div>
             </div>
 
+            {hasContactButtons && (
+              <div className="flex flex-1 gap-2">
+                <button type="button" onClick={() => openImportedMessage('telegram')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#229ED9] text-white active:scale-95 transition cursor-pointer">
+                  {tr('details.imported.telegram')}
+                </button>
+                <button type="button" onClick={() => openImportedMessage('whatsapp')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#2F7D69] text-white active:scale-95 transition cursor-pointer">
+                  {tr('details.imported.whatsapp')}
+                </button>
+              </div>
+            )}
             <button
               disabled={orderPlaced}
               onClick={handleWhatsAppClick}
+              hidden={hasContactButtons}
               className={`flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition ${orderPlaced
                 ? 'bg-emerald-600 text-white'
                 : 'bg-[#2F7D69]/100 text-white hover:bg-emerald-600'

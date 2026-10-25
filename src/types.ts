@@ -69,6 +69,8 @@ export interface Listing {
   ownerId: string;
   // Set on posts imported from outside the site (Telegram); they are moderated before release.
   importSource?: string;
+  // Seller's Telegram username (without @), shown as a Telegram contact button.
+  telegramUsername?: string;
   // Category L1
   category: 'housing' | 'transport' | 'investments' | 'services' | 'ads' | 'afisha' | 'life' | 'info' | 'useful';
   // Category L2
