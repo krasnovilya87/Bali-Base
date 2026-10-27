@@ -43,6 +43,7 @@ import { buildListingShareUrl, shareListingLink } from '../utils/listingShare';
 import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
 import { getPriceSourceLabelKey, isPriceOnRequest } from '../utils/priceSourceLabel';
 import { findCompanyByName } from '../config/companies';
+import { CLASSIFIED_GENERIC_SPECIAL_FIELDS, getClassifiedSpecialConfig } from '../config/classifiedSpecial';
 import CompanyContactModal from './listing-details/CompanyContactModal';
 import { isListingVerified } from '../utils/listingVerification';
 import {
@@ -2153,6 +2154,24 @@ export default function ListingDetails({
     });
   }
 
+  // Marketplace goods: the same filter fields as the marketplace filters, shown as characteristic tiles.
+  if (isMarketListing) {
+    const marketFields = [
+      ...(getClassifiedSpecialConfig(listing.subCategory)?.fields ?? []),
+      ...CLASSIFIED_GENERIC_SPECIAL_FIELDS
+    ];
+    marketFields.forEach(field => {
+      const raw = listing.classifiedAttributes?.[field.id];
+      if (raw === undefined || raw === null || raw === '') return;
+      const option = field.options?.find(item => item.value === String(raw));
+      detailCharacteristics.push({
+        key: field.id,
+        icon: '🔹',
+        label: tr(field.labelKey),
+        value: `${option ? tr(option.labelKey) : String(raw)}${field.unit ? ` ${field.unit}` : ''}`
+      });
+    });
+  }
   const housingDetailCharacteristics = isHousingListing
     ? buildHousingCharacteristics(listing, tr).filter(item => item.key !== 'distanceToSeaMinutes')
     : detailCharacteristics;
@@ -2703,7 +2722,7 @@ export default function ListingDetails({
 
                     return (
                       <div className="grid grid-cols-1 gap-2.5">
-                        <div className={`grid w-full ${isTransportListing || isAfishaListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : isInvestmentListing ? 'grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-x-5' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
+                        <div className={`grid w-full ${isTransportListing || isAfishaListing || isMarketListing ? 'grid-cols-3 gap-x-3 gap-y-3.5 sm:grid-cols-6 sm:gap-x-4' : isInvestmentListing ? 'grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 sm:gap-x-5' : 'grid-cols-2 sm:grid-cols-4 gap-2.5'}`}>
                           {housingDetailCharacteristics.map((item, index) => {
                             const visibilityClass = !isCharacteristicsExpanded
                               ? isTransportListing || isInvestmentListing || isAfishaListing
@@ -2818,7 +2837,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Amenities checkboxes - visual styled exactly like filters */}
-                {!isTransportListing && !isServicesListing && !isLifeListing && !isInvestmentListing && !isAfishaListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && !isInvestmentListing && !isAfishaListing && !isMarketListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>{tr('details.amenitiesTitle')}</h3>
 
@@ -2920,7 +2939,7 @@ export default function ListingDetails({
                 )}
 
                 {/* Exact Surrounding spots list */}
-                {!isTransportListing && !isServicesListing && !isLifeListing && !isAfishaListing && (
+                {!isTransportListing && !isServicesListing && !isLifeListing && !isAfishaListing && !isMarketListing && (
                 <div className="space-y-3">
                   <h3 className={`text-base font-extrabold text-[#1E293B] ${THEME.fonts.heading}`}>
                     {tr('details.nearbyTitle')}
