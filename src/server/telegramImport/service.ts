@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adminDb } from '../firebaseAdmin';
 import { uploadImageBufferToImageKit } from '../imageUpload/routes';
+import { recordGeminiCalls, type GeminiCallStats } from '../geminiUsage';
 
 // The Telegram parser (Python + Telethon session) lives in the project's Data folder, so the import
 // only works where that folder exists: the API server running on the owner's computer.
@@ -38,6 +39,16 @@ const state: { running: boolean; step: string; log: string[]; current?: ImportRu
 const addLog = (line: string) => {
   const clean = line.replace(/\r/g, '').trimEnd();
   if (!clean) return;
+  // extract.py reports how many Gemini requests it made; they count toward the dashboard Gemini usage.
+  const usage = clean.match(/^GEMINI_USAGE (\{.*\})$/);
+  if (usage) {
+    try {
+      const stats = JSON.parse(usage[1]) as GeminiCallStats;
+      recordGeminiCalls(stats).catch(error => console.error('[Telegram import] Could not record Gemini usage:', error));
+    } catch {
+      // A malformed line is just logged.
+    }
+  }
   state.log.push(`${new Date().toISOString().slice(11, 19)} ${clean}`);
   if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
 };

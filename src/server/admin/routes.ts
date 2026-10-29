@@ -2,6 +2,7 @@ import express, { type Router } from 'express';
 import { adminAuth, adminDb } from '../firebaseAdmin';
 import { getAuthenticatedUser, rateLimit, requireAdmin, requireAuth } from '../security';
 import { loadGoogleMapsUsage } from './googleUsage';
+import { loadGeminiUsageRows } from '../geminiUsage';
 
 const ALLOWED_ROLES = new Set(['admin', 'moderator', 'host', 'guest']);
 
@@ -89,7 +90,14 @@ export const createAdminRouter = (): Router => {
 
   router.get('/google-usage', async (_req, res) => {
     try {
-      res.json({ ok: true, ...(await loadGoogleMapsUsage()) });
+      const [maps, geminiRows] = await Promise.all([
+        loadGoogleMapsUsage(),
+        loadGeminiUsageRows().catch(error => {
+          console.error('[Admin google usage] Could not read Gemini usage:', error);
+          return [];
+        })
+      ]);
+      res.json({ ok: true, ...maps, rows: [...maps.rows, ...geminiRows] });
     } catch (error) {
       console.error('[Admin google usage] Could not read Cloud Monitoring:', error);
       res.status(502).json({ ok: false, error: 'Could not read Google API usage.' });

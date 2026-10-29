@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import type { AiModerationCheck, AiModerationResult, Listing } from '../../types';
 import { AI_MODERATION_RULES } from '../../utils/aiModerationRules';
 import { AI_MODERATION_LIMITS } from './limits';
+import { trackGeminiCall } from '../geminiUsage';
 
 const MODEL = 'gemini-flash-lite-latest';
 const MIN_DESCRIPTION_LENGTH = 20;
@@ -305,28 +306,20 @@ const isNetworkError = (error: unknown) => {
 };
 
 const generateModerationContent = async (ai: GoogleGenAI, prompt: string) => {
+  const request = () => trackGeminiCall(() => ai.models.generateContent({
+    model: MODEL,
+    contents: prompt,
+    config: {
+      temperature: 0.1,
+      maxOutputTokens: AI_MODERATION_LIMITS.maxOutputTokens,
+      responseMimeType: 'application/json'
+    }
+  }));
   try {
-    return await ai.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: AI_MODERATION_LIMITS.maxOutputTokens,
-        responseMimeType: 'application/json'
-      }
-    });
+    return await request();
   } catch (error) {
     if (!isNetworkError(error)) throw error;
-
-    return ai.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: AI_MODERATION_LIMITS.maxOutputTokens,
-        responseMimeType: 'application/json'
-      }
-    });
+    return request();
   }
 };
 

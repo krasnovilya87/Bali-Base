@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { LANGUAGES, LanguageCode } from '../../i18n';
+import { trackGeminiCall } from '../geminiUsage';
 
 const MODEL = 'gemini-flash-lite-latest';
 const MAX_TEXT_LENGTH = 4000;
@@ -67,14 +68,14 @@ export const translateTextWithGemini = async (text: string, language: LanguageCo
 
   const targetLanguage = getLanguageName(language);
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
+  const response = await trackGeminiCall(() => ai.models.generateContent({
     model: MODEL,
     contents: buildPrompt(sourceText, targetLanguage),
     config: {
       temperature: 0.2,
       maxOutputTokens: MAX_OUTPUT_TOKENS
     }
-  });
+  }));
   const translatedText = response.text?.trim() || '';
 
   if (!translatedText) {
