@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Send, Square, Trash2 } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
+import Del from '../../Del';
 import {
   addTelegramImportChannel,
   loadTelegramImportStatus,
   removeTelegramImportChannel,
   startTelegramImport,
+  stopTelegramImport,
   TELEGRAM_IMPORT_API_UNAVAILABLE,
   type TelegramImportSection,
   type TelegramImportStatus
@@ -16,6 +18,7 @@ type TelegramImportTabProps = {
 };
 
 const SECTIONS: TelegramImportSection[] = ['ads', 'services', 'afisha', 'life'];
+const STOPPED_BY_ADMIN = 'Stopped by admin'; // same text as the server's run error
 const POLL_MS = 3000;
 const DEFAULT_SCAN_DAYS = 30;
 const MAX_SCAN_DAYS = 365;
@@ -89,15 +92,28 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
             <h3 className="text-base font-extrabold text-[#1E293B]">{tr('admin.telegram.title')}</h3>
             <p className="text-[11px] text-gray-400 font-semibold">{tr('admin.telegram.body')}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => void runAction(startTelegramImport, tr('admin.telegram.started'))}
-            disabled={disabled}
-            className="h-10 px-4 rounded-full bg-[#FF7A50] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-[#F0693F] transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-4 h-4 ${status?.running ? 'animate-spin' : ''}`} />
-            {status?.running ? tr('admin.telegram.running') : tr('admin.telegram.update')}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void runAction(startTelegramImport, tr('admin.telegram.started'))}
+              disabled={disabled}
+              className="h-10 px-4 rounded-full bg-[#FF7A50] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-[#F0693F] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${status?.running ? 'animate-spin' : ''}`} />
+              {status?.running ? tr('admin.telegram.running') : tr('admin.telegram.update')}
+            </button>
+            {status?.running && (
+              <button
+                type="button"
+                onClick={() => void runAction(stopTelegramImport, tr('admin.telegram.stopRequested'))}
+                disabled={busy || status.stopping}
+                className="h-10 px-4 rounded-full bg-[#1E293B] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                {status.stopping ? tr('admin.telegram.stopping') : tr('admin.telegram.stop')}
+              </button>
+            )}
+          </div>
         </div>
         {status?.running && status.step && (
           <p className="mt-3 text-xs font-bold text-[#FF7A50]">{tr(`admin.telegram.step.${status.step}`)}</p>
@@ -152,18 +168,23 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
                   </a>
                   <span className="text-[11px] text-gray-400 font-semibold">
                     {channel.lastMessageId
-                      ? `${tr('admin.telegram.posts').replace('{count}', String(channel.posts))} · ${tr('admin.telegram.sinceLastScan')}`
+                      ? `${tr('admin.telegram.posts').replace('{count}', String(channel.posts))} · ${tr('admin.telegram.period').replace('{days}', String(channel.firstScanDays))}`
                       : tr('admin.telegram.firstScan').replace('{days}', String(channel.firstScanDays))}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => void runAction(() => removeTelegramImportChannel(channel.name), tr('admin.telegram.removed'))}
-                    disabled={busy || status.running}
-                    aria-label={tr('admin.telegram.remove')}
-                    className="ml-auto p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {status.running || busy ? (
+                    <span className="ml-auto p-2 text-gray-300" aria-hidden="true"><Trash2 className="w-4 h-4" /></span>
+                  ) : (
+                    <Del
+                      title={tr('admin.telegram.removeTitle').replace('{channel}', `@${channel.name}`)}
+                      message={tr('admin.telegram.removeBody')}
+                      confirmLabel={tr('admin.telegram.remove')}
+                      cancelLabel={tr('common.cancel')}
+                      onConfirm={() => void runAction(() => removeTelegramImportChannel(channel.name), tr('admin.telegram.removed'))}
+                      className="ml-auto p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Del>
+                  )}
                 </li>
               ))}
             </ul>
@@ -180,9 +201,14 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
             <>
               <p className={`text-xs font-bold ${lastRun.ok === false ? 'text-red-500' : 'text-emerald-600'}`}>
                 {new Date(lastRun.startedAt).toLocaleString()} · {lastRun.ok === false
-                  ? `${tr('admin.telegram.failed')}: ${lastRun.error || ''}`
+                  ? lastRun.error === STOPPED_BY_ADMIN
+                    ? tr('admin.telegram.stopped')
+                    : `${tr('admin.telegram.failed')}: ${lastRun.error || ''}`
                   : lastRun.finishedAt ? tr('admin.telegram.success') : tr('admin.telegram.running')}
               </p>
+              {lastRun.ok && lastRun.error && (
+                <p className="text-xs font-semibold text-amber-600">{tr('admin.telegram.geminiLimit')}</p>
+              )}
               {lastRun.summary && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {SECTIONS.map(section => (

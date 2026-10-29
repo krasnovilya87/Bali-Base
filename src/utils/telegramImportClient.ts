@@ -21,6 +21,7 @@ export type TelegramImportStatus = {
   reason?: string;
   channels: Array<{ name: string; firstScanDays: number; lastMessageId: number; posts: number }>;
   running: boolean;
+  stopping?: boolean;
   step: string;
   log: string[];
   lastRun: TelegramImportRun | null;
@@ -60,4 +61,8 @@ export const removeTelegramImportChannel = async (channel: string): Promise<stri
 
 export const startTelegramImport = async () => {
   await request('/run', { method: 'POST' });
+};
+
+export const stopTelegramImport = async () => {
+  await request('/stop', { method: 'POST' });
 };

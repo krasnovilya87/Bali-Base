@@ -10,17 +10,23 @@ import {
   SECTIONS,
   buildListing,
   extractContacts,
+  GeminiQuotaExhausted,
+  ImportStopped,
   hasContact,
   mergeReposts,
   runPass1,
   runPass2,
   type Listing,
   type Pass1,
-  type Pass2
+  type Pass2,
+  type StopCheck,
+  type TelegramPost
 } from './extract';
 import {
+  STOPPED_BY_ADMIN,
   getChannelEntries,
   getChannelStates,
+  isStopRequested,
   loadPosts,
   savePass,
   savePosts,
@@ -36,13 +42,16 @@ const IMAGE_FOLDER = '/bali-base/telegram';
 const DRY_RUN = process.env.TELEGRAM_IMPORT_DRY_RUN === 'true';
 const LOG_LIMIT = 300;
 const LOG_FLUSH_MS = 2000;
+const HEARTBEAT_MS = 60_000;
+export const GEMINI_LIMIT_NOTE = 'Gemini daily limit reached: the rest will be processed by the next run.';
 
 const createLogger = () => {
   const lines: string[] = [];
   let timer: NodeJS.Timeout | null = null;
   const flush = async () => {
     timer = null;
-    await saveRun({ log: lines.slice(-LOG_LIMIT) }).catch(error => console.error('[Telegram import] log write failed:', error));
+    await saveRun({ log: lines.slice(-LOG_LIMIT), heartbeatAt: new Date().toISOString() })
+      .catch(error => console.error('[Telegram import] log write failed:', error));
   };
   const log = (line: string) => {
     const clean = line.replace(/\r/g, '').trimEnd();
@@ -100,7 +109,8 @@ const uploadListings = async (
   client: TelegramClient,
   listings: Listing[],
   uploaded: Record<string, UploadedEntry>,
-  log: (line: string) => void
+  log: (line: string) => void,
+  checkStop: StopCheck
 ): Promise<ImportSummary> => {
   const summary: ImportSummary = {
     created: { ads: 0, services: 0, afisha: 0, life: 0 },
@@ -116,6 +126,7 @@ const uploadListings = async (
   };
 
   for (const listing of listings) {
+    await checkStop();
     const section = listing.category as keyof ImportSummary['created'];
     const relatedIds: string[] = [listing.id, ...(listing.repostUrls || []).map(listingIdFromUrl)].filter(Boolean);
     const knownEntries = [...new Map(relatedIds.map(id => uploaded[id]).filter(Boolean)
@@ -190,9 +201,15 @@ const uploadListings = async (
   return summary;
 };
 
+const checkStop: StopCheck = async () => {
+  if (await isStopRequested()) throw new ImportStopped(STOPPED_BY_ADMIN);
+};
+
 export const runImport = async () => {
   const { log, flush } = createLogger();
   let client: TelegramClient | null = null;
+  // The run is alive while it writes heartbeatAt; the admin tab and the lock rely on it.
+  const heartbeat = setInterval(() => void saveRun({ heartbeatAt: new Date().toISOString() }).catch(() => undefined), HEARTBEAT_MS);
   try {
     const channels = await getChannelEntries();
     if (!channels.length) throw new Error('Add at least one channel first.');
@@ -201,6 +218,7 @@ export const runImport = async () => {
     client = await connectTelegram();
     const states = await getChannelStates();
     for (const { name, days } of channels) {
+      await checkStop();
       const previous = states[name] || { lastId: 0, posts: 0 };
       const { posts, lastId } = await collectChannel(client, name, previous.lastId, days || DEFAULT_FIRST_DAYS, log);
       if (posts.length) await savePosts(posts);
@@ -240,29 +258,44 @@ export const runImport = async () => {
       Object.assign(pass1, quick);
     }
 
-    const todo1 = stored.map(item => item.post).filter(post => !pass1[post.key]);
-    log(`posts: ${stored.length}, pass 1 to do: ${todo1.length}`);
-    if (todo1.length) {
-      await runPass1(todo1, async batch => {
-        await savePass('pass1', batch);
-        Object.assign(pass1, batch);
-      }, log);
-    }
-    const todo2 = stored.map(item => item.post)
-      .filter(post => pass1[post.key] && !pass2[post.key] && (SECTIONS as readonly string[]).includes(pass1[post.key].section))
-      .map(post => ({ ...post, section: pass1[post.key].section, subCategory: pass1[post.key].subCategory || '' }));
-    log(`pass 2 to do: ${todo2.length}`);
-    if (todo2.length) {
-      await runPass2(todo2, async batch => {
-        await savePass('pass2', batch);
-        Object.assign(pass2, batch);
-      }, log);
+    // Only posts of current channels within each channel's period go to Gemini.
+    const periodStart = new Map(channels.map(({ name, days }) => [name, Date.now() - (days || DEFAULT_FIRST_DAYS) * 86_400_000]));
+    const inPeriod = (post: TelegramPost) => Date.parse(post.date) >= (periodStart.get(post.channel) ?? Infinity);
+
+    let quotaHit = false;
+    try {
+      const todo1 = stored.map(item => item.post).filter(post => !pass1[post.key] && inPeriod(post));
+      log(`posts: ${stored.length}, pass 1 to do: ${todo1.length}`);
+      if (todo1.length) {
+        await runPass1(todo1, async batch => {
+          await savePass('pass1', batch);
+          Object.assign(pass1, batch);
+        }, log, checkStop);
+      }
+      const todo2 = stored.map(item => item.post)
+        .filter(post => inPeriod(post) && pass1[post.key] && !pass2[post.key]
+          && (SECTIONS as readonly string[]).includes(pass1[post.key].section))
+        .map(post => ({ ...post, section: pass1[post.key].section, subCategory: pass1[post.key].subCategory || '' }));
+      log(`pass 2 to do: ${todo2.length}`);
+      if (todo2.length) {
+        await runPass2(todo2, async batch => {
+          await savePass('pass2', batch);
+          Object.assign(pass2, batch);
+        }, log, checkStop);
+      }
+    } catch (error) {
+      if (!(error instanceof GeminiQuotaExhausted)) throw error;
+      // Answers so far are saved; the rest is processed by the next run (the quota resets daily).
+      quotaHit = true;
+      log('Gemini daily limit reached: uploading what is ready, the rest continues on the next run.');
     }
 
     const bySection: Record<string, Listing[]> = { ads: [], services: [], afisha: [], life: [] };
     const reasons: Record<string, number> = {};
     for (const { post } of stored) {
-      if (!pass1[post.key]) continue;
+      // A post sorted into a section but still without its fields waits for the next run.
+      if (!pass1[post.key] || !periodStart.has(post.channel)) continue;
+      if ((SECTIONS as readonly string[]).includes(pass1[post.key].section) && !pass2[post.key]) continue;
       const { listing, reason } = buildListing(post, contactsByKey.get(post.key)!, pass1[post.key], pass2[post.key] || {});
       if (listing) bySection[listing.category].push(listing);
       else if (reason) reasons[reason] = (reasons[reason] || 0) + 1;
@@ -275,17 +308,27 @@ export const runImport = async () => {
     stored.forEach(item => {
       if (item.uploaded) uploaded[`tg-${item.post.key}`] = item.uploaded;
     });
-    const summary = await uploadListings(client, listings, uploaded, log);
+    const summary = await uploadListings(client, listings, uploaded, log, checkStop);
     log(`done: ${JSON.stringify(summary)}`);
     await flush();
-    await saveRun({ running: false, step: '', ok: true, summary, finishedAt: new Date().toISOString() });
+    await saveRun({
+      running: false,
+      step: '',
+      ok: true,
+      error: quotaHit ? GEMINI_LIMIT_NOTE : '',
+      summary,
+      finishedAt: new Date().toISOString()
+    });
     return summary;
   } catch (error: any) {
-    log(`error: ${error.message}`);
+    const stopped = error instanceof ImportStopped;
+    log(stopped ? 'stopped by admin' : `error: ${error.message}`);
     await flush();
     await saveRun({ running: false, step: '', ok: false, error: error.message, finishedAt: new Date().toISOString() });
-    throw error;
+    if (!stopped) throw error;
+    return null;
   } finally {
+    clearInterval(heartbeat);
     await client?.disconnect().catch(() => undefined);
   }
 };

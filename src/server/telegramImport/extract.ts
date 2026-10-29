@@ -103,13 +103,26 @@ export const hasContact = (contacts: Contacts) => Boolean(contacts.authorUsernam
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export type LogFn = (line: string) => void;
+// Throws ImportStopped when the admin pressed Stop.
+export type StopCheck = () => Promise<void>;
 
-const askGemini = async (prompt: string, log: LogFn): Promise<unknown> => {
+export class ImportStopped extends Error {}
+// Every model answered 429 twice in a row: the free daily quota is used up, waiting does not help today.
+export class GeminiQuotaExhausted extends Error {}
+
+// A model that answered 429 (quota used up) is skipped for a while instead of being asked before every batch.
+const QUOTA_COOLDOWN_MS = 10 * 60 * 1000;
+const quotaBlockedUntil = new Map<string, number>();
+
+const askGemini = async (prompt: string, log: LogFn, checkStop: StopCheck): Promise<unknown> => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
   const ai = new GoogleGenAI({ apiKey });
-  const models = [MODEL, ...FALLBACK_MODELS.filter(model => model !== MODEL)];
+  const allModels = [MODEL, ...FALLBACK_MODELS.filter(model => model !== MODEL)];
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+    await checkStop();
+    const models = allModels.filter(model => (quotaBlockedUntil.get(model) || 0) < Date.now());
+    if (!models.length) throw new GeminiQuotaExhausted('Gemini daily limit reached on all models.');
     const model = models[attempt % models.length]; // an overloaded model (503) is retried with the next one
     try {
       const response = await trackGeminiCall(model, () => ai.models.generateContent({
@@ -120,7 +133,12 @@ const askGemini = async (prompt: string, log: LogFn): Promise<unknown> => {
       return JSON.parse(response.text || '');
     } catch (error: any) {
       const status = Number(error?.status ?? error?.code);
-      const retryable = [404, 429, 500, 503].includes(status) || error instanceof SyntaxError || !status;
+      if (status === 429) {
+        quotaBlockedUntil.set(model, Date.now() + QUOTA_COOLDOWN_MS);
+        log(`  ${model}: limit reached, skipped for ${QUOTA_COOLDOWN_MS / 60_000} min`);
+        continue;
+      }
+      const retryable = [404, 500, 503].includes(status) || error instanceof SyntaxError || !status;
       if (!retryable || attempt === ATTEMPTS - 1) throw error;
       const wait = Math.min(10 * (Math.floor(attempt / models.length) + 1), 60);
       log(`  ${model} ${status || error?.name || 'error'}, retry in ${wait}s`);
@@ -184,14 +202,19 @@ Answer with a JSON array, one object per post, same order.`;
 
 const normalizeSection = (info: Pass1): Pass1 => ({ ...info, section: SECTION_ALIASES[info.section] || info.section });
 
-export const runPass1 = async (posts: TelegramPost[], save: (batch: Record<string, Pass1>) => Promise<void>, log: LogFn) => {
+export const runPass1 = async (
+  posts: TelegramPost[],
+  save: (batch: Record<string, Pass1>) => Promise<void>,
+  log: LogFn,
+  checkStop: StopCheck
+) => {
   const rules = pass1Rules();
   for (let start = 0; start < posts.length; start += BATCH_PASS1) {
     const chunk = posts.slice(start, start + BATCH_PASS1);
     const listing = chunk
       .map((post, index) => `### POST ${index}\nphotos: ${post.photoIds.length}\n${post.text.slice(0, 2500) || '(no text)'}`)
       .join('\n\n');
-    const answer = await askGemini(`${rules}\n\nPOSTS:\n${listing}`, log);
+    const answer = await askGemini(`${rules}\n\nPOSTS:\n${listing}`, log, checkStop);
     const batch: Record<string, Pass1> = {};
     for (const item of Array.isArray(answer) ? answer : []) {
       const post = chunk[Number(item?.i)];
@@ -287,7 +310,8 @@ Return a JSON array: [{"i": <post index>, "description": "...", <top-level keys>
 export const runPass2 = async (
   items: Array<TelegramPost & { section: string; subCategory: string }>,
   save: (batch: Record<string, Pass2>) => Promise<void>,
-  log: LogFn
+  log: LogFn,
+  checkStop: StopCheck
 ) => {
   const groups = new Map<string, typeof items>();
   items.forEach(item => {
@@ -303,7 +327,7 @@ export const runPass2 = async (
         .map((post, index) => `### POST ${index} (published ${post.date.slice(0, 10)})\n${post.text.slice(0, 3000)}`)
         .join('\n\n');
       const prompt = `${PASS2_RULES}\n\n${instructions.replace('{posted}', chunk[0].date.slice(0, 10))}\n\nPOSTS:\n${listing}`;
-      const answer = await askGemini(prompt, log);
+      const answer = await askGemini(prompt, log, checkStop);
       const batch: Record<string, Pass2> = {};
       for (const row of Array.isArray(answer) ? answer : []) {
         const post = chunk[Number(row?.i)];

@@ -5,7 +5,7 @@ import { StringSession } from 'telegram/sessions';
 import type { LogFn, TelegramPost, TelegramSender } from './extract';
 
 export const DEFAULT_FIRST_DAYS = 30;
-const MAX_FIRST_MESSAGES = 5000; // safety cap for a first scan of a very busy chat
+const MAX_MESSAGES_PER_SCAN = 5000; // safety cap for a very busy chat
 
 export const isTelegramConfigured = () =>
   Boolean(process.env.TELEGRAM_SESSION && process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH);
@@ -45,7 +45,8 @@ const describeSender = (sender: unknown): TelegramSender | null => {
 };
 
 /**
- * New posts of one channel since lastId (or, on the first scan, for the last `days` days).
+ * New posts of one channel since lastId, never older than the channel period (`days`), so a channel that was
+ * not scanned for a long time does not pull its whole history.
  * A Telegram album is several messages with one groupedId: they are merged into one post with all photo ids.
  */
 export const collectChannel = async (
@@ -55,12 +56,14 @@ export const collectChannel = async (
   days: number,
   log: LogFn
 ): Promise<{ posts: TelegramPost[]; lastId: number }> => {
-  const since = lastId ? 0 : Math.floor(Date.now() / 1000) - days * 86_400;
-  log(lastId ? `@${channel}: reading after message ${lastId} ...` : `@${channel}: first scan, last ${days} days ...`);
+  const since = Math.floor(Date.now() / 1000) - days * 86_400;
+  log(lastId
+    ? `@${channel}: reading after message ${lastId} (not older than ${days} days) ...`
+    : `@${channel}: first scan, last ${days} days ...`);
   const messages: Api.Message[] = [];
-  for await (const message of client.iterMessages(channel, { minId: lastId, limit: lastId ? undefined : MAX_FIRST_MESSAGES })) {
+  for await (const message of client.iterMessages(channel, { minId: lastId, limit: MAX_MESSAGES_PER_SCAN })) {
     if (!(message instanceof Api.Message)) continue;
-    if (since && message.date < since) break;
+    if (message.date < since) break;
     messages.push(message);
   }
   if (!messages.length) return { posts: [], lastId };

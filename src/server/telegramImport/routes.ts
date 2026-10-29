@@ -1,6 +1,6 @@
 import express, { type Router } from 'express';
 import { rateLimit, requireAdmin, requireAuth } from '../security';
-import { addChannel, getStatus, removeChannel, startImport } from './service';
+import { addChannel, getStatus, removeChannel, startImport, stopImport } from './service';
 
 export const createTelegramImportRouter = (): Router => {
   const router = express.Router();
@@ -22,6 +22,11 @@ export const createTelegramImportRouter = (): Router => {
 
   router.delete('/channels/:channel', writeLimit, async (req, res) => {
     res.json({ ok: true, channels: await removeChannel(req.params.channel) });
+  });
+
+  router.post('/stop', writeLimit, async (_req, res) => {
+    await stopImport();
+    res.json({ ok: true });
   });
 
   router.post('/run', writeLimit, async (_req, res) => {

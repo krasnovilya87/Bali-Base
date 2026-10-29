@@ -2,7 +2,16 @@ import { firebaseAdminApp } from '../firebaseAdmin';
 import firebaseConfig from '../../config/firebaseConfig';
 import { DEFAULT_FIRST_DAYS, isTelegramConfigured } from './collector';
 import { runImport } from './pipeline';
-import { claimRun, getChannelEntries, getChannelStates, getRun, saveChannelEntries, saveRun } from './store';
+import {
+  claimRun,
+  forgetChannel,
+  getChannelEntries,
+  getChannelStates,
+  getRun,
+  requestStop,
+  saveChannelEntries,
+  saveRun
+} from './store';
 
 // The import runs on Cloud Run as a separate job (it takes minutes) when TELEGRAM_IMPORT_JOB is set;
 // otherwise (local development) it runs in this API process.
@@ -37,12 +46,19 @@ export const addChannel = async (raw: string, rawDays: unknown) => {
   return entries.map(entry => entry.name);
 };
 
+// Removing a channel also forgets its scan position and collected posts, so adding it again starts a clean
+// first scan for the period chosen then. Listings already on the site stay.
 export const removeChannel = async (raw: string) => {
   const channel = normalizeChannel(raw).toLowerCase();
-  const entries = (await getChannelEntries()).filter(item => item.name.toLowerCase() !== channel);
+  const all = await getChannelEntries();
+  const removed = all.filter(item => item.name.toLowerCase() === channel);
+  const entries = all.filter(item => item.name.toLowerCase() !== channel);
   await saveChannelEntries(entries);
+  for (const entry of removed) await forgetChannel(entry.name);
   return entries.map(entry => entry.name);
 };
+
+export const stopImport = () => requestStop();
 
 export const getStatus = async () => {
   const [entries, states, run] = await Promise.all([getChannelEntries(), getChannelStates(), getRun()]);
@@ -55,6 +71,7 @@ export const getStatus = async () => {
       posts: states[name]?.posts || 0
     })),
     running: Boolean(run?.running),
+    stopping: Boolean(run?.running && run.cancelRequested),
     step: run?.step || '',
     log: run?.log || [],
     lastRun: run ? { startedAt: run.startedAt, finishedAt: run.finishedAt, ok: run.ok, error: run.error, summary: run.summary } : null

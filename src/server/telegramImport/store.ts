@@ -3,6 +3,7 @@
 //   telegram_import/state   { channels: { name: { lastId, posts } } }
 //   telegram_import/run     current or last run: { running, step, startedAt, finishedAt, ok, error, summary, log }
 //   telegram_posts/{channel}-{messageId}  { post, pass1, pass2, uploaded }
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '../firebaseAdmin';
 import type { Pass1, Pass2, TelegramPost } from './extract';
 
@@ -26,12 +27,16 @@ export type ImportRun = {
   running: boolean;
   step: string;
   startedAt: string;
+  heartbeatAt?: string;
+  cancelRequested?: boolean;
   finishedAt?: string;
   ok?: boolean;
   error?: string;
   summary?: ImportSummary;
   log: string[];
 };
+
+export const STOPPED_BY_ADMIN = 'Stopped by admin';
 
 // Firestore rejects undefined values; Gemini answers and Telegram data may contain them.
 const clean = <T>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -74,13 +79,49 @@ export const getRun = async (): Promise<ImportRun | null> => ((await IMPORT.doc(
 
 export const saveRun = (run: Partial<ImportRun>) => IMPORT.doc('run').set(clean(run), { merge: true });
 
-// A run that started long ago and never finished (crashed job) no longer blocks a new one.
-const STALE_RUN_MS = 3 * 60 * 60 * 1000;
+// A running import writes heartbeatAt with its log; a run silent for this long has died (closed terminal,
+// crashed job) and no longer blocks a new one.
+const DEAD_RUN_MS = 5 * 60 * 1000;
+const isAlive = (run: ImportRun | undefined) => Boolean(run?.running
+  && Date.now() - Date.parse(run.heartbeatAt || run.startedAt) < DEAD_RUN_MS);
 
 export const claimRun = async (): Promise<boolean> => adminDb.runTransaction(async transaction => {
   const reference = IMPORT.doc('run');
   const current = (await transaction.get(reference)).data() as ImportRun | undefined;
-  if (current?.running && Date.now() - Date.parse(current.startedAt) < STALE_RUN_MS) return false;
-  transaction.set(reference, { running: true, step: 'queued', startedAt: new Date().toISOString(), log: [] });
+  if (isAlive(current)) return false;
+  const now = new Date().toISOString();
+  transaction.set(reference, { running: true, step: 'queued', startedAt: now, heartbeatAt: now, cancelRequested: false, log: [] });
   return true;
 });
+
+// Stop button: a live run is asked to stop (it checks between batches); a dead one is closed right away.
+export const requestStop = async () => adminDb.runTransaction(async transaction => {
+  const reference = IMPORT.doc('run');
+  const current = (await transaction.get(reference)).data() as ImportRun | undefined;
+  if (!current?.running) return;
+  if (isAlive(current)) {
+    transaction.set(reference, { cancelRequested: true }, { merge: true });
+  } else {
+    transaction.set(reference, {
+      running: false,
+      step: '',
+      ok: false,
+      error: STOPPED_BY_ADMIN,
+      finishedAt: new Date().toISOString()
+    }, { merge: true });
+  }
+});
+
+export const isStopRequested = async () => Boolean((await IMPORT.doc('run').get()).get('cancelRequested'));
+
+// Removing a channel forgets it completely: scan position and collected posts (with their Gemini answers).
+export const forgetChannel = async (channel: string) => {
+  await IMPORT.doc('state').set({ channels: { [channel]: FieldValue.delete() } }, { merge: true });
+  const posts = await POSTS.where('post.channel', '==', channel).get();
+  for (let start = 0; start < posts.docs.length; start += BATCH_LIMIT) {
+    const batch = adminDb.batch();
+    posts.docs.slice(start, start + BATCH_LIMIT).forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }
+  return posts.size;
+};
