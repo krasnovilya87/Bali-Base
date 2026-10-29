@@ -21,6 +21,9 @@ const SECTIONS = ['ads', 'services', 'afisha', 'life'] as const;
 const IMAGE_FOLDER = '/bali-base/telegram';
 const LOG_LIMIT = 300;
 const CHANNEL_RE = /^[A-Za-z][A-Za-z0-9_]{3,31}$/;
+export const DEFAULT_SCAN_DAYS = 30; // same default as collect.py
+const MIN_SCAN_DAYS = 1;
+const MAX_SCAN_DAYS = 365;
 
 type Section = typeof SECTIONS[number];
 type UploadedEntry = { collection: string; docId: string; uploadedAt: string };
@@ -78,32 +81,45 @@ export const getAvailability = () => existsSync(path.join(IMPORT_DIR, 'collect.p
   ? { available: true }
   : { available: false, reason: `Telegram parser folder not found: ${IMPORT_DIR}` };
 
-export const getChannels = () => readJson<string[]>(CHANNELS_FILE, []);
+// channels.json items: "name" (old format) or { name, days }, where days is the period of the first scan.
+type ChannelEntry = { name: string; days?: number };
 
-export const addChannel = async (raw: string) => {
+const readChannelEntries = async (): Promise<ChannelEntry[]> =>
+  (await readJson<Array<string | ChannelEntry>>(CHANNELS_FILE, []))
+    .map(entry => (typeof entry === 'string' ? { name: entry } : entry))
+    .filter(entry => entry?.name);
+
+export const getChannels = async () => (await readChannelEntries()).map(entry => entry.name);
+
+export const addChannel = async (raw: string, rawDays: unknown) => {
   const channel = normalizeChannel(raw);
   if (!CHANNEL_RE.test(channel)) throw new Error('Enter a channel username or a t.me link.');
-  const channels = await getChannels();
-  if (!channels.some(item => item.toLowerCase() === channel.toLowerCase())) {
-    channels.push(channel);
-    await writeJson(CHANNELS_FILE, channels);
+  const days = Math.round(Number(rawDays));
+  if (!Number.isFinite(days) || days < MIN_SCAN_DAYS || days > MAX_SCAN_DAYS) {
+    throw new Error(`The scan period must be from ${MIN_SCAN_DAYS} to ${MAX_SCAN_DAYS} days.`);
   }
-  return channels;
+  const entries = await readChannelEntries();
+  if (!entries.some(item => item.name.toLowerCase() === channel.toLowerCase())) {
+    entries.push({ name: channel, days });
+    await writeJson(CHANNELS_FILE, entries);
+  }
+  return entries.map(entry => entry.name);
 };
 
 export const removeChannel = async (raw: string) => {
   const channel = normalizeChannel(raw).toLowerCase();
-  const channels = (await getChannels()).filter(item => item.toLowerCase() !== channel);
-  await writeJson(CHANNELS_FILE, channels);
-  return channels;
+  const entries = (await readChannelEntries()).filter(item => item.name.toLowerCase() !== channel);
+  await writeJson(CHANNELS_FILE, entries);
+  return entries.map(entry => entry.name);
 };
 
 export const getStatus = async () => {
   const channelState = await readJson<Record<string, { last_id: number; posts: number }>>(path.join(OUT_DIR, 'state.json'), {});
   return {
     ...getAvailability(),
-    channels: (await getChannels()).map(name => ({
+    channels: (await readChannelEntries()).map(({ name, days }) => ({
       name,
+      firstScanDays: days || DEFAULT_SCAN_DAYS,
       lastMessageId: channelState[name]?.last_id || 0,
       posts: channelState[name]?.posts || 0
     })),

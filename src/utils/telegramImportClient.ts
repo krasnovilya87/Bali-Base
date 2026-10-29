@@ -19,7 +19,7 @@ export type TelegramImportRun = {
 export type TelegramImportStatus = {
   available: boolean;
   reason?: string;
-  channels: Array<{ name: string; lastMessageId: number; posts: number }>;
+  channels: Array<{ name: string; firstScanDays: number; lastMessageId: number; posts: number }>;
   running: boolean;
   step: string;
   log: string[];
@@ -48,8 +48,8 @@ const request = async (suffix: string, init: RequestInit = {}) => {
 
 export const loadTelegramImportStatus = async (): Promise<TelegramImportStatus> => request('');
 
-export const addTelegramImportChannel = async (channel: string): Promise<string[]> =>
-  (await request('/channels', { method: 'POST', body: JSON.stringify({ channel }) })).channels;
+export const addTelegramImportChannel = async (channel: string, days: number): Promise<string[]> =>
+  (await request('/channels', { method: 'POST', body: JSON.stringify({ channel, days }) })).channels;
 
 export const removeTelegramImportChannel = async (channel: string): Promise<string[]> =>
   (await request(`/channels/${encodeURIComponent(channel)}`, { method: 'DELETE' })).channels;

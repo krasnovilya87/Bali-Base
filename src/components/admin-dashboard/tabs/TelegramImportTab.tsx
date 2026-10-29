@@ -16,12 +16,15 @@ type TelegramImportTabProps = {
 
 const SECTIONS: TelegramImportSection[] = ['ads', 'services', 'afisha', 'life'];
 const POLL_MS = 3000;
+const DEFAULT_SCAN_DAYS = 30;
+const MAX_SCAN_DAYS = 365;
 
 export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
   const { tr } = useI18n();
   const [status, setStatus] = useState<TelegramImportStatus | null>(null);
   const [error, setError] = useState('');
   const [channelInput, setChannelInput] = useState('');
+  const [scanDays, setScanDays] = useState(String(DEFAULT_SCAN_DAYS));
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -56,10 +59,13 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
     }
   };
 
+  const scanDaysValue = Number(scanDays);
+  const scanDaysValid = Number.isInteger(scanDaysValue) && scanDaysValue >= 1 && scanDaysValue <= MAX_SCAN_DAYS;
+
   const handleAdd = () => {
-    if (!channelInput.trim()) return;
+    if (!channelInput.trim() || !scanDaysValid) return;
     void runAction(async () => {
-      await addTelegramImportChannel(channelInput);
+      await addTelegramImportChannel(channelInput, scanDaysValue);
       setChannelInput('');
     }, tr('admin.telegram.added'));
   };
@@ -96,18 +102,32 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h4 className="text-sm font-extrabold text-[#1E293B]">{tr('admin.telegram.channels')}</h4>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               value={channelInput}
               onChange={event => setChannelInput(event.target.value)}
               onKeyDown={event => { if (event.key === 'Enter') handleAdd(); }}
               placeholder={tr('admin.telegram.channelPlaceholder')}
-              className="flex-1 min-w-0 h-10 px-4 rounded-full border border-gray-200 text-sm outline-none focus:border-[#FF7A50]"
+              className="flex-1 min-w-[160px] h-10 px-4 rounded-full border border-gray-200 text-sm outline-none focus:border-[#FF7A50]"
             />
+            <label className="h-10 pl-4 pr-1 rounded-full border border-gray-200 flex items-center gap-2 text-[11px] font-bold text-gray-500 focus-within:border-[#FF7A50]">
+              {tr('admin.telegram.scanPeriod')}
+              <input
+                type="number"
+                min={1}
+                max={MAX_SCAN_DAYS}
+                value={scanDays}
+                onChange={event => setScanDays(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter') handleAdd(); }}
+                aria-invalid={!scanDaysValid}
+                className={`w-14 h-8 text-center text-sm font-bold rounded-full outline-none ${scanDaysValid ? 'text-[#1E293B]' : 'text-red-500'}`}
+              />
+              <span className="pr-3">{tr('admin.telegram.days')}</span>
+            </label>
             <button
               type="button"
               onClick={handleAdd}
-              disabled={busy || !channelInput.trim()}
+              disabled={busy || !channelInput.trim() || !scanDaysValid}
               className="h-10 px-4 rounded-full bg-[#1E293B] text-white text-xs font-extrabold flex items-center gap-1.5 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
@@ -123,7 +143,9 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
                     @{channel.name}
                   </a>
                   <span className="text-[11px] text-gray-400 font-semibold">
-                    {tr('admin.telegram.posts').replace('{count}', String(channel.posts))}
+                    {channel.lastMessageId
+                      ? `${tr('admin.telegram.posts').replace('{count}', String(channel.posts))} · ${tr('admin.telegram.sinceLastScan')}`
+                      : tr('admin.telegram.firstScan').replace('{days}', String(channel.firstScanDays))}
                   </span>
                   <button
                     type="button"

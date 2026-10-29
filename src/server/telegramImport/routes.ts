@@ -13,7 +13,7 @@ export const createTelegramImportRouter = (): Router => {
 
   router.post('/channels', writeLimit, async (req, res) => {
     try {
-      const channels = await addChannel(typeof req.body?.channel === 'string' ? req.body.channel : '');
+      const channels = await addChannel(typeof req.body?.channel === 'string' ? req.body.channel : '', req.body?.days);
       res.json({ ok: true, channels });
     } catch (error: any) {
       res.status(400).json({ ok: false, error: error.message });
