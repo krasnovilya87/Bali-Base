@@ -211,8 +211,10 @@ export const runImport = async () => {
   // The run is alive while it writes heartbeatAt; the admin tab and the lock rely on it.
   const heartbeat = setInterval(() => void saveRun({ heartbeatAt: new Date().toISOString() }).catch(() => undefined), HEARTBEAT_MS);
   try {
-    const channels = await getChannelEntries();
-    if (!channels.length) throw new Error('Add at least one channel first.');
+    // Only channels checked in the admin tab are updated; the others and their posts are left untouched.
+    const channels = (await getChannelEntries()).filter(entry => entry.enabled !== false);
+    if (!channels.length) throw new Error('Check at least one channel to update.');
+    const enabledNames = new Set(channels.map(entry => entry.name));
 
     await setStep('collect');
     client = await connectTelegram();
@@ -222,11 +224,11 @@ export const runImport = async () => {
       const previous = states[name] || { lastId: 0, posts: 0 };
       const { posts, lastId } = await collectChannel(client, name, previous.lastId, days || DEFAULT_FIRST_DAYS, log);
       if (posts.length) await savePosts(posts);
-      await saveChannelState(name, { lastId, posts: previous.posts + posts.length });
+      await saveChannelState(name, { lastId, posts: previous.posts + posts.length, scannedAt: new Date().toISOString() });
     }
 
     await setStep('extract');
-    const stored = await loadPosts();
+    const stored = (await loadPosts()).filter(item => enabledNames.has(item.post.channel));
     const contactsByKey = new Map(stored.map(item => [item.post.key, extractContacts(item.post)]));
     const pass1: Record<string, Pass1> = {};
     const pass2: Record<string, Pass2> = {};

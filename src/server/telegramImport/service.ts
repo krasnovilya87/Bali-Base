@@ -58,17 +58,30 @@ export const removeChannel = async (raw: string) => {
   return entries.map(entry => entry.name);
 };
 
+// Checkbox in the admin tab: only checked channels are updated by the next run.
+export const setChannelEnabled = async (raw: string, enabled: unknown) => {
+  const channel = normalizeChannel(raw).toLowerCase();
+  const entries = await getChannelEntries();
+  const entry = entries.find(item => item.name.toLowerCase() === channel);
+  if (!entry) throw new Error('Channel not found.');
+  entry.enabled = enabled !== false;
+  await saveChannelEntries(entries);
+  return entries.map(item => item.name);
+};
+
 export const stopImport = () => requestStop();
 
 export const getStatus = async () => {
   const [entries, states, run] = await Promise.all([getChannelEntries(), getChannelStates(), getRun()]);
   return {
     ...getAvailability(),
-    channels: entries.map(({ name, days }) => ({
+    channels: entries.map(({ name, days, enabled }) => ({
       name,
+      enabled: enabled !== false,
       firstScanDays: days || DEFAULT_FIRST_DAYS,
       lastMessageId: states[name]?.lastId || 0,
-      posts: states[name]?.posts || 0
+      posts: states[name]?.posts || 0,
+      scannedAt: states[name]?.scannedAt || null
     })),
     running: Boolean(run?.running),
     stopping: Boolean(run?.running && run.cancelRequested),
@@ -91,7 +104,9 @@ const startCloudRunJob = async () => {
 export const startImport = async () => {
   const availability = getAvailability();
   if (!JOB_NAME && !availability.available) throw new Error(availability.reason);
-  if (!(await getChannelEntries()).length) throw new Error('Add at least one channel first.');
+  const entries = await getChannelEntries();
+  if (!entries.length) throw new Error('Add at least one channel first.');
+  if (!entries.some(entry => entry.enabled !== false)) throw new Error('Check at least one channel to update.');
   if (!(await claimRun())) return false;
   if (JOB_NAME) {
     try {

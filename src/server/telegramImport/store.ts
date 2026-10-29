@@ -11,8 +11,8 @@ const IMPORT = adminDb.collection('telegram_import');
 const POSTS = adminDb.collection('telegram_posts');
 const BATCH_LIMIT = 400;
 
-export type ChannelEntry = { name: string; days?: number };
-export type ChannelState = { lastId: number; posts: number };
+export type ChannelEntry = { name: string; days?: number; enabled?: boolean };
+export type ChannelState = { lastId: number; posts: number; scannedAt?: string };
 export type UploadedEntry = { collection: string; docId: string; uploadedAt: string };
 export type StoredPost = { post: TelegramPost; pass1?: Pass1; pass2?: Pass2; uploaded?: UploadedEntry };
 export type ImportSummary = {

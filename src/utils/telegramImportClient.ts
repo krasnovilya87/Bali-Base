@@ -19,13 +19,22 @@ export type TelegramImportRun = {
 export type TelegramImportStatus = {
   available: boolean;
   reason?: string;
-  channels: Array<{ name: string; firstScanDays: number; lastMessageId: number; posts: number }>;
+  channels: Array<{
+    name: string;
+    enabled: boolean;
+    firstScanDays: number;
+    lastMessageId: number;
+    posts: number;
+    scannedAt: string | null;
+  }>;
   running: boolean;
   stopping?: boolean;
   step: string;
   log: string[];
   lastRun: TelegramImportRun | null;
 };
+
+export type TelegramImportChannel = TelegramImportStatus['channels'][number];
 
 const getEndpoint = (suffix = '') => {
   const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL ||
@@ -61,6 +70,10 @@ export const removeTelegramImportChannel = async (channel: string): Promise<stri
 
 export const startTelegramImport = async () => {
   await request('/run', { method: 'POST' });
+};
+
+export const setTelegramImportChannelEnabled = async (channel: string, enabled: boolean) => {
+  await request(`/channels/${encodeURIComponent(channel)}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
 };
 
 export const stopTelegramImport = async () => {

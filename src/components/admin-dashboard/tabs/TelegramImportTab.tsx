@@ -6,6 +6,7 @@ import {
   addTelegramImportChannel,
   loadTelegramImportStatus,
   removeTelegramImportChannel,
+  setTelegramImportChannelEnabled,
   startTelegramImport,
   stopTelegramImport,
   TELEGRAM_IMPORT_API_UNAVAILABLE,
@@ -22,6 +23,13 @@ const STOPPED_BY_ADMIN = 'Stopped by admin'; // same text as the server's run er
 const POLL_MS = 3000;
 const DEFAULT_SCAN_DAYS = 30;
 const MAX_SCAN_DAYS = 365;
+
+// "29.10 14:35" in the admin's local time.
+const formatScanDate = (iso: string) => {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 
 export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
   const { tr } = useI18n();
@@ -81,7 +89,20 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
     }, tr('admin.telegram.added'));
   };
 
+  const toggleChannel = async (name: string, enabled: boolean) => {
+    setBusy(true);
+    try {
+      await setTelegramImportChannelEnabled(name, enabled);
+      await refresh();
+    } catch (requestError) {
+      setError(errorText(requestError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const lastRun = status?.lastRun;
+  const checkedCount = status?.channels.filter(channel => channel.enabled).length || 0;
   const disabled = busy || !status?.available || status.running;
 
   return (
@@ -91,28 +112,6 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
           <div>
             <h3 className="text-base font-extrabold text-[#1E293B]">{tr('admin.telegram.title')}</h3>
             <p className="text-[11px] text-gray-400 font-semibold">{tr('admin.telegram.body')}</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void runAction(startTelegramImport, tr('admin.telegram.started'))}
-              disabled={disabled}
-              className="h-10 px-4 rounded-full bg-[#FF7A50] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-[#F0693F] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-4 h-4 ${status?.running ? 'animate-spin' : ''}`} />
-              {status?.running ? tr('admin.telegram.running') : tr('admin.telegram.update')}
-            </button>
-            {status?.running && (
-              <button
-                type="button"
-                onClick={() => void runAction(stopTelegramImport, tr('admin.telegram.stopRequested'))}
-                disabled={busy || status.stopping}
-                className="h-10 px-4 rounded-full bg-[#1E293B] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                {status.stopping ? tr('admin.telegram.stopping') : tr('admin.telegram.stop')}
-              </button>
-            )}
           </div>
         </div>
         {status?.running && status.step && (
@@ -157,19 +156,55 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
               <Plus className="w-4 h-4" />
               {tr('admin.telegram.add')}
             </button>
+            <button
+              type="button"
+              onClick={() => void runAction(startTelegramImport, tr('admin.telegram.started'))}
+              disabled={disabled || !checkedCount}
+              title={checkedCount ? undefined : tr('admin.telegram.nothingChecked')}
+              className="h-10 px-4 rounded-full bg-[#FF7A50] text-white text-xs font-extrabold flex items-center gap-1.5 hover:bg-[#F0693F] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${status?.running ? 'animate-spin' : ''}`} />
+              {status?.running ? tr('admin.telegram.running') : tr('admin.telegram.update')}
+            </button>
+            {status?.running && (
+              <button
+                type="button"
+                onClick={() => void runAction(stopTelegramImport, tr('admin.telegram.stopRequested'))}
+                disabled={busy || status.stopping}
+                className="h-10 px-4 rounded-full bg-[#1E293B] text-white text-xs font-extrabold flex items-center gap-1.5 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                {status.stopping ? tr('admin.telegram.stopping') : tr('admin.telegram.stop')}
+              </button>
+            )}
           </div>
           {status?.channels.length ? (
             <ul className="divide-y divide-gray-100">
               {status.channels.map(channel => (
                 <li key={channel.name} className="flex items-center gap-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={channel.enabled}
+                    disabled={busy || status.running}
+                    onChange={event => void toggleChannel(channel.name, event.target.checked)}
+                    aria-label={tr('admin.telegram.enabledLabel')}
+                    className="w-4 h-4 accent-[#FF7A50] shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
                   <Send className="w-4 h-4 text-sky-500 shrink-0" />
                   <a href={`https://t.me/${channel.name}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-[#1E293B] hover:underline">
                     @{channel.name}
                   </a>
-                  <span className="text-[11px] text-gray-400 font-semibold">
-                    {channel.lastMessageId
-                      ? `${tr('admin.telegram.posts').replace('{count}', String(channel.posts))} · ${tr('admin.telegram.period').replace('{days}', String(channel.firstScanDays))}`
-                      : tr('admin.telegram.firstScan').replace('{days}', String(channel.firstScanDays))}
+                  <span className="flex flex-col text-[11px] text-gray-400 font-semibold leading-tight">
+                    <span>
+                      {channel.lastMessageId
+                        ? `${tr('admin.telegram.posts').replace('{count}', String(channel.posts))} · ${tr('admin.telegram.period').replace('{days}', String(channel.firstScanDays))}`
+                        : tr('admin.telegram.firstScan').replace('{days}', String(channel.firstScanDays))}
+                    </span>
+                    <span>
+                      {channel.scannedAt
+                        ? tr('admin.telegram.scannedAt').replace('{date}', formatScanDate(channel.scannedAt))
+                        : tr('admin.telegram.notScanned')}
+                    </span>
                   </span>
                   {status.running || busy ? (
                     <span className="ml-auto p-2 text-gray-300" aria-hidden="true"><Trash2 className="w-4 h-4" /></span>
