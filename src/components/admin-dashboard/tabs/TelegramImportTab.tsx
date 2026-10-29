@@ -6,6 +6,7 @@ import {
   loadTelegramImportStatus,
   removeTelegramImportChannel,
   startTelegramImport,
+  TELEGRAM_IMPORT_API_UNAVAILABLE,
   type TelegramImportSection,
   type TelegramImportStatus
 } from '../../../utils/telegramImportClient';
@@ -27,14 +28,19 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
   const [scanDays, setScanDays] = useState(String(DEFAULT_SCAN_DAYS));
   const [busy, setBusy] = useState(false);
 
+  const errorText = useCallback((requestError: unknown) => {
+    const message = requestError instanceof Error ? requestError.message : String(requestError);
+    return message === TELEGRAM_IMPORT_API_UNAVAILABLE ? tr('admin.telegram.localOnly') : message;
+  }, [tr]);
+
   const refresh = useCallback(async () => {
     try {
       setStatus(await loadTelegramImportStatus());
       setError('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : String(requestError));
+      setError(errorText(requestError));
     }
-  }, []);
+  }, [errorText]);
 
   useEffect(() => {
     void refresh();
@@ -53,7 +59,9 @@ export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
       showToast?.(message);
       await refresh();
     } catch (requestError) {
-      showToast?.(requestError instanceof Error ? requestError.message : String(requestError));
+      const message = errorText(requestError);
+      setError(message);
+      showToast?.(message);
     } finally {
       setBusy(false);
     }

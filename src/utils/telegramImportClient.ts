@@ -42,9 +42,13 @@ const request = async (suffix: string, init: RequestInit = {}) => {
     })
   });
   const payload = await response.json().catch(() => null);
+  // The production API (Cloud Run) has no parser and answers 404/405 or an HTML page.
+  if (!payload && [404, 405, 501].includes(response.status)) throw new Error(TELEGRAM_IMPORT_API_UNAVAILABLE);
   if (!response.ok || !payload?.ok) throw new Error(payload?.error || 'Telegram import request failed.');
   return payload;
 };
+
+export const TELEGRAM_IMPORT_API_UNAVAILABLE = 'TELEGRAM_IMPORT_API_UNAVAILABLE';
 
 export const loadTelegramImportStatus = async (): Promise<TelegramImportStatus> => request('');
 

@@ -1,75 +1,16 @@
-import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { adminDb } from '../firebaseAdmin';
-import { uploadImageBufferToImageKit } from '../imageUpload/routes';
-import { recordGeminiCalls, type GeminiCallStats } from '../geminiUsage';
+import { firebaseAdminApp } from '../firebaseAdmin';
+import firebaseConfig from '../../config/firebaseConfig';
+import { DEFAULT_FIRST_DAYS, isTelegramConfigured } from './collector';
+import { runImport } from './pipeline';
+import { claimRun, getChannelEntries, getChannelStates, getRun, saveChannelEntries, saveRun } from './store';
 
-// The Telegram parser (Python + Telethon session) lives in the project's Data folder, so the import
-// only works where that folder exists: the API server running on the owner's computer.
-const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-export const IMPORT_DIR = process.env.TELEGRAM_IMPORT_DIR
-  || path.resolve(APP_ROOT, '../../../Data/маркет/telegramm');
-const OUT_DIR = path.join(IMPORT_DIR, 'out');
-const CHANNELS_FILE = path.join(IMPORT_DIR, 'channels.json');
-const UPLOADED_FILE = path.join(OUT_DIR, 'uploaded.json');
-const LAST_RUN_FILE = path.join(OUT_DIR, 'last_run.json');
-const PYTHON = process.env.PYTHON || 'python';
-const SECTIONS = ['ads', 'services', 'afisha', 'life'] as const;
-const IMAGE_FOLDER = '/bali-base/telegram';
-const LOG_LIMIT = 300;
+// The import runs on Cloud Run as a separate job (it takes minutes) when TELEGRAM_IMPORT_JOB is set;
+// otherwise (local development) it runs in this API process.
+const JOB_NAME = process.env.TELEGRAM_IMPORT_JOB || '';
+const JOB_REGION = process.env.TELEGRAM_IMPORT_REGION || 'asia-southeast1';
 const CHANNEL_RE = /^[A-Za-z][A-Za-z0-9_]{3,31}$/;
-export const DEFAULT_SCAN_DAYS = 30; // same default as collect.py
 const MIN_SCAN_DAYS = 1;
 const MAX_SCAN_DAYS = 365;
-
-type Section = typeof SECTIONS[number];
-type UploadedEntry = { collection: string; docId: string; uploadedAt: string };
-export type ImportSummary = {
-  created: Record<Section, number>;
-  reposts: number;
-  removed: number;
-  skipped: number;
-  photoErrors: number;
-  failed: number;
-};
-export type ImportRun = { startedAt: string; finishedAt?: string; ok?: boolean; error?: string; summary?: ImportSummary };
-
-const state: { running: boolean; step: string; log: string[]; current?: ImportRun } = { running: false, step: '', log: [] };
-
-const addLog = (line: string) => {
-  const clean = line.replace(/\r/g, '').trimEnd();
-  if (!clean) return;
-  // extract.py reports how many Gemini requests it made per model; they count toward the dashboard Gemini usage.
-  const usage = clean.match(/^GEMINI_USAGE (\{.*\})$/);
-  if (usage) {
-    try {
-      const byModel = JSON.parse(usage[1]) as Record<string, GeminiCallStats>;
-      for (const [model, stats] of Object.entries(byModel)) {
-        recordGeminiCalls(model, stats).catch(error => console.error('[Telegram import] Could not record Gemini usage:', error));
-      }
-    } catch {
-      // A malformed line is just logged.
-    }
-  }
-  state.log.push(`${new Date().toISOString().slice(11, 19)} ${clean}`);
-  if (state.log.length > LOG_LIMIT) state.log.splice(0, state.log.length - LOG_LIMIT);
-};
-
-const readJson = async <T>(file: string, fallback: T): Promise<T> => {
-  try {
-    return JSON.parse(await readFile(file, 'utf8')) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const writeJson = async (file: string, data: unknown) => {
-  await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, JSON.stringify(data, null, 2), 'utf8');
-};
 
 export const normalizeChannel = (value: string) => value.trim()
   .replace(/^https?:\/\//, '')
@@ -77,19 +18,9 @@ export const normalizeChannel = (value: string) => value.trim()
   .replace(/^@/, '')
   .split(/[/?#]/)[0];
 
-export const getAvailability = () => existsSync(path.join(IMPORT_DIR, 'collect.py'))
+export const getAvailability = () => (isTelegramConfigured()
   ? { available: true }
-  : { available: false, reason: `Telegram parser folder not found: ${IMPORT_DIR}` };
-
-// channels.json items: "name" (old format) or { name, days }, where days is the period of the first scan.
-type ChannelEntry = { name: string; days?: number };
-
-const readChannelEntries = async (): Promise<ChannelEntry[]> =>
-  (await readJson<Array<string | ChannelEntry>>(CHANNELS_FILE, []))
-    .map(entry => (typeof entry === 'string' ? { name: entry } : entry))
-    .filter(entry => entry?.name);
-
-export const getChannels = async () => (await readChannelEntries()).map(entry => entry.name);
+  : { available: false, reason: 'TELEGRAM_SESSION, TELEGRAM_API_ID and TELEGRAM_API_HASH are not set on the server.' });
 
 export const addChannel = async (raw: string, rawDays: unknown) => {
   const channel = normalizeChannel(raw);
@@ -98,185 +29,62 @@ export const addChannel = async (raw: string, rawDays: unknown) => {
   if (!Number.isFinite(days) || days < MIN_SCAN_DAYS || days > MAX_SCAN_DAYS) {
     throw new Error(`The scan period must be from ${MIN_SCAN_DAYS} to ${MAX_SCAN_DAYS} days.`);
   }
-  const entries = await readChannelEntries();
+  const entries = await getChannelEntries();
   if (!entries.some(item => item.name.toLowerCase() === channel.toLowerCase())) {
     entries.push({ name: channel, days });
-    await writeJson(CHANNELS_FILE, entries);
+    await saveChannelEntries(entries);
   }
   return entries.map(entry => entry.name);
 };
 
 export const removeChannel = async (raw: string) => {
   const channel = normalizeChannel(raw).toLowerCase();
-  const entries = (await readChannelEntries()).filter(item => item.name.toLowerCase() !== channel);
-  await writeJson(CHANNELS_FILE, entries);
+  const entries = (await getChannelEntries()).filter(item => item.name.toLowerCase() !== channel);
+  await saveChannelEntries(entries);
   return entries.map(entry => entry.name);
 };
 
 export const getStatus = async () => {
-  const channelState = await readJson<Record<string, { last_id: number; posts: number }>>(path.join(OUT_DIR, 'state.json'), {});
+  const [entries, states, run] = await Promise.all([getChannelEntries(), getChannelStates(), getRun()]);
   return {
     ...getAvailability(),
-    channels: (await readChannelEntries()).map(({ name, days }) => ({
+    channels: entries.map(({ name, days }) => ({
       name,
-      firstScanDays: days || DEFAULT_SCAN_DAYS,
-      lastMessageId: channelState[name]?.last_id || 0,
-      posts: channelState[name]?.posts || 0
+      firstScanDays: days || DEFAULT_FIRST_DAYS,
+      lastMessageId: states[name]?.lastId || 0,
+      posts: states[name]?.posts || 0
     })),
-    running: state.running,
-    step: state.step,
-    log: state.log,
-    lastRun: state.current || await readJson<ImportRun | null>(LAST_RUN_FILE, null)
+    running: Boolean(run?.running),
+    step: run?.step || '',
+    log: run?.log || [],
+    lastRun: run ? { startedAt: run.startedAt, finishedAt: run.finishedAt, ok: run.ok, error: run.error, summary: run.summary } : null
   };
 };
 
-const runProcess = (command: string, args: string[], cwd: string) => new Promise<void>((resolve, reject) => {
-  addLog(`$ ${command} ${args.join(' ')}`);
-  const child = spawn(command, args, {
-    cwd,
-    shell: process.platform === 'win32',
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' }
-  });
-  const onData = (chunk: Buffer) => chunk.toString('utf8').split('\n').forEach(addLog);
-  child.stdout.on('data', onData);
-  child.stderr.on('data', onData);
-  child.on('error', reject);
-  child.on('close', code => (code === 0 ? resolve() : reject(new Error(`${path.basename(args[0] || command)} exited with code ${code}`))));
-});
-
-const quote = (value: string) => (process.platform === 'win32' ? `"${value}"` : value);
-
-const messageIdFromUrl = (url: string) => {
-  const match = url.match(/t\.me\/([^/]+)\/(\d+)/);
-  return match ? `tg-${match[1]}-${match[2]}` : '';
-};
-
-/**
- * Several site listings that turned out to be one post (a repost, the same event posted by different people):
- * keep one and delete the other imported copies. An already approved (active) copy is the one that stays.
- */
-const removeDuplicates = async (entries: UploadedEntry[], summary: ImportSummary): Promise<UploadedEntry | null> => {
-  if (entries.length === 1) return entries[0];
-  const snapshots = await Promise.all(entries.map(entry => adminDb.collection(entry.collection).doc(entry.docId).get()));
-  const existing = entries.map((entry, index) => ({ entry, snapshot: snapshots[index] })).filter(item => item.snapshot.exists);
-  if (!existing.length) return null;
-  const keeper = existing.find(item => item.snapshot.get('status') === 'active') || existing[0];
-  for (const item of existing) {
-    if (item === keeper || item.snapshot.get('importSource') !== 'telegram') continue;
-    try {
-      await item.snapshot.ref.delete();
-      summary.removed += 1;
-      addLog(`- duplicate removed: ${item.entry.docId} (kept ${keeper.entry.docId})`);
-    } catch (error: any) {
-      addLog(`duplicate delete failed for ${item.entry.docId}: ${error.message}`);
-    }
-  }
-  return keeper.entry;
-};
-
-export const uploadListings = async (): Promise<ImportSummary> => {
-  const uploaded = await readJson<Record<string, UploadedEntry>>(UPLOADED_FILE, {});
-  const summary: ImportSummary = {
-    created: { ads: 0, services: 0, afisha: 0, life: 0 },
-    reposts: 0,
-    removed: 0,
-    skipped: 0,
-    photoErrors: 0,
-    failed: 0
-  };
-
-  for (const section of SECTIONS) {
-    const listings = await readJson<any[]>(path.join(OUT_DIR, 'listings', `${section}.json`), []);
-    for (const listing of listings) {
-      const relatedIds = [listing.id, ...(listing.repostUrls || []).map(messageIdFromUrl)].filter(Boolean);
-      const knownEntries = [...new Map(relatedIds.map(id => uploaded[id]).filter(Boolean)
-        .map(entry => [`${entry.collection}/${entry.docId}`, entry])).values()];
-      if (knownEntries.length) {
-        const keeper = await removeDuplicates(knownEntries, summary);
-        if (!keeper) continue;
-        // The same post was published again: keep one listing and lift it as fresh.
-        const lifted = !uploaded[listing.id];
-        if (lifted) {
-          await adminDb.collection(keeper.collection).doc(keeper.docId)
-            .set({ pushedAt: listing.createdAt }, { merge: true })
-            .catch(error => addLog(`repost update failed for ${keeper.docId}: ${error.message}`));
-          summary.reposts += 1;
-        } else if (knownEntries.length === 1) {
-          summary.skipped += 1;
-        }
-        relatedIds.forEach(id => { uploaded[id] = keeper; });
-        await writeJson(UPLOADED_FILE, uploaded);
-        continue;
-      }
-
-      const collection = section === 'services' ? 'services' : 'market';
-      const reference = adminDb.collection(collection).doc(listing.id);
-      try {
-        if ((await reference.get()).exists) {
-          relatedIds.forEach(id => { uploaded[id] = { collection, docId: listing.id, uploadedAt: new Date().toISOString() }; });
-          summary.skipped += 1;
-          continue;
-        }
-        const images: string[] = [];
-        for (const photo of listing.photoFiles || []) {
-          try {
-            const buffer = await readFile(path.join(IMPORT_DIR, photo));
-            images.push(await uploadImageBufferToImageKit(buffer, path.basename(photo), IMAGE_FOLDER));
-          } catch (error: any) {
-            summary.photoErrors += 1;
-            addLog(`photo ${photo}: ${error.message}`);
-          }
-        }
-        const { photoFiles: _photoFiles, ...doc } = listing;
-        await reference.create({ ...doc, images, pushedAt: listing.createdAt, importedAt: new Date().toISOString() });
-        const entry = { collection, docId: listing.id, uploadedAt: new Date().toISOString() };
-        relatedIds.forEach(id => { uploaded[id] = entry; });
-        summary.created[section] += 1;
-        addLog(`+ ${section}: ${listing.title} (${images.length} photos)`);
-      } catch (error: any) {
-        summary.failed += 1;
-        addLog(`upload failed for ${listing.id}: ${error.message}`);
-      }
-      await writeJson(UPLOADED_FILE, uploaded);
-    }
-  }
-  await writeJson(UPLOADED_FILE, uploaded);
-  return summary;
-};
-
-const runPipeline = async () => {
-  const run: ImportRun = { startedAt: new Date().toISOString() };
-  state.current = run;
-  try {
-    state.step = 'schema';
-    await runProcess('npx', ['tsx', quote(path.join(IMPORT_DIR, 'export_schema.ts'))], APP_ROOT);
-    state.step = 'collect';
-    await runProcess(PYTHON, [quote(path.join(IMPORT_DIR, 'collect.py'))], IMPORT_DIR);
-    state.step = 'extract';
-    await runProcess(PYTHON, [quote(path.join(IMPORT_DIR, 'extract.py'))], IMPORT_DIR);
-    state.step = 'upload';
-    run.summary = await uploadListings();
-    run.ok = true;
-    addLog(`done: ${JSON.stringify(run.summary)}`);
-  } catch (error: any) {
-    run.ok = false;
-    run.error = error.message;
-    addLog(`error: ${error.message}`);
-  } finally {
-    run.finishedAt = new Date().toISOString();
-    state.running = false;
-    state.step = '';
-    await writeJson(LAST_RUN_FILE, run).catch(() => undefined);
+const startCloudRunJob = async () => {
+  const { access_token: accessToken } = await firebaseAdminApp.options.credential!.getAccessToken();
+  const url = `https://run.googleapis.com/v2/projects/${firebaseConfig.projectId}/locations/${JOB_REGION}/jobs/${JOB_NAME}:run`;
+  const response = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) {
+    const payload: any = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message || `Cloud Run job start failed (${response.status}).`);
   }
 };
 
 export const startImport = async () => {
   const availability = getAvailability();
-  if (!availability.available) throw new Error(availability.reason);
-  if (state.running) return false;
-  if (!(await getChannels()).length) throw new Error('Add at least one channel first.');
-  state.running = true;
-  state.log = [];
-  void runPipeline();
+  if (!JOB_NAME && !availability.available) throw new Error(availability.reason);
+  if (!(await getChannelEntries()).length) throw new Error('Add at least one channel first.');
+  if (!(await claimRun())) return false;
+  if (JOB_NAME) {
+    try {
+      await startCloudRunJob();
+    } catch (error: any) {
+      await saveRun({ running: false, step: '', ok: false, error: error.message, finishedAt: new Date().toISOString() });
+      throw error;
+    }
+  } else {
+    void runImport().catch(error => console.error('[Telegram import] run failed:', error));
+  }
   return true;
 };
