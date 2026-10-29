@@ -122,10 +122,20 @@ label('sizing.height', 'Height', 'Рост');
 label('sizing.footLength', 'Foot length', 'Длина стопы');
 label('sizing.notSelected', 'Not selected', 'Не выбрано');
 
+// Battery health in percent (0-100), shown as a slider for every electronics subcategory.
+export const DEVICE_BATTERY_HEALTH_FIELD_ID = 'device_battery_health';
+const batteryHealthField = (): ClassifiedSpecialField => number(
+  DEVICE_BATTERY_HEALTH_FIELD_ID,
+  'Battery health',
+  'Состояние аккумулятора',
+  '%'
+);
+
 const deviceFields = (batteryUnit: string): ClassifiedSpecialField[] => [
   number('device_storage_gb', 'Storage capacity', 'Объём памяти', 'GB'),
   number('device_ram_gb', 'RAM capacity', 'Объём оперативной памяти', 'GB'),
   number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', batteryUnit),
+  batteryHealthField(),
   number('device_screen_inches', 'Screen size', 'Размер экрана', 'in'),
   select('device_display_type', 'Display type', 'Тип дисплея', [
     ['lcd', 'LCD', 'LCD'], ['ips', 'IPS', 'IPS'], ['oled', 'OLED', 'OLED'],
@@ -181,18 +191,23 @@ export const CLASSIFIED_SPECIAL_CONFIG: Record<string, ClassifiedSpecialConfig> 
   computers: { productTypes: [], fields: deviceFields('Wh') },
   photo_video_gear: { productTypes: [], fields: [
     number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', 'mAh'),
+    batteryHealthField(),
     number('device_screen_inches', 'Screen size', 'Размер экрана', 'in')
   ] },
   audio: { productTypes: [], fields: [
-    number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', 'mAh')
+    number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', 'mAh'),
+    batteryHealthField()
   ] },
   home_appliances: { productTypes: [], fields: [
-    number('appliance_power_w', 'Power', 'Мощность', 'W')
+    number('appliance_power_w', 'Power', 'Мощность', 'W'),
+    batteryHealthField()
   ] },
   electronics_accessories: { productTypes: [], fields: [
     number('device_storage_gb', 'Storage capacity', 'Объём памяти', 'GB'),
-    number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', 'mAh')
+    number('device_battery_capacity', 'Battery capacity', 'Ёмкость батареи', 'mAh'),
+    batteryHealthField()
   ] },
+  electronics_other: { productTypes: [], fields: [batteryHealthField()] },
   surfing: {
     productTypes: [
       product('surfing', 'board', 'Board', 'Доска'), product('surfing', 'fins', 'Fins', 'Плавники'),

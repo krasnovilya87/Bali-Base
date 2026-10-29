@@ -12,6 +12,7 @@ import {
   MessagesTab,
   ModerationTab,
   SettingsTab,
+  TelegramImportTab,
   UsersTab
 } from './admin-dashboard/AdminTabs';
 
@@ -116,6 +117,7 @@ export default function AdminDashboard({
                 onEditListing={onEditListing}
               />
             )}
+            {activeTab === 'telegram' && <TelegramImportTab showToast={tabProps.showToast} />}
             {activeTab === 'messages' && <MessagesTab {...tabProps} />}
             {activeTab === 'settings' && <SettingsTab {...tabProps} />}
 

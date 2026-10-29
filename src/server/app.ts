@@ -6,6 +6,7 @@ import { createAiTranslationRouter } from './aiTranslation';
 import { createGooglePlacesReviewsRouter } from './googlePlacesReviews';
 import { createImageUploadRouter } from './imageUpload';
 import { createAdminRouter } from './admin';
+import { createTelegramImportRouter } from './telegramImport';
 import { requireAppCheck } from './security';
 
 const app = express();
@@ -49,6 +50,7 @@ app.use('/api/ai-search', requireAppCheck, createAiSearchRouter());
 app.use('/api/ai', requireAppCheck, createAiTranslationRouter(), createAiModerationRouter());
 app.use('/api/google-places', requireAppCheck, createGooglePlacesReviewsRouter());
 app.use('/api/image-upload', requireAppCheck, createImageUploadRouter());
+app.use('/api/admin/telegram-import', requireAppCheck, createTelegramImportRouter());
 app.use('/api/admin', requireAppCheck, createAdminRouter());
 
 app.get('/api/health', (_req, res) => {

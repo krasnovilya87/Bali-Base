@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Database, List, MessageSquare, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
+import { BarChart2, Database, List, MessageSquare, Send, Settings, Shield, ShieldAlert, User, X } from 'lucide-react';
 import { AdminTab } from './types';
 import { useI18n } from '../../i18nContext';
 
@@ -77,6 +77,11 @@ export default function AdminSidebar({
                 {moderationListings}
               </span>
             )}
+          </button>
+
+          <button onClick={() => onTabChange('telegram')} className={itemClass('telegram')}>
+            <Send className="w-4 h-4" />
+            <span>{tr('admin.nav.telegram')}</span>
           </button>
 
           <button onClick={() => onTabChange('messages')} className={itemClass('messages')}>

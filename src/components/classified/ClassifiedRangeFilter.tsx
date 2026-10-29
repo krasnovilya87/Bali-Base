@@ -6,6 +6,8 @@ import { useI18n } from '../../i18nContext';
 type Range = { min?: number; max?: number };
 export type RangeSpec = { min: number; max: number; step: number };
 
+export const BATTERY_HEALTH_RANGE_SPEC: RangeSpec = { min: 0, max: 100, step: 1 };
+
 export const ELECTRONICS_RANGE_SPECS: Record<ElectronicsCategory, Record<string, RangeSpec>> = {
   phones: {
     device_storage_gb: { min: 0, max: 1024, step: 16 },

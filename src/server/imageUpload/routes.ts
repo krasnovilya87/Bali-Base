@@ -62,6 +62,25 @@ const parseImageKitResponse = async (response: Response) => {
   throw new Error(message);
 };
 
+// Server-side upload of an image file (used by the Telegram import); returns the public URL.
+export const uploadImageBufferToImageKit = async (fileBuffer: Buffer, fileName: string, folder: string) => {
+  const fileType = detectImageType(fileBuffer);
+  if (!fileType || !ALLOWED_IMAGE_TYPES.has(fileType) || fileBuffer.length > MAX_UPLOAD_BYTES) {
+    throw new Error('Only valid JPEG, PNG, WebP, or GIF images up to 15 MB are allowed.');
+  }
+  const formData = new FormData();
+  formData.append('file', new Blob([fileBuffer], { type: fileType }), fileName);
+  formData.append('fileName', fileName);
+  formData.append('useUniqueFileName', 'true');
+  formData.append('folder', folder);
+  const response = await fetch(IMAGEKIT_UPLOAD_ENDPOINT, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${Buffer.from(`${getImageKitPrivateKey()}:`).toString('base64')}` },
+    body: formData
+  });
+  return (await parseImageKitResponse(response)).url;
+};
+
 const sanitizeFileName = (value: string) => {
   const decoded = (() => {
     try {

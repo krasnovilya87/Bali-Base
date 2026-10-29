@@ -1,0 +1,189 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { useI18n } from '../../../i18nContext';
+import {
+  addTelegramImportChannel,
+  loadTelegramImportStatus,
+  removeTelegramImportChannel,
+  startTelegramImport,
+  type TelegramImportSection,
+  type TelegramImportStatus
+} from '../../../utils/telegramImportClient';
+
+type TelegramImportTabProps = {
+  showToast?: (message: string) => void;
+};
+
+const SECTIONS: TelegramImportSection[] = ['ads', 'services', 'afisha', 'life'];
+const POLL_MS = 3000;
+
+export function TelegramImportTab({ showToast }: TelegramImportTabProps) {
+  const { tr } = useI18n();
+  const [status, setStatus] = useState<TelegramImportStatus | null>(null);
+  const [error, setError] = useState('');
+  const [channelInput, setChannelInput] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      setStatus(await loadTelegramImportStatus());
+      setError('');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : String(requestError));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!status?.running) return undefined;
+    const timer = window.setInterval(() => void refresh(), POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [status?.running, refresh]);
+
+  const runAction = async (action: () => Promise<unknown>, message: string) => {
+    setBusy(true);
+    try {
+      await action();
+      showToast?.(message);
+      await refresh();
+    } catch (requestError) {
+      showToast?.(requestError instanceof Error ? requestError.message : String(requestError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdd = () => {
+    if (!channelInput.trim()) return;
+    void runAction(async () => {
+      await addTelegramImportChannel(channelInput);
+      setChannelInput('');
+    }, tr('admin.telegram.added'));
+  };
+
+  const lastRun = status?.lastRun;
+  const disabled = busy || !status?.available || status.running;
+
+  return (
+    <div className="space-y-5 animate-fade-in text-left">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-extrabold text-[#1E293B]">{tr('admin.telegram.title')}</h3>
+            <p className="text-[11px] text-gray-400 font-semibold">{tr('admin.telegram.body')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runAction(startTelegramImport, tr('admin.telegram.started'))}
+            disabled={disabled}
+            className="h-10 px-4 rounded-full bg-[#FF7A50] text-white text-xs font-extrabold flex items-center gap-2 hover:bg-[#F0693F] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 ${status?.running ? 'animate-spin' : ''}`} />
+            {status?.running ? tr('admin.telegram.running') : tr('admin.telegram.update')}
+          </button>
+        </div>
+        {status?.running && status.step && (
+          <p className="mt-3 text-xs font-bold text-[#FF7A50]">{tr(`admin.telegram.step.${status.step}`)}</p>
+        )}
+        {(error || (status && !status.available)) && (
+          <p className="mt-3 text-xs font-semibold text-red-500">{error || `${tr('admin.telegram.unavailable')} ${status?.reason || ''}`}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h4 className="text-sm font-extrabold text-[#1E293B]">{tr('admin.telegram.channels')}</h4>
+          <div className="flex gap-2">
+            <input
+              value={channelInput}
+              onChange={event => setChannelInput(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Enter') handleAdd(); }}
+              placeholder={tr('admin.telegram.channelPlaceholder')}
+              className="flex-1 min-w-0 h-10 px-4 rounded-full border border-gray-200 text-sm outline-none focus:border-[#FF7A50]"
+            />
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={busy || !channelInput.trim()}
+              className="h-10 px-4 rounded-full bg-[#1E293B] text-white text-xs font-extrabold flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Plus className="w-4 h-4" />
+              {tr('admin.telegram.add')}
+            </button>
+          </div>
+          {status?.channels.length ? (
+            <ul className="divide-y divide-gray-100">
+              {status.channels.map(channel => (
+                <li key={channel.name} className="flex items-center gap-3 py-2.5">
+                  <Send className="w-4 h-4 text-sky-500 shrink-0" />
+                  <a href={`https://t.me/${channel.name}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-[#1E293B] hover:underline">
+                    @{channel.name}
+                  </a>
+                  <span className="text-[11px] text-gray-400 font-semibold">
+                    {tr('admin.telegram.posts').replace('{count}', String(channel.posts))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void runAction(() => removeTelegramImportChannel(channel.name), tr('admin.telegram.removed'))}
+                    disabled={busy || status.running}
+                    aria-label={tr('admin.telegram.remove')}
+                    className="ml-auto p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-gray-400 font-semibold">{tr('admin.telegram.empty')}</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <h4 className="text-sm font-extrabold text-[#1E293B]">{tr('admin.telegram.lastRun')}</h4>
+          {!lastRun ? (
+            <p className="text-xs text-gray-400 font-semibold">{tr('admin.telegram.never')}</p>
+          ) : (
+            <>
+              <p className={`text-xs font-bold ${lastRun.ok === false ? 'text-red-500' : 'text-emerald-600'}`}>
+                {new Date(lastRun.startedAt).toLocaleString()} · {lastRun.ok === false
+                  ? `${tr('admin.telegram.failed')}: ${lastRun.error || ''}`
+                  : lastRun.finishedAt ? tr('admin.telegram.success') : tr('admin.telegram.running')}
+              </p>
+              {lastRun.summary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {SECTIONS.map(section => (
+                    <div key={section} className="rounded-2xl bg-[#F4F7F6] p-3">
+                      <div className="text-lg font-extrabold text-[#1E293B]">{lastRun.summary?.created[section] || 0}</div>
+                      <div className="text-[11px] font-semibold text-gray-500">{tr(`admin.telegram.section.${section}`)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {lastRun.summary && (
+                <p className="text-[11px] text-gray-500 font-semibold">
+                  {tr('admin.telegram.reposts')}: {lastRun.summary.reposts} · {tr('admin.telegram.duplicatesRemoved')}: {lastRun.summary.removed || 0}
+                  {' · '}{tr('admin.telegram.skipped')}: {lastRun.summary.skipped}
+                  {' · '}{tr('admin.telegram.photoErrors')}: {lastRun.summary.photoErrors} · {tr('admin.telegram.uploadErrors')}: {lastRun.summary.failed}
+                </p>
+              )}
+              <p className="text-[11px] text-gray-400 font-semibold">{tr('admin.telegram.moderationHint')}</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!!status?.log.length && (
+        <div className="bg-[#0F172A] rounded-3xl p-5">
+          <h4 className="text-sm font-extrabold text-white mb-3">{tr('admin.telegram.log')}</h4>
+          <pre className="text-[11px] leading-relaxed text-slate-300 max-h-80 overflow-auto whitespace-pre-wrap">
+            {status.log.join('\n')}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -14,6 +14,7 @@ const TITLE_KEYS: Record<AdminTab, string> = {
   users: 'admin.title.users',
   listings: 'admin.title.listings',
   moderation: 'admin.title.moderation',
+  telegram: 'admin.telegram.title',
   messages: 'admin.title.messages',
   settings: 'admin.title.settings'
 };

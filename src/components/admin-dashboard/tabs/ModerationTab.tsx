@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2, ShieldCheck, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ImageOff, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { useI18n } from '../../../i18nContext';
 import { AI_MODERATION_RULES } from '../../../utils/aiModerationRules';
 import ListingCard from '../../ListingCard';
@@ -101,7 +101,9 @@ export function ModerationTab(props: AdminTabProps) {
   const { tr } = useI18n();
   const {
     moderationItems,
+    moderationItemsWithoutPhotos,
     handleDeleteAllModeration,
+    handleDeleteModerationWithoutPhotos,
     handleApproveAllModeration,
     approveAllProgress,
     handleApprove,
@@ -149,6 +151,19 @@ export function ModerationTab(props: AdminTabProps) {
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{tr('admin.moderation.approveAll')}</span>
+              </Del>
+            )}
+            {moderationItemsWithoutPhotos.length > 0 && (
+              <Del
+                title={tr('admin.moderation.deleteNoPhotoTitle')}
+                message={tr('admin.moderation.deleteNoPhotoBody', { count: moderationItemsWithoutPhotos.length })}
+                confirmLabel={tr('admin.moderation.deleteNoPhotoConfirm')}
+                cancelLabel={tr('common.cancel')}
+                onConfirm={handleDeleteModerationWithoutPhotos}
+                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-2xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <ImageOff className="w-4 h-4" />
+                <span>{tr('admin.moderation.deleteNoPhoto', { count: moderationItemsWithoutPhotos.length })}</span>
               </Del>
             )}
             <Del

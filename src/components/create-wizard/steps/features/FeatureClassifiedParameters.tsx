@@ -9,6 +9,7 @@ import { Listing } from '../../../../types';
 import {
   CLASSIFIED_GENERIC_SPECIAL_FIELDS,
   CLASSIFIED_TRANSPORT_PRODUCTION_YEAR_LABEL_KEY,
+  DEVICE_BATTERY_HEALTH_FIELD_ID,
   getClassifiedSpecialConfig,
   getVisibleClassifiedSpecialFields
 } from '../../../../config/classifiedSpecial';
@@ -31,6 +32,7 @@ import { isElectronicsCategory } from '../../../../config/electronicsCatalog';
 import { isMarketTransportCategory } from '../../../../config/transportCatalog';
 import { isMarketOtherCategory } from '../../../../config/marketOtherCatalog';
 import {
+  BATTERY_HEALTH_RANGE_SPEC,
   ELECTRONICS_RANGE_SPECS,
   MARKET_TRANSPORT_RANGE_SPECS,
   getMarketNumberRangeSpec,
@@ -112,6 +114,7 @@ const FeatureClassifiedParameters: React.FC<FeatureClassifiedParametersProps> = 
     if (field.id === 'classified_purchase_year') {
       return { min: isElectronicsCategory(subCategory) ? 2000 : 1980, max: new Date().getFullYear(), step: 1 };
     }
+    if (field.id === DEVICE_BATTERY_HEALTH_FIELD_ID) return BATTERY_HEALTH_RANGE_SPEC;
     if (isElectronicsCategory(subCategory) && ELECTRONICS_RANGE_SPECS[subCategory][field.id]) {
       return ELECTRONICS_RANGE_SPECS[subCategory][field.id];
     }

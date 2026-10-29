@@ -8,6 +8,7 @@ import { isMarketOtherCategory } from '../../config/marketOtherCatalog';
 import {
   CLASSIFIED_TRANSPORT_PRODUCTION_YEAR_LABEL_KEY,
   CLASSIFIED_GENERIC_SPECIAL_FIELDS,
+  DEVICE_BATTERY_HEALTH_FIELD_ID,
   getClassifiedSpecialConfig,
   getVisibleClassifiedSpecialFields
 } from '../../config/classifiedSpecial';
@@ -22,7 +23,12 @@ import SurfProductIcon from './SurfProductIcon';
 import YogaProductIcon from './YogaProductIcon';
 import { ClassifiedSizingFilter } from './ClassifiedSizing';
 import CatalogBrandModelFilters from './CatalogBrandModelFilters';
-import ClassifiedRangeFilter, { ELECTRONICS_RANGE_SPECS, MARKET_TRANSPORT_RANGE_SPECS, getMarketNumberRangeSpec } from './ClassifiedRangeFilter';
+import ClassifiedRangeFilter, {
+  BATTERY_HEALTH_RANGE_SPEC,
+  ELECTRONICS_RANGE_SPECS,
+  MARKET_TRANSPORT_RANGE_SPECS,
+  getMarketNumberRangeSpec
+} from './ClassifiedRangeFilter';
 import {
   getClassifiedSizingKind,
   LEGACY_CLASSIFIED_SIZE_FIELD_IDS
@@ -245,6 +251,8 @@ const ClassifiedSpecialFilters: React.FC<Props> = ({ subCategory, filters, setFi
       const range = filters.classifiedSpecialNumberRanges[field.id] || {};
       const catalogRange = field.id === 'classified_purchase_year'
         ? { min: isElectronicsCategory(subCategory) ? 2000 : 1980, max: new Date().getFullYear(), step: 1 }
+        : field.id === DEVICE_BATTERY_HEALTH_FIELD_ID
+          ? BATTERY_HEALTH_RANGE_SPEC
         : isElectronicsCategory(subCategory)
           ? ELECTRONICS_RANGE_SPECS[subCategory][field.id]
           : isMarketTransportCategory(subCategory)

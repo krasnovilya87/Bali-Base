@@ -955,11 +955,20 @@ export function useAdminDashboardController({
       return;
     }
 
-    for (const item of moderationItems) {
-      await deleteDocument(LISTINGS_COLLECTION, item.id);
-    }
+    // onDeleteListing picks the right collection (Telegram posts live in market/services).
+    moderationItems.forEach(item => onDeleteListing(item.id));
 
     showToast(`Deleted moderation listings: ${moderationItems.length}`);
+    setTimeout(() => window.location.reload(), 1200);
+  };
+
+  const moderationItemsWithoutPhotos = moderationItems.filter(item => !(item.images || []).some(Boolean));
+
+  const handleDeleteModerationWithoutPhotos = () => {
+    if (!moderationItemsWithoutPhotos.length) return;
+    // onDeleteListing picks the right collection (Telegram posts live in market/services).
+    moderationItemsWithoutPhotos.forEach(item => onDeleteListing(item.id));
+    showToast(tr('admin.moderation.deleteNoPhotoDone', { count: moderationItemsWithoutPhotos.length }));
     setTimeout(() => window.location.reload(), 1200);
   };
 
@@ -1134,7 +1143,9 @@ export function useAdminDashboardController({
     onDeleteListing,
     handleActivateAllListings,
     moderationItems,
+    moderationItemsWithoutPhotos,
     handleDeleteAllModeration,
+    handleDeleteModerationWithoutPhotos,
     handleApproveAllModeration,
     approveAllProgress,
     handleApprove,
