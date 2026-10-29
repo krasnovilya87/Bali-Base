@@ -68,7 +68,7 @@ export const translateTextWithGemini = async (text: string, language: LanguageCo
 
   const targetLanguage = getLanguageName(language);
   const ai = new GoogleGenAI({ apiKey });
-  const response = await trackGeminiCall(() => ai.models.generateContent({
+  const response = await trackGeminiCall(MODEL, () => ai.models.generateContent({
     model: MODEL,
     contents: buildPrompt(sourceText, targetLanguage),
     config: {

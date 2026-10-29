@@ -306,7 +306,7 @@ const isNetworkError = (error: unknown) => {
 };
 
 const generateModerationContent = async (ai: GoogleGenAI, prompt: string) => {
-  const request = () => trackGeminiCall(() => ai.models.generateContent({
+  const request = () => trackGeminiCall(MODEL, () => ai.models.generateContent({
     model: MODEL,
     contents: prompt,
     config: {
