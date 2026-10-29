@@ -41,7 +41,8 @@ import {
 } from '../utils/supportTickets';
 import { buildListingShareUrl, shareListingLink } from '../utils/listingShare';
 import { buildInvestmentContactMessage } from '../utils/investmentContactMessage';
-import { getPriceSourceLabelKey, isPriceOnRequest } from '../utils/priceSourceLabel';
+import { getPriceSourceLabelKey, isFixedPriceCategory, isPriceOnRequest } from '../utils/priceSourceLabel';
+import { TelegramIcon, WhatsAppIcon } from './MessengerIcons';
 import { findCompanyByName } from '../config/companies';
 import { CLASSIFIED_GENERIC_SPECIAL_FIELDS, getClassifiedSpecialConfig } from '../config/classifiedSpecial';
 import CompanyContactModal from './listing-details/CompanyContactModal';
@@ -785,8 +786,10 @@ export default function ListingDetails({
     ? listing.dropPricePerMonth
     : listing.pricePerMonth;
 
+  // A fixed price (services, market, afisha, life) is never multiplied by the selected days.
+  const pricingDays = isFixedPriceCategory(listing.category) ? 1 : diffDays;
   const activeDailyPrice = calculateGraphDailyPrice({
-    days: diffDays,
+    days: pricingDays,
     pricePerDay: baseDailyPrice,
     pricePerMonth: baseMonthlyPrice
   });
@@ -804,15 +807,15 @@ export default function ListingDetails({
     checkOutDate &&
     toDateStr(addOneCalendarMonth(new Date(`${checkInDate}T00:00:00`))) === checkOutDate
   );
-  const totalBudget = isCalendarMonthStay && baseMonthlyPrice
+  const totalBudget = isCalendarMonthStay && baseMonthlyPrice && pricingDays > 1
     ? baseMonthlyPrice
     : calculateGraphTotalPrice({
-      days: diffDays,
+      days: pricingDays,
       pricePerDay: baseDailyPrice,
       pricePerMonth: baseMonthlyPrice
     });
 
-  const stayDays = diffDays;
+  const stayDays = pricingDays;
   const activeBasePrice = stayDays ? totalBudget : activeDailyPrice;
   const activeCompetitorPrice = stayDays && listing.bookingComPrice ? listing.bookingComPrice * stayDays : listing.bookingComPrice || 0;
   const ownerDisplayName = listing.ownerName.trim() || tr('details.listingAuthor');
@@ -1067,12 +1070,16 @@ export default function ListingDetails({
   // message and a link to the listing on this site. The user picks the recipient in the app.
   const hasContactButtons = listing.importSource === 'telegram' || Boolean(listing.telegramUsername);
   const openImportedMessage = (channel: 'telegram' | 'whatsapp') => {
-    const message = `BaliBase. Пишу вам по объявлению «${listing.title}». ${buildListingShareUrl(listing.id)}`;
+    // The prefilled message is always in English, like the WhatsApp booking message.
+    const intro = `Bali Base. Hello! I am writing about your listing: ${listing.title}.`;
+    const listingUrl = buildListingShareUrl(listing.id);
+    const message = `${intro}\n${listingUrl}`;
+    const whatsappNumber = (listing.whatsappNumber || '').replace(/[^0-9]/g, '');
     const url = channel === 'telegram'
       ? listing.telegramUsername
-        ? `https://t.me/${listing.telegramUsername}`
-        : `https://t.me/share/url?url=${encodeURIComponent(buildListingShareUrl(listing.id))}&text=${encodeURIComponent(`BaliBase. Пишу вам по объявлению «${listing.title}».`)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+        ? `https://t.me/${listing.telegramUsername}?text=${encodeURIComponent(message)}`
+        : `https://t.me/share/url?url=${encodeURIComponent(listingUrl)}&text=${encodeURIComponent(intro)}`
+      : `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -1582,9 +1589,11 @@ export default function ListingDetails({
   const isInvestmentListing = listing.category === 'investments';
   const isMarketListing = listing.category === 'ads';
   const isAfishaListing = listing.category === 'afisha';
-  const isDateFreeListing = isInvestmentListing || isMarketListing || isAfishaListing;
-  const usesSimpleTotalLabel = isInvestmentListing || isMarketListing || isAfishaListing;
   const isLifeListing = listing.category === 'life';
+  const isDateFreeListing = isInvestmentListing || isMarketListing || isAfishaListing || isLifeListing;
+  // Services, market, afisha and life show one fixed price: no "per day" line and no day count in the total.
+  const isFixedPriceListing = isFixedPriceCategory(listing.category);
+  const usesSimpleTotalLabel = isInvestmentListing || isFixedPriceListing;
   const isLifeCommunityListing = isLifeListing && listing.subCategory !== 'life_jobs';
   if (isAfishaListing) {
     const attributes = listing.classifiedAttributes || {};
@@ -3253,7 +3262,7 @@ export default function ListingDetails({
                     {convertPrice(totalBudget)} {currencySymbol}
                   </span>
 
-                  {!isInvestmentListing && (
+                  {!isInvestmentListing && !isFixedPriceListing && (
                     <div className="text-xs font-semibold text-text-dark/85 block">
                       <span className="font-mono">{convertPrice(activeDailyPrice)} {currencySymbol}</span>
                       <span className="text-gray-400 font-light">{` ${tr('details.perDay')}`}</span>
@@ -3356,11 +3365,13 @@ export default function ListingDetails({
                   )}
                   {hasContactButtons && (
                     <div className="flex flex-col gap-2">
-                      <button type="button" onClick={() => openImportedMessage('telegram')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#229ED9] text-white hover:opacity-90 transition cursor-pointer">
-                        {tr('details.imported.telegram')}
+                      <button type="button" onClick={() => openImportedMessage('telegram')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#229ED9] text-white hover:opacity-90 transition cursor-pointer flex items-center justify-center gap-2">
+                        <TelegramIcon />
+                        <span>{tr('details.imported.telegram')}</span>
                       </button>
-                      <button type="button" onClick={() => openImportedMessage('whatsapp')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#2F7D69] text-white hover:opacity-90 transition cursor-pointer">
-                        {tr('details.imported.whatsapp')}
+                      <button type="button" onClick={() => openImportedMessage('whatsapp')} className="w-full py-3.5 rounded-2xl font-sans font-bold text-xs shadow-md bg-[#2F7D69] text-white hover:opacity-90 transition cursor-pointer flex items-center justify-center gap-2">
+                        <WhatsAppIcon />
+                        <span>{tr('details.imported.whatsapp')}</span>
                       </button>
                     </div>
                   )}
@@ -3459,11 +3470,13 @@ export default function ListingDetails({
 
             {hasContactButtons && (
               <div className="flex flex-1 gap-2">
-                <button type="button" onClick={() => openImportedMessage('telegram')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#229ED9] text-white active:scale-95 transition cursor-pointer">
-                  {tr('details.imported.telegram')}
+                <button type="button" onClick={() => openImportedMessage('telegram')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#229ED9] text-white active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5">
+                  <TelegramIcon />
+                  <span>{tr('details.imported.telegram')}</span>
                 </button>
-                <button type="button" onClick={() => openImportedMessage('whatsapp')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#2F7D69] text-white active:scale-95 transition cursor-pointer">
-                  {tr('details.imported.whatsapp')}
+                <button type="button" onClick={() => openImportedMessage('whatsapp')} className="flex-1 py-3.5 rounded-xl font-sans font-extrabold text-xs shadow-sm bg-[#2F7D69] text-white active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5">
+                  <WhatsAppIcon />
+                  <span>{tr('details.imported.whatsapp')}</span>
                 </button>
               </div>
             )}
