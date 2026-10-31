@@ -600,6 +600,7 @@ const en: TranslationDictionary = {
   "details.myNotesPlaceholder": "Write a private note about this property...",
   "details.descriptionTitle": "Description",
   "details.characteristicsTitle": "Characteristics & terms",
+  "details.marketCharacteristicsTitle": "Characteristics",
   "details.investmentCharacteristicsTitle": "Characteristics and terms",
   "details.characteristicsTransportTitle": "Characteristics",
   "details.amenitiesTitle": "Amenities",

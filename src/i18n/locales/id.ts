@@ -587,6 +587,7 @@ const id: TranslationDictionary = {
   "details.myNotesPlaceholder": "Tulis catatan pribadi tentang properti ini...",
   "details.descriptionTitle": "Deskripsi",
   "details.characteristicsTitle": "Karakteristik & syarat",
+  "details.marketCharacteristicsTitle": "Karakteristik",
   "details.investmentCharacteristicsTitle": "Karakteristik dan ketentuan",
   "details.characteristicsTransportTitle": "Karakteristik",
   "details.amenitiesTitle": "Fasilitas",

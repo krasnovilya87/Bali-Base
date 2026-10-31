@@ -44,6 +44,7 @@ import { buildInvestmentContactMessage } from '../utils/investmentContactMessage
 import { getPriceSourceLabelKey, isFixedPriceCategory, isPriceOnRequest } from '../utils/priceSourceLabel';
 import { TelegramIcon, WhatsAppIcon } from './MessengerIcons';
 import { findCompanyByName } from '../config/companies';
+import BlurredPhoto from './BlurredPhoto';
 import { CLASSIFIED_GENERIC_SPECIAL_FIELDS, getClassifiedSpecialConfig } from '../config/classifiedSpecial';
 import CompanyContactModal from './listing-details/CompanyContactModal';
 import { isListingVerified } from '../utils/listingVerification';
@@ -2482,15 +2483,12 @@ export default function ListingDetails({
                 }}
               >
                 {visibleHeroPhotoIndexes.map((idx) => (
-                  <img
+                  <BlurredPhoto
                     key={idx}
                     src={listing.images[idx]}
                     alt={listing.title}
-                    referrerPolicy="no-referrer"
-                    decoding="async"
                     loading={idx === activePhoto ? 'eager' : 'lazy'}
                     onDragStart={(event) => event.preventDefault()}
-                    className="w-full h-full object-cover shrink-0 select-none pointer-events-none"
                   />
                 ))}
               </div>
@@ -2717,7 +2715,9 @@ export default function ListingDetails({
                       ? tr('details.investmentCharacteristicsTitle')
                       : isTransportListing
                         ? tr('details.characteristicsTransportTitle')
-                        : tr('details.characteristicsTitle')}
+                        : isMarketListing
+                          ? tr('details.marketCharacteristicsTitle')
+                          : tr('details.characteristicsTitle')}
                   </h3>
 
                   {(() => {

@@ -82,9 +82,10 @@ service cloud.firestore {
       return canOwnerCreateListing(data) && data.status == 'moderation';
     }
 
+    // Admin first: imported posts have no ownerId stored, so the owner check would fail for them.
     function canUpdateModeratedListing(before, after) {
-      return canUpdateListing(before, after)
-        && (isAdmin() || after.status != 'active');
+      return isAdmin()
+        || (canUpdateListing(before, after) && after.status != 'active');
     }
 
     function isValidBookingRequest(data) {

@@ -15,6 +15,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18nContext';
 import { isListingVerified } from '../utils/listingVerification';
 import { getPriceSourceLabelKey } from '../utils/priceSourceLabel';
+import BlurredPhoto from './BlurredPhoto';
 import { isPriceOnRequest } from '../utils/priceSourceLabel';
 import { formatLifeExpensePerPerson, getLifeExpensePerPerson } from '../config/lifeSpecial';
 import {
@@ -615,15 +616,11 @@ export default function ListingCard({
           }}
         >
           {visiblePhotoIndexes.map((idx) => (
-            <img
+            <BlurredPhoto
               key={idx}
               src={listing.images[idx]}
               alt={listing.title}
-              referrerPolicy="no-referrer"
-              decoding="async"
-              loading="lazy"
               onDragStart={(e) => e.preventDefault()}
-              className="w-full h-full object-cover shrink-0 select-none pointer-events-none"
             />
           ))}
         </div>
